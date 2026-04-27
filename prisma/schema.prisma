@@ -1,0 +1,144 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum MemberStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum GroupMemberStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum SessionStatus {
+  PLANNED
+  RESCHEDULED
+  CANCELLED
+  COMPLETED
+}
+
+model Member {
+  id         String       @id @default(cuid())
+  firstName  String
+  lastName   String
+  phone      String       @unique
+  email      String?
+  status     MemberStatus @default(ACTIVE)
+  groups     GroupMember[]
+  joinedAt   DateTime     @default(now())
+  archivedAt DateTime?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+}
+
+model Sport {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  coaches     Coach[]
+  groups      Group[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Coach {
+  id        String   @id @default(cuid())
+  firstName String
+  lastName  String
+  phone     String   @unique
+  email     String?
+  isActive  Boolean  @default(true)
+  sportId   String?
+  sport     Sport?   @relation(fields: [sportId], references: [id], onDelete: SetNull)
+  groups    Group[]
+  sessions  Session[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Group {
+  id        String          @id @default(cuid())
+  name      String
+  sportId   String
+  sport     Sport           @relation(fields: [sportId], references: [id], onDelete: Restrict)
+  coachId   String
+  coach     Coach           @relation(fields: [coachId], references: [id], onDelete: Restrict)
+  capacity  Int
+  room      String
+  isActive  Boolean         @default(true)
+  members   GroupMember[]
+  schedules GroupSchedule[]
+  sessions  Session[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model GroupMember {
+  id        String            @id @default(cuid())
+  groupId   String
+  memberId  String
+  group     Group             @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  member    Member            @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  startDate DateTime
+  endDate   DateTime?
+  status    GroupMemberStatus @default(ACTIVE)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@unique([groupId, memberId])
+}
+
+model GroupSchedule {
+  id              String    @id @default(cuid())
+  groupId         String
+  group           Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  dayOfWeek       DayOfWeek
+  startTime       String
+  durationMinutes Int
+  effectiveFrom   DateTime  @default(now())
+  effectiveTo     DateTime?
+  sessions        Session[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Session {
+  id              String        @id @default(cuid())
+  groupId         String
+  group           Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  scheduleId      String?
+  schedule        GroupSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  sessionDate     DateTime
+  startTime       String
+  endTime         String
+  coachId         String?
+  coach           Coach?        @relation(fields: [coachId], references: [id], onDelete: SetNull)
+  room            String
+  status          SessionStatus @default(PLANNED)
+  exceptionReason String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([groupId, sessionDate, startTime])
+}
