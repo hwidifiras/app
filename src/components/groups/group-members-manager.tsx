@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { GroupMemberDto } from "@/types/group-member";
 import { GroupDto } from "@/types/group";
 import { MemberDto } from "@/types/member";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { FeedbackMessage } from "@/components/ui/feedback-message";
 
 type GroupMembersManagerProps = {
   groups: GroupDto[];
@@ -261,8 +263,8 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
 
   return (
     <section className="panel p-6">
-      <h2 className="text-xl font-semibold text-[var(--foreground)]">US-06 - Affectation membres ↔ groupes</h2>
-      <p className="mt-2 text-sm text-[var(--muted)]">
+      <h2 className="text-lg font-semibold text-[var(--foreground)]">Affectation membres ↔ groupes</h2>
+      <p className="mt-1 text-sm text-[var(--muted-foreground)]">
         Affectation datée des membres à un groupe avec contrôle automatique de capacité.
       </p>
 
@@ -288,12 +290,12 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
       </div>
 
       {selectedGroup ? (
-        <p className="mt-3 text-xs text-[var(--muted)]">
+        <p className="mt-3 text-xs text-[var(--muted-foreground)]">
           Capacité groupe: {selectedGroup.capacity} • Affectations actives: {activeAssignments.length}
         </p>
       ) : null}
 
-      {message ? <p className="mt-3 text-sm text-[var(--foreground)]">{message}</p> : null}
+      <FeedbackMessage message={message} className="mt-3" />
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <section className="rounded-xl border border-[var(--border)] p-4">
@@ -324,11 +326,11 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
                 <span className="font-medium text-[var(--foreground)]">
                   {member.firstName} {member.lastName}
                 </span>
-                <span className="text-[var(--muted)]">• {member.phone}</span>
+                <span className="text-[var(--muted-foreground)]">• {member.phone}</span>
               </li>
             ))}
             {availableMembers.length === 0 ? (
-              <li className="rounded-lg border border-dashed border-[var(--border)] p-2 text-xs text-[var(--muted)]">
+              <li className="rounded-lg border border-dashed border-[var(--border)] p-2 text-xs text-[var(--muted-foreground)]">
                 Aucun membre disponible pour ajout.
               </li>
             ) : null}
@@ -376,16 +378,16 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
                     />
                     <span>
                       <span className="block font-medium text-[var(--foreground)]">{item.memberName}</span>
-                      <span className="block text-[var(--muted)]">{item.memberPhone}</span>
-                      <span className="block text-[var(--muted)]">
+                      <span className="block text-[var(--muted-foreground)]">{item.memberPhone}</span>
+                      <span className="block text-[var(--muted-foreground)]">
                         Du {new Date(item.startDate).toLocaleDateString("fr-FR")}
                         {item.endDate ? ` au ${new Date(item.endDate).toLocaleDateString("fr-FR")}` : ""}
                       </span>
                     </span>
                   </label>
-                  <span className={`chip ${item.status === "ACTIVE" ? "chip-active" : "chip-muted"}`}>
-                    {item.status === "ACTIVE" ? "ACTIF" : "INACTIF"}
-                  </span>
+                  <StatusBadge variant={item.status === "ACTIVE" ? "success" : "muted"}>
+                    {item.status === "ACTIVE" ? "Actif" : "Inactif"}
+                  </StatusBadge>
                 </div>
                 <div className="mt-2 flex gap-2">
                   <button
@@ -412,7 +414,7 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
               </li>
             ))}
             {displayedAssignments.length === 0 ? (
-              <li className="rounded-lg border border-dashed border-[var(--border)] p-2 text-xs text-[var(--muted)]">
+              <li className="rounded-lg border border-dashed border-[var(--border)] p-2 text-xs text-[var(--muted-foreground)]">
                 Aucune affectation pour ce groupe.
               </li>
             ) : null}

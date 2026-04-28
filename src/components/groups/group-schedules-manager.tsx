@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { FeedbackMessage } from "@/components/ui/feedback-message";
 
 type DayOfWeekValue =
   | "MONDAY"
@@ -147,15 +148,11 @@ export function GroupSchedulesManager({
           </button>
         </div>
 
-        {genMessage ? (
-          <p className={"mb-3 text-sm " + (genMessage.includes("créée") ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-            {genMessage}
-          </p>
-        ) : null}
+        <FeedbackMessage message={genMessage} className="mb-3" />
 
         <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
           <table className="w-full text-sm">
-            <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted)]">
+            <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
               <tr>
                 <th className="px-3 py-2 text-left font-semibold">Jour</th>
                 <th className="px-3 py-2 text-left font-semibold">Heure</th>
@@ -171,8 +168,8 @@ export function GroupSchedulesManager({
                   <td className="px-3 py-2 font-medium text-[var(--foreground)]">{dayLabels[row.dayOfWeek as DayOfWeekValue] ?? row.dayOfWeek}</td>
                   <td className="px-3 py-2">{row.startTime}</td>
                   <td className="px-3 py-2">{row.durationMinutes} min</td>
-                  <td className="px-3 py-2 hidden sm:table-cell text-[var(--muted)]">{new Date(row.effectiveFrom).toLocaleDateString("fr-FR")}</td>
-                  <td className="px-3 py-2 hidden sm:table-cell text-[var(--muted)]">{row.effectiveTo ? new Date(row.effectiveTo).toLocaleDateString("fr-FR") : "—"}</td>
+                  <td className="px-3 py-2 hidden sm:table-cell text-[var(--muted-foreground)]">{new Date(row.effectiveFrom).toLocaleDateString("fr-FR")}</td>
+                  <td className="px-3 py-2 hidden sm:table-cell text-[var(--muted-foreground)]">{row.effectiveTo ? new Date(row.effectiveTo).toLocaleDateString("fr-FR") : "—"}</td>
                   <td className="px-3 py-2">
                     <button
                       type="button"
@@ -186,7 +183,7 @@ export function GroupSchedulesManager({
               ))}
               {schedules.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-3 py-5 text-center text-[var(--muted)]">
+                  <td colSpan={6} className="px-3 py-5 text-center text-[var(--muted-foreground)]">
                     Aucun créneau défini. Ajoutez un créneau ci-dessous.
                   </td>
                 </tr>
@@ -198,13 +195,13 @@ export function GroupSchedulesManager({
 
       <div className="rounded-xl border border-[var(--border)] p-6">
         <h2 className="text-lg font-semibold text-[var(--foreground)]">Ajouter un créneau</h2>
-        <p className="mt-1 text-sm text-[var(--muted)]">
+        <p className="mt-1 text-sm text-[var(--muted-foreground)]">
           Définir un jour et une heure de répétition hebdomadaire pour ce groupe.
         </p>
 
         <form onSubmit={onAddSchedule} className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <label className="block text-xs font-medium text-[var(--muted)] mb-1">Jour</label>
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Jour</label>
             <select value={dayOfWeek} onChange={(e) => setDayOfWeek(e.target.value as DayOfWeekValue)} className="field text-sm" required>
               {Object.entries(dayLabels).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
@@ -212,19 +209,19 @@ export function GroupSchedulesManager({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-[var(--muted)] mb-1">Heure</label>
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Heure</label>
             <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="field text-sm" required />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[var(--muted)] mb-1">Durée (min)</label>
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Durée (min)</label>
             <input type="number" min={30} max={240} step={5} value={durationMinutes} onChange={(e) => setDurationMinutes(Number(e.target.value))} className="field text-sm" required />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[var(--muted)] mb-1">Valide du</label>
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Valide du</label>
             <input type="date" value={effectiveFrom} onChange={(e) => setEffectiveFrom(e.target.value)} className="field text-sm" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[var(--muted)] mb-1">Valide jusqu&apos;au (optionnel)</label>
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Valide jusqu&apos;au (optionnel)</label>
             <input type="date" value={effectiveTo} onChange={(e) => setEffectiveTo(e.target.value)} className="field text-sm" />
           </div>
           <div className="flex items-end">
@@ -234,11 +231,7 @@ export function GroupSchedulesManager({
           </div>
         </form>
 
-        {message ? (
-          <p className={"mt-3 text-sm " + (message.includes("succès") || message === "Créneau supprimé" ? "text-[var(--success)]" : "text-[var(--danger)]")}>
-            {message}
-          </p>
-        ) : null}
+        <FeedbackMessage message={message} className="mt-3" />
       </div>
     </div>
   );

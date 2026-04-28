@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { GroupEditForm } from "@/components/groups/group-edit-form";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default async function EditGroupPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -73,11 +75,18 @@ export default async function EditGroupPage({ params }: { params: Promise<{ id: 
 
   return (
     <main className="app-shell py-4 md:py-8">
-      <div className="mb-5 flex flex-col gap-2">
-        <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted)]">Parcours réception</p>
-        <h1 className="text-2xl font-semibold text-[var(--foreground)] md:text-3xl">Modifier le groupe</h1>
-        <p className="text-sm text-[var(--foreground)] font-medium">{group.name}</p>
-      </div>
+      <Link
+        href="/groups"
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--primary)] hover:underline"
+      >
+        <ArrowLeft className="size-3.5" /> Retour à la liste
+      </Link>
+
+      <PageHeader
+        overline="Référentiels"
+        title="Modifier le groupe"
+        description={group.name}
+      />
 
       <section className="panel panel-soft p-6">
         <GroupEditForm
@@ -96,12 +105,6 @@ export default async function EditGroupPage({ params }: { params: Promise<{ id: 
           initialMemberIds={initialMemberIds}
         />
       </section>
-
-      <div className="mt-4">
-        <Link href="/groups" className="text-sm font-medium text-[var(--primary)] underline">
-          ← Retour à la liste des groupes
-        </Link>
-      </div>
     </main>
   );
 }

@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { CoachDto } from "@/types/coach";
 import { MemberDto } from "@/types/member";
 import { SportDto } from "@/types/sport";
@@ -140,14 +141,14 @@ export function GroupEditForm({
     <form onSubmit={onSubmit} className="space-y-6">
       {/* Compact group info form */}
       <div className="rounded-xl border border-[var(--border)] p-4">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">Informations groupe</p>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Informations groupe</p>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div className="sm:col-span-2 lg:col-span-1">
-            <label className="block text-xs font-medium text-[var(--muted)] mb-1">Nom</label>
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Nom</label>
             <input value={name} onChange={(e) => setName(e.target.value)} className="field text-sm" required />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[var(--muted)] mb-1">Sport</label>
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Sport</label>
             <select value={sportId} onChange={(e) => setSportId(e.target.value)} className="field text-sm" required>
               <option value="">Choisir</option>
               {sportsOptions.map((sport) => (
@@ -156,7 +157,7 @@ export function GroupEditForm({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-[var(--muted)] mb-1">Coach</label>
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Coach</label>
             <select value={coachId} onChange={(e) => setCoachId(e.target.value)} className="field text-sm" required>
               <option value="">Choisir</option>
               {coachesOptions.map((coach) => (
@@ -165,16 +166,16 @@ export function GroupEditForm({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-[var(--muted)] mb-1">Salle</label>
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Salle</label>
             <input value={room} onChange={(e) => setRoom(e.target.value)} className="field text-sm" required />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[var(--muted)] mb-1">Capacité</label>
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Capacité</label>
             <input type="number" min={1} max={200} value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} className="field text-sm" required />
           </div>
           <div className="sm:col-span-2 lg:col-span-1 flex items-center gap-2 pt-5">
             <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
-            <span className="text-sm text-[var(--muted)]">Groupe actif</span>
+            <span className="text-sm text-[var(--muted-foreground)]">Groupe actif</span>
           </div>
         </div>
       </div>
@@ -182,7 +183,7 @@ export function GroupEditForm({
       {/* Member table matching /members style */}
       <div className="rounded-xl border border-[var(--border)] p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
             Membres du groupe ({selectedMemberIds.length})
           </p>
           <div className="flex items-center gap-2">
@@ -202,7 +203,7 @@ export function GroupEditForm({
 
         <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
           <table className="w-full text-sm">
-            <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted)]">
+            <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
               <tr>
                 <th className="px-3 py-2 text-left font-semibold w-10">#</th>
                 <th className="px-3 py-2 text-left font-semibold">Nom</th>
@@ -231,20 +232,20 @@ export function GroupEditForm({
                     {member.firstName} {member.lastName}
                   </td>
                   <td className="px-3 py-2">{member.phone}</td>
-                  <td className="px-3 py-2 hidden sm:table-cell text-[var(--muted)]">{member.email ?? "-"}</td>
+                  <td className="px-3 py-2 hidden sm:table-cell text-[var(--muted-foreground)]">{member.email ?? "-"}</td>
                   <td className="px-3 py-2">
                     <span className={`chip ${member.status === "ACTIVE" ? "chip-active" : "chip-muted"}`}>
                       {member.status === "ACTIVE" ? "ACTIF" : "ARCHIVÉ"}
                     </span>
                   </td>
-                  <td className="px-3 py-2 hidden md:table-cell text-[var(--muted)]">
+                  <td className="px-3 py-2 hidden md:table-cell text-[var(--muted-foreground)]">
                     {new Date(member.createdAt).toLocaleDateString("fr-FR")}
                   </td>
                 </tr>
               ))}
               {filteredMembers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-3 py-5 text-center text-[var(--muted)]">
+                  <td colSpan={6} className="px-3 py-5 text-center text-[var(--muted-foreground)]">
                     Aucun membre trouvé.
                   </td>
                 </tr>
@@ -252,7 +253,7 @@ export function GroupEditForm({
             </tbody>
           </table>
         </div>
-        <p className="mt-2 text-xs text-[var(--muted)]">
+        <p className="mt-2 text-xs text-[var(--muted-foreground)]">
           Coché = membre affecté au groupe • Décoché = membre retiré
         </p>
       </div>
@@ -266,11 +267,7 @@ export function GroupEditForm({
         </button>
       </div>
 
-      {message ? (
-        <p className={`text-sm ${message.includes("succès") ? "text-[var(--success)]" : "text-[var(--danger)]"}`}>
-          {message}
-        </p>
-      ) : null}
+      <FeedbackMessage message={message} />
     </form>
   );
 }

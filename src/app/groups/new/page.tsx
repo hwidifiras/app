@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { GroupAddForm } from "@/components/groups/group-add-form";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default async function NewGroupPage() {
   let hasError = false;
@@ -55,9 +57,9 @@ export default async function NewGroupPage() {
     return (
       <main className="app-shell py-6">
         <div className="panel panel-soft p-6">
-          <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted)]">Mode dégradé</p>
+          <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted-foreground)]">Mode dégradé</p>
           <h1 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">Création de groupe indisponible</h1>
-          <p className="mt-3 text-sm text-[var(--muted)]">
+          <p className="mt-3 text-sm text-[var(--muted-foreground)]">
             Données inaccessibles. Lancez `npm run prisma:generate` puis redémarrez le serveur.
           </p>
           <div className="mt-4">
@@ -70,23 +72,22 @@ export default async function NewGroupPage() {
 
   return (
     <main className="app-shell py-4 md:py-8">
-      <div className="mb-5 flex flex-col gap-2">
-        <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted)]">Parcours réception</p>
-        <h1 className="text-2xl font-semibold text-[var(--foreground)] md:text-3xl">Créer un groupe</h1>
-        <p className="text-sm text-[var(--muted)]">
-          Définir un nouveau groupe d&apos;entraînement. Les créneaux seront planifiés ensuite.
-        </p>
-      </div>
+      <Link
+        href="/groups"
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--primary)] hover:underline"
+      >
+        <ArrowLeft className="size-3.5" /> Retour à la liste
+      </Link>
+
+      <PageHeader
+        overline="Référentiels"
+        title="Créer un groupe"
+        description="Définir un nouveau groupe d'entraînement. Les créneaux seront planifiés ensuite."
+      />
 
       <section className="panel panel-soft p-6">
         <GroupAddForm sportsOptions={sportsOptions} coachesOptions={coachesOptions} membersOptions={membersOptions} />
       </section>
-
-      <div className="mt-4">
-        <Link href="/groups" className="text-sm font-medium text-[var(--primary)] underline">
-          ← Retour à la liste des groupes
-        </Link>
-      </div>
     </main>
   );
 }

@@ -133,7 +133,7 @@ export function MemberListClient({ initialMembers, groupsOptions }: MemberListCl
       {/* Tableau */}
       <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
         <table className="w-full text-sm">
-          <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted)]">
+          <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
             <tr>
               <th className="px-4 py-3 text-left font-semibold">Nom</th>
               <th className="px-4 py-3 text-left font-semibold">Téléphone</th>

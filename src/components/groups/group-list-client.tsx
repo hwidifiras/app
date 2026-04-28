@@ -90,7 +90,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
 
       <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
         <table className="w-full text-sm">
-          <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted)]">
+          <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
             <tr>
               <th className="px-4 py-3 text-left font-semibold">Nom</th>
               <th className="px-4 py-3 text-left font-semibold">Sport</th>
@@ -105,11 +105,11 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
               <tr key={group.id} className="hover:bg-[var(--surface-soft)] transition-colors">
                 <td className="px-4 py-3 font-medium text-[var(--foreground)]">
                   {group.name}
-                  <p className="text-xs text-[var(--muted)]">Salle {group.room} • Cap. {group.capacity}</p>
+                  <p className="text-xs text-[var(--muted-foreground)]">Salle {group.room} • Cap. {group.capacity}</p>
                 </td>
                 <td className="px-4 py-3">{group.sportName}</td>
                 <td className="px-4 py-3 hidden sm:table-cell">{group.coachName}</td>
-                <td className="px-4 py-3 hidden md:table-cell text-[var(--muted)]">
+                <td className="px-4 py-3 hidden md:table-cell text-[var(--muted-foreground)]">
                   {formatSchedules(group.schedules)}
                 </td>
                 <td className="px-4 py-3">

@@ -270,7 +270,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                         </option>
                       ))}
                     </select>
-                    <label className="flex items-center gap-2 text-xs text-[var(--muted)]">
+                    <label className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
                       <input
                         type="checkbox"
                         checked={editIsActive}
@@ -304,9 +304,9 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                         <p className="text-sm font-medium text-[var(--foreground)]">
                           {coach.firstName} {coach.lastName}
                         </p>
-                        <p className="text-xs text-[var(--muted)]">{coach.phone}</p>
-                        <p className="text-xs text-[var(--muted)]">{coach.email ?? "-"}</p>
-                        <p className="text-xs text-[var(--muted)]">Spécialité: {coach.sportName ?? "-"}</p>
+                        <p className="text-xs text-[var(--muted-foreground)]">{coach.phone}</p>
+                        <p className="text-xs text-[var(--muted-foreground)]">{coach.email ?? "-"}</p>
+                        <p className="text-xs text-[var(--muted-foreground)]">Spécialité: {coach.sportName ?? "-"}</p>
                       </div>
                       <StatusBadge variant={coach.isActive ? "success" : "muted"}>
                         {coach.isActive ? "Actif" : "Inactif"}
@@ -335,7 +335,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
               </li>
             ))}
             {coaches.length === 0 ? (
-              <li className="rounded-xl border border-dashed border-[var(--border)] p-3 text-sm text-[var(--muted)]">
+              <li className="rounded-xl border border-dashed border-[var(--border)] p-3 text-sm text-[var(--muted-foreground)]">
                 Aucun coach enregistré pour le moment.
               </li>
             ) : null}

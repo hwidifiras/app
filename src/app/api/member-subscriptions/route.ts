@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { SubscriptionStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import {
@@ -8,11 +9,14 @@ import {
 
 export const runtime = "nodejs";
 
+const VALID_STATUSES: string[] = ["ACTIVE", "EXPIRED", "CANCELLED", "SUSPENDED"];
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const memberId = searchParams.get("memberId")?.trim();
   const planId = searchParams.get("planId")?.trim();
-  const status = searchParams.get("status")?.trim();
+  const statusRaw = searchParams.get("status")?.trim();
+  const status = statusRaw && VALID_STATUSES.includes(statusRaw) ? (statusRaw as SubscriptionStatus) : undefined;
 
   const subscriptions = await prisma.memberSubscription.findMany({
     where: {

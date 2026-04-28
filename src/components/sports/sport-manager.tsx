@@ -210,7 +210,7 @@ export function SportManager({ initialSports }: SportManagerProps) {
                       className="field text-xs"
                       rows={2}
                     />
-                    <label className="flex items-center gap-2 text-xs text-[var(--muted)]">
+                    <label className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
                       <input
                         type="checkbox"
                         checked={editIsActive}
@@ -242,7 +242,7 @@ export function SportManager({ initialSports }: SportManagerProps) {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-medium text-[var(--foreground)]">{sport.name}</p>
-                        <p className="text-xs text-[var(--muted)]">{sport.description ?? "-"}</p>
+                        <p className="text-xs text-[var(--muted-foreground)]">{sport.description ?? "-"}</p>
                       </div>
                       <StatusBadge variant={sport.isActive ? "success" : "muted"}>
                         {sport.isActive ? "Actif" : "Inactif"}
@@ -271,7 +271,7 @@ export function SportManager({ initialSports }: SportManagerProps) {
               </li>
             ))}
             {sports.length === 0 ? (
-              <li className="rounded-xl border border-dashed border-[var(--border)] p-3 text-sm text-[var(--muted)]">
+              <li className="rounded-xl border border-dashed border-[var(--border)] p-3 text-sm text-[var(--muted-foreground)]">
                 Aucun sport enregistré pour le moment.
               </li>
             ) : null}
