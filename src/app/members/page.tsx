@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { MemberListClient } from "@/components/members/member-list-client";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default async function MembersPage() {
   let hasMemberDataError = false;
@@ -63,9 +64,9 @@ export default async function MembersPage() {
     return (
       <main className="app-shell py-6">
         <div className="panel panel-soft p-6">
-          <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted)]">Mode dégradé</p>
+          <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted-foreground)]">Mode dégradé</p>
           <h1 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">Gestion des membres indisponible</h1>
-          <p className="mt-3 text-sm text-[var(--muted)]">
+          <p className="mt-3 text-sm text-[var(--muted-foreground)]">
             Le modèle Prisma Member n&apos;est pas accessible pour le moment. Lancez la régénération du client
             (`npm run prisma:generate`) puis redémarrez le serveur de développement.
           </p>
@@ -81,13 +82,11 @@ export default async function MembersPage() {
 
   return (
     <main className="app-shell py-4 md:py-8">
-      <div className="mb-5 flex flex-col gap-2">
-        <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted)]">Parcours réception</p>
-        <h1 className="text-2xl font-semibold text-[var(--foreground)] md:text-3xl">Liste des membres</h1>
-        <p className="text-sm text-[var(--muted)]">
-          Rechercher, filtrer et consulter les dossiers membres. Cliquez sur Détails pour voir l&apos;historique complet.
-        </p>
-      </div>
+      <PageHeader
+        overline="Parcours réception"
+        title="Liste des membres"
+        description="Rechercher, filtrer et consulter les dossiers membres."
+      />
 
       <section className="panel p-5">
         <MemberListClient initialMembers={initialMembers} groupsOptions={groupsOptions} />

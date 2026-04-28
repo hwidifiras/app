@@ -1,6 +1,7 @@
 import { SportManager } from "@/components/sports/sport-manager";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import { PageHeader } from "@/components/ui/page-header";
 
 type SportRecord = {
   id: string;
@@ -42,9 +43,9 @@ export default async function SportsPage() {
     return (
       <main className="app-shell py-6">
         <div className="panel panel-soft p-6">
-          <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted)]">Mode dégradé</p>
+          <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted-foreground)]">Mode dégradé</p>
           <h1 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">Gestion des sports indisponible</h1>
-          <p className="mt-3 text-sm text-[var(--muted)]">
+          <p className="mt-3 text-sm text-[var(--muted-foreground)]">
             Le modèle Prisma Sport n&apos;est pas accessible pour le moment. Lancez la régénération du client
             (`npm run prisma:generate`) puis redémarrez le serveur de développement.
           </p>
@@ -58,5 +59,14 @@ export default async function SportsPage() {
     );
   }
 
-  return <SportManager initialSports={initialSports} />;
+  return (
+    <main className="app-shell py-4 md:py-8">
+      <PageHeader
+        overline="Référentiels"
+        title="Gestion des sports"
+        description="Référentiel des disciplines du club avec activation et maintenance rapide."
+      />
+      <SportManager initialSports={initialSports} />
+    </main>
+  );
 }

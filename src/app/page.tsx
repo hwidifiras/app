@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import { Users, Dumbbell, User, Archive, ArrowRight } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type DashboardMember = {
   id: string;
@@ -19,6 +20,29 @@ type DashboardSport = {
   description: string | null;
   isActive: boolean;
 };
+
+type KpiCardProps = {
+  label: string;
+  value: number;
+  icon: React.ReactNode;
+  color: string;
+};
+
+function KpiCard({ label, value, icon, color }: KpiCardProps) {
+  return (
+    <Card className="relative overflow-hidden">
+      <CardContent className="flex items-center gap-4 p-5">
+        <div className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${color}`}>
+          {icon}
+        </div>
+        <div>
+          <p className="text-[0.78rem] font-medium text-[var(--muted-foreground)]">{label}</p>
+          <p className="text-2xl font-bold tracking-tight text-[var(--foreground)]">{value}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default async function Home() {
   let hasSportDataError = false;
@@ -77,135 +101,101 @@ export default async function Home() {
 
   return (
     <main className="app-shell py-6 md:py-8">
-      <div className="mb-7 flex flex-col gap-2">
-        <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Vue d&apos;ensemble</p>
-        <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Dashboard réception</h1>
-        <p className="text-sm text-muted-foreground">
-          Pilotage rapide des référentiels et actions quotidiennes du front desk.
-        </p>
-        {hasSportDataError ? (
-          <p className="text-sm font-medium text-amber-600">
-            Données sports/coachs temporairement indisponibles. Exécutez `npm run prisma:generate` puis redémarrez le
-            serveur.
-          </p>
-        ) : null}
-      </div>
+      <PageHeader
+        overline="Vue d'ensemble"
+        title="Dashboard réception"
+        description="Pilotage rapide des référentiels et actions quotidiennes du front desk."
+      />
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Membres actifs</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-semibold text-[var(--foreground)]">{activeMembers}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Membres archivés</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-semibold text-[var(--foreground)]">{archivedMembers}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Sports actifs</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-semibold text-[var(--foreground)]">{activeSports}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total sports</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-semibold text-[var(--foreground)]">{totalSports}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Coachs actifs</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-semibold text-[var(--foreground)]">{activeCoaches}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total coachs</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-semibold text-[var(--foreground)]">{totalCoaches}</p>
-          </CardContent>
-        </Card>
+      {hasSportDataError ? (
+        <div className="mb-5 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-700">
+          Données sports/coachs temporairement indisponibles. Exécutez <code className="mx-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs">npm run prisma:generate</code> puis redémarrez.
+        </div>
+      ) : null}
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <KpiCard label="Membres actifs" value={activeMembers} icon={<Users className="size-5 text-white" />} color="bg-[var(--primary)]" />
+        <KpiCard label="Membres archivés" value={archivedMembers} icon={<Archive className="size-5 text-white" />} color="bg-slate-500" />
+        <KpiCard label="Sports actifs" value={activeSports} icon={<Dumbbell className="size-5 text-white" />} color="bg-emerald-600" />
+        <KpiCard label="Total sports" value={totalSports} icon={<Dumbbell className="size-5 text-white" />} color="bg-emerald-400" />
+        <KpiCard label="Coachs actifs" value={activeCoaches} icon={<User className="size-5 text-white" />} color="bg-violet-600" />
+        <KpiCard label="Total coachs" value={totalCoaches} icon={<User className="size-5 text-white" />} color="bg-violet-400" />
       </section>
 
-      <section className="mt-7 grid gap-4 lg:grid-cols-2">
+      <section className="mt-7 grid gap-5 lg:grid-cols-2">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-3">
-            <CardTitle className="text-base">Membres récents</CardTitle>
-            <Link href="/members" className="text-xs font-semibold text-primary underline underline-offset-4">
-              Ouvrir gestion membres
+          <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
+            <CardTitle className="text-base font-semibold">Membres récents</CardTitle>
+            <Link href="/members" className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--primary)] hover:underline">
+              Voir tout <ArrowRight className="size-3" />
             </Link>
           </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nom</TableHead>
-                  <TableHead>Téléphone</TableHead>
-                  <TableHead className="text-right">Statut</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {membersRows.map((member) => (
-                  <TableRow key={member.id}>
-                    <TableCell>{member.firstName} {member.lastName}</TableCell>
-                    <TableCell>{member.phone}</TableCell>
-                    <TableCell className="text-right">
-                      <Badge variant={member.status === "ACTIVE" ? "default" : "outline"}>
-                        {member.status === "ACTIVE" ? "ACTIF" : "ARCHIVÉ"}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <CardContent className="px-0 pb-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="border-t border-b border-[var(--border)] bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
+                  <tr>
+                    <th className="px-5 py-2.5 text-left font-semibold">Nom</th>
+                    <th className="px-5 py-2.5 text-left font-semibold">Téléphone</th>
+                    <th className="px-5 py-2.5 text-right font-semibold">Statut</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {membersRows.map((member) => (
+                    <tr key={member.id} className="transition-colors hover:bg-[var(--surface-soft)]">
+                      <td className="px-5 py-2.5 font-medium">{member.firstName} {member.lastName}</td>
+                      <td className="px-5 py-2.5 text-[var(--muted-foreground)]">{member.phone}</td>
+                      <td className="px-5 py-2.5 text-right">
+                        <StatusBadge variant={member.status === "ACTIVE" ? "success" : "muted"}>
+                          {member.status === "ACTIVE" ? "Actif" : "Archivé"}
+                        </StatusBadge>
+                      </td>
+                    </tr>
+                  ))}
+                  {membersRows.length === 0 ? (
+                    <tr><td colSpan={3} className="px-5 py-6 text-center text-[var(--muted-foreground)]">Aucun membre.</td></tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-3">
-            <CardTitle className="text-base">Sports récents</CardTitle>
-            <Link href="/sports" className="text-xs font-semibold text-primary underline underline-offset-4">
-              Ouvrir gestion sports
+          <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
+            <CardTitle className="text-base font-semibold">Sports récents</CardTitle>
+            <Link href="/sports" className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--primary)] hover:underline">
+              Voir tout <ArrowRight className="size-3" />
             </Link>
           </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Sport</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="text-right">Statut</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sportsRows.map((sport) => (
-                  <TableRow key={sport.id}>
-                    <TableCell>{sport.name}</TableCell>
-                    <TableCell className="max-w-[230px] truncate">{sport.description ?? "-"}</TableCell>
-                    <TableCell className="text-right">
-                      <Badge variant={sport.isActive ? "default" : "outline"}>
-                        {sport.isActive ? "ACTIF" : "INACTIF"}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <CardContent className="px-0 pb-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="border-t border-b border-[var(--border)] bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
+                  <tr>
+                    <th className="px-5 py-2.5 text-left font-semibold">Sport</th>
+                    <th className="px-5 py-2.5 text-left font-semibold">Description</th>
+                    <th className="px-5 py-2.5 text-right font-semibold">Statut</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {sportsRows.map((sport) => (
+                    <tr key={sport.id} className="transition-colors hover:bg-[var(--surface-soft)]">
+                      <td className="px-5 py-2.5 font-medium">{sport.name}</td>
+                      <td className="max-w-[200px] truncate px-5 py-2.5 text-[var(--muted-foreground)]">{sport.description ?? "—"}</td>
+                      <td className="px-5 py-2.5 text-right">
+                        <StatusBadge variant={sport.isActive ? "success" : "muted"}>
+                          {sport.isActive ? "Actif" : "Inactif"}
+                        </StatusBadge>
+                      </td>
+                    </tr>
+                  ))}
+                  {sportsRows.length === 0 ? (
+                    <tr><td colSpan={3} className="px-5 py-6 text-center text-[var(--muted-foreground)]">Aucun sport.</td></tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
       </section>

@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { CoachManager } from "@/components/coaches/coach-manager";
 import { prisma } from "@/lib/prisma";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default async function CoachesPage() {
   let hasCoachDataError = false;
@@ -63,9 +64,9 @@ export default async function CoachesPage() {
     return (
       <main className="app-shell py-6">
         <div className="panel panel-soft p-6">
-          <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted)]">Mode dégradé</p>
+          <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted-foreground)]">Mode dégradé</p>
           <h1 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">Gestion des coachs indisponible</h1>
-          <p className="mt-3 text-sm text-[var(--muted)]">
+          <p className="mt-3 text-sm text-[var(--muted-foreground)]">
             Le modèle Prisma Coach n&apos;est pas accessible pour le moment. Lancez la régénération du client
             (`npm run prisma:generate`) puis redémarrez le serveur de développement.
           </p>
@@ -79,5 +80,14 @@ export default async function CoachesPage() {
     );
   }
 
-  return <CoachManager initialCoaches={initialCoaches} sportsOptions={sportsOptions} />;
+  return (
+    <main className="app-shell py-4 md:py-8">
+      <PageHeader
+        overline="Référentiels"
+        title="Gestion des coachs"
+        description="Référentiel des coachs avec spécialité sportive, activation et maintenance rapide."
+      />
+      <CoachManager initialCoaches={initialCoaches} sportsOptions={sportsOptions} />
+    </main>
+  );
 }

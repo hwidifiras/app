@@ -37,6 +37,20 @@ enum SessionStatus {
   COMPLETED
 }
 
+enum SubscriptionStatus {
+  DRAFT
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  EXCUSED
+  OVERRIDE
+}
+
 model Member {
   id         String       @id @default(cuid())
   firstName  String
@@ -44,11 +58,13 @@ model Member {
   phone      String       @unique
   email      String?
   status     MemberStatus @default(ACTIVE)
-  groups     GroupMember[]
-  joinedAt   DateTime     @default(now())
-  archivedAt DateTime?
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
+  groups         GroupMember[]
+  subscriptions  MemberSubscription[]
+  attendances    Attendance[]
+  joinedAt       DateTime     @default(now())
+  archivedAt     DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
 model Sport {
@@ -137,8 +153,74 @@ model Session {
   room            String
   status          SessionStatus @default(PLANNED)
   exceptionReason String?
+  attendances     Attendance[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
   @@unique([groupId, sessionDate, startTime])
+}
+
+model SubscriptionPlan {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  price       Int      // prix en centimes
+  durationDays Int     // durée en jours (ex: 30 pour mensuel, 180 pour semestre)
+  isActive    Boolean  @default(true)
+  subscriptions MemberSubscription[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model MemberSubscription {
+  id        String             @id @default(cuid())
+  memberId  String
+  member    Member             @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  planId    String
+  plan      SubscriptionPlan   @relation(fields: [planId], references: [id], onDelete: Restrict)
+  startDate DateTime
+  endDate   DateTime?
+  amount    Int                // montant facturé final en centimes
+  status    SubscriptionStatus @default(DRAFT)
+  payments  Payment[]
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+}
+
+model Payment {
+  id                   String             @id @default(cuid())
+  memberSubscriptionId String
+  memberSubscription   MemberSubscription @relation(fields: [memberSubscriptionId], references: [id], onDelete: Cascade)
+  amount               Int                // montant en centimes
+  paymentDate          DateTime           @default(now())
+  paymentMethod        String?            // espèce, carte, virement, etc.
+  notes                String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+}
+
+model Attendance {
+  id              String           @id @default(cuid())
+  sessionId       String
+  session         Session          @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  memberId        String
+  member          Member           @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  status          AttendanceStatus
+  overrideReason  String?
+  checkedBy       String?
+  checkedAt       DateTime         @default(now())
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([sessionId, memberId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String
+  entityType String
+  entityId   String
+  userId     String?
+  details    String?
+  createdAt  DateTime @default(now())
 }

@@ -1,10 +1,11 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import Link from "next/link";
 
 import { CoachDto } from "@/types/coach";
 import { SportDto } from "@/types/sport";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { FeedbackMessage } from "@/components/ui/feedback-message";
 
 type CoachManagerProps = {
   initialCoaches: CoachDto[];
@@ -163,25 +164,15 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
   }
 
   return (
-    <main className="app-shell py-4 md:py-8">
-      <div className="mb-5 flex flex-col gap-2">
-        <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted)]">Parcours réception</p>
-        <h1 className="text-2xl font-semibold text-[var(--foreground)] md:text-3xl">Gestion des coachs</h1>
-      </div>
-
+    <div>
       <div className="grid w-full gap-6 md:grid-cols-2">
         <section className="panel panel-soft p-6">
-          <h2 className="text-xl font-semibold text-[var(--foreground)]">US-04 - Référentiel coachs</h2>
-          <p className="mt-2 text-sm text-[var(--muted)]">
-            Référentiel des coachs avec spécialité sportive, activation et maintenance rapide.
-          </p>
-          <p className="mt-3 text-sm">
-            <Link href="/sports" className="font-medium text-[var(--primary)] underline">
-              Gérer les sports (US-03)
-            </Link>
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">Ajouter un coach</h2>
+          <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+            Créer un nouveau coach avec sa spécialité sportive.
           </p>
 
-          <form onSubmit={onSubmit} className="mt-6 space-y-4">
+          <form onSubmit={onSubmit} className="mt-5 space-y-4">
             <input
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
@@ -223,7 +214,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
             </button>
           </form>
 
-          {message ? <p className="mt-4 text-sm text-[var(--foreground)]">{message}</p> : null}
+          <FeedbackMessage message={message} className="mt-4" />
         </section>
 
         <section className="panel p-6">
@@ -317,9 +308,9 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                         <p className="text-xs text-[var(--muted)]">{coach.email ?? "-"}</p>
                         <p className="text-xs text-[var(--muted)]">Spécialité: {coach.sportName ?? "-"}</p>
                       </div>
-                      <span className={`chip ${coach.isActive ? "chip-active" : "chip-muted"}`}>
-                        {coach.isActive ? "ACTIF" : "INACTIF"}
-                      </span>
+                      <StatusBadge variant={coach.isActive ? "success" : "muted"}>
+                        {coach.isActive ? "Actif" : "Inactif"}
+                      </StatusBadge>
                     </div>
                     <div className="mt-3 flex gap-2">
                       <button
@@ -351,6 +342,6 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
           </ul>
         </section>
       </div>
-    </main>
+    </div>
   );
 }

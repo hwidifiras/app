@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { FeedbackMessage } from "@/components/ui/feedback-message";
 
 export function MemberAddForm() {
   const router = useRouter();
@@ -44,38 +45,52 @@ export function MemberAddForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form onSubmit={onSubmit} className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Prénom *</label>
+          <input
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            placeholder="ex: Mohamed"
+            className="field"
+            required
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Nom *</label>
+          <input
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            placeholder="ex: Benali"
+            className="field"
+            required
+          />
+        </div>
+      </div>
+      <div>
+        <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Téléphone *</label>
         <input
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
-          placeholder="Prénom"
-          className="field"
-          required
-        />
-        <input
-          value={lastName}
-          onChange={(e) => setLastName(e.target.value)}
-          placeholder="Nom"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="06 00 00 00 00"
           className="field"
           required
         />
       </div>
-      <input
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
-        placeholder="Téléphone"
-        className="field"
-        required
-      />
-      <input
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="Email (optionnel)"
-        className="field"
-      />
+      <div>
+        <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Email</label>
+        <input
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="optionnel"
+          className="field"
+        />
+      </div>
 
-      <div className="flex items-center gap-3 pt-2">
+      <FeedbackMessage message={message} />
+
+      <div className="flex items-center gap-3 pt-1">
         <button type="submit" disabled={loading} className="btn btn-primary">
           {loading ? "Enregistrement..." : "Créer membre"}
         </button>
@@ -87,12 +102,6 @@ export function MemberAddForm() {
           Annuler
         </button>
       </div>
-
-      {message ? (
-        <p className={`text-sm ${message.includes("succès") ? "text-[var(--success)]" : "text-[var(--danger)]"}`}>
-          {message}
-        </p>
-      ) : null}
     </form>
   );
 }

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { GroupDto } from "@/types/group";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { FeedbackMessage } from "@/components/ui/feedback-message";
 
 export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }) {
   const [groups, setGroups] = useState<GroupDto[]>(initialGroups);
@@ -69,7 +71,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
     <div>
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <div className="flex-1 min-w-[12rem]">
-          <label className="block text-xs font-medium text-[var(--muted)] mb-1">Recherche</label>
+          <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Recherche</label>
           <input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -84,11 +86,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
         </div>
       </div>
 
-      {message ? (
-        <p className={`mb-3 text-sm ${message.includes("succès") ? "text-[var(--success)]" : "text-[var(--danger)]"}`}>
-          {message}
-        </p>
-      ) : null}
+      <FeedbackMessage message={message} className="mb-3" />
 
       <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
         <table className="w-full text-sm">
@@ -115,9 +113,9 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
                   {formatSchedules(group.schedules)}
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`chip ${group.isActive ? "chip-active" : "chip-muted"}`}>
-                    {group.isActive ? "ACTIF" : "INACTIF"}
-                  </span>
+                  <StatusBadge variant={group.isActive ? "success" : "muted"}>
+                    {group.isActive ? "Actif" : "Inactif"}
+                  </StatusBadge>
                 </td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-2">
@@ -147,7 +145,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
             ))}
             {filteredGroups.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-[var(--muted)]">
+                <td colSpan={6} className="px-4 py-10 text-center text-[var(--muted-foreground)]">
                   Aucun groupe trouvé.
                 </td>
               </tr>

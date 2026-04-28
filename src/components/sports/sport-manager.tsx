@@ -1,9 +1,10 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import Link from "next/link";
 
 import { SportDto } from "@/types/sport";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { FeedbackMessage } from "@/components/ui/feedback-message";
 
 type SportManagerProps = {
   initialSports: SportDto[];
@@ -143,25 +144,15 @@ export function SportManager({ initialSports }: SportManagerProps) {
   }
 
   return (
-    <main className="app-shell py-4 md:py-8">
-      <div className="mb-5 flex flex-col gap-2">
-        <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted)]">Parcours réception</p>
-        <h1 className="text-2xl font-semibold text-[var(--foreground)] md:text-3xl">Gestion des sports</h1>
-      </div>
-
+    <div>
       <div className="grid w-full gap-6 md:grid-cols-2">
         <section className="panel panel-soft p-6">
-          <h2 className="text-xl font-semibold text-[var(--foreground)]">US-03 - Référentiel sports</h2>
-          <p className="mt-2 text-sm text-[var(--muted)]">
-            Référentiel des disciplines du club avec activation et maintenance rapide.
-          </p>
-          <p className="mt-3 text-sm">
-            <Link href="/" className="font-medium text-[var(--primary)] underline">
-              Retour à la gestion des membres
-            </Link>
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">Ajouter un sport</h2>
+          <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+            Créer une nouvelle discipline pour le club.
           </p>
 
-          <form onSubmit={onSubmit} className="mt-6 space-y-4">
+          <form onSubmit={onSubmit} className="mt-5 space-y-4">
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -182,7 +173,7 @@ export function SportManager({ initialSports }: SportManagerProps) {
             </button>
           </form>
 
-          {message ? <p className="mt-4 text-sm text-[var(--foreground)]">{message}</p> : null}
+          <FeedbackMessage message={message} className="mt-4" />
         </section>
 
         <section className="panel p-6">
@@ -253,9 +244,9 @@ export function SportManager({ initialSports }: SportManagerProps) {
                         <p className="text-sm font-medium text-[var(--foreground)]">{sport.name}</p>
                         <p className="text-xs text-[var(--muted)]">{sport.description ?? "-"}</p>
                       </div>
-                      <span className={`chip ${sport.isActive ? "chip-active" : "chip-muted"}`}>
-                        {sport.isActive ? "ACTIF" : "INACTIF"}
-                      </span>
+                      <StatusBadge variant={sport.isActive ? "success" : "muted"}>
+                        {sport.isActive ? "Actif" : "Inactif"}
+                      </StatusBadge>
                     </div>
                     <div className="mt-3 flex gap-2">
                       <button
@@ -287,6 +278,6 @@ export function SportManager({ initialSports }: SportManagerProps) {
           </ul>
         </section>
       </div>
-    </main>
+    </div>
   );
 }

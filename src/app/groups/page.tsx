@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { GroupListClient } from "@/components/groups/group-list-client";
 import { GroupDto } from "@/types/group";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default async function GroupsPage() {
   let hasGroupDataError = false;
@@ -48,9 +49,9 @@ export default async function GroupsPage() {
     return (
       <main className="app-shell py-6">
         <div className="panel panel-soft p-6">
-          <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted)]">Mode dégradé</p>
+          <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted-foreground)]">Mode dégradé</p>
           <h1 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">Gestion des groupes indisponible</h1>
-          <p className="mt-3 text-sm text-[var(--muted)]">
+          <p className="mt-3 text-sm text-[var(--muted-foreground)]">
             Le modèle Prisma Group n&apos;est pas accessible pour le moment. Lancez la régénération du client
             (`npm run prisma:generate`) puis redémarrez le serveur de développement.
           </p>
@@ -66,13 +67,11 @@ export default async function GroupsPage() {
 
   return (
     <main className="app-shell py-4 md:py-8">
-      <div className="mb-5 flex flex-col gap-2">
-        <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted)]">Parcours réception</p>
-        <h1 className="text-2xl font-semibold text-[var(--foreground)] md:text-3xl">Liste des groupes</h1>
-        <p className="text-sm text-[var(--muted)]">
-          Consulter, modifier ou supprimer les groupes d&apos;entraînement.
-        </p>
-      </div>
+      <PageHeader
+        overline="Référentiels"
+        title="Liste des groupes"
+        description="Consulter, modifier ou supprimer les groupes d'entraînement."
+      />
 
       <section className="panel p-5">
         <GroupListClient initialGroups={initialGroups} />

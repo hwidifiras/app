@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 
 import { SessionDto, SessionStatusDto } from "@/types/session";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { FeedbackMessage } from "@/components/ui/feedback-message";
 
 type SessionsPlannerProps = {
   initialSessions: SessionDto[];
@@ -240,17 +242,12 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
   }, [filteredSessions]);
 
   return (
-    <main className="app-shell py-4 md:py-8">
-      <div className="mb-5 flex flex-col gap-2">
-        <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted)]">Parcours réception</p>
-        <h1 className="text-2xl font-semibold text-[var(--foreground)] md:text-3xl">Planning des séances (US-08)</h1>
-      </div>
-
+    <div>
       <section className="panel p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-[var(--foreground)]">Vue semaine filtrable</h2>
-            <p className="text-sm text-[var(--muted)]">Semaine du {new Date(`${weekStart}T00:00:00`).toLocaleDateString("fr-FR")} au {new Date(`${weekEnd}T00:00:00`).toLocaleDateString("fr-FR")}</p>
+            <p className="text-sm text-[var(--muted-foreground)]">Semaine du {new Date(`${weekStart}T00:00:00`).toLocaleDateString("fr-FR")} au {new Date(`${weekEnd}T00:00:00`).toLocaleDateString("fr-FR")}</p>
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -305,8 +302,8 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
           />
         </div>
 
-        {loading ? <p className="mt-4 text-sm text-[var(--muted)]">Chargement du planning...</p> : null}
-        {message ? <p className="mt-4 text-sm text-[var(--foreground)]">{message}</p> : null}
+        {loading ? <p className="mt-4 text-sm text-[var(--muted-foreground)]">Chargement du planning...</p> : null}
+        <FeedbackMessage message={message} className="mt-4" />
 
         <div className="mt-5 space-y-4">
           {sessionsByDay.map(([dayKey, daySessions]) => (
@@ -319,16 +316,16 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-medium text-[var(--foreground)]">{item.groupName}</p>
-                        <p className="text-xs text-[var(--muted)]">{item.startTime} - {item.endTime} • Salle {item.room}</p>
-                        <p className="text-xs text-[var(--muted)]">Coach: {item.coachName ?? "-"}</p>
+                        <p className="text-xs text-[var(--muted-foreground)]">{item.startTime} - {item.endTime} • Salle {item.room}</p>
+                        <p className="text-xs text-[var(--muted-foreground)]">Coach: {item.coachName ?? "-"}</p>
                         {item.exceptionReason ? (
                           <p className="text-xs text-[var(--danger)]">Motif: {item.exceptionReason}</p>
                         ) : null}
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className={`chip ${item.status === "CANCELLED" ? "chip-muted" : "chip-active"}`}>
+                        <StatusBadge variant={item.status === "CANCELLED" ? "danger" : item.status === "COMPLETED" ? "success" : item.status === "RESCHEDULED" ? "warning" : "info"}>
                           {sessionStatusLabels[item.status]}
-                        </span>
+                        </StatusBadge>
                         <button
                           type="button"
                           onClick={() => openEdit(item)}
@@ -352,7 +349,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
           ))}
 
           {sessionsByDay.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-[var(--border)] p-4 text-sm text-[var(--muted)]">
+            <div className="rounded-xl border border-dashed border-[var(--border)] p-4 text-sm text-[var(--muted-foreground)]">
               Aucune séance trouvée pour ces filtres.
             </div>
           ) : null}
@@ -366,13 +363,13 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
             <h3 className="text-lg font-semibold text-[var(--foreground)]">
               Modifier la séance
             </h3>
-            <p className="text-sm text-[var(--muted)] mt-1">
+            <p className="text-sm text-[var(--muted-foreground)] mt-1">
               {editingSession.groupName} — {new Date(editingSession.sessionDate).toLocaleDateString("fr-FR")}
             </p>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="block text-xs font-medium text-[var(--muted)] mb-1">Coach</label>
+                <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Coach</label>
                 <select
                   value={editForm.coachId}
                   onChange={(e) => setEditForm((f) => ({ ...f, coachId: e.target.value }))}
@@ -385,7 +382,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-[var(--muted)] mb-1">Salle</label>
+                <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Salle</label>
                 <input
                   value={editForm.room}
                   onChange={(e) => setEditForm((f) => ({ ...f, room: e.target.value }))}
@@ -393,7 +390,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-[var(--muted)] mb-1">Début</label>
+                <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Début</label>
                 <input
                   type="time"
                   value={editForm.startTime}
@@ -402,7 +399,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-[var(--muted)] mb-1">Fin</label>
+                <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Fin</label>
                 <input
                   type="time"
                   value={editForm.endTime}
@@ -411,7 +408,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-xs font-medium text-[var(--muted)] mb-1">Statut</label>
+                <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Statut</label>
                 <select
                   value={editForm.status}
                   onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value as SessionStatusDto }))}
@@ -425,7 +422,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
               </div>
               {editForm.status === "CANCELLED" ? (
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-medium text-[var(--muted)] mb-1">Motif d&apos;annulation *</label>
+                  <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Motif d&apos;annulation *</label>
                   <input
                     value={editForm.exceptionReason}
                     onChange={(e) => setEditForm((f) => ({ ...f, exceptionReason: e.target.value }))}
@@ -437,11 +434,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
               ) : null}
             </div>
 
-            {editMessage ? (
-              <p className={`mt-3 text-sm ${editMessage.includes("succès") ? "text-[var(--success)]" : "text-[var(--danger)]"}`}>
-                {editMessage}
-              </p>
-            ) : null}
+            <FeedbackMessage message={editMessage} className="mt-3" />
 
             <div className="mt-5 flex items-center justify-end gap-2">
               <button type="button" onClick={closeEdit} className="btn btn-ghost">Annuler</button>
@@ -457,6 +450,6 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
           </div>
         </div>
       ) : null}
-    </main>
+    </div>
   );
 }

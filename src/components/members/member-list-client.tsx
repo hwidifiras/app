@@ -2,6 +2,8 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { FeedbackMessage } from "@/components/ui/feedback-message";
 type GroupOption = {
   id: string;
   name: string;
@@ -84,7 +86,7 @@ export function MemberListClient({ initialMembers, groupsOptions }: MemberListCl
       {/* Filtres */}
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <div className="flex-1 min-w-[12rem]">
-          <label className="block text-xs font-medium text-[var(--muted)] mb-1">Recherche</label>
+          <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Recherche</label>
           <input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -93,7 +95,7 @@ export function MemberListClient({ initialMembers, groupsOptions }: MemberListCl
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-[var(--muted)] mb-1">Statut</label>
+          <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Statut</label>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
@@ -105,7 +107,7 @@ export function MemberListClient({ initialMembers, groupsOptions }: MemberListCl
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-[var(--muted)] mb-1">Groupe</label>
+          <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Groupe</label>
           <select
             value={groupFilter}
             onChange={(e) => setGroupFilter(e.target.value)}
@@ -126,11 +128,7 @@ export function MemberListClient({ initialMembers, groupsOptions }: MemberListCl
         </div>
       </div>
 
-      {message ? (
-        <p className={`mb-3 text-sm ${message.includes("succès") ? "text-[var(--success)]" : "text-[var(--danger)]"}`}>
-          {message}
-        </p>
-      ) : null}
+      <FeedbackMessage message={message} className="mb-3" />
 
       {/* Tableau */}
       <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
@@ -153,12 +151,12 @@ export function MemberListClient({ initialMembers, groupsOptions }: MemberListCl
                   {member.firstName} {member.lastName}
                 </td>
                 <td className="px-4 py-3">{member.phone}</td>
-                <td className="px-4 py-3 hidden sm:table-cell text-[var(--muted)]">
+                <td className="px-4 py-3 hidden sm:table-cell text-[var(--muted-foreground)]">
                   {member.email ?? "-"}
                 </td>
                 <td className="px-4 py-3 hidden lg:table-cell">
                   {member.groupIds.length === 0 ? (
-                    <span className="text-xs text-[var(--muted)]">-</span>
+                    <span className="text-xs text-[var(--muted-foreground)]">-</span>
                   ) : (
                     <div className="flex flex-wrap gap-1">
                       {member.groupIds.map((gid) => {
@@ -173,11 +171,11 @@ export function MemberListClient({ initialMembers, groupsOptions }: MemberListCl
                   )}
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`chip ${member.status === "ACTIVE" ? "chip-active" : "chip-muted"}`}>
-                    {member.status === "ACTIVE" ? "ACTIF" : "ARCHIVÉ"}
-                  </span>
+                  <StatusBadge variant={member.status === "ACTIVE" ? "success" : "muted"}>
+                    {member.status === "ACTIVE" ? "Actif" : "Archivé"}
+                  </StatusBadge>
                 </td>
-                <td className="px-4 py-3 hidden md:table-cell text-[var(--muted)]">
+                <td className="px-4 py-3 hidden md:table-cell text-[var(--muted-foreground)]">
                   {new Date(member.createdAt).toLocaleDateString("fr-FR")}
                 </td>
                 <td className="px-4 py-3 text-right">
@@ -202,7 +200,7 @@ export function MemberListClient({ initialMembers, groupsOptions }: MemberListCl
             ))}
             {filteredMembers.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-[var(--muted)]">
+                <td colSpan={7} className="px-4 py-10 text-center text-[var(--muted-foreground)]">
                   Aucun membre trouvé.
                 </td>
               </tr>
