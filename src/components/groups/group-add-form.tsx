@@ -6,25 +6,6 @@ import { CoachDto } from "@/types/coach";
 import { MemberDto } from "@/types/member";
 import { SportDto } from "@/types/sport";
 
-type DayOfWeekValue =
-  | "MONDAY"
-  | "TUESDAY"
-  | "WEDNESDAY"
-  | "THURSDAY"
-  | "FRIDAY"
-  | "SATURDAY"
-  | "SUNDAY";
-
-const days: Array<{ value: DayOfWeekValue; label: string }> = [
-  { value: "MONDAY", label: "Lundi" },
-  { value: "TUESDAY", label: "Mardi" },
-  { value: "WEDNESDAY", label: "Mercredi" },
-  { value: "THURSDAY", label: "Jeudi" },
-  { value: "FRIDAY", label: "Vendredi" },
-  { value: "SATURDAY", label: "Samedi" },
-  { value: "SUNDAY", label: "Dimanche" },
-];
-
 export function GroupAddForm({
   sportsOptions,
   coachesOptions,
@@ -40,9 +21,6 @@ export function GroupAddForm({
   const [coachId, setCoachId] = useState("");
   const [capacity, setCapacity] = useState(20);
   const [room, setRoom] = useState("");
-  const [dayOfWeek, setDayOfWeek] = useState<DayOfWeekValue>("MONDAY");
-  const [startTime, setStartTime] = useState("18:00");
-  const [durationMinutes, setDurationMinutes] = useState(60);
   const [membersSearch, setMembersSearch] = useState("");
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -84,7 +62,6 @@ export function GroupAddForm({
         coachId,
         capacity,
         room,
-        schedule: { dayOfWeek, startTime, durationMinutes },
       }),
     });
 
@@ -157,22 +134,6 @@ export function GroupAddForm({
           <div>
             <label className="block text-xs font-medium text-[var(--muted)] mb-1">Capacité</label>
             <input type="number" min={1} max={200} value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} className="field text-sm" required />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-[var(--muted)] mb-1">Jour</label>
-            <select value={dayOfWeek} onChange={(e) => setDayOfWeek(e.target.value as DayOfWeekValue)} className="field text-sm" required>
-              {days.map((day) => (
-                <option key={day.value} value={day.value}>{day.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-[var(--muted)] mb-1">Heure</label>
-            <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="field text-sm" required />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-[var(--muted)] mb-1">Durée (min)</label>
-            <input type="number" min={30} max={240} step={5} value={durationMinutes} onChange={(e) => setDurationMinutes(Number(e.target.value))} className="field text-sm" required />
           </div>
         </div>
       </div>

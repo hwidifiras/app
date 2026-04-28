@@ -48,7 +48,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
   }
 
   function dayLabel(value: string) {
-    const labels: Record<string, string> = {
+    const map: Record<string, string> = {
       MONDAY: "Lundi",
       TUESDAY: "Mardi",
       WEDNESDAY: "Mercredi",
@@ -57,7 +57,12 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
       SATURDAY: "Samedi",
       SUNDAY: "Dimanche",
     };
-    return labels[value] ?? value;
+    return map[value] ?? value;
+  }
+
+  function formatSchedules(schedules: GroupDto["schedules"]) {
+    if (schedules.length === 0) return "—";
+    return schedules.map((s) => `${dayLabel(s.dayOfWeek)} ${s.startTime} (${s.durationMinutes} min)`).join(", ");
   }
 
   return (
@@ -107,9 +112,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
                 <td className="px-4 py-3">{group.sportName}</td>
                 <td className="px-4 py-3 hidden sm:table-cell">{group.coachName}</td>
                 <td className="px-4 py-3 hidden md:table-cell text-[var(--muted)]">
-                  {group.schedule
-                    ? `${dayLabel(group.schedule.dayOfWeek)} ${group.schedule.startTime} (${group.schedule.durationMinutes} min)`
-                    : "-"}
+                  {formatSchedules(group.schedules)}
                 </td>
                 <td className="px-4 py-3">
                   <span className={`chip ${group.isActive ? "chip-active" : "chip-muted"}`}>
@@ -118,6 +121,12 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
                 </td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-2">
+                    <Link
+                      href={`/groups/${group.id}/schedules`}
+                      className="btn btn-ghost text-xs px-2 py-1 min-h-0"
+                    >
+                      Planifier
+                    </Link>
                     <Link
                       href={`/groups/${group.id}/edit`}
                       className="btn btn-ghost text-xs px-2 py-1 min-h-0"

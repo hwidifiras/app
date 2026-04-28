@@ -123,13 +123,17 @@ export async function POST(request: Request) {
   }
 
   const horizonDays = parsed.data.horizonDays ?? 56;
+  const bodyGroupId = typeof body === "object" && body !== null && "groupId" in body ? (body as { groupId?: string }).groupId : undefined;
 
   const startDate = startOfDay(new Date());
   const endDate = startOfDay(new Date());
   endDate.setDate(endDate.getDate() + horizonDays);
 
   const groups = await prisma.group.findMany({
-    where: { isActive: true },
+    where: {
+      isActive: true,
+      ...(bodyGroupId ? { id: bodyGroupId } : {}),
+    },
     include: {
       schedules: {
         where: {

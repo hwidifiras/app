@@ -6,25 +6,6 @@ import { CoachDto } from "@/types/coach";
 import { MemberDto } from "@/types/member";
 import { SportDto } from "@/types/sport";
 
-type DayOfWeekValue =
-  | "MONDAY"
-  | "TUESDAY"
-  | "WEDNESDAY"
-  | "THURSDAY"
-  | "FRIDAY"
-  | "SATURDAY"
-  | "SUNDAY";
-
-const days: Array<{ value: DayOfWeekValue; label: string }> = [
-  { value: "MONDAY", label: "Lundi" },
-  { value: "TUESDAY", label: "Mardi" },
-  { value: "WEDNESDAY", label: "Mercredi" },
-  { value: "THURSDAY", label: "Jeudi" },
-  { value: "FRIDAY", label: "Vendredi" },
-  { value: "SATURDAY", label: "Samedi" },
-  { value: "SUNDAY", label: "Dimanche" },
-];
-
 export function GroupEditForm({
   groupId,
   initialData,
@@ -41,9 +22,6 @@ export function GroupEditForm({
     capacity: number;
     room: string;
     isActive: boolean;
-    dayOfWeek: DayOfWeekValue;
-    startTime: string;
-    durationMinutes: number;
   };
   sportsOptions: SportDto[];
   coachesOptions: CoachDto[];
@@ -57,9 +35,6 @@ export function GroupEditForm({
   const [capacity, setCapacity] = useState(initialData.capacity);
   const [room, setRoom] = useState(initialData.room);
   const [isActive, setIsActive] = useState(initialData.isActive);
-  const [dayOfWeek, setDayOfWeek] = useState<DayOfWeekValue>(initialData.dayOfWeek);
-  const [startTime, setStartTime] = useState(initialData.startTime);
-  const [durationMinutes, setDurationMinutes] = useState(initialData.durationMinutes);
   const [membersSearch, setMembersSearch] = useState("");
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(initialMemberIds);
   const [loading, setLoading] = useState(false);
@@ -104,7 +79,6 @@ export function GroupEditForm({
           capacity,
           room,
           isActive,
-          schedule: { dayOfWeek, startTime, durationMinutes },
         },
       }),
     });
@@ -198,25 +172,9 @@ export function GroupEditForm({
             <label className="block text-xs font-medium text-[var(--muted)] mb-1">Capacité</label>
             <input type="number" min={1} max={200} value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} className="field text-sm" required />
           </div>
-          <div className="flex items-center gap-2 pt-5">
+          <div className="sm:col-span-2 lg:col-span-1 flex items-center gap-2 pt-5">
             <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
             <span className="text-sm text-[var(--muted)]">Groupe actif</span>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-[var(--muted)] mb-1">Jour</label>
-            <select value={dayOfWeek} onChange={(e) => setDayOfWeek(e.target.value as DayOfWeekValue)} className="field text-sm" required>
-              {days.map((day) => (
-                <option key={day.value} value={day.value}>{day.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-[var(--muted)] mb-1">Heure</label>
-            <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="field text-sm" required />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-[var(--muted)] mb-1">Durée (min)</label>
-            <input type="number" min={30} max={240} step={5} value={durationMinutes} onChange={(e) => setDurationMinutes(Number(e.target.value))} className="field text-sm" required />
           </div>
         </div>
       </div>

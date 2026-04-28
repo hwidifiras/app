@@ -1,67 +1,45 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { GroupListClient } from "@/components/groups/group-list-client";
+import { GroupDto } from "@/types/group";
 
 export default async function GroupsPage() {
   let hasGroupDataError = false;
-  let initialGroups: Array<{
-    id: string;
-    name: string;
-    sportId: string;
-    sportName: string;
-    coachId: string;
-    coachName: string;
-    capacity: number;
-    room: string;
-    isActive: boolean;
-    schedule: {
-      dayOfWeek: "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY";
-      startTime: string;
-      durationMinutes: number;
-      effectiveFrom: string;
-      effectiveTo: string | null;
-    } | null;
-    createdAt: string;
-    updatedAt: string;
-  }> = [];
+  let initialGroups: GroupDto[] = [];
 
   try {
     const groups = await prisma.group.findMany({
       include: {
         sport: { select: { name: true } },
         coach: { select: { firstName: true, lastName: true } },
-        schedules: { orderBy: { createdAt: "asc" }, take: 1 },
+        schedules: { orderBy: { createdAt: "asc" } },
       },
       orderBy: { createdAt: "desc" },
       take: 50,
     });
 
-    initialGroups = groups.map((group) => {
-      const schedule = group.schedules[0] ?? null;
-      return {
-        id: group.id,
-        name: group.name,
-        sportId: group.sportId,
-        sportName: group.sport.name,
-        coachId: group.coachId,
-        coachName: `${group.coach.firstName} ${group.coach.lastName}`,
-        capacity: group.capacity,
-        room: group.room,
-        isActive: group.isActive,
-        schedule: schedule
-          ? {
-              dayOfWeek: schedule.dayOfWeek,
-              startTime: schedule.startTime,
-              durationMinutes: schedule.durationMinutes,
-              effectiveFrom: schedule.effectiveFrom.toISOString(),
-              effectiveTo: schedule.effectiveTo?.toISOString() ?? null,
-            }
-          : null,
-        createdAt: group.createdAt.toISOString(),
-        updatedAt: group.updatedAt.toISOString(),
-      };
-    });
-  } catch (error) {
+    initialGroups = groups.map((group) => ({
+      id: group.id,
+      name: group.name,
+      sportId: group.sportId,
+      sportName: group.sport.name,
+      coachId: group.coachId,
+      coachName: `${group.coach.firstName} ${group.coach.lastName}`,
+      capacity: group.capacity,
+      room: group.room,
+      isActive: group.isActive,
+      schedules: group.schedules.map((s) => ({
+        id: s.id,
+        dayOfWeek: s.dayOfWeek as GroupDto["schedules"][number]["dayOfWeek"],
+        startTime: s.startTime,
+        durationMinutes: s.durationMinutes,
+        effectiveFrom: s.effectiveFrom.toISOString(),
+        effectiveTo: s.effectiveTo?.toISOString() ?? null,
+      })),
+      createdAt: group.createdAt.toISOString(),
+      updatedAt: group.updatedAt.toISOString(),
+    }));
+  } catch (error: unknown) {
     hasGroupDataError = true;
     console.error("Groups page degraded mode due to Prisma model mismatch:", error);
   }

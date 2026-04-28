@@ -74,7 +74,7 @@ export default async function NewGroupPage() {
         <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted)]">Parcours réception</p>
         <h1 className="text-2xl font-semibold text-[var(--foreground)] md:text-3xl">Créer un groupe</h1>
         <p className="text-sm text-[var(--muted)]">
-          Définir un nouveau groupe d&apos;entraînement avec son créneau hebdomadaire.
+          Définir un nouveau groupe d&apos;entraînement. Les créneaux seront planifiés ensuite.
         </p>
       </div>
 

@@ -43,9 +43,10 @@ export default async function SessionsPage() {
   }> = [];
 
   let groupsOptions: Array<{ id: string; name: string }> = [];
+  let coachesOptions: Array<{ id: string; firstName: string; lastName: string }> = [];
 
   try {
-    const [sessions, groups] = await Promise.all([
+    const [sessions, groups, coaches] = await Promise.all([
       prisma.session.findMany({
         where: {
           sessionDate: {
@@ -64,6 +65,11 @@ export default async function SessionsPage() {
         where: { isActive: true },
         select: { id: true, name: true },
         orderBy: { name: "asc" },
+      }),
+      prisma.coach.findMany({
+        where: { isActive: true },
+        select: { id: true, firstName: true, lastName: true },
+        orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
       }),
     ]);
 
@@ -85,6 +91,7 @@ export default async function SessionsPage() {
     }));
 
     groupsOptions = groups;
+    coachesOptions = coaches;
   } catch (error) {
     hasSessionsDataError = true;
     console.error("Sessions page degraded mode due to Prisma model mismatch:", error);
@@ -111,10 +118,13 @@ export default async function SessionsPage() {
   }
 
   return (
-    <SessionsPlanner
-      initialSessions={initialSessions}
-      groupsOptions={groupsOptions}
-      initialWeekStart={toDateOnlyIso(monday)}
-    />
+    <main>
+      <SessionsPlanner
+        initialSessions={initialSessions}
+        groupsOptions={groupsOptions}
+        coachesOptions={coachesOptions}
+        initialWeekStart={toDateOnlyIso(monday)}
+      />
+    </main>
   );
 }

@@ -11,7 +11,6 @@ export default async function EditGroupPage({ params }: { params: Promise<{ id: 
     include: {
       sport: { select: { name: true } },
       coach: { select: { firstName: true, lastName: true } },
-      schedules: { orderBy: { createdAt: "asc" }, take: 1 },
       members: {
         where: { status: "ACTIVE" },
         include: {
@@ -24,8 +23,6 @@ export default async function EditGroupPage({ params }: { params: Promise<{ id: 
   if (!group) {
     notFound();
   }
-
-  const schedule = group.schedules[0];
 
   const [sports, coaches, members] = await Promise.all([
     prisma.sport.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
@@ -92,16 +89,6 @@ export default async function EditGroupPage({ params }: { params: Promise<{ id: 
             capacity: group.capacity,
             room: group.room,
             isActive: group.isActive,
-            dayOfWeek: (schedule?.dayOfWeek ?? "MONDAY") as
-              | "MONDAY"
-              | "TUESDAY"
-              | "WEDNESDAY"
-              | "THURSDAY"
-              | "FRIDAY"
-              | "SATURDAY"
-              | "SUNDAY",
-            startTime: schedule?.startTime ?? "18:00",
-            durationMinutes: schedule?.durationMinutes ?? 60,
           }}
           sportsOptions={sportsOptions}
           coachesOptions={coachesOptions}

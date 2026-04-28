@@ -8,6 +8,7 @@ type SessionsPlannerProps = {
   initialSessions: SessionDto[];
   initialWeekStart: string;
   groupsOptions: Array<{ id: string; name: string }>;
+  coachesOptions: Array<{ id: string; firstName: string; lastName: string }>;
 };
 
 const sessionStatusLabels: Record<SessionStatusDto, string> = {
@@ -41,7 +42,7 @@ function formatDateFr(dateIso: string) {
   });
 }
 
-export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptions }: SessionsPlannerProps) {
+export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptions, coachesOptions }: SessionsPlannerProps) {
   const [sessions, setSessions] = useState<SessionDto[]>(initialSessions);
   const [weekStart, setWeekStart] = useState(initialWeekStart);
   const [groupId, setGroupId] = useState("");
@@ -50,6 +51,18 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  const [editingSession, setEditingSession] = useState<SessionDto | null>(null);
+  const [editForm, setEditForm] = useState({
+    coachId: "",
+    room: "",
+    startTime: "",
+    endTime: "",
+    status: "" as SessionStatusDto | "",
+    exceptionReason: "",
+  });
+  const [editLoading, setEditLoading] = useState(false);
+  const [editMessage, setEditMessage] = useState<string | null>(null);
 
   const weekEnd = useMemo(() => {
     const start = new Date(`${weekStart}T00:00:00`);
@@ -105,6 +118,85 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
   async function onGroupChange(nextGroupId: string) {
     setGroupId(nextGroupId);
     await reloadSessions(weekStart, nextGroupId);
+  }
+
+  function openEdit(session: SessionDto) {
+    setEditingSession(session);
+    setEditForm({
+      coachId: session.coachId ?? "",
+      room: session.room,
+      startTime: session.startTime,
+      endTime: session.endTime,
+      status: session.status,
+      exceptionReason: session.exceptionReason ?? "",
+    });
+    setEditMessage(null);
+  }
+
+  function closeEdit() {
+    setEditingSession(null);
+    setEditLoading(false);
+    setEditMessage(null);
+  }
+
+  async function saveEdit() {
+    if (!editingSession) return;
+    setEditLoading(true);
+    setEditMessage(null);
+
+    const body: Record<string, unknown> = {};
+    if (editForm.coachId) body.coachId = editForm.coachId;
+    if (editForm.room) body.room = editForm.room;
+    if (editForm.startTime) body.startTime = editForm.startTime;
+    if (editForm.endTime) body.endTime = editForm.endTime;
+    if (editForm.status) body.status = editForm.status;
+    if (editForm.exceptionReason) body.exceptionReason = editForm.exceptionReason;
+
+    const response = await fetch(`/api/sessions/${editingSession.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      setEditMessage(result.error ?? "Erreur lors de la modification");
+      setEditLoading(false);
+      return;
+    }
+
+    setSessions((current) =>
+      current.map((s) =>
+        s.id === editingSession.id
+          ? { ...s, ...result.data, sessionDate: s.sessionDate }
+          : s
+      )
+    );
+    setEditMessage("Séance modifiée avec succès");
+    setEditLoading(false);
+    setTimeout(() => closeEdit(), 600);
+  }
+
+  async function deleteSession(sessionId: string) {
+    const confirmed = window.confirm("Confirmer la suppression de cette séance ?");
+    if (!confirmed) return;
+
+    setLoading(true);
+    const response = await fetch(`/api/sessions/${sessionId}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      const result = await response.json();
+      setMessage(result.error ?? "Erreur lors de la suppression");
+      setLoading(false);
+      return;
+    }
+
+    setSessions((current) => current.filter((s) => s.id !== sessionId));
+    setMessage("Séance supprimée avec succès");
+    setLoading(false);
   }
 
   const filteredSessions = useMemo(() => {
@@ -229,10 +321,29 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
                         <p className="text-sm font-medium text-[var(--foreground)]">{item.groupName}</p>
                         <p className="text-xs text-[var(--muted)]">{item.startTime} - {item.endTime} • Salle {item.room}</p>
                         <p className="text-xs text-[var(--muted)]">Coach: {item.coachName ?? "-"}</p>
+                        {item.exceptionReason ? (
+                          <p className="text-xs text-[var(--danger)]">Motif: {item.exceptionReason}</p>
+                        ) : null}
                       </div>
-                      <span className={`chip ${item.status === "CANCELLED" ? "chip-muted" : "chip-active"}`}>
-                        {sessionStatusLabels[item.status]}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`chip ${item.status === "CANCELLED" ? "chip-muted" : "chip-active"}`}>
+                          {sessionStatusLabels[item.status]}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => openEdit(item)}
+                          className="btn btn-ghost text-xs px-2 py-1 min-h-0"
+                        >
+                          Modifier
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { void deleteSession(item.id); }}
+                          className="btn btn-danger text-xs px-2 py-1 min-h-0"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
                     </div>
                   </li>
                 ))}
@@ -247,6 +358,105 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
           ) : null}
         </div>
       </section>
+
+      {/* Modal d'édition de séance */}
+      {editingSession ? (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-12">
+          <div className="w-full max-w-lg rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-[var(--foreground)]">
+              Modifier la séance
+            </h3>
+            <p className="text-sm text-[var(--muted)] mt-1">
+              {editingSession.groupName} — {new Date(editingSession.sessionDate).toLocaleDateString("fr-FR")}
+            </p>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="block text-xs font-medium text-[var(--muted)] mb-1">Coach</label>
+                <select
+                  value={editForm.coachId}
+                  onChange={(e) => setEditForm((f) => ({ ...f, coachId: e.target.value }))}
+                  className="field text-sm"
+                >
+                  <option value="">Aucun</option>
+                  {coachesOptions.map((coach) => (
+                    <option key={coach.id} value={coach.id}>{coach.firstName} {coach.lastName}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[var(--muted)] mb-1">Salle</label>
+                <input
+                  value={editForm.room}
+                  onChange={(e) => setEditForm((f) => ({ ...f, room: e.target.value }))}
+                  className="field text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[var(--muted)] mb-1">Début</label>
+                <input
+                  type="time"
+                  value={editForm.startTime}
+                  onChange={(e) => setEditForm((f) => ({ ...f, startTime: e.target.value }))}
+                  className="field text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[var(--muted)] mb-1">Fin</label>
+                <input
+                  type="time"
+                  value={editForm.endTime}
+                  onChange={(e) => setEditForm((f) => ({ ...f, endTime: e.target.value }))}
+                  className="field text-sm"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-medium text-[var(--muted)] mb-1">Statut</label>
+                <select
+                  value={editForm.status}
+                  onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value as SessionStatusDto }))}
+                  className="field text-sm"
+                >
+                  <option value="PLANNED">Planifiée</option>
+                  <option value="RESCHEDULED">Reportée</option>
+                  <option value="CANCELLED">Annulée</option>
+                  <option value="COMPLETED">Terminée</option>
+                </select>
+              </div>
+              {editForm.status === "CANCELLED" ? (
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-medium text-[var(--muted)] mb-1">Motif d&apos;annulation *</label>
+                  <input
+                    value={editForm.exceptionReason}
+                    onChange={(e) => setEditForm((f) => ({ ...f, exceptionReason: e.target.value }))}
+                    placeholder="Ex: férié, coach indisponible..."
+                    className="field text-sm"
+                    required={editForm.status === "CANCELLED"}
+                  />
+                </div>
+              ) : null}
+            </div>
+
+            {editMessage ? (
+              <p className={`mt-3 text-sm ${editMessage.includes("succès") ? "text-[var(--success)]" : "text-[var(--danger)]"}`}>
+                {editMessage}
+              </p>
+            ) : null}
+
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button type="button" onClick={closeEdit} className="btn btn-ghost">Annuler</button>
+              <button
+                type="button"
+                onClick={() => { void saveEdit(); }}
+                disabled={editLoading || (editForm.status === "CANCELLED" && !editForm.exceptionReason.trim())}
+                className="btn btn-primary"
+              >
+                {editLoading ? "Enregistrement..." : "Enregistrer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

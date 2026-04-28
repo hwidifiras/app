@@ -7,6 +7,15 @@ export type DayOfWeekDto =
   | "SATURDAY"
   | "SUNDAY";
 
+export type GroupScheduleDto = {
+  id: string;
+  dayOfWeek: DayOfWeekDto;
+  startTime: string;
+  durationMinutes: number;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+};
+
 export type GroupDto = {
   id: string;
   name: string;
@@ -17,13 +26,7 @@ export type GroupDto = {
   capacity: number;
   room: string;
   isActive: boolean;
-  schedule: {
-    dayOfWeek: DayOfWeekDto;
-    startTime: string;
-    durationMinutes: number;
-    effectiveFrom: string;
-    effectiveTo: string | null;
-  } | null;
+  schedules: GroupScheduleDto[];
   createdAt: string;
   updatedAt: string;
 };

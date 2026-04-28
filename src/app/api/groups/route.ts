@@ -27,15 +27,15 @@ function toGroupDto(group: {
   sport: { name: string };
   coach: { firstName: string; lastName: string };
   schedules: {
+    id: string;
     dayOfWeek: DayOfWeekValue;
     startTime: string;
     durationMinutes: number;
     effectiveFrom: Date;
     effectiveTo: Date | null;
+    createdAt: Date;
   }[];
 }) {
-  const firstSchedule = group.schedules[0] ?? null;
-
   return {
     id: group.id,
     name: group.name,
@@ -46,15 +46,15 @@ function toGroupDto(group: {
     capacity: group.capacity,
     room: group.room,
     isActive: group.isActive,
-    schedule: firstSchedule
-      ? {
-          dayOfWeek: firstSchedule.dayOfWeek,
-          startTime: firstSchedule.startTime,
-          durationMinutes: firstSchedule.durationMinutes,
-          effectiveFrom: firstSchedule.effectiveFrom.toISOString(),
-          effectiveTo: firstSchedule.effectiveTo?.toISOString() ?? null,
-        }
-      : null,
+    schedules: group.schedules.map((s) => ({
+      id: s.id,
+      dayOfWeek: s.dayOfWeek,
+      startTime: s.startTime,
+      durationMinutes: s.durationMinutes,
+      effectiveFrom: s.effectiveFrom.toISOString(),
+      effectiveTo: s.effectiveTo?.toISOString() ?? null,
+      createdAt: s.createdAt.toISOString(),
+    })),
     createdAt: group.createdAt.toISOString(),
     updatedAt: group.updatedAt.toISOString(),
   };
@@ -79,7 +79,7 @@ export async function GET(request: Request) {
     include: {
       sport: { select: { name: true } },
       coach: { select: { firstName: true, lastName: true } },
-      schedules: { orderBy: { createdAt: "asc" }, take: 1 },
+      schedules: { orderBy: { createdAt: "asc" } },
     },
     orderBy: { createdAt: "desc" },
     take: 50,
@@ -126,20 +126,11 @@ export async function POST(request: Request) {
       coachId: parsed.data.coachId,
       capacity: parsed.data.capacity,
       room: parsed.data.room,
-      schedules: {
-        create: {
-          dayOfWeek: parsed.data.schedule.dayOfWeek,
-          startTime: parsed.data.schedule.startTime,
-          durationMinutes: parsed.data.schedule.durationMinutes,
-          effectiveFrom: parsed.data.schedule.effectiveFrom ? new Date(parsed.data.schedule.effectiveFrom) : new Date(),
-          effectiveTo: parsed.data.schedule.effectiveTo ? new Date(parsed.data.schedule.effectiveTo) : null,
-        },
-      },
     },
     include: {
       sport: { select: { name: true } },
       coach: { select: { firstName: true, lastName: true } },
-      schedules: { orderBy: { createdAt: "asc" }, take: 1 },
+      schedules: { orderBy: { createdAt: "asc" } },
     },
   });
 
@@ -207,57 +198,11 @@ export async function PATCH(request: Request) {
       include: {
         sport: { select: { name: true } },
         coach: { select: { firstName: true, lastName: true } },
-        schedules: { orderBy: { createdAt: "asc" }, take: 1 },
+        schedules: { orderBy: { createdAt: "asc" } },
       },
     });
 
-    if (payload.schedule) {
-      const firstSchedule = updatedGroup.schedules[0];
-
-      if (firstSchedule) {
-        await prisma.groupSchedule.update({
-          where: { id: firstSchedule.id },
-          data: {
-            dayOfWeek: payload.schedule.dayOfWeek,
-            startTime: payload.schedule.startTime,
-            durationMinutes: payload.schedule.durationMinutes,
-            effectiveFrom: payload.schedule.effectiveFrom ? new Date(payload.schedule.effectiveFrom) : undefined,
-            effectiveTo:
-              payload.schedule.effectiveTo === undefined
-                ? undefined
-                : payload.schedule.effectiveTo === null
-                  ? null
-                  : new Date(payload.schedule.effectiveTo),
-          },
-        });
-      } else {
-        await prisma.groupSchedule.create({
-          data: {
-            groupId,
-            dayOfWeek: payload.schedule.dayOfWeek,
-            startTime: payload.schedule.startTime,
-            durationMinutes: payload.schedule.durationMinutes,
-            effectiveFrom: payload.schedule.effectiveFrom ? new Date(payload.schedule.effectiveFrom) : new Date(),
-            effectiveTo: payload.schedule.effectiveTo ? new Date(payload.schedule.effectiveTo) : null,
-          },
-        });
-      }
-    }
-
-    const refreshed = await prisma.group.findUnique({
-      where: { id: groupId },
-      include: {
-        sport: { select: { name: true } },
-        coach: { select: { firstName: true, lastName: true } },
-        schedules: { orderBy: { createdAt: "asc" }, take: 1 },
-      },
-    });
-
-    if (!refreshed) {
-      return NextResponse.json({ error: "Groupe introuvable" }, { status: 404 });
-    }
-
-    return NextResponse.json({ data: toGroupDto(refreshed) });
+    return NextResponse.json({ data: toGroupDto(updatedGroup) });
   } catch {
     return NextResponse.json({ error: "Erreur serveur lors de la modification" }, { status: 500 });
   }
