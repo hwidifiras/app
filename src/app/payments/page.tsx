@@ -69,11 +69,19 @@ export default async function PaymentsPage() {
 
   return (
     <main className="app-shell py-4 md:py-8">
-      <PageHeader
-        overline="Abonnements & Finance"
-        title="Paiements"
-        description={`${payments.length} paiement(s) enregistré(s) — total ${formatCurrency(totalPayments)}.`}
-      />
+      <div className="flex items-start justify-between gap-4">
+        <PageHeader
+          overline="Abonnements & Finance"
+          title="Paiements"
+          description={`${payments.length} paiement(s) enregistré(s) — total ${formatCurrency(totalPayments)}.`}
+        />
+        <Link
+          href="/payments/new"
+          className="btn btn-primary shrink-0"
+        >
+          + Nouveau paiement
+        </Link>
+      </div>
 
       <section className="panel p-5">
         <div className="overflow-x-auto rounded-xl border border-[var(--border)]">

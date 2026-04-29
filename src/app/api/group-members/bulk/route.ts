@@ -5,6 +5,62 @@ import { bulkCreateGroupMembersSchema, bulkDeleteGroupMembersSchema } from "@/li
 
 export const runtime = "nodejs";
 
+function timeToMinutes(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function intervalsOverlap(start1: number, end1: number, start2: number, end2: number): boolean {
+  return start1 < end2 && start2 < end1;
+}
+
+async function checkScheduleConflict(groupId: string, memberId: string) {
+  const newGroupSchedules = await prisma.groupSchedule.findMany({
+    where: { groupId },
+    select: { dayOfWeek: true, startTime: true, durationMinutes: true },
+  });
+
+  if (newGroupSchedules.length === 0) return { ok: true as const };
+
+  const now = new Date();
+  const existingAssignments = await prisma.groupMember.findMany({
+    where: {
+      memberId,
+      status: "ACTIVE",
+      OR: [{ endDate: null }, { endDate: { gte: now } }],
+      NOT: { groupId },
+    },
+    select: { groupId: true, group: { select: { name: true } } },
+  });
+
+  for (const assignment of existingAssignments) {
+    const existingSchedules = await prisma.groupSchedule.findMany({
+      where: { groupId: assignment.groupId },
+      select: { dayOfWeek: true, startTime: true, durationMinutes: true },
+    });
+
+    for (const newSch of newGroupSchedules) {
+      for (const exSch of existingSchedules) {
+        if (newSch.dayOfWeek !== exSch.dayOfWeek) continue;
+
+        const newStart = timeToMinutes(newSch.startTime);
+        const newEnd = newStart + newSch.durationMinutes;
+        const exStart = timeToMinutes(exSch.startTime);
+        const exEnd = exStart + exSch.durationMinutes;
+
+        if (intervalsOverlap(newStart, newEnd, exStart, exEnd)) {
+          return {
+            ok: false as const,
+            error: `Conflit d'horaire : ce membre est déjà affecté au groupe "${assignment.group.name}" qui a une séance le ${exSch.dayOfWeek} à ${exSch.startTime} qui se chevauche avec ce groupe.`,
+          };
+        }
+      }
+    }
+  }
+
+  return { ok: true as const };
+}
+
 export async function POST(request: Request) {
   let body: unknown;
 
@@ -74,6 +130,7 @@ export async function POST(request: Request) {
   let skippedArchivedCount = 0;
   let skippedAlreadyActiveCount = 0;
   let skippedCapacityCount = 0;
+  let skippedScheduleConflictCount = 0;
 
   for (const memberId of uniqueMemberIds) {
     const member = membersMap.get(memberId);
@@ -91,6 +148,12 @@ export async function POST(request: Request) {
 
     if (existing?.status === "ACTIVE") {
       skippedAlreadyActiveCount += 1;
+      continue;
+    }
+
+    const scheduleCheck = await checkScheduleConflict(payload.groupId, memberId);
+    if (!scheduleCheck.ok) {
+      skippedScheduleConflictCount += 1;
       continue;
     }
 
@@ -136,6 +199,7 @@ export async function POST(request: Request) {
       skippedArchivedCount,
       skippedAlreadyActiveCount,
       skippedCapacityCount,
+      skippedScheduleConflictCount,
     },
   });
 }

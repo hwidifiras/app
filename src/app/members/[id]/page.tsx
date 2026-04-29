@@ -5,6 +5,14 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 
+function formatCurrency(cents: number) {
+  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
+}
+
+function formatDate(date: Date | string) {
+  return new Date(date).toLocaleDateString("fr-FR");
+}
+
 export default async function MemberDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
@@ -25,6 +33,27 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
           },
         },
         orderBy: { createdAt: "desc" },
+      },
+      subscriptions: {
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        include: {
+          plan: { select: { name: true, price: true, totalSessions: true } },
+          payments: { select: { amount: true, paymentDate: true }, orderBy: { paymentDate: "desc" }, take: 10 },
+        },
+      },
+      attendances: {
+        orderBy: { checkedAt: "desc" },
+        take: 20,
+        include: {
+          session: {
+            select: {
+              sessionDate: true,
+              startTime: true,
+              group: { select: { name: true } },
+            },
+          },
+        },
       },
     },
   });
@@ -151,11 +180,110 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
           </section>
         ) : null}
 
+        {/* Abonnements */}
         <section className="panel p-5 md:col-span-3">
-          <h2 className="text-lg font-semibold text-[var(--foreground)]">Historique complet</h2>
-          <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-            Présences, absences et paiements seront disponibles ici prochainement.
-          </p>
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">
+            Abonnements ({member.subscriptions.length})
+          </h2>
+          {member.subscriptions.length === 0 ? (
+            <p className="mt-3 text-sm text-[var(--muted-foreground)]">Aucun abonnement enregistré.</p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {member.subscriptions.map((sub) => {
+                const totalPaid = sub.payments.reduce((sum, p) => sum + p.amount, 0);
+                return (
+                  <li key={sub.id} className="rounded-lg border border-[var(--border)] p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium">{sub.plan.name}</p>
+                        <p className="text-xs text-[var(--muted-foreground)]">
+                          {formatDate(sub.startDate)}
+                          {sub.endDate ? ` → ${formatDate(sub.endDate)}` : ""} —{" "}
+                          <span className={totalPaid >= sub.amount ? "text-[var(--success)]" : "text-[var(--warning)]"}>
+                            Payé {formatCurrency(totalPaid)} / {formatCurrency(sub.amount)}
+                          </span>
+                          {sub.status === "ACTIVE" && sub.plan && (
+                            <span className={sub.remainingSessions > 0 ? "text-[var(--info)] ml-1" : "text-[var(--danger)] ml-1"}>
+                              ({sub.remainingSessions} / {sub.plan.totalSessions} séances restantes)
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <StatusBadge
+                        variant={
+                          sub.status === "ACTIVE"
+                            ? "success"
+                            : sub.status === "DRAFT"
+                              ? "info"
+                              : sub.status === "EXPIRED"
+                                ? "warning"
+                                : "danger"
+                        }
+                      >
+                        {sub.status === "ACTIVE" ? "Actif" : sub.status === "DRAFT" ? "Brouillon" : sub.status === "EXPIRED" ? "Expiré" : "Annulé"}
+                      </StatusBadge>
+                    </div>
+                    {sub.payments.length > 0 && (
+                      <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                        Dernier paiement: {formatCurrency(sub.payments[0].amount)} le {formatDate(sub.payments[0].paymentDate)}
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
+        {/* Présences récentes */}
+        <section className="panel p-5 md:col-span-3">
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">
+            Présences récentes ({member.attendances.length})
+          </h2>
+          {member.attendances.length === 0 ? (
+            <p className="mt-3 text-sm text-[var(--muted-foreground)]">Aucune présence enregistrée.</p>
+          ) : (
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-semibold">Date</th>
+                    <th className="px-3 py-2 text-left font-semibold">Groupe</th>
+                    <th className="px-3 py-2 text-left font-semibold">Statut</th>
+                    <th className="px-3 py-2 text-left font-semibold hidden sm:table-cell">Pointage</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {member.attendances.map((a) => (
+                    <tr key={a.id} className="hover:bg-[var(--surface-soft)]">
+                      <td className="px-3 py-2">
+                        {formatDate(a.session.sessionDate)} {a.session.startTime}
+                      </td>
+                      <td className="px-3 py-2">{a.session.group?.name ?? "—"}</td>
+                      <td className="px-3 py-2">
+                        <StatusBadge
+                          variant={
+                            a.status === "PRESENT"
+                              ? "success"
+                              : a.status === "ABSENT"
+                                ? "danger"
+                                : a.status === "EXCUSED"
+                                  ? "info"
+                                  : "warning"
+                          }
+                        >
+                          {a.status === "PRESENT" ? "Présent" : a.status === "ABSENT" ? "Absent" : a.status === "EXCUSED" ? "Excusé" : "Exception"}
+                        </StatusBadge>
+                      </td>
+                      <td className="px-3 py-2 hidden sm:table-cell text-[var(--muted-foreground)] text-xs">
+                        {formatDate(a.checkedAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       </div>
     </main>

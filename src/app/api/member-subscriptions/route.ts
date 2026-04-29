@@ -9,7 +9,7 @@ import {
 
 export const runtime = "nodejs";
 
-const VALID_STATUSES: string[] = ["ACTIVE", "EXPIRED", "CANCELLED", "SUSPENDED"];
+const VALID_STATUSES: string[] = ["ACTIVE", "EXPIRED", "CANCELLED", "DRAFT"];
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     },
     include: {
       member: { select: { id: true, firstName: true, lastName: true, phone: true } },
-      plan: { select: { id: true, name: true, price: true, durationDays: true } },
+      plan: { select: { id: true, name: true, price: true, totalSessions: true, sessionsPerWeek: true, validityDays: true } },
       payments: { select: { id: true, amount: true, paymentDate: true } },
     },
     orderBy: { createdAt: "desc" },
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { memberId, planId, startDate, endDate, amount, status } = parsed.data;
+  const { memberId, planId, startDate, endDate, amount, remainingSessions, status } = parsed.data;
 
   try {
     const memberExists = await prisma.member.findUnique({ where: { id: memberId } });
@@ -65,8 +65,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
     }
 
-    const planExists = await prisma.subscriptionPlan.findUnique({ where: { id: planId } });
-    if (!planExists) {
+    const plan = await prisma.subscriptionPlan.findUnique({ where: { id: planId } });
+    if (!plan) {
       return NextResponse.json({ error: "Plan introuvable" }, { status: 404 });
     }
 
@@ -77,6 +77,7 @@ export async function POST(request: Request) {
         startDate: new Date(startDate),
         endDate: endDate ? new Date(endDate) : null,
         amount,
+        remainingSessions: remainingSessions ?? plan.totalSessions,
         status,
       },
       include: {

@@ -32,6 +32,62 @@ function toGroupMemberDto(item: {
   };
 }
 
+function timeToMinutes(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function intervalsOverlap(start1: number, end1: number, start2: number, end2: number): boolean {
+  return start1 < end2 && start2 < end1;
+}
+
+async function checkScheduleConflict(groupId: string, memberId: string) {
+  const newGroupSchedules = await prisma.groupSchedule.findMany({
+    where: { groupId },
+    select: { dayOfWeek: true, startTime: true, durationMinutes: true },
+  });
+
+  if (newGroupSchedules.length === 0) return { ok: true as const };
+
+  const now = new Date();
+  const existingAssignments = await prisma.groupMember.findMany({
+    where: {
+      memberId,
+      status: "ACTIVE",
+      OR: [{ endDate: null }, { endDate: { gte: now } }],
+      NOT: { groupId },
+    },
+    select: { groupId: true, group: { select: { name: true } } },
+  });
+
+  for (const assignment of existingAssignments) {
+    const existingSchedules = await prisma.groupSchedule.findMany({
+      where: { groupId: assignment.groupId },
+      select: { dayOfWeek: true, startTime: true, durationMinutes: true },
+    });
+
+    for (const newSch of newGroupSchedules) {
+      for (const exSch of existingSchedules) {
+        if (newSch.dayOfWeek !== exSch.dayOfWeek) continue;
+
+        const newStart = timeToMinutes(newSch.startTime);
+        const newEnd = newStart + newSch.durationMinutes;
+        const exStart = timeToMinutes(exSch.startTime);
+        const exEnd = exStart + exSch.durationMinutes;
+
+        if (intervalsOverlap(newStart, newEnd, exStart, exEnd)) {
+          return {
+            ok: false as const,
+            error: `Conflit d'horaire : ce membre est déjà affecté au groupe "${assignment.group.name}" qui a une séance le ${exSch.dayOfWeek} à ${exSch.startTime} qui se chevauche avec ce groupe.`,
+          };
+        }
+      }
+    }
+  }
+
+  return { ok: true as const };
+}
+
 async function ensureCapacity(groupId: string, ignoredAssignmentId?: string) {
   const group = await prisma.group.findUnique({
     where: { id: groupId },
@@ -126,6 +182,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: capacityCheck.error }, { status: capacityCheck.status });
   }
 
+  const scheduleCheck = await checkScheduleConflict(parsed.data.groupId, parsed.data.memberId);
+  if (!scheduleCheck.ok) {
+    return NextResponse.json({ error: scheduleCheck.error }, { status: 409 });
+  }
+
   try {
     const created = await prisma.groupMember.create({
       data: {
@@ -200,6 +261,17 @@ export async function PATCH(request: Request) {
       const capacityCheck = await ensureCapacity(existing.groupId, groupMemberId);
       if (!capacityCheck.ok) {
         return NextResponse.json({ error: capacityCheck.error }, { status: capacityCheck.status });
+      }
+
+      const existingMember = await prisma.groupMember.findUnique({
+        where: { id: groupMemberId },
+        select: { memberId: true },
+      });
+      if (existingMember) {
+        const scheduleCheck = await checkScheduleConflict(existing.groupId, existingMember.memberId);
+        if (!scheduleCheck.ok) {
+          return NextResponse.json({ error: scheduleCheck.error }, { status: 409 });
+        }
       }
     }
 

@@ -56,6 +56,8 @@ export default async function SubscriptionsPage() {
     endDate: string | null;
     status: SubscriptionStatus;
     totalPaid: number;
+    remainingSessions: number;
+    totalSessions: number;
     createdAt: string;
   }> = [];
 
@@ -65,7 +67,7 @@ export default async function SubscriptionsPage() {
       take: 200,
       include: {
         member: { select: { firstName: true, lastName: true, phone: true } },
-        plan: { select: { name: true } },
+        plan: { select: { name: true, totalSessions: true } },
         payments: { select: { amount: true } },
       },
     });
@@ -80,6 +82,8 @@ export default async function SubscriptionsPage() {
       endDate: s.endDate?.toISOString() ?? null,
       status: s.status,
       totalPaid: s.payments.reduce((sum, p) => sum + p.amount, 0),
+      remainingSessions: s.remainingSessions,
+      totalSessions: s.plan.totalSessions,
       createdAt: s.createdAt.toISOString(),
     }));
   } catch (error) {
@@ -129,6 +133,7 @@ export default async function SubscriptionsPage() {
                 <th className="px-4 py-3 text-left font-semibold hidden md:table-cell">Fin</th>
                 <th className="px-4 py-3 text-left font-semibold hidden lg:table-cell">Payé</th>
                 <th className="px-4 py-3 text-left font-semibold">Statut</th>
+                <th className="px-4 py-3 text-center font-semibold hidden sm:table-cell">Séances</th>
                 <th className="px-4 py-3 text-left font-semibold hidden md:table-cell">Créé le</th>
               </tr>
             </thead>
@@ -151,6 +156,11 @@ export default async function SubscriptionsPage() {
                   <td className="px-4 py-3">
                     <StatusBadge variant={statusVariant(sub.status)}>{statusLabel(sub.status)}</StatusBadge>
                   </td>
+                  <td className="px-4 py-3 hidden sm:table-cell text-center">
+                    <span className={sub.remainingSessions > 0 ? "text-[var(--info)]" : "text-[var(--danger)]"}>
+                      {sub.remainingSessions} / {sub.totalSessions}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 hidden md:table-cell text-[var(--muted-foreground)]">
                     {new Date(sub.createdAt).toLocaleDateString("fr-FR")}
                   </td>
@@ -158,7 +168,7 @@ export default async function SubscriptionsPage() {
               ))}
               {subscriptions.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-5 text-center text-[var(--muted-foreground)]">
+                  <td colSpan={9} className="px-4 py-5 text-center text-[var(--muted-foreground)]">
                     Aucun abonnement enregistré.
                   </td>
                 </tr>

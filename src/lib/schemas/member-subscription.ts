@@ -8,6 +8,7 @@ export const createMemberSubscriptionSchema = z.object({
   startDate: z.string().datetime("Date de début invalide"),
   endDate: z.string().datetime().nullable().optional(),
   amount: z.number().int().min(0, "Montant invalide"),
+  remainingSessions: z.number().int().min(0).optional(),
   status: subscriptionStatusEnum.default("DRAFT"),
 });
 
@@ -19,6 +20,7 @@ export const updateMemberSubscriptionSchema = z
     startDate: z.string().datetime().optional(),
     endDate: z.string().datetime().nullable().optional(),
     amount: z.number().int().min(0).optional(),
+    remainingSessions: z.number().int().min(0).optional(),
     status: subscriptionStatusEnum.optional(),
   })
   .refine(
@@ -27,6 +29,7 @@ export const updateMemberSubscriptionSchema = z
       payload.startDate !== undefined ||
       payload.endDate !== undefined ||
       payload.amount !== undefined ||
+      payload.remainingSessions !== undefined ||
       payload.status !== undefined,
     {
       message: "Aucun champ à mettre à jour",

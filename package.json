@@ -9,7 +9,10 @@
     "lint": "eslint",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "prisma": {
+      "seed": "npx tsx prisma/seed.ts"
+    }
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",

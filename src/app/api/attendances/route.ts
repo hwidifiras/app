@@ -23,17 +23,24 @@ async function countOverrides(memberId: string): Promise<number> {
   });
 }
 
-async function hasActiveSubscription(memberId: string): Promise<boolean> {
+async function getActiveSubscription(memberId: string) {
   const now = new Date();
-  const active = await prisma.memberSubscription.findFirst({
+  return prisma.memberSubscription.findFirst({
     where: {
       memberId,
       status: "ACTIVE",
       startDate: { lte: now },
       OR: [{ endDate: null }, { endDate: { gte: now } }],
+      remainingSessions: { gt: 0 },
     },
+    select: { id: true, remainingSessions: true },
+    orderBy: { endDate: "asc" },
   });
-  return !!active;
+}
+
+async function hasActiveSubscription(memberId: string): Promise<boolean> {
+  const sub = await getActiveSubscription(memberId);
+  return !!sub;
 }
 
 export async function GET(request: Request) {
@@ -143,6 +150,21 @@ export async function POST(request: Request) {
       }
     }
 
+    let activeSubscriptionId: string | null = null;
+    let remainingSessionsBefore: number | null = null;
+
+    if (status === "PRESENT" && isSubActive) {
+      const sub = await getActiveSubscription(memberId);
+      if (sub) {
+        activeSubscriptionId = sub.id;
+        remainingSessionsBefore = sub.remainingSessions;
+        await prisma.memberSubscription.update({
+          where: { id: sub.id },
+          data: { remainingSessions: { decrement: 1 } },
+        });
+      }
+    }
+
     const attendance = await prisma.attendance.create({
       data: {
         sessionId,
@@ -150,6 +172,7 @@ export async function POST(request: Request) {
         status,
         overrideReason: overrideReason?.trim() || null,
         checkedBy: checkedBy?.trim() || null,
+        memberSubscriptionId: activeSubscriptionId,
       },
       include: {
         session: {
@@ -175,6 +198,7 @@ export async function POST(request: Request) {
           status,
           overrideReason: overrideReason || null,
           subscriptionActive: isSubActive,
+          remainingSessionsBefore,
         }),
       },
     });

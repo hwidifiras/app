@@ -1,0 +1,145 @@
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+const dayOfWeekValues = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"] as const;
+
+async function main() {
+  console.log("🌱 Seeding test data for check-in validation...");
+
+  // 1. Create a member
+  const member = await prisma.member.create({
+    data: {
+      firstName: "Karim",
+      lastName: "Test",
+      phone: "06-12-34-56-78",
+      email: "karim.test@example.com",
+      status: "ACTIVE",
+    },
+  });
+  console.log("✅ Member created:", member.id);
+
+  // 2. Create a sport
+  const sport = await prisma.sport.create({
+    data: {
+      name: "Fitness Test",
+      description: "Sport de test pour validation",
+      isActive: true,
+    },
+  });
+  console.log("✅ Sport created:", sport.id);
+
+  // 3. Create a coach
+  const coach = await prisma.coach.create({
+    data: {
+      firstName: "Ahmed",
+      lastName: "Coach",
+      phone: "06-87-65-43-21",
+      email: "ahmed.coach@example.com",
+      sportId: sport.id,
+      isActive: true,
+    },
+  });
+  console.log("✅ Coach created:", coach.id);
+
+  // 4. Create a group
+  const group = await prisma.group.create({
+    data: {
+      name: "Groupe Soir Test",
+      sportId: sport.id,
+      coachId: coach.id,
+      capacity: 20,
+      room: "Salle A",
+      isActive: true,
+    },
+  });
+  console.log("✅ Group created:", group.id);
+
+  // 5. Add member to group
+  await prisma.groupMember.create({
+    data: {
+      groupId: group.id,
+      memberId: member.id,
+      startDate: new Date(),
+      status: "ACTIVE",
+    },
+  });
+  console.log("✅ GroupMember created");
+
+  // Use current day of week so the session shows up in /attendance/today
+  const now = new Date();
+  const todayDayOfWeek = dayOfWeekValues[now.getDay()];
+  const startTime = "18:00";
+  const durationMinutes = 90;
+
+  // 6. Create group schedule for TODAY's day of week
+  await prisma.groupSchedule.create({
+    data: {
+      groupId: group.id,
+      dayOfWeek: todayDayOfWeek,
+      startTime,
+      durationMinutes,
+    },
+  });
+  console.log("✅ GroupSchedule created for", todayDayOfWeek, startTime);
+
+  // 7. Create session for TODAY
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const session = await prisma.session.create({
+    data: {
+      groupId: group.id,
+      coachId: coach.id,
+      sessionDate: today,
+      startTime,
+      endTime: "19:30",
+      room: "Salle A",
+      status: "PLANNED",
+    },
+  });
+  console.log("✅ Session created for today:", session.id, "date:", today.toISOString().split("T")[0]);
+
+  // 8. Create subscription plan (session-based)
+  const plan = await prisma.subscriptionPlan.create({
+    data: {
+      name: "Plan Test 12 séances",
+      description: "12 séances par mois, 3 par semaine max",
+      price: 50000, // 500 EUR in cents
+      totalSessions: 12,
+      sessionsPerWeek: 3,
+      validityDays: 30,
+      isActive: true,
+    },
+  });
+  console.log("✅ SubscriptionPlan created:", plan.id);
+
+  // 9. Create member subscription (ACTIVE with remaining sessions)
+  const subscription = await prisma.memberSubscription.create({
+    data: {
+      memberId: member.id,
+      planId: plan.id,
+      startDate: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000), // started 7 days ago
+      endDate: new Date(today.getTime() + 23 * 24 * 60 * 60 * 1000),  // ends in 23 days
+      amount: 50000,
+      remainingSessions: 10,
+      status: "ACTIVE",
+    },
+  });
+  console.log("✅ MemberSubscription created:", subscription.id, "remaining:", subscription.remainingSessions);
+
+  console.log("\n🎉 Seed complete! Go to http://localhost:3000/attendance/today to test check-in.");
+  console.log("   Member:", `${member.firstName} ${member.lastName}`);
+  console.log("   Group:", group.name);
+  console.log("   Session:", `${today.toISOString().split("T")[0]} ${session.startTime}-${session.endTime}`);
+  console.log("   Subscription:", `${plan.name} — ${subscription.remainingSessions} séances restantes`);
+}
+
+main()
+  .catch((e) => {
+    console.error("❌ Seed error:", e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

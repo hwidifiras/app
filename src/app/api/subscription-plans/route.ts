@@ -54,7 +54,9 @@ export async function POST(request: Request) {
         name: parsed.data.name,
         description: descriptionValue,
         price: parsed.data.price,
-        durationDays: parsed.data.durationDays,
+        totalSessions: parsed.data.totalSessions,
+        sessionsPerWeek: parsed.data.sessionsPerWeek ?? null,
+        validityDays: parsed.data.validityDays,
       },
     });
 
@@ -119,7 +121,9 @@ export async function PATCH(request: Request) {
               ? null
               : payload.description,
         price: payload.price,
-        durationDays: payload.durationDays,
+        totalSessions: payload.totalSessions,
+        sessionsPerWeek: payload.sessionsPerWeek,
+        validityDays: payload.validityDays,
         isActive: payload.isActive,
       },
     });
