@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import { MobileNav } from "@/components/layout/mobile-nav";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -30,6 +31,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-background text-foreground">
+        <MobileNav />
         <div className="grid min-h-screen lg:grid-cols-[264px_1fr]">
           <AppSidebar />
           <div className="min-w-0 bg-gradient-to-b from-white/35 via-white/10 to-transparent">{children}</div>

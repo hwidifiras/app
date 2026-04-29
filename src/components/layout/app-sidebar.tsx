@@ -22,19 +22,19 @@ import {
 
 import { cn } from "@/lib/utils";
 
-type NavItem = {
+export type NavItem = {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
 };
 
-type NavSection = {
+export type NavSection = {
   title: string;
   items: NavItem[];
 };
 
 /* ── Section 1: Actions quotidiennes (haute fréquence) ── */
-const dailySection: NavSection = {
+export const dailySection: NavSection = {
   title: "Accueil",
   items: [
     { href: "/", label: "Tableau de bord", icon: LayoutDashboard },
@@ -46,7 +46,7 @@ const dailySection: NavSection = {
 };
 
 /* ── Section 2: Gestion adhérents (hebdomadaire) ── */
-const membersSection: NavSection = {
+export const membersSection: NavSection = {
   title: "Adhérents",
   items: [
     { href: "/members", label: "Liste des membres", icon: Users },
@@ -55,7 +55,7 @@ const membersSection: NavSection = {
 };
 
 /* ── Section 3: Caisse & Suivi (hebdomadaire) ── */
-const cashSection: NavSection = {
+export const cashSection: NavSection = {
   title: "Caisse & Suivi",
   items: [
     { href: "/payments", label: "Paiements reçus", icon: Wallet },
@@ -64,7 +64,7 @@ const cashSection: NavSection = {
 };
 
 /* ── Section 4: Configuration (basse fréquence, masquable) ── */
-const settingsSection: NavSection = {
+export const settingsSection: NavSection = {
   title: "Paramètres",
   items: [
     { href: "/sports", label: "Sports", icon: Dumbbell },
@@ -74,21 +74,50 @@ const settingsSection: NavSection = {
   ],
 };
 
-const navSections: NavSection[] = [dailySection, membersSection, cashSection];
+export const navSections: NavSection[] = [dailySection, membersSection, cashSection];
+
+function isLinkActive(pathname: string, href: string) {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(href + "/");
+}
+
+export function NavLink({
+  item,
+  pathname,
+  onClick,
+}: {
+  item: NavItem;
+  pathname: string;
+  onClick?: () => void;
+}) {
+  const Icon = item.icon;
+  const active = isLinkActive(pathname, item.href);
+
+  return (
+    <Link
+      href={item.href}
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-2.5 rounded-lg px-3 py-2 text-[0.82rem] font-medium transition-all",
+        active
+          ? "bg-[var(--primary)]/8 text-[var(--primary)] shadow-sm ring-1 ring-[var(--primary)]/15"
+          : "text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]",
+      )}
+    >
+      <Icon className={cn("size-[1.1rem] shrink-0", active ? "text-[var(--primary)]" : "opacity-60")} />
+      <span className="truncate">{item.label}</span>
+    </Link>
+  );
+}
 
 export function AppSidebar() {
   const pathname = usePathname();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  function isActive(href: string) {
-    if (href === "/") return pathname === "/";
-    return pathname === href || pathname.startsWith(href + "/");
-  }
-
-  const inSettings = settingsSection.items.some((i) => isActive(i.href));
+  const inSettings = settingsSection.items.some((i) => isLinkActive(pathname, i.href));
 
   return (
-    <aside className="border-b border-[var(--border)] bg-white/90 backdrop-blur lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto lg:border-r lg:border-b-0">
+    <aside className="hidden border-b border-[var(--border)] bg-white/90 backdrop-blur lg:sticky lg:block lg:top-0 lg:h-screen lg:overflow-y-auto lg:border-r lg:border-b-0">
       <div className="flex items-center gap-3 border-b border-[var(--border)] px-4 py-4 lg:px-5">
         <div className="flex size-9 items-center justify-center rounded-lg bg-[var(--primary)] text-white">
           <Dumbbell className="size-5" />
@@ -107,25 +136,9 @@ export function AppSidebar() {
             <p className="mb-1 hidden px-3 pt-2 text-[0.6rem] font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)] opacity-60 lg:block">
               {section.title}
             </p>
-            {section.items.map((item) => {
-              const Icon = item.icon;
-              const active = isActive(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-[0.82rem] font-medium transition-all",
-                    active
-                      ? "bg-[var(--primary)]/8 text-[var(--primary)] shadow-sm ring-1 ring-[var(--primary)]/15"
-                      : "text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]",
-                  )}
-                >
-                  <Icon className={cn("size-[1.1rem] shrink-0", active ? "text-[var(--primary)]" : "opacity-60")} />
-                  <span className="truncate">{item.label}</span>
-                </Link>
-              );
-            })}
+            {section.items.map((item) => (
+              <NavLink key={item.href} item={item} pathname={pathname} />
+            ))}
           </div>
         ))}
 
@@ -154,25 +167,9 @@ export function AppSidebar() {
 
           {(settingsOpen || inSettings) && (
             <div className="lg:space-y-0.5">
-              {settingsSection.items.map((item) => {
-                const Icon = item.icon;
-                const active = isActive(item.href);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-2.5 rounded-lg px-3 py-2 text-[0.82rem] font-medium transition-all",
-                      active
-                        ? "bg-[var(--primary)]/8 text-[var(--primary)] shadow-sm ring-1 ring-[var(--primary)]/15"
-                        : "text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]",
-                    )}
-                  >
-                    <Icon className={cn("size-[1.1rem] shrink-0", active ? "text-[var(--primary)]" : "opacity-60")} />
-                    <span className="truncate">{item.label}</span>
-                  </Link>
-                );
-              })}
+              {settingsSection.items.map((item) => (
+                <NavLink key={item.href} item={item} pathname={pathname} />
+              ))}
             </div>
           )}
         </div>

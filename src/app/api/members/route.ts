@@ -48,15 +48,57 @@ export async function POST(request: Request) {
   }
 
   const emailValue = parsed.data.email?.trim() || null;
+  const { groupId, subscriptionPlanId } = body as Record<string, unknown>;
+
+  const hasGroupId = typeof groupId === "string" && groupId.trim().length > 0;
+  const hasPlanId = typeof subscriptionPlanId === "string" && subscriptionPlanId.trim().length > 0;
 
   try {
-    const member = await prisma.member.create({
-      data: {
-        firstName: parsed.data.firstName,
-        lastName: parsed.data.lastName,
-        phone: parsed.data.phone,
-        email: emailValue,
-      },
+    const member = await prisma.$transaction(async (tx) => {
+      const created = await tx.member.create({
+        data: {
+          firstName: parsed.data.firstName,
+          lastName: parsed.data.lastName,
+          phone: parsed.data.phone,
+          email: emailValue,
+        },
+      });
+
+      if (hasGroupId) {
+        const group = await tx.group.findUnique({ where: { id: groupId } });
+        if (group) {
+          await tx.groupMember.create({
+            data: {
+              groupId,
+              memberId: created.id,
+              startDate: new Date(),
+            },
+          });
+        }
+      }
+
+      if (hasPlanId) {
+        const plan = await tx.subscriptionPlan.findUnique({ where: { id: subscriptionPlanId } });
+        if (plan) {
+          const now = new Date();
+          const endDate = new Date(now);
+          endDate.setDate(endDate.getDate() + plan.validityDays);
+
+          await tx.memberSubscription.create({
+            data: {
+              memberId: created.id,
+              planId: subscriptionPlanId,
+              startDate: now,
+              endDate,
+              amount: plan.price,
+              remainingSessions: plan.totalSessions,
+              status: "ACTIVE",
+            },
+          });
+        }
+      }
+
+      return created;
     });
 
     return NextResponse.json({ data: member }, { status: 201 });

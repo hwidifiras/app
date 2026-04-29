@@ -69,18 +69,18 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-end gap-3">
-        <div className="flex-1 min-w-[12rem]">
+      <div className="mb-4 grid gap-3 sm:flex sm:flex-wrap sm:items-end">
+        <div className="sm:flex-1 sm:min-w-[12rem]">
           <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Recherche</label>
           <input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Nom, sport, coach, salle..."
-            className="field text-xs"
+            className="field text-xs w-full"
           />
         </div>
-        <div className="ml-auto">
-          <Link href="/groups/new" className="btn btn-primary inline-flex">
+        <div className="sm:ml-auto">
+          <Link href="/groups/new" className="btn btn-primary inline-flex w-full justify-center sm:w-auto">
             + Créer un groupe
           </Link>
         </div>

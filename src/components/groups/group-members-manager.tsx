@@ -297,7 +297,7 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
 
       <FeedbackMessage message={message} className="mt-3" />
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <section className="rounded-xl border border-[var(--border)] p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-sm font-semibold text-[var(--foreground)]">Ajouter des membres</h3>

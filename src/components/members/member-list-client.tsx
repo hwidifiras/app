@@ -84,14 +84,14 @@ export function MemberListClient({ initialMembers, groupsOptions }: MemberListCl
   return (
     <div>
       {/* Filtres */}
-      <div className="mb-4 flex flex-wrap items-end gap-3">
-        <div className="flex-1 min-w-[12rem]">
+      <div className="mb-4 grid gap-3 sm:flex sm:flex-wrap sm:items-end">
+        <div className="sm:flex-1 sm:min-w-[12rem]">
           <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Recherche</label>
           <input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Nom, téléphone, email..."
-            className="field text-xs"
+            className="field text-xs w-full"
           />
         </div>
         <div>
@@ -99,7 +99,7 @@ export function MemberListClient({ initialMembers, groupsOptions }: MemberListCl
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-            className="field text-xs min-w-[8rem]"
+            className="field text-xs w-full sm:w-auto sm:min-w-[8rem]"
           >
             <option value="ALL">Tous</option>
             <option value="ACTIVE">Actifs</option>
@@ -111,7 +111,7 @@ export function MemberListClient({ initialMembers, groupsOptions }: MemberListCl
           <select
             value={groupFilter}
             onChange={(e) => setGroupFilter(e.target.value)}
-            className="field text-xs min-w-[10rem]"
+            className="field text-xs w-full sm:w-auto sm:min-w-[10rem]"
           >
             <option value="ALL">Tous les groupes</option>
             {groupsOptions.map((g) => (
@@ -121,8 +121,8 @@ export function MemberListClient({ initialMembers, groupsOptions }: MemberListCl
             ))}
           </select>
         </div>
-        <div className="ml-auto">
-          <Link href="/members/new" className="btn btn-primary inline-flex">
+        <div className="sm:ml-auto">
+          <Link href="/members/new" className="btn btn-primary inline-flex w-full justify-center sm:w-auto">
             + Ajouter un membre
           </Link>
         </div>
