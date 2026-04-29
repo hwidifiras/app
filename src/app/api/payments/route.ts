@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { createPaymentSchema } from "@/lib/schemas/payment";
+import { createPaymentSchema, updatePaymentSchema } from "@/lib/schemas/payment";
 
 export const runtime = "nodejs";
 
@@ -116,6 +116,103 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("[POST /api/payments] error:", error);
     return NextResponse.json({ error: "Erreur serveur lors de la création du paiement" }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  let body: unknown;
+
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "JSON invalide" }, { status: 400 });
+  }
+
+  if (typeof body !== "object" || body === null || !("paymentId" in body)) {
+    return NextResponse.json({ error: "paymentId requis" }, { status: 400 });
+  }
+
+  const paymentId = (body as { paymentId?: unknown }).paymentId;
+
+  if (typeof paymentId !== "string" || paymentId.trim().length === 0) {
+    return NextResponse.json({ error: "paymentId invalide" }, { status: 400 });
+  }
+
+  const parsed = updatePaymentSchema.safeParse((body as Record<string, unknown>).payload);
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Validation échouée", details: parsed.error.flatten() },
+      { status: 400 },
+    );
+  }
+
+  const payload = parsed.data;
+
+  try {
+    const existing = await prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: { memberSubscription: { include: { payments: { select: { id: true, amount: true } } } } },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Paiement introuvable" }, { status: 404 });
+    }
+
+    if (payload.amount !== undefined) {
+      const subscription = existing.memberSubscription;
+      const otherPayments = subscription.payments.filter((p) => p.id !== paymentId);
+      const totalOther = otherPayments.reduce((sum, p) => sum + p.amount, 0);
+      if (totalOther + payload.amount > subscription.amount) {
+        return NextResponse.json(
+          { error: "Dépassement du montant dû", details: { amountDue: subscription.amount, otherPaid: totalOther, attempted: payload.amount } },
+          { status: 409 },
+        );
+      }
+    }
+
+    const updated = await prisma.payment.update({
+      where: { id: paymentId },
+      data: {
+        amount: payload.amount,
+        paymentDate: payload.paymentDate ? new Date(payload.paymentDate) : undefined,
+        paymentMethod: payload.paymentMethod?.trim() || null,
+        notes: payload.notes?.trim() || null,
+      },
+      include: {
+        memberSubscription: {
+          select: {
+            id: true,
+            member: { select: { id: true, firstName: true, lastName: true } },
+            plan: { select: { id: true, name: true } },
+          },
+        },
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        action: "PAYMENT_UPDATED",
+        entityType: "Payment",
+        entityId: paymentId,
+        details: JSON.stringify({ payload }),
+      },
+    });
+
+    return NextResponse.json({ data: updated });
+  } catch (error) {
+    const isNotFound =
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code?: string }).code === "P2025";
+
+    if (isNotFound) {
+      return NextResponse.json({ error: "Paiement introuvable" }, { status: 404 });
+    }
+
+    console.error("[PATCH /api/payments] error:", error);
+    return NextResponse.json({ error: "Erreur serveur lors de la modification du paiement" }, { status: 500 });
   }
 }
 

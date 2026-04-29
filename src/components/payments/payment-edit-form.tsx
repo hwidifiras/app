@@ -2,51 +2,60 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CreditCard, Wallet, Banknote, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2 } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 
 const METHODS = [
-  { value: "CASH", label: "Espèces", icon: <Banknote className="size-4" /> },
-  { value: "CARD", label: "Carte bancaire", icon: <CreditCard className="size-4" /> },
-  { value: "TRANSFER", label: "Virement", icon: <Wallet className="size-4" /> },
-  { value: "CHECK", label: "Chèque", icon: <Banknote className="size-4" /> },
+  { value: "CASH", label: "Espèces" },
+  { value: "CARD", label: "Carte bancaire" },
+  { value: "TRANSFER", label: "Virement" },
+  { value: "CHECK", label: "Chèque" },
 ];
 
 function formatCurrency(cents: number) {
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
 }
 
-export function PaymentAddForm({
-  subscriptions,
-  defaultSubscriptionId,
-}: {
-  subscriptions: Array<{
+type PaymentEditFormProps = {
+  payment: {
     id: string;
-    memberName: string;
-    planName: string;
-    amount: number; // montant dû en centimes
-    totalPaid: number; // déjà payé en centimes
-  }>;
-  defaultSubscriptionId?: string;
-}) {
+    amount: number;
+    paymentDate: string;
+    paymentMethod: string | null;
+    notes: string | null;
+    memberSubscription: {
+      id: string;
+      amount: number;
+      member: { firstName: string; lastName: string };
+      plan: { name: string } | null;
+      payments: Array<{ id: string; amount: number }>;
+    };
+  };
+};
+
+export function PaymentEditForm({ payment }: PaymentEditFormProps) {
   const router = useRouter();
-  const [subscriptionId, setSubscriptionId] = useState(defaultSubscriptionId ?? "");
-  const [amount, setAmount] = useState("");
-  const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().split("T")[0]);
-  const [method, setMethod] = useState("CASH");
-  const [notes, setNotes] = useState("");
+  const [amount, setAmount] = useState((payment.amount / 100).toFixed(2).replace(".", ","));
+  const [paymentDate, setPaymentDate] = useState(() =>
+    new Date(payment.paymentDate).toISOString().split("T")[0]
+  );
+  const [method, setMethod] = useState(payment.paymentMethod ?? "CASH");
+  const [notes, setNotes] = useState(payment.notes ?? "");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const selected = subscriptions.find((s) => s.id === subscriptionId);
-  const remaining = selected ? selected.amount - selected.totalPaid : 0;
+  const subscription = payment.memberSubscription;
+  const otherPaid = subscription.payments
+    .filter((p) => p.id !== payment.id)
+    .reduce((sum, p) => sum + p.amount, 0);
+  const remaining = subscription.amount - otherPaid;
   const amountNum = Math.round(parseFloat(amount.replace(",", ".")) * 100) || 0;
-  const wouldExceed = selected && amountNum > remaining;
+  const wouldExceed = amountNum > remaining;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!subscriptionId || amountNum <= 0) return;
+    if (amountNum <= 0) return;
     if (wouldExceed) {
       setMessage("Le montant dépasse le solde restant dû.");
       return;
@@ -56,14 +65,16 @@ export function PaymentAddForm({
     setMessage(null);
 
     const res = await fetch("/api/payments", {
-      method: "POST",
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        memberSubscriptionId: subscriptionId,
-        amount: amountNum,
-        paymentDate: paymentDate ? new Date(paymentDate).toISOString() : undefined,
-        paymentMethod: method,
-        notes: notes.trim() || undefined,
+        paymentId: payment.id,
+        payload: {
+          amount: amountNum,
+          paymentDate: paymentDate ? new Date(paymentDate).toISOString() : undefined,
+          paymentMethod: method,
+          notes: notes.trim() || undefined,
+        },
       }),
     });
 
@@ -71,11 +82,11 @@ export function PaymentAddForm({
     setLoading(false);
 
     if (!res.ok) {
-      setMessage(json.error ?? "Erreur lors de l'enregistrement du paiement.");
+      setMessage(json.error ?? "Erreur lors de la modification du paiement.");
       return;
     }
 
-    setMessage("Paiement enregistré avec succès.");
+    setMessage("Paiement modifié avec succès.");
     setTimeout(() => router.push("/payments"), 800);
   }
 
@@ -83,28 +94,17 @@ export function PaymentAddForm({
     <form onSubmit={handleSubmit} className="space-y-5">
       {message && <FeedbackMessage message={message} />}
 
-      {/* Subscription selector */}
-      <div className="space-y-1.5">
-        <label htmlFor="subscription" className="text-sm font-semibold text-[var(--foreground)]">
-          Abonnement <span className="text-[var(--danger)]">*</span>
-        </label>
-        <select
-          id="subscription"
-          value={subscriptionId}
-          onChange={(e) => setSubscriptionId(e.target.value)}
-          required
-          className="field"
-        >
-          <option value="">Sélectionner un abonnement...</option>
-          {subscriptions.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.memberName} — {s.planName} (dû: {formatCurrency(s.amount)}, payé: {formatCurrency(s.totalPaid)})
-            </option>
-          ))}
-        </select>
-        {subscriptions.length === 0 && (
-          <p className="text-xs text-[var(--warning)]">Aucun abonnement actif trouvé. Créez d'abord un abonnement.</p>
-        )}
+      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-3 text-sm">
+        <p className="text-[var(--muted-foreground)]">
+          Abonnement :{" "}
+          <span className="font-medium text-[var(--foreground)]">
+            {subscription.member.firstName} {subscription.member.lastName}
+          </span>{" "}
+          — {subscription.plan?.name ?? "—"}
+        </p>
+        <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+          Montant dû: {formatCurrency(subscription.amount)} — Autres paiements: {formatCurrency(otherPaid)} — Reste: {formatCurrency(remaining)}
+        </p>
       </div>
 
       {/* Amount */}
@@ -126,15 +126,8 @@ export function PaymentAddForm({
           />
           <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[var(--muted-foreground)]">€</span>
         </div>
-        {selected && (
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-[var(--muted-foreground)]">
-              Restant dû: <strong className="text-[var(--foreground)]">{formatCurrency(remaining)}</strong>
-            </span>
-            {wouldExceed && (
-              <span className="text-[var(--danger)] font-medium">Dépassement !</span>
-            )}
-          </div>
+        {wouldExceed && (
+          <p className="text-xs text-[var(--danger)] font-medium">Dépassement du solde restant dû !</p>
         )}
       </div>
 
@@ -196,7 +189,7 @@ export function PaymentAddForm({
         </button>
         <button
           type="submit"
-          disabled={loading || !subscriptionId || amountNum <= 0 || wouldExceed}
+          disabled={loading || amountNum <= 0 || wouldExceed}
           className="btn btn-primary inline-flex items-center gap-1.5"
         >
           {loading ? (
@@ -204,7 +197,7 @@ export function PaymentAddForm({
           ) : (
             <CheckCircle2 className="size-4" />
           )}
-          Enregistrer le paiement
+          Enregistrer la modification
         </button>
       </div>
     </form>

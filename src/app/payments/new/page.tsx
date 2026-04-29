@@ -4,7 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { PaymentAddForm } from "@/components/payments/payment-add-form";
 
-export default async function NewPaymentPage() {
+export default async function NewPaymentPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ memberSubscriptionId?: string }>;
+}) {
+  const { memberSubscriptionId } = await searchParams;
   let hasError = false;
   let subscriptions: Array<{
     id: string;
@@ -69,7 +74,7 @@ export default async function NewPaymentPage() {
       />
 
       <section className="panel panel-soft p-6">
-        <PaymentAddForm subscriptions={subscriptions} />
+        <PaymentAddForm subscriptions={subscriptions} defaultSubscriptionId={memberSubscriptionId} />
       </section>
     </main>
   );

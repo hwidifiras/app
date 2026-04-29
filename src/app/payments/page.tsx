@@ -1,7 +1,7 @@
-import { Fragment } from "react";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
+import { PaymentsTable } from "@/components/payments/payments-table";
 
 function formatCurrency(cents: number) {
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
@@ -169,90 +169,7 @@ export default async function PaymentsPage() {
       </div>
 
       <section className="panel p-5">
-        <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
-          <table className="w-full text-sm">
-            <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
-              <tr>
-                <th className="px-4 py-3 text-left font-semibold">Membre</th>
-                <th className="px-4 py-3 text-left font-semibold">Plan</th>
-                <th className="px-4 py-3 text-left font-semibold">Montant</th>
-                <th className="px-4 py-3 text-left font-semibold hidden sm:table-cell">Date</th>
-                <th className="px-4 py-3 text-left font-semibold hidden md:table-cell">Méthode</th>
-                <th className="px-4 py-3 text-left font-semibold">Statut versement</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {paymentGroups.map((group) => (
-                <Fragment key={group.subscriptionId}>
-                  {/* Ligne parente : récapitulatif de l'abonnement */}
-                  <tr key={group.subscriptionId} className="bg-[var(--surface-soft)]">
-                    <td className="px-4 py-3 font-semibold text-[var(--foreground)]">{group.memberName}</td>
-                    <td className="px-4 py-3 font-medium text-[var(--foreground)]">{group.planName}</td>
-                    <td className="px-4 py-3 font-semibold text-[var(--foreground)]">
-                      {formatCurrency(group.totalPaid)}
-                      <span className="text-[var(--muted-foreground)] font-normal"> / {formatCurrency(group.totalDue)}</span>
-                    </td>
-                    <td className="px-4 py-3 hidden sm:table-cell">—</td>
-                    <td className="px-4 py-3 hidden md:table-cell">—</td>
-                    <td className="px-4 py-3">
-                      {group.isComplete ? (
-                        <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
-                          Payé
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">
-                          Partiel — reste {formatCurrency(group.totalDue - group.totalPaid)}
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-
-                  {/* Sous-lignes : chaque versement */}
-                  {group.payments.map((p) => (
-                    <tr key={p.id} className="hover:bg-[var(--surface-soft)] transition-colors">
-                      <td className="px-4 py-2 pl-8 text-[var(--muted-foreground)]">—</td>
-                      <td className="px-4 py-2 pl-8">
-                        <span className="sm:hidden text-xs text-[var(--muted-foreground)]">
-                          {new Date(p.paymentDate).toLocaleDateString("fr-FR")}
-                          {p.paymentMethod ? ` · ${p.paymentMethod}` : ""}
-                        </span>
-                        <span className="hidden sm:inline text-[var(--muted-foreground)]">—</span>
-                      </td>
-                      <td className="px-4 py-2 pl-8 font-medium text-[var(--foreground)]">{formatCurrency(p.amount)}</td>
-                      <td className="px-4 py-2 pl-8 hidden sm:table-cell">
-                        {new Date(p.paymentDate).toLocaleDateString("fr-FR")}
-                      </td>
-                      <td className="px-4 py-2 pl-8 hidden md:table-cell">{p.paymentMethod ?? "—"}</td>
-                      <td className="px-4 py-2 pl-8">
-                        {p.status === "Paiement complet" ? (
-                          <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                            {p.status}
-                          </span>
-                        ) : p.status.startsWith("Avance") ? (
-                          <span className="inline-flex items-center rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700">
-                            {p.status}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                            {p.status}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </Fragment>
-              ))}
-
-              {paymentGroups.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-5 text-center text-[var(--muted-foreground)]">
-                    Aucun paiement enregistré.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <PaymentsTable groups={paymentGroups} />
       </section>
     </main>
   );
