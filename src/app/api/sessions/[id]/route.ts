@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { utcDateOnlyForTimeZone } from "@/lib/dates";
 import { updateSessionSchema } from "@/lib/schemas/session";
 
 export const runtime = "nodejs";
@@ -40,6 +41,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       room: session.room,
       status: session.status,
       exceptionReason: session.exceptionReason,
+      postponedTo: session.postponedTo ? session.postponedTo.toISOString() : null,
+      postponementReason: session.postponementReason,
+      postponementDetails: session.postponementDetails,
       schedule: session.schedule,
       createdAt: session.createdAt.toISOString(),
       updatedAt: session.updatedAt.toISOString(),
@@ -78,7 +82,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const existing = await prisma.session.findUnique({
     where: { id },
-    select: { id: true, scheduleId: true, sessionDate: true, status: true },
+    select: { id: true, groupId: true, scheduleId: true, sessionDate: true, startTime: true, status: true },
   });
 
   if (!existing) {
@@ -88,7 +92,40 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const payload = parsed.data;
   const isPermanent = editMode === "permanent";
 
+  if (isPermanent && payload.sessionDate !== undefined) {
+    return NextResponse.json(
+      { error: "La date ne peut pas etre changee en mode permanent" },
+      { status: 400 },
+    );
+  }
+
+  const nextSessionDate = payload.sessionDate ? utcDateOnlyForTimeZone(new Date(payload.sessionDate)) : undefined;
+
+  if (payload.sessionDate && Number.isNaN(nextSessionDate?.getTime())) {
+    return NextResponse.json({ error: "Date invalide" }, { status: 400 });
+  }
+
+  if (nextSessionDate || payload.startTime) {
+    const conflictDate = nextSessionDate ?? existing.sessionDate;
+    const conflictStart = payload.startTime ?? existing.startTime;
+
+    const conflict = await prisma.session.findFirst({
+      where: {
+        id: { not: id },
+        groupId: existing.groupId,
+        sessionDate: conflictDate,
+        startTime: conflictStart,
+      },
+      select: { id: true },
+    });
+
+    if (conflict) {
+      return NextResponse.json({ error: "Une seance existe deja sur ce creneau" }, { status: 409 });
+    }
+  }
+
   const sessionData: Record<string, unknown> = {
+    ...(nextSessionDate !== undefined ? { sessionDate: nextSessionDate } : {}),
     ...(payload.coachId !== undefined ? { coachId: payload.coachId } : {}),
     ...(payload.room !== undefined ? { room: payload.room } : {}),
     ...(payload.startTime !== undefined ? { startTime: payload.startTime } : {}),
@@ -157,6 +194,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         room: updated.room,
         status: updated.status,
         exceptionReason: updated.exceptionReason,
+        postponedTo: updated.postponedTo ? updated.postponedTo.toISOString() : null,
+        postponementReason: updated.postponementReason,
+        postponementDetails: updated.postponementDetails,
         createdAt: updated.createdAt.toISOString(),
         updatedAt: updated.updatedAt.toISOString(),
       },
@@ -187,6 +227,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       room: updated.room,
       status: updated.status,
       exceptionReason: updated.exceptionReason,
+      postponedTo: updated.postponedTo ? updated.postponedTo.toISOString() : null,
+      postponementReason: updated.postponementReason,
+      postponementDetails: updated.postponementDetails,
       createdAt: updated.createdAt.toISOString(),
       updatedAt: updated.updatedAt.toISOString(),
     },

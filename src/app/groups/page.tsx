@@ -22,6 +22,7 @@ export default async function GroupsPage() {
     initialGroups = groups.map((group) => ({
       id: group.id,
       name: group.name,
+      groupType: group.groupType,
       sportId: group.sportId,
       sportName: group.sport.name,
       coachId: group.coachId,

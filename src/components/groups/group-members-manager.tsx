@@ -35,10 +35,23 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
   );
 
   const availableMembers = useMemo(() => {
+    const groupType = selectedGroup?.groupType;
     const query = membersSearch.trim().toLowerCase();
     return members.filter((member) => {
       if (activeAssignedMemberIds.has(member.id)) {
         return false;
+      }
+
+      if (groupType === "KIDS") {
+        if (member.memberType !== "KID" && member.memberType !== "NOT_SPECIFIED") {
+          return false;
+        }
+      }
+
+      if (groupType === "ADULTS") {
+        if (member.memberType !== "ADULT" && member.memberType !== "NOT_SPECIFIED") {
+          return false;
+        }
       }
 
       if (!query) {
@@ -47,7 +60,7 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
 
       return `${member.firstName} ${member.lastName}`.toLowerCase().includes(query) || member.phone.toLowerCase().includes(query);
     });
-  }, [activeAssignedMemberIds, members, membersSearch]);
+  }, [activeAssignedMemberIds, members, membersSearch, selectedGroup?.groupType]);
 
   const displayedAssignments = useMemo(() => {
     const query = assignedSearch.trim().toLowerCase();

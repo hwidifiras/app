@@ -48,6 +48,11 @@ export async function POST(request: Request) {
   }
 
   const emailValue = parsed.data.email?.trim() || null;
+  const addressValue = parsed.data.address?.trim() || null;
+  const parentNameValue = parsed.data.parentName?.trim() || null;
+  const parentPhoneValue = parsed.data.parentPhone?.trim() || null;
+  const parentAddressValue = parsed.data.parentAddress?.trim() || null;
+  const birthDateValue = new Date(parsed.data.birthDate);
   const { groupId, subscriptionPlanId } = body as Record<string, unknown>;
 
   const hasGroupId = typeof groupId === "string" && groupId.trim().length > 0;
@@ -61,6 +66,12 @@ export async function POST(request: Request) {
           lastName: parsed.data.lastName,
           phone: parsed.data.phone,
           email: emailValue,
+          memberType: parsed.data.memberType,
+          birthDate: birthDateValue,
+          address: addressValue,
+          parentName: parentNameValue,
+          parentPhone: parentPhoneValue,
+          parentAddress: parentAddressValue,
         },
       });
 
@@ -165,6 +176,12 @@ export async function PATCH(request: Request) {
             : payload.email === "" || payload.email === null
               ? null
               : payload.email,
+        memberType: payload.memberType,
+        birthDate: payload.birthDate === undefined ? undefined : new Date(payload.birthDate),
+        address: payload.address === undefined ? undefined : payload.address?.trim() || null,
+        parentName: payload.parentName === undefined ? undefined : payload.parentName?.trim() || null,
+        parentPhone: payload.parentPhone === undefined ? undefined : payload.parentPhone?.trim() || null,
+        parentAddress: payload.parentAddress === undefined ? undefined : payload.parentAddress?.trim() || null,
       },
     });
 

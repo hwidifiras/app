@@ -18,6 +18,7 @@ export function GroupAddForm({
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
+  const [groupType, setGroupType] = useState<"KIDS" | "ADULTS">("ADULTS");
   const [sportId, setSportId] = useState("");
   const [coachId, setCoachId] = useState("");
   const [capacity, setCapacity] = useState(20);
@@ -27,10 +28,19 @@ export function GroupAddForm({
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
+  function isMemberAllowed(memberType: MemberDto["memberType"]) {
+    if (groupType === "KIDS") {
+      return memberType === "KID" || memberType === "NOT_SPECIFIED";
+    }
+    return memberType === "ADULT" || memberType === "NOT_SPECIFIED";
+  }
+
   const filteredMembers = membersOptions.filter((member) => {
     const query = membersSearch.trim().toLowerCase();
     if (!query) return true;
-    return `${member.firstName} ${member.lastName}`.toLowerCase().includes(query) || member.phone.toLowerCase().includes(query);
+    const matchesQuery = `${member.firstName} ${member.lastName}`.toLowerCase().includes(query) || member.phone.toLowerCase().includes(query);
+    return matchesQuery;
+  }).filter((member) => isMemberAllowed(member.memberType));
   });
 
   function toggleMemberSelection(memberId: string) {
@@ -59,6 +69,7 @@ export function GroupAddForm({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name,
+        groupType,
         sportId,
         coachId,
         capacity,
@@ -117,6 +128,21 @@ export function GroupAddForm({
               {sportsOptions.map((sport) => (
                 <option key={sport.id} value={sport.id}>{sport.name}</option>
               ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Type de groupe</label>
+            <select
+              value={groupType}
+              onChange={(e) => {
+                setGroupType(e.target.value as "KIDS" | "ADULTS");
+                setSelectedMemberIds([]);
+              }}
+              className="field text-sm"
+              required
+            >
+              <option value="ADULTS">Adultes</option>
+              <option value="KIDS">Enfants</option>
             </select>
           </div>
           <div>

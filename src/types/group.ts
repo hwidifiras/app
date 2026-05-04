@@ -19,6 +19,7 @@ export type GroupScheduleDto = {
 export type GroupDto = {
   id: string;
   name: string;
+  groupType: "KIDS" | "ADULTS";
   sportId: string;
   sportName: string;
   coachId: string;

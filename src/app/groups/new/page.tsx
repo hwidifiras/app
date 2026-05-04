@@ -8,7 +8,7 @@ export default async function NewGroupPage() {
   let hasError = false;
   let sportsOptions: Array<{ id: string; name: string; description: string | null; isActive: boolean; createdAt: string; updatedAt: string }> = [];
   let coachesOptions: Array<{ id: string; firstName: string; lastName: string; phone: string; email: string | null; isActive: boolean; sportId: string | null; sportName: string | null; createdAt: string; updatedAt: string }> = [];
-  let membersOptions: Array<{ id: string; firstName: string; lastName: string; phone: string; email: string | null; status: "ACTIVE" | "ARCHIVED"; joinedAt: string; archivedAt: string | null; createdAt: string; updatedAt: string }> = [];
+  let membersOptions: Array<{ id: string; firstName: string; lastName: string; phone: string; email: string | null; memberType: "ADULT" | "KID" | "NOT_SPECIFIED"; status: "ACTIVE" | "ARCHIVED"; joinedAt: string; archivedAt: string | null; createdAt: string; updatedAt: string }> = [];
 
   try {
     const [sports, coaches, members] = await Promise.all([
@@ -43,6 +43,7 @@ export default async function NewGroupPage() {
       lastName: m.lastName,
       phone: m.phone,
       email: m.email,
+      memberType: m.memberType,
       status: m.status,
       joinedAt: m.joinedAt.toISOString(),
       archivedAt: m.archivedAt?.toISOString() ?? null,

@@ -15,6 +15,12 @@ enum MemberStatus {
   ARCHIVED
 }
 
+enum MemberType {
+  ADULT
+  KID
+  NOT_SPECIFIED
+}
+
 enum DayOfWeek {
   MONDAY
   TUESDAY
@@ -28,6 +34,11 @@ enum DayOfWeek {
 enum GroupMemberStatus {
   ACTIVE
   INACTIVE
+}
+
+enum GroupType {
+  KIDS
+  ADULTS
 }
 
 enum SessionStatus {
@@ -73,6 +84,12 @@ model Member {
   lastName   String
   phone      String       @unique
   email      String?
+  memberType MemberType   @default(NOT_SPECIFIED)
+  birthDate  DateTime?
+  address    String?
+  parentName String?
+  parentPhone String?
+  parentAddress String?
   status     MemberStatus @default(ACTIVE)
   groups         GroupMember[]
   subscriptions  MemberSubscription[]
@@ -112,6 +129,7 @@ model Coach {
 model Group {
   id        String          @id @default(cuid())
   name      String
+  groupType GroupType       @default(ADULTS)
   sportId   String
   sport     Sport           @relation(fields: [sportId], references: [id], onDelete: Restrict)
   coachId   String
@@ -169,6 +187,9 @@ model Session {
   room            String
   status          SessionStatus @default(PLANNED)
   exceptionReason String?
+  postponedTo     DateTime?
+  postponementReason  String?
+  postponementDetails String?
   attendances     Attendance[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt

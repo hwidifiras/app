@@ -56,6 +56,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
 
   const [editingSession, setEditingSession] = useState<SessionDto | null>(null);
   const [editForm, setEditForm] = useState({
+    sessionDate: "",
     coachId: "",
     room: "",
     startTime: "",
@@ -126,6 +127,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
   function openEdit(session: SessionDto) {
     setEditingSession(session);
     setEditForm({
+      sessionDate: toDateOnlyIso(new Date(session.sessionDate)),
       coachId: session.coachId ?? "",
       room: session.room,
       startTime: session.startTime,
@@ -150,6 +152,9 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
     setEditMessage(null);
 
     const body: Record<string, unknown> = { editMode };
+    if (editMode === "exception" && editForm.sessionDate) {
+      body.sessionDate = new Date(`${editForm.sessionDate}T00:00:00`).toISOString();
+    }
     if (editForm.coachId) body.coachId = editForm.coachId;
     if (editForm.room) body.room = editForm.room;
     if (editForm.startTime) body.startTime = editForm.startTime;
@@ -174,7 +179,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
     setSessions((current) =>
       current.map((s) =>
         s.id === editingSession.id
-          ? { ...s, ...result.data, sessionDate: s.sessionDate }
+          ? { ...s, ...result.data, sessionDate: result.data?.sessionDate ?? s.sessionDate }
           : s
       )
     );
@@ -371,6 +376,21 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
             </p>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Jour</label>
+                <input
+                  type="date"
+                  value={editForm.sessionDate}
+                  onChange={(e) => setEditForm((f) => ({ ...f, sessionDate: e.target.value }))}
+                  disabled={editMode === "permanent"}
+                  className="field text-sm"
+                />
+                {editMode === "permanent" ? (
+                  <p className="mt-1 text-[0.65rem] text-[var(--muted-foreground)]">
+                    Le changement de date est reserve a une exception.
+                  </p>
+                ) : null}
+              </div>
               <div>
                 <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Coach</label>
                 <select

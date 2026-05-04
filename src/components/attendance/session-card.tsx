@@ -1,6 +1,7 @@
 "use client";
 
-import { Clock, Users, DoorOpen, AlertTriangle, CheckCircle2, XCircle, HelpCircle, User } from "lucide-react";
+import Link from "next/link";
+import { Clock, Users, DoorOpen, CalendarClock, CheckCircle2, XCircle, HelpCircle, User } from "lucide-react";
 
 export type SessionCardData = {
   id: string;
@@ -50,13 +51,13 @@ export function SessionCard({
   now,
   isSelected,
   onSelect,
-  onCoachAbsent,
+  postponeHref,
 }: {
   session: SessionCardData;
   now: Date;
   isSelected: boolean;
   onSelect: () => void;
-  onCoachAbsent: () => void;
+  postponeHref: string;
 }) {
   const state = getWindowState(session.startTime, now);
   const label = getWindowLabel(session.startTime, now);
@@ -261,20 +262,21 @@ export function SessionCard({
           </div>
         )}
 
-        {/* Footer: Time label + Coach absent button */}
+        {/* Footer: Time label + Postpone button */}
         <div className="mt-3 flex items-center justify-between border-t border-[var(--border)] pt-2.5">
           <div className="flex items-center gap-1.5">
             <Clock className="size-3 text-[var(--muted-foreground)]" />
             <p className="text-[0.65rem] text-[var(--muted-foreground)]">{label}</p>
           </div>
-          <button
-            onClick={(e) => { e.stopPropagation(); onCoachAbsent(); }}
-            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[0.65rem] font-medium text-[var(--warning)] hover:bg-[var(--warning)]/10 transition-colors"
-            title="Signaler coach absent"
+          <Link
+            href={postponeHref}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[0.65rem] font-medium text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
+            title="Reporter cette séance"
           >
-            <AlertTriangle className="size-3" />
-            Coach absent
-          </button>
+            <CalendarClock className="size-3" />
+            Reporter
+          </Link>
         </div>
       </div>
     </div>

@@ -18,10 +18,20 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [memberType, setMemberType] = useState<"ADULT" | "KID" | "NOT_SPECIFIED">("ADULT");
+  const [birthDate, setBirthDate] = useState("");
+  const [address, setAddress] = useState("");
+  const [parentName, setParentName] = useState("");
+  const [parentPhone, setParentPhone] = useState("");
+  const [parentAddress, setParentAddress] = useState("");
   const [groupId, setGroupId] = useState("");
   const [planId, setPlanId] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  const computedAge = birthDate
+    ? Math.max(0, new Date().getFullYear() - new Date(birthDate).getFullYear())
+    : null;
 
   const selectedPlan = plansOptions.find((p) => p.id === planId);
 
@@ -30,7 +40,18 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
     setLoading(true);
     setMessage(null);
 
-    const payload: Record<string, unknown> = { firstName, lastName, phone, email };
+    const payload: Record<string, unknown> = {
+      firstName,
+      lastName,
+      phone,
+      email,
+      memberType,
+      birthDate: new Date(`${birthDate}T00:00:00`).toISOString(),
+      address,
+      parentName: memberType === "KID" ? parentName : "",
+      parentPhone: memberType === "KID" ? parentPhone : "",
+      parentAddress: memberType === "KID" ? parentAddress : "",
+    };
     if (groupId) payload.groupId = groupId;
     if (planId) payload.subscriptionPlanId = planId;
 
@@ -53,6 +74,12 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
     setLastName("");
     setPhone("");
     setEmail("");
+    setMemberType("ADULT");
+    setBirthDate("");
+    setAddress("");
+    setParentName("");
+    setParentPhone("");
+    setParentAddress("");
     setGroupId("");
     setPlanId("");
     setLoading(false);
@@ -107,6 +134,79 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
           />
         </div>
       </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Type de membre *</label>
+          <select value={memberType} onChange={(e) => setMemberType(e.target.value as typeof memberType)} className="field" required>
+            <option value="ADULT">Adulte</option>
+            <option value="KID">Enfant</option>
+            <option value="NOT_SPECIFIED">Non spécifié</option>
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Date de naissance *</label>
+          <input
+            type="date"
+            value={birthDate}
+            onChange={(e) => setBirthDate(e.target.value)}
+            className="field"
+            required
+          />
+          {computedAge !== null ? (
+            <p className="mt-1 text-[0.7rem] text-[var(--muted-foreground)]">Âge estimé: {computedAge} ans</p>
+          ) : null}
+        </div>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Adresse</label>
+        <input
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          placeholder="Adresse"
+          className="field"
+        />
+      </div>
+
+      {memberType === "KID" ? (
+        <div className="rounded-xl border border-[var(--border)] p-4">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+            Responsable légal
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Nom complet du parent</label>
+              <input
+                value={parentName}
+                onChange={(e) => setParentName(e.target.value)}
+                placeholder="Nom du parent"
+                className="field"
+                required={memberType === "KID"}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Téléphone du parent</label>
+              <input
+                value={parentPhone}
+                onChange={(e) => setParentPhone(e.target.value)}
+                placeholder="06 00 00 00 00"
+                className="field"
+                required={memberType === "KID"}
+              />
+            </div>
+          </div>
+          <div className="mt-3">
+            <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Adresse du parent</label>
+            <input
+              value={parentAddress}
+              onChange={(e) => setParentAddress(e.target.value)}
+              placeholder="Adresse"
+              className="field"
+            />
+          </div>
+        </div>
+      ) : null}
 
       <div className="border-t border-[var(--border)] pt-4">
         <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">

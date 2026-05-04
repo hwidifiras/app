@@ -41,6 +41,9 @@ function toSessionDto(session: {
   room: string;
   status: "PLANNED" | "RESCHEDULED" | "CANCELLED" | "COMPLETED";
   exceptionReason: string | null;
+  postponedTo: Date | null;
+  postponementReason: string | null;
+  postponementDetails: string | null;
   createdAt: Date;
   updatedAt: Date;
   group: { name: string };
@@ -59,6 +62,9 @@ function toSessionDto(session: {
     room: session.room,
     status: session.status,
     exceptionReason: session.exceptionReason,
+    postponedTo: session.postponedTo ? session.postponedTo.toISOString() : null,
+    postponementReason: session.postponementReason,
+    postponementDetails: session.postponementDetails,
     createdAt: session.createdAt.toISOString(),
     updatedAt: session.updatedAt.toISOString(),
   };

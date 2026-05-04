@@ -11,6 +11,12 @@ export default async function MembersPage() {
     lastName: string;
     phone: string;
     email: string | null;
+    memberType: "ADULT" | "KID" | "NOT_SPECIFIED";
+    birthDate: string | null;
+    address: string | null;
+    parentName: string | null;
+    parentPhone: string | null;
+    parentAddress: string | null;
     status: "ACTIVE" | "ARCHIVED";
     joinedAt: string;
     archivedAt: string | null;
@@ -46,6 +52,12 @@ export default async function MembersPage() {
       lastName: member.lastName,
       phone: member.phone,
       email: member.email,
+      memberType: member.memberType,
+      birthDate: member.birthDate?.toISOString() ?? null,
+      address: member.address ?? null,
+      parentName: member.parentName ?? null,
+      parentPhone: member.parentPhone ?? null,
+      parentAddress: member.parentAddress ?? null,
       status: member.status,
       joinedAt: member.joinedAt.toISOString(),
       archivedAt: member.archivedAt?.toISOString() ?? null,

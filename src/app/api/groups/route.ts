@@ -17,6 +17,7 @@ type DayOfWeekValue =
 function toGroupDto(group: {
   id: string;
   name: string;
+  groupType: "KIDS" | "ADULTS";
   sportId: string;
   coachId: string;
   capacity: number;
@@ -39,6 +40,7 @@ function toGroupDto(group: {
   return {
     id: group.id,
     name: group.name,
+    groupType: group.groupType,
     sportId: group.sportId,
     sportName: group.sport.name,
     coachId: group.coachId,
@@ -122,6 +124,7 @@ export async function POST(request: Request) {
   const created = await prisma.group.create({
     data: {
       name: parsed.data.name,
+      groupType: parsed.data.groupType,
       sportId: parsed.data.sportId,
       coachId: parsed.data.coachId,
       capacity: parsed.data.capacity,
@@ -189,6 +192,7 @@ export async function PATCH(request: Request) {
       where: { id: groupId },
       data: {
         name: payload.name,
+        groupType: payload.groupType,
         sportId: payload.sportId,
         coachId: payload.coachId,
         capacity: payload.capacity,
@@ -228,8 +232,17 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    await prisma.group.delete({ where: { id: groupId } });
-    return NextResponse.json({ data: { id: groupId } });
+    const result = await prisma.$transaction([
+      prisma.session.deleteMany({ where: { groupId } }),
+      prisma.group.delete({ where: { id: groupId } }),
+    ]);
+
+    return NextResponse.json({
+      data: {
+        id: groupId,
+        deletedSessions: result[0].count,
+      },
+    });
   } catch {
     return NextResponse.json({ error: "Erreur serveur lors de la suppression" }, { status: 500 });
   }

@@ -13,6 +13,9 @@ export type SessionDto = {
   room: string;
   status: SessionStatusDto;
   exceptionReason: string | null;
+  postponedTo: string | null;
+  postponementReason: string | null;
+  postponementDetails: string | null;
   createdAt: string;
   updatedAt: string;
 };

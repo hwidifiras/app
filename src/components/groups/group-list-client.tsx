@@ -24,7 +24,9 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
   });
 
   async function deleteGroup(groupId: string) {
-    const confirmed = window.confirm("Confirmer la suppression de ce groupe ?");
+    const confirmed = window.confirm(
+      "Confirmer la suppression de ce groupe ? Les seances planifiees seront egalement supprimees.",
+    );
     if (!confirmed) return;
 
     setActionLoadingId(groupId);

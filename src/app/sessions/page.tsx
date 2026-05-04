@@ -39,6 +39,9 @@ export default async function SessionsPage() {
     room: string;
     status: "PLANNED" | "RESCHEDULED" | "CANCELLED" | "COMPLETED";
     exceptionReason: string | null;
+    postponedTo: string | null;
+    postponementReason: string | null;
+    postponementDetails: string | null;
     createdAt: string;
     updatedAt: string;
   }> = [];
@@ -87,6 +90,9 @@ export default async function SessionsPage() {
       room: session.room,
       status: session.status,
       exceptionReason: session.exceptionReason,
+      postponedTo: session.postponedTo ? session.postponedTo.toISOString() : null,
+      postponementReason: session.postponementReason,
+      postponementDetails: session.postponementDetails,
       createdAt: session.createdAt.toISOString(),
       updatedAt: session.updatedAt.toISOString(),
     }));

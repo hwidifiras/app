@@ -22,6 +22,7 @@ export function SportManager({ initialSports }: SportManagerProps) {
   const [editIsActive, setEditIsActive] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [blockedSport, setBlockedSport] = useState<null | { name: string; groups: Array<{ id: string; name: string }> }>(null);
 
   async function reloadSports(query?: string) {
     const params = new URLSearchParams();
@@ -130,6 +131,10 @@ export function SportManager({ initialSports }: SportManagerProps) {
     const result = await response.json();
 
     if (!response.ok) {
+      if (response.status === 409 && result.details?.groups?.length) {
+        const sportName = sports.find((item) => item.id === sportId)?.name ?? "Sport";
+        setBlockedSport({ name: sportName, groups: result.details.groups });
+      }
       setMessage(result.error ?? "Erreur lors de la suppression du sport");
       setActionLoadingId(null);
       return;
@@ -278,6 +283,31 @@ export function SportManager({ initialSports }: SportManagerProps) {
           </ul>
         </section>
       </div>
+
+      {blockedSport ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-lg">
+            <h3 className="text-base font-semibold text-[var(--foreground)]">Suppression impossible</h3>
+            <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+              Le sport <span className="font-medium text-[var(--foreground)]">{blockedSport.name}</span> est utilise par les groupes suivants :
+            </p>
+            <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-[var(--foreground)]">
+              {blockedSport.groups.map((group) => (
+                <li key={group.id}>{group.name}</li>
+              ))}
+            </ul>
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setBlockedSport(null)}
+                className="btn btn-primary"
+              >
+                Compris
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

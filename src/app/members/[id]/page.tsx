@@ -13,6 +13,25 @@ function formatDate(date: Date | string) {
   return new Date(date).toLocaleDateString("fr-FR");
 }
 
+function memberTypeLabel(value: string) {
+  if (value === "KID") return "Enfant";
+  if (value === "ADULT") return "Adulte";
+  return "Non spécifié";
+}
+
+function computeAge(date: Date | null) {
+  if (!date) return null;
+  const now = new Date();
+  let age = now.getFullYear() - date.getFullYear();
+  const hasBirthdayPassed =
+    now.getMonth() > date.getMonth() ||
+    (now.getMonth() === date.getMonth() && now.getDate() >= date.getDate());
+  if (!hasBirthdayPassed) {
+    age -= 1;
+  }
+  return Math.max(0, age);
+}
+
 export default async function MemberDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
@@ -64,6 +83,8 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
 
   const activeGroups = member.groups.filter((g) => g.status === "ACTIVE");
   const inactiveGroups = member.groups.filter((g) => g.status === "INACTIVE");
+  const birthDate = member.birthDate ? new Date(member.birthDate) : null;
+  const age = computeAge(birthDate);
 
   return (
     <main className="app-shell py-4 md:py-8">
@@ -97,6 +118,21 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
               <dd className="font-medium">{member.phone}</dd>
             </div>
             <div className="flex justify-between">
+              <dt className="text-[var(--muted-foreground)]">Type</dt>
+              <dd className="font-medium">{memberTypeLabel(member.memberType)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-[var(--muted-foreground)]">Date de naissance</dt>
+              <dd className="font-medium">
+                {birthDate ? formatDate(birthDate) : "-"}
+                {age !== null ? ` (${age} ans)` : ""}
+              </dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-[var(--muted-foreground)]">Adresse</dt>
+              <dd className="font-medium">{member.address ?? "-"}</dd>
+            </div>
+            <div className="flex justify-between">
               <dt className="text-[var(--muted-foreground)]">Email</dt>
               <dd className="font-medium">{member.email ?? "-"}</dd>
             </div>
@@ -110,6 +146,14 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                 <dd className="font-medium text-[var(--danger)]">
                   {new Date(member.archivedAt).toLocaleDateString("fr-FR")}
                 </dd>
+              </div>
+            ) : null}
+            {member.memberType === "KID" ? (
+              <div className="rounded-lg border border-[var(--border)] p-3 text-xs">
+                <p className="mb-2 text-[var(--muted-foreground)]">Responsable légal</p>
+                <p className="font-medium">{member.parentName ?? "-"}</p>
+                <p className="text-[var(--muted-foreground)]">{member.parentPhone ?? "-"}</p>
+                <p className="text-[var(--muted-foreground)]">{member.parentAddress ?? "-"}</p>
               </div>
             ) : null}
           </dl>

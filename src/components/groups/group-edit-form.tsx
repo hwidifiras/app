@@ -18,6 +18,7 @@ export function GroupEditForm({
   groupId: string;
   initialData: {
     name: string;
+    groupType: "KIDS" | "ADULTS";
     sportId: string;
     coachId: string;
     capacity: number;
@@ -31,6 +32,7 @@ export function GroupEditForm({
 }) {
   const router = useRouter();
   const [name, setName] = useState(initialData.name);
+  const [groupType, setGroupType] = useState<"KIDS" | "ADULTS">(initialData.groupType);
   const [sportId, setSportId] = useState(initialData.sportId);
   const [coachId, setCoachId] = useState(initialData.coachId);
   const [capacity, setCapacity] = useState(initialData.capacity);
@@ -41,11 +43,18 @@ export function GroupEditForm({
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
+  function isMemberAllowed(memberType: MemberDto["memberType"]) {
+    if (groupType === "KIDS") {
+      return memberType === "KID" || memberType === "NOT_SPECIFIED";
+    }
+    return memberType === "ADULT" || memberType === "NOT_SPECIFIED";
+  }
+
   const filteredMembers = membersOptions.filter((member) => {
     const query = membersSearch.trim().toLowerCase();
     if (!query) return true;
     return `${member.firstName} ${member.lastName}`.toLowerCase().includes(query) || member.phone.toLowerCase().includes(query);
-  });
+  }).filter((member) => isMemberAllowed(member.memberType));
 
   function toggleMemberSelection(memberId: string) {
     setSelectedMemberIds((current) =>
@@ -75,6 +84,7 @@ export function GroupEditForm({
         groupId,
         payload: {
           name,
+          groupType,
           sportId,
           coachId,
           capacity,
@@ -154,6 +164,32 @@ export function GroupEditForm({
               {sportsOptions.map((sport) => (
                 <option key={sport.id} value={sport.id}>{sport.name}</option>
               ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Type de groupe</label>
+            <select
+              value={groupType}
+              onChange={(e) => {
+                const nextType = e.target.value as "KIDS" | "ADULTS";
+                setGroupType(nextType);
+                const allowedIds = new Set(
+                  membersOptions
+                    .filter((member) => {
+                      if (nextType === "KIDS") {
+                        return member.memberType === "KID" || member.memberType === "NOT_SPECIFIED";
+                      }
+                      return member.memberType === "ADULT" || member.memberType === "NOT_SPECIFIED";
+                    })
+                    .map((member) => member.id)
+                );
+                setSelectedMemberIds((current) => current.filter((id) => allowedIds.has(id)));
+              }}
+              className="field text-sm"
+              required
+            >
+              <option value="ADULTS">Adultes</option>
+              <option value="KIDS">Enfants</option>
             </select>
           </div>
           <div>

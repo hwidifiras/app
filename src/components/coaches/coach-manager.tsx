@@ -30,6 +30,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
   const [editIsActive, setEditIsActive] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [blockedCoach, setBlockedCoach] = useState<null | { name: string; groups: Array<{ id: string; name: string }> }>(null);
 
   async function reloadCoaches(query?: string) {
     const params = new URLSearchParams();
@@ -138,6 +139,9 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
       return;
     }
 
+    const coachRecord = coaches.find((item) => item.id === coachId);
+    const coachLabel = coachRecord ? `${coachRecord.firstName} ${coachRecord.lastName}` : "Coach";
+
     setActionLoadingId(coachId);
     setMessage(null);
 
@@ -150,6 +154,9 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
     const result = await response.json();
 
     if (!response.ok) {
+      if (response.status === 409 && result.details?.groups?.length) {
+        setBlockedCoach({ name: coachLabel.trim(), groups: result.details.groups });
+      }
       setMessage(result.error ?? "Erreur lors de la suppression du coach");
       setActionLoadingId(null);
       return;
@@ -342,6 +349,31 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
           </ul>
         </section>
       </div>
+
+      {blockedCoach ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-lg">
+            <h3 className="text-base font-semibold text-[var(--foreground)]">Suppression impossible</h3>
+            <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+              Le coach <span className="font-medium text-[var(--foreground)]">{blockedCoach.name}</span> est assigne aux groupes suivants :
+            </p>
+            <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-[var(--foreground)]">
+              {blockedCoach.groups.map((group) => (
+                <li key={group.id}>{group.name}</li>
+              ))}
+            </ul>
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setBlockedCoach(null)}
+                className="btn btn-primary"
+              >
+                Compris
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

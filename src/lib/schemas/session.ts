@@ -5,6 +5,7 @@ export const generateSessionsSchema = z.object({
 });
 
 export const updateSessionSchema = z.object({
+  sessionDate: z.string().datetime({ message: "date invalide" }).optional(),
   coachId: z.string().min(1, "coachId requis").optional(),
   room: z.string().min(1, "salle requise").optional(),
   startTime: z.string().regex(/^\d{2}:\d{2}$/, "format HH:MM requis").optional(),
@@ -20,3 +21,9 @@ export const updateSessionSchema = z.object({
   },
   { message: "Motif obligatoire pour une annulation", path: ["exceptionReason"] }
 );
+
+export const postponeSessionSchema = z.object({
+  postponedTo: z.string().datetime({ message: "date invalide" }),
+  reason: z.enum(["MAUVAIS_METEO", "COACH_ABSENT", "AUTRE"]),
+  details: z.string().trim().max(500, "détails trop longs").optional(),
+});

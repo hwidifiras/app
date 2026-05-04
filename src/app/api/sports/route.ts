@@ -162,6 +162,22 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "sportId invalide" }, { status: 400 });
   }
 
+  const linkedGroups = await prisma.group.findMany({
+    where: { sportId },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+
+  if (linkedGroups.length > 0) {
+    return NextResponse.json(
+      {
+        error: "Ce sport est deja utilise par des groupes",
+        details: { groups: linkedGroups },
+      },
+      { status: 409 },
+    );
+  }
+
   try {
     await prisma.sport.delete({
       where: { id: sportId },
