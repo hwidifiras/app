@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { LogoutButton } from "@/components/auth/logout-button";
 
 export type NavItem = {
   href: string;
@@ -71,6 +72,7 @@ export const settingsSection: NavSection = {
     { href: "/coaches", label: "Coachs", icon: User },
     { href: "/groups", label: "Groupes & créneaux", icon: CalendarDays },
     { href: "/subscription-plans", label: "Plans & tarifs", icon: ClipboardCheck },
+    { href: "/settings/users", label: "Utilisateurs", icon: Users },
   ],
 };
 
@@ -172,6 +174,10 @@ export function AppSidebar() {
               ))}
             </div>
           )}
+        </div>
+
+        <div className="mt-2 border-t border-[var(--border)] pt-2">
+          <LogoutButton />
         </div>
       </nav>
     </aside>

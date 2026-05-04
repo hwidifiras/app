@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { createAttendanceSchema, updateAttendanceSchema } from "@/lib/schemas/attendance";
+import { getRequestUser } from "@/lib/request-user";
 
 export const runtime = "nodejs";
 
@@ -93,6 +94,7 @@ export async function POST(request: Request) {
   }
 
   const { sessionId, memberId, status, overrideReason, checkedBy } = parsed.data;
+  const actor = getRequestUser(request);
 
   try {
     const sessionExists = await prisma.session.findUnique({ where: { id: sessionId } });
@@ -171,7 +173,7 @@ export async function POST(request: Request) {
         memberId,
         status,
         overrideReason: overrideReason?.trim() || null,
-        checkedBy: checkedBy?.trim() || null,
+        checkedBy: checkedBy?.trim() || actor?.name || null,
         memberSubscriptionId: activeSubscriptionId,
       },
       include: {
@@ -192,6 +194,7 @@ export async function POST(request: Request) {
         action: "ATTENDANCE_CREATED",
         entityType: "Attendance",
         entityId: attendance.id,
+        userId: actor?.id ?? null,
         details: JSON.stringify({
           sessionId,
           memberId,
@@ -233,6 +236,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const actor = getRequestUser(request);
   let body: unknown;
 
   try {
@@ -324,6 +328,7 @@ export async function PATCH(request: Request) {
         action: "ATTENDANCE_UPDATED",
         entityType: "Attendance",
         entityId: attendanceId,
+        userId: actor?.id ?? null,
         details: JSON.stringify({
           oldStatus: existing.status,
           newStatus: payload.status,
@@ -349,6 +354,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const actor = getRequestUser(request);
   let body: unknown;
 
   try {
@@ -377,6 +383,7 @@ export async function DELETE(request: Request) {
         action: "ATTENDANCE_DELETED",
         entityType: "Attendance",
         entityId: attendanceId,
+        userId: actor?.id ?? null,
         details: JSON.stringify({ deletedAt: new Date().toISOString() }),
       },
     });

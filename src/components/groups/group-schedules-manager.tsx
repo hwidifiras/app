@@ -13,6 +13,16 @@ type DayOfWeekValue =
   | "SATURDAY"
   | "SUNDAY";
 
+const dayOrder: DayOfWeekValue[] = [
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+  "SUNDAY",
+];
+
 const dayLabels: Record<DayOfWeekValue, string> = {
   MONDAY: "Lundi",
   TUESDAY: "Mardi",
@@ -33,6 +43,12 @@ type ScheduleRow = {
   createdAt: string;
 };
 
+type DaySelection = {
+  day: DayOfWeekValue;
+  checked: boolean;
+  startTime: string;
+};
+
 export function GroupSchedulesManager({
   groupId,
   initialSchedules,
@@ -42,29 +58,54 @@ export function GroupSchedulesManager({
 }) {
   const router = useRouter();
   const [schedules, setSchedules] = useState<ScheduleRow[]>(initialSchedules);
-  const [dayOfWeek, setDayOfWeek] = useState<DayOfWeekValue>("MONDAY");
-  const [startTime, setStartTime] = useState("18:00");
-  const [durationMinutes, setDurationMinutes] = useState(60);
+  const [daySelections, setDaySelections] = useState<DaySelection[]>(
+    dayOrder.map((day) => ({
+      day,
+      checked: false,
+      startTime: "18:00",
+    }))
+  );
+  const [durationMinutes, setDurationMinutes] = useState(90);
   const [effectiveFrom, setEffectiveFrom] = useState("");
   const [effectiveTo, setEffectiveTo] = useState("");
   const [loading, setLoading] = useState(false);
-  const [genLoading, setGenLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [genMessage, setGenMessage] = useState<string | null>(null);
 
-  async function onAddSchedule(event: FormEvent<HTMLFormElement>) {
+  function toggleDay(day: DayOfWeekValue) {
+    setDaySelections((prev) =>
+      prev.map((d) => (d.day === day ? { ...d, checked: !d.checked } : d))
+    );
+  }
+
+  function updateDayTime(day: DayOfWeekValue, time: string) {
+    setDaySelections((prev) =>
+      prev.map((d) => (d.day === day ? { ...d, startTime: time } : d))
+    );
+  }
+
+  async function onAddSchedules(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setMessage(null);
 
-    const body: Record<string, unknown> = {
-      dayOfWeek,
-      startTime,
-      durationMinutes,
-    };
+    const selected = daySelections.filter((d) => d.checked);
+    if (selected.length === 0) {
+      setMessage("Veuillez sélectionner au moins un jour");
+      setLoading(false);
+      return;
+    }
 
-    if (effectiveFrom) body.effectiveFrom = new Date(effectiveFrom).toISOString();
-    if (effectiveTo) body.effectiveTo = new Date(effectiveTo).toISOString();
+    const body = {
+      schedules: selected.map((s) => ({
+        dayOfWeek: s.day,
+        startTime: s.startTime,
+        durationMinutes,
+        effectiveFrom: effectiveFrom ? new Date(effectiveFrom).toISOString() : undefined,
+        effectiveTo: effectiveTo ? new Date(effectiveTo).toISOString() : undefined,
+      })),
+      autoGenerate: true,
+      horizonDays: 90,
+    };
 
     const response = await fetch(`/api/groups/${groupId}/schedules`, {
       method: "POST",
@@ -75,16 +116,18 @@ export function GroupSchedulesManager({
     const result = await response.json();
 
     if (!response.ok) {
-      setMessage(result.error ?? "Erreur lors de l'ajout du créneau");
+      setMessage(result.error ?? "Erreur lors de l'ajout des créneaux");
       setLoading(false);
       return;
     }
 
-    setSchedules((current) => [...current, result.data]);
-    setMessage("Créneau ajouté avec succès");
+    setSchedules((current) => [...current, ...result.data]);
+    setMessage(
+      `${result.data?.length ?? 0} créneau(x) ajouté(s) — ${result.sessions?.createdCount ?? 0} séance(s) générée(s)`
+    );
     setLoading(false);
-    setStartTime("18:00");
-    setDurationMinutes(60);
+    setDaySelections(dayOrder.map((day) => ({ day, checked: false, startTime: "18:00" })));
+    setDurationMinutes(90);
     setEffectiveFrom("");
     setEffectiveTo("");
   }
@@ -109,46 +152,15 @@ export function GroupSchedulesManager({
     setMessage("Créneau supprimé");
   }
 
-  async function onGenerateSessions() {
-    setGenLoading(true);
-    setGenMessage(null);
-
-    const response = await fetch("/api/sessions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ groupId, horizonDays: 56 }),
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      setGenMessage(result.error ?? "Erreur lors de la génération");
-      setGenLoading(false);
-      return;
-    }
-
-    setGenMessage(
-      `${result.data?.createdCount ?? 0} séance(s) créée(s) / ${result.data?.candidatesCount ?? 0} prévue(s) — ${result.data?.skippedCount ?? 0} existante(s)`
-    );
-    setGenLoading(false);
-  }
-
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-[var(--border)] p-6">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-[var(--foreground)]">Créneaux hebdomadaires</h2>
-          <button
-            type="button"
-            onClick={() => { void onGenerateSessions(); }}
-            disabled={genLoading || schedules.length === 0}
-            className="btn btn-primary"
-          >
-            {genLoading ? "Génération..." : "Générer séances J+56"}
-          </button>
+          <p className="text-sm text-[var(--muted-foreground)]">
+            {schedules.length} jour(s) programmé(s)
+          </p>
         </div>
-
-        <FeedbackMessage message={genMessage} className="mb-3" />
 
         <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
           <table className="w-full text-sm">
@@ -184,7 +196,7 @@ export function GroupSchedulesManager({
               {schedules.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-3 py-5 text-center text-[var(--muted-foreground)]">
-                    Aucun créneau défini. Ajoutez un créneau ci-dessous.
+                    Aucun créneau défini. Sélectionnez les jours ci-dessous.
                   </td>
                 </tr>
               ) : null}
@@ -194,39 +206,82 @@ export function GroupSchedulesManager({
       </div>
 
       <div className="rounded-xl border border-[var(--border)] p-6">
-        <h2 className="text-lg font-semibold text-[var(--foreground)]">Ajouter un créneau</h2>
+        <h2 className="text-lg font-semibold text-[var(--foreground)]">Définir les créneaux hebdomadaires</h2>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-          Définir un jour et une heure de répétition hebdomadaire pour ce groupe.
+          Cochez les jours d&apos;entraînement et définissez l&apos;heure pour chacun. Les séances seront automatiquement générées.
         </p>
 
-        <form onSubmit={onAddSchedule} className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Jour</label>
-            <select value={dayOfWeek} onChange={(e) => setDayOfWeek(e.target.value as DayOfWeekValue)} className="field text-sm" required>
-              {Object.entries(dayLabels).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
+        <form onSubmit={onAddSchedules} className="mt-5 space-y-5">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {daySelections.map((selection) => (
+              <label
+                key={selection.day}
+                className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                  selection.checked
+                    ? "border-[var(--primary)] bg-[var(--primary)]/5"
+                    : "border-[var(--border)] hover:bg-[var(--surface-soft)]"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={selection.checked}
+                  onChange={() => toggleDay(selection.day)}
+                  className="h-4 w-4 accent-[var(--primary)]"
+                />
+                <span className="text-sm font-medium text-[var(--foreground)] flex-1">
+                  {dayLabels[selection.day]}
+                </span>
+                {selection.checked && (
+                  <input
+                    type="time"
+                    value={selection.startTime}
+                    onChange={(e) => updateDayTime(selection.day, e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="field text-sm w-[100px]"
+                    required={selection.checked}
+                  />
+                )}
+              </label>
+            ))}
           </div>
-          <div>
-            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Heure</label>
-            <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="field text-sm" required />
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div>
+              <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Durée par séance (min)</label>
+              <input
+                type="number"
+                min={30}
+                max={240}
+                step={5}
+                value={durationMinutes}
+                onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                className="field text-sm"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Valide du</label>
+              <input
+                type="date"
+                value={effectiveFrom}
+                onChange={(e) => setEffectiveFrom(e.target.value)}
+                className="field text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Valide jusqu&apos;au (optionnel)</label>
+              <input
+                type="date"
+                value={effectiveTo}
+                onChange={(e) => setEffectiveTo(e.target.value)}
+                className="field text-sm"
+              />
+            </div>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Durée (min)</label>
-            <input type="number" min={30} max={240} step={5} value={durationMinutes} onChange={(e) => setDurationMinutes(Number(e.target.value))} className="field text-sm" required />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Valide du</label>
-            <input type="date" value={effectiveFrom} onChange={(e) => setEffectiveFrom(e.target.value)} className="field text-sm" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Valide jusqu&apos;au (optionnel)</label>
-            <input type="date" value={effectiveTo} onChange={(e) => setEffectiveTo(e.target.value)} className="field text-sm" />
-          </div>
-          <div className="flex items-end">
+
+          <div className="flex items-center gap-3">
             <button type="submit" disabled={loading} className="btn btn-primary">
-              {loading ? "Ajout..." : "Ajouter créneau"}
+              {loading ? "Enregistrement..." : "Enregistrer et générer les séances"}
             </button>
           </div>
         </form>

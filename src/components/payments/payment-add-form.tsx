@@ -103,7 +103,7 @@ export function PaymentAddForm({
           ))}
         </select>
         {subscriptions.length === 0 && (
-          <p className="text-xs text-[var(--warning)]">Aucun abonnement actif trouvé. Créez d'abord un abonnement.</p>
+          <p className="text-xs text-[var(--warning)]">Aucun abonnement actif trouvé. Créez d&apos;abord un abonnement.</p>
         )}
       </div>
 

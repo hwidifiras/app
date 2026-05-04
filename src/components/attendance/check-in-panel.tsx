@@ -28,7 +28,6 @@ export function CheckInPanel({ data }: { data: TodayData }) {
     const existingAtt = session?.attendances.find((a) => a.memberId === mid);
 
     let res: Response;
-    let json: { data?: { id: string; status: string }; error?: string; warning?: string };
 
     if (existingAtt) {
       // Update existing attendance via PATCH
@@ -49,7 +48,7 @@ export function CheckInPanel({ data }: { data: TodayData }) {
       });
     }
 
-    json = await res.json();
+    const json: { data?: { id: string; status: string }; error?: string; warning?: string } = await res.json();
     if (!res.ok) {
       setMessage(json.error ?? "Erreur");
       setLoadingId(null);

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Menu, X, Dumbbell } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { LogoutButton } from "@/components/auth/logout-button";
 import {
   navSections,
   settingsSection,
@@ -20,7 +21,8 @@ export function MobileNav() {
 
   // Close drawer on route change
   useEffect(() => {
-    setOpen(false);
+    const id = window.setTimeout(() => setOpen(false), 0);
+    return () => window.clearTimeout(id);
   }, [pathname]);
 
   // Close on Escape
@@ -118,6 +120,10 @@ export function MobileNav() {
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="mt-2 border-t border-[var(--border)] pt-2">
+            <LogoutButton onDone={close} />
           </div>
         </nav>
       </div>

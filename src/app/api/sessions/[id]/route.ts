@@ -58,7 +58,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "JSON invalide" }, { status: 400 });
   }
 
-  const parsed = updateSessionSchema.safeParse(body);
+  if (typeof body !== "object" || body === null) {
+    return NextResponse.json({ error: "Body invalide" }, { status: 400 });
+  }
+
+  const { editMode, ...rest } = body as Record<string, unknown>;
+
+  const parsed = updateSessionSchema.safeParse(rest);
 
   if (!parsed.success) {
     return NextResponse.json(
@@ -72,7 +78,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const existing = await prisma.session.findUnique({
     where: { id },
-    select: { id: true },
+    select: { id: true, scheduleId: true, sessionDate: true, status: true },
   });
 
   if (!existing) {
@@ -80,17 +86,87 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   const payload = parsed.data;
+  const isPermanent = editMode === "permanent";
 
+  const sessionData: Record<string, unknown> = {
+    ...(payload.coachId !== undefined ? { coachId: payload.coachId } : {}),
+    ...(payload.room !== undefined ? { room: payload.room } : {}),
+    ...(payload.startTime !== undefined ? { startTime: payload.startTime } : {}),
+    ...(payload.endTime !== undefined ? { endTime: payload.endTime } : {}),
+    ...(payload.status !== undefined ? { status: payload.status } : {}),
+    ...(payload.exceptionReason !== undefined ? { exceptionReason: payload.exceptionReason } : {}),
+  };
+
+  // If permanent and schedule exists, also update the recurring schedule and future sessions
+  if (isPermanent && existing.scheduleId) {
+    const scheduleUpdate: Record<string, unknown> = {};
+    if (payload.startTime !== undefined) scheduleUpdate.startTime = payload.startTime;
+    if (payload.coachId !== undefined) scheduleUpdate.coachId = payload.coachId;
+    // Note: room is on Group, not GroupSchedule — skipping for schedule update
+
+    const futureSessionUpdate: Record<string, unknown> = {};
+    if (payload.startTime !== undefined) futureSessionUpdate.startTime = payload.startTime;
+    if (payload.endTime !== undefined) futureSessionUpdate.endTime = payload.endTime;
+    if (payload.coachId !== undefined) futureSessionUpdate.coachId = payload.coachId;
+    if (payload.room !== undefined) futureSessionUpdate.room = payload.room;
+
+    await prisma.$transaction([
+      // Update the current session
+      prisma.session.update({
+        where: { id },
+        data: sessionData,
+      }),
+      // Update the recurring schedule
+      prisma.groupSchedule.update({
+        where: { id: existing.scheduleId },
+        data: scheduleUpdate,
+      }),
+      // Update future sessions with the same schedule
+      prisma.session.updateMany({
+        where: {
+          scheduleId: existing.scheduleId,
+          sessionDate: { gte: existing.sessionDate },
+        },
+        data: futureSessionUpdate,
+      }),
+    ]);
+
+    const updated = await prisma.session.findUnique({
+      where: { id },
+      include: {
+        group: { select: { name: true } },
+        coach: { select: { firstName: true, lastName: true } },
+      },
+    });
+
+    if (!updated) {
+      return NextResponse.json({ error: "Séance introuvable après mise à jour" }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      data: {
+        id: updated.id,
+        groupId: updated.groupId,
+        groupName: updated.group.name,
+        scheduleId: updated.scheduleId,
+        sessionDate: updated.sessionDate.toISOString(),
+        startTime: updated.startTime,
+        endTime: updated.endTime,
+        coachId: updated.coachId,
+        coachName: updated.coach ? `${updated.coach.firstName} ${updated.coach.lastName}` : null,
+        room: updated.room,
+        status: updated.status,
+        exceptionReason: updated.exceptionReason,
+        createdAt: updated.createdAt.toISOString(),
+        updatedAt: updated.updatedAt.toISOString(),
+      },
+    });
+  }
+
+  // Exception mode or no schedule — just update this session
   const updated = await prisma.session.update({
     where: { id },
-    data: {
-      ...(payload.coachId !== undefined ? { coachId: payload.coachId } : {}),
-      ...(payload.room !== undefined ? { room: payload.room } : {}),
-      ...(payload.startTime !== undefined ? { startTime: payload.startTime } : {}),
-      ...(payload.endTime !== undefined ? { endTime: payload.endTime } : {}),
-      ...(payload.status !== undefined ? { status: payload.status } : {}),
-      ...(payload.exceptionReason !== undefined ? { exceptionReason: payload.exceptionReason } : {}),
-    },
+    data: sessionData,
     include: {
       group: { select: { name: true } },
       coach: { select: { firstName: true, lastName: true } },

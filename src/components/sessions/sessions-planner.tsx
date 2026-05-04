@@ -63,6 +63,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
     status: "" as SessionStatusDto | "",
     exceptionReason: "",
   });
+  const [editMode, setEditMode] = useState<"exception" | "permanent" | null>(null);
   const [editLoading, setEditLoading] = useState(false);
   const [editMessage, setEditMessage] = useState<string | null>(null);
 
@@ -132,11 +133,13 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
       status: session.status,
       exceptionReason: session.exceptionReason ?? "",
     });
+    setEditMode("exception");
     setEditMessage(null);
   }
 
   function closeEdit() {
     setEditingSession(null);
+    setEditMode(null);
     setEditLoading(false);
     setEditMessage(null);
   }
@@ -146,7 +149,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
     setEditLoading(true);
     setEditMessage(null);
 
-    const body: Record<string, unknown> = {};
+    const body: Record<string, unknown> = { editMode };
     if (editForm.coachId) body.coachId = editForm.coachId;
     if (editForm.room) body.room = editForm.room;
     if (editForm.startTime) body.startTime = editForm.startTime;
@@ -436,16 +439,46 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
 
             <FeedbackMessage message={editMessage} className="mt-3" />
 
-            <div className="mt-5 flex items-center justify-end gap-2">
-              <button type="button" onClick={closeEdit} className="btn btn-ghost">Annuler</button>
-              <button
-                type="button"
-                onClick={() => { void saveEdit(); }}
-                disabled={editLoading || (editForm.status === "CANCELLED" && !editForm.exceptionReason.trim())}
-                className="btn btn-primary"
-              >
-                {editLoading ? "Enregistrement..." : "Enregistrer"}
-              </button>
+            <div className="mt-5 border-t border-[var(--border)] pt-4">
+              <p className="text-xs font-medium text-[var(--muted-foreground)] mb-2">Type de modification</p>
+              <div className="flex gap-2 mb-4">
+                <button
+                  type="button"
+                  onClick={() => setEditMode("exception")}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                    editMode === "exception"
+                      ? "border-[var(--primary)] bg-[var(--primary)]/5 text-[var(--foreground)]"
+                      : "border-[var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)]"
+                  }`}
+                >
+                  <span className="block font-medium">Exception</span>
+                  <span className="text-xs">Cette séance uniquement</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditMode("permanent")}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                    editMode === "permanent"
+                      ? "border-[var(--primary)] bg-[var(--primary)]/5 text-[var(--foreground)]"
+                      : "border-[var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)]"
+                  }`}
+                >
+                  <span className="block font-medium">Permanent</span>
+                  <span className="text-xs">Toutes les prochaines semaines</span>
+                </button>
+              </div>
+
+              <div className="flex items-center justify-end gap-2">
+                <button type="button" onClick={closeEdit} className="btn btn-ghost">Annuler</button>
+                <button
+                  type="button"
+                  onClick={() => { void saveEdit(); }}
+                  disabled={editLoading || (editForm.status === "CANCELLED" && !editForm.exceptionReason.trim())}
+                  className="btn btn-primary"
+                >
+                  {editLoading ? "Enregistrement..." : "Enregistrer"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

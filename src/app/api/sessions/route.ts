@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { utcDateOnlyForTimeZone } from "@/lib/dates";
 import { generateSessionsSchema } from "@/lib/schemas/session";
 
 export const runtime = "nodejs";
@@ -17,14 +18,8 @@ const dayToIndex: Record<DayOfWeekValue, number> = {
   SATURDAY: 6,
 };
 
-function startOfDay(date: Date) {
-  const copy = new Date(date);
-  copy.setHours(0, 0, 0, 0);
-  return copy;
-}
-
 function toUtcDateOnly(date: Date) {
-  return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  return utcDateOnlyForTimeZone(date);
 }
 
 function addMinutesToTime(startTime: string, durationMinutes: number) {
@@ -125,9 +120,9 @@ export async function POST(request: Request) {
   const horizonDays = parsed.data.horizonDays ?? 56;
   const bodyGroupId = typeof body === "object" && body !== null && "groupId" in body ? (body as { groupId?: string }).groupId : undefined;
 
-  const startDate = startOfDay(new Date());
-  const endDate = startOfDay(new Date());
-  endDate.setDate(endDate.getDate() + horizonDays);
+  const startDate = toUtcDateOnly(new Date());
+  const endDate = new Date(startDate);
+  endDate.setUTCDate(endDate.getUTCDate() + horizonDays);
 
   const groups = await prisma.group.findMany({
     where: {
@@ -157,16 +152,16 @@ export async function POST(request: Request) {
 
   for (const group of groups) {
     for (const schedule of group.schedules) {
-      const effectiveFrom = startOfDay(schedule.effectiveFrom);
-      const effectiveTo = schedule.effectiveTo ? startOfDay(schedule.effectiveTo) : null;
+      const effectiveFrom = toUtcDateOnly(schedule.effectiveFrom);
+      const effectiveTo = schedule.effectiveTo ? toUtcDateOnly(schedule.effectiveTo) : null;
 
-      for (let cursor = new Date(startDate); cursor <= endDate; cursor.setDate(cursor.getDate() + 1)) {
-        const dayMatch = cursor.getDay() === dayToIndex[schedule.dayOfWeek as DayOfWeekValue];
+      for (let cursor = new Date(startDate); cursor <= endDate; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
+        const dayMatch = cursor.getUTCDay() === dayToIndex[schedule.dayOfWeek as DayOfWeekValue];
         if (!dayMatch) {
           continue;
         }
 
-        const cursorDate = startOfDay(cursor);
+        const cursorDate = cursor;
 
         if (cursorDate < effectiveFrom) {
           continue;

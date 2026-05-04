@@ -1,17 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { CheckInPanel } from "@/components/attendance/check-in-panel";
+import { utcDateOnlyForTimeZone } from "@/lib/dates";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
-function toUtcDateOnly(date: Date) {
-  return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-}
-
 export default async function AttendanceTodayPage() {
-  const today = toUtcDateOnly(new Date());
+  const today = utcDateOnlyForTimeZone(new Date());
   const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
 
   let sessions = [] as Array<{
     id: string;

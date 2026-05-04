@@ -17,21 +17,18 @@ export type SessionCardData = {
   attendances: Array<{ id: string; memberId: string; status: string }>;
 };
 
-export type WindowState = "UPCOMING" | "OPEN" | "CLOSED";
+export type WindowState = "UPCOMING" | "OPEN";
 
 function buildSessionStart(startTime: string, now: Date): Date {
   const [h, m] = startTime.split(":").map(Number);
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), h, m, 0, 0));
+  // Use the device's local date so the UX matches the club's real-world day.
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
 }
 
 export function getWindowState(startTime: string, now: Date): WindowState {
   const sessionStart = buildSessionStart(startTime, now);
-  const windowStart = new Date(sessionStart.getTime() - 30 * 60 * 1000);
-  const windowEnd = new Date(sessionStart.getTime() + 30 * 60 * 1000);
-
-  if (now < windowStart) return "UPCOMING";
-  if (now <= windowEnd) return "OPEN";
-  return "CLOSED";
+  if (now < sessionStart) return "UPCOMING";
+  return "OPEN";
 }
 
 export function getWindowLabel(startTime: string, now: Date): string {
@@ -45,12 +42,7 @@ export function getWindowLabel(startTime: string, now: Date): string {
     if (diffH > 0) return `Ouverture dans ${diffH}h${remMin > 0 ? ` ${remMin}min` : ""}`;
     return `Ouverture dans ${diffMin} min`;
   }
-  if (state === "OPEN") {
-    const windowEnd = new Date(sessionStart.getTime() + 30 * 60 * 1000);
-    const diffMin = Math.ceil((windowEnd.getTime() - now.getTime()) / 60000);
-    return `Pointage fermeture dans ${diffMin} min`;
-  }
-  return "Pointage fermé";
+  return "Pointage disponible";
 }
 
 export function SessionCard({
@@ -80,7 +72,6 @@ export function SessionCard({
   const stateStyles: Record<WindowState, string> = {
     UPCOMING: "border-dashed border-[var(--border)] bg-white",
     OPEN: "border-[var(--success)] bg-[var(--success)]/[0.02] shadow-[0_0_0_1px_rgba(16,185,129,0.15)]",
-    CLOSED: "border-[var(--border)] bg-[var(--surface-soft)] opacity-70",
   };
 
   const stateBadge: Record<WindowState, { text: string; className: string; icon: React.ReactNode }> = {
@@ -90,18 +81,11 @@ export function SessionCard({
       icon: <Clock className="size-3" />,
     },
     OPEN: {
-      text: "Pointage ouvert",
+      text: "Pointage",
       className: "bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/20",
       icon: <CheckCircle2 className="size-3" />,
     },
-    CLOSED: {
-      text: "Fermé",
-      className: "bg-[var(--muted)]/10 text-[var(--muted-foreground)] border-[var(--border)]",
-      icon: <XCircle className="size-3" />,
-    },
   };
-
-  const isDisabled = state === "CLOSED";
 
   // Mini preview: first 3 checked-in members
   const checkedMembers = session.attendances
@@ -116,15 +100,14 @@ export function SessionCard({
   return (
     <div
       role="button"
-      tabIndex={isDisabled ? -1 : 0}
-      aria-disabled={isDisabled}
-      onClick={isDisabled ? undefined : onSelect}
-      onKeyDown={isDisabled ? undefined : (e) => { if (e.key === "Enter" || e.key === " ") onSelect(); }}
+      tabIndex={0}
+      onClick={onSelect}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onSelect(); }}
       className={`relative w-full rounded-xl border transition-all ${
         isSelected && state === "OPEN"
           ? "ring-2 ring-[var(--success)] shadow-lg shadow-[var(--success)]/10"
           : ""
-      } ${stateStyles[state]} ${isDisabled ? "cursor-not-allowed" : "cursor-pointer hover:shadow-lg"}`}
+      } ${stateStyles[state]} cursor-pointer hover:shadow-lg`}
     >
       {/* Top accent bar */}
       {state === "OPEN" && (
@@ -284,16 +267,14 @@ export function SessionCard({
             <Clock className="size-3 text-[var(--muted-foreground)]" />
             <p className="text-[0.65rem] text-[var(--muted-foreground)]">{label}</p>
           </div>
-          {(state === "OPEN" || state === "UPCOMING") && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onCoachAbsent(); }}
-              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[0.65rem] font-medium text-[var(--warning)] hover:bg-[var(--warning)]/10 transition-colors"
-              title="Signaler coach absent"
-            >
-              <AlertTriangle className="size-3" />
-              Coach absent
-            </button>
-          )}
+          <button
+            onClick={(e) => { e.stopPropagation(); onCoachAbsent(); }}
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[0.65rem] font-medium text-[var(--warning)] hover:bg-[var(--warning)]/10 transition-colors"
+            title="Signaler coach absent"
+          >
+            <AlertTriangle className="size-3" />
+            Coach absent
+          </button>
         </div>
       </div>
     </div>
