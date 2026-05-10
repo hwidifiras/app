@@ -6,10 +6,9 @@ import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { SessionCard, type SessionCardData } from "./session-card";
 import { CheckInDrawer } from "./check-in-drawer";
 
-type TodayData = { sessions: SessionCardData[]; activeSubscriptionMemberIds: string[]; now: string };
+type TodayData = { sessions: SessionCardData[]; activeSubscriptionMemberIds: string[] };
 
 export function CheckInPanel({ data }: { data: TodayData }) {
-  const now = new Date(data.now);
   const [sessions, setSessions] = useState(data.sessions);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -82,7 +81,6 @@ export function CheckInPanel({ data }: { data: TodayData }) {
           <SessionCard
             key={s.id}
             session={s}
-            now={now}
             isSelected={selectedId === s.id}
             onSelect={() => setSelectedId(s.id)}
             postponeHref={`/sessions/${s.id}/postpone`}

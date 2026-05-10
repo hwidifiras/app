@@ -5,6 +5,13 @@ import { createGroupMemberSchema, updateGroupMemberSchema } from "@/lib/schemas/
 
 export const runtime = "nodejs";
 
+function isMemberAllowed(groupType: "KIDS" | "ADULTS", memberType: "KID" | "ADULT" | "NOT_SPECIFIED") {
+  if (groupType === "KIDS") {
+    return memberType === "KID" || memberType === "NOT_SPECIFIED";
+  }
+  return memberType === "ADULT" || memberType === "NOT_SPECIFIED";
+}
+
 function toGroupMemberDto(item: {
   id: string;
   groupId: string;
@@ -159,7 +166,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const group = await prisma.group.findUnique({ where: { id: parsed.data.groupId }, select: { id: true, isActive: true } });
+  const group = await prisma.group.findUnique({
+    where: { id: parsed.data.groupId },
+    select: { id: true, isActive: true, groupType: true, sportId: true },
+  });
   if (!group) {
     return NextResponse.json({ error: "Groupe introuvable" }, { status: 404 });
   }
@@ -168,13 +178,41 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Impossible d'affecter un groupe inactif" }, { status: 409 });
   }
 
-  const member = await prisma.member.findUnique({ where: { id: parsed.data.memberId }, select: { id: true, status: true } });
+  const member = await prisma.member.findUnique({
+    where: { id: parsed.data.memberId },
+    select: { id: true, status: true, memberType: true },
+  });
   if (!member) {
     return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
   }
 
   if (member.status !== "ACTIVE") {
     return NextResponse.json({ error: "Impossible d'affecter un membre archivé" }, { status: 409 });
+  }
+
+  if (!isMemberAllowed(group.groupType, member.memberType)) {
+    return NextResponse.json({ error: "Type de membre incompatible avec ce groupe" }, { status: 409 });
+  }
+
+  const now = new Date();
+  const activeSub = await prisma.memberSubscription.findFirst({
+    where: {
+      memberId: parsed.data.memberId,
+      status: "ACTIVE",
+      startDate: { lte: now },
+      OR: [{ endDate: null }, { endDate: { gte: now } }],
+      remainingSessions: { gt: 0 },
+    },
+    select: { id: true, plan: { select: { sportId: true } } },
+    orderBy: { endDate: "asc" },
+  });
+
+  if (!activeSub) {
+    return NextResponse.json({ error: "Le membre doit avoir un abonnement actif pour être affecté à un groupe" }, { status: 403 });
+  }
+
+  if (activeSub.plan.sportId && activeSub.plan.sportId !== group.sportId) {
+    return NextResponse.json({ error: "L'abonnement actif du membre n'est pas compatible avec le sport de ce groupe" }, { status: 403 });
   }
 
   const capacityCheck = await ensureCapacity(parsed.data.groupId);
@@ -252,7 +290,10 @@ export async function PATCH(request: Request) {
   const payload = updatePayload.data;
 
   try {
-    const existing = await prisma.groupMember.findUnique({ where: { id: groupMemberId }, select: { id: true, groupId: true } });
+    const existing = await prisma.groupMember.findUnique({ 
+      where: { id: groupMemberId }, 
+      select: { id: true, groupId: true, memberId: true, group: { select: { sportId: true } } } 
+    });
     if (!existing) {
       return NextResponse.json({ error: "Affectation introuvable" }, { status: 404 });
     }
@@ -261,6 +302,27 @@ export async function PATCH(request: Request) {
       const capacityCheck = await ensureCapacity(existing.groupId, groupMemberId);
       if (!capacityCheck.ok) {
         return NextResponse.json({ error: capacityCheck.error }, { status: capacityCheck.status });
+      }
+
+      const now = new Date();
+      const activeSub = await prisma.memberSubscription.findFirst({
+        where: {
+          memberId: existing.memberId,
+          status: "ACTIVE",
+          startDate: { lte: now },
+          OR: [{ endDate: null }, { endDate: { gte: now } }],
+          remainingSessions: { gt: 0 },
+        },
+        select: { id: true, plan: { select: { sportId: true } } },
+        orderBy: { endDate: "asc" },
+      });
+
+      if (!activeSub) {
+        return NextResponse.json({ error: "Le membre doit avoir un abonnement actif pour être réaffecté à un groupe" }, { status: 403 });
+      }
+
+      if (activeSub.plan.sportId && activeSub.plan.sportId !== existing.group.sportId) {
+        return NextResponse.json({ error: "L'abonnement actif du membre n'est pas compatible avec le sport de ce groupe" }, { status: 403 });
       }
 
       const existingMember = await prisma.groupMember.findUnique({

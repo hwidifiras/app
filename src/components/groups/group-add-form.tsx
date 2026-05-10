@@ -41,7 +41,6 @@ export function GroupAddForm({
     const matchesQuery = `${member.firstName} ${member.lastName}`.toLowerCase().includes(query) || member.phone.toLowerCase().includes(query);
     return matchesQuery;
   }).filter((member) => isMemberAllowed(member.memberType));
-  });
 
   function toggleMemberSelection(memberId: string) {
     setSelectedMemberIds((current) =>

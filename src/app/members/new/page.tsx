@@ -58,7 +58,7 @@ export default async function NewMemberPage() {
       <PageHeader
         overline="Parcours réception"
         title="Nouvelle inscription"
-        description="Créer un membre, l’affecter à un groupe et souscrire un abonnement en une seule étape. Les champs marqués * sont obligatoires."
+        description="Créer un membre, l’affecter à un groupe et souscrire un abonnement obligatoire en une seule étape. Les champs marqués * sont obligatoires."
       />
 
       <section className="panel panel-soft p-6">

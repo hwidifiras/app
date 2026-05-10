@@ -8,7 +8,7 @@ export default async function NewGroupPage() {
   let hasError = false;
   let sportsOptions: Array<{ id: string; name: string; description: string | null; isActive: boolean; createdAt: string; updatedAt: string }> = [];
   let coachesOptions: Array<{ id: string; firstName: string; lastName: string; phone: string; email: string | null; isActive: boolean; sportId: string | null; sportName: string | null; createdAt: string; updatedAt: string }> = [];
-  let membersOptions: Array<{ id: string; firstName: string; lastName: string; phone: string; email: string | null; memberType: "ADULT" | "KID" | "NOT_SPECIFIED"; status: "ACTIVE" | "ARCHIVED"; joinedAt: string; archivedAt: string | null; createdAt: string; updatedAt: string }> = [];
+  let membersOptions: Array<{ id: string; firstName: string; lastName: string; phone: string; email: string | null; memberType: "ADULT" | "KID" | "NOT_SPECIFIED"; status: "ACTIVE" | "ARCHIVED"; birthDate: string | null; address: string | null; parentName: string | null; parentPhone: string | null; parentAddress: string | null; paymentStatus: string; joinedAt: string; archivedAt: string | null; createdAt: string; updatedAt: string; groupIds: string[]; }> = [];
 
   try {
     const [sports, coaches, members] = await Promise.all([
@@ -44,11 +44,18 @@ export default async function NewGroupPage() {
       phone: m.phone,
       email: m.email,
       memberType: m.memberType,
+      birthDate: m.birthDate?.toISOString() ?? null,
+      address: m.address ?? null,
+      parentName: m.parentName ?? null,
+      parentPhone: m.parentPhone ?? null,
+      parentAddress: m.parentAddress ?? null,
       status: m.status,
+      paymentStatus: "UNPAID",
       joinedAt: m.joinedAt.toISOString(),
       archivedAt: m.archivedAt?.toISOString() ?? null,
       createdAt: m.createdAt.toISOString(),
       updatedAt: m.updatedAt.toISOString(),
+      groupIds: [],
     }));
   } catch {
     hasError = true;

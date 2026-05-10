@@ -20,6 +20,7 @@ export async function GET(request: Request) {
       : undefined,
     orderBy: { createdAt: "desc" },
     take: 50,
+    include: { sport: { select: { id: true, name: true } } },
   });
 
   return NextResponse.json({ data: plans });
@@ -57,6 +58,7 @@ export async function POST(request: Request) {
         totalSessions: parsed.data.totalSessions,
         sessionsPerWeek: parsed.data.sessionsPerWeek ?? null,
         validityDays: parsed.data.validityDays,
+        sportId: parsed.data.sportId || null,
       },
     });
 
@@ -125,6 +127,7 @@ export async function PATCH(request: Request) {
         sessionsPerWeek: payload.sessionsPerWeek,
         validityDays: payload.validityDays,
         isActive: payload.isActive,
+        sportId: payload.sportId === undefined ? undefined : payload.sportId === "" ? null : payload.sportId,
       },
     });
 

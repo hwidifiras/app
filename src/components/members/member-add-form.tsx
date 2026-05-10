@@ -26,6 +26,10 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
   const [parentAddress, setParentAddress] = useState("");
   const [groupId, setGroupId] = useState("");
   const [planId, setPlanId] = useState("");
+    const [paymentAmount, setPaymentAmount] = useState("");
+    const [paymentMethod, setPaymentMethod] = useState("CASH");
+    const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().split("T")[0]);
+    const [paymentNotes, setPaymentNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -40,6 +44,8 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
     setLoading(true);
     setMessage(null);
 
+    const paymentCents = Math.round(parseFloat(paymentAmount.replace(",", ".")) * 100) || 0;
+
     const payload: Record<string, unknown> = {
       firstName,
       lastName,
@@ -53,7 +59,13 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
       parentAddress: memberType === "KID" ? parentAddress : "",
     };
     if (groupId) payload.groupId = groupId;
-    if (planId) payload.subscriptionPlanId = planId;
+    payload.subscriptionPlanId = planId;
+    if (paymentCents > 0) {
+      payload.paymentAmount = paymentCents;
+      payload.paymentMethod = paymentMethod;
+      payload.paymentDate = paymentDate ? new Date(paymentDate).toISOString() : undefined;
+      payload.paymentNotes = paymentNotes;
+    }
 
     const response = await fetch("/api/members", {
       method: "POST",
@@ -82,6 +94,10 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
     setParentAddress("");
     setGroupId("");
     setPlanId("");
+    setPaymentAmount("");
+    setPaymentMethod("CASH");
+    setPaymentDate(new Date().toISOString().split("T")[0]);
+    setPaymentNotes("");
     setLoading(false);
 
     setTimeout(() => {
@@ -233,8 +249,9 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
               value={planId}
               onChange={(e) => setPlanId(e.target.value)}
               className="field"
+              required
             >
-              <option value="">Aucun</option>
+              <option value="">Sélectionner un plan</option>
               {plansOptions.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name} — {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(p.price / 100)}
@@ -253,6 +270,60 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
             </p>
           </div>
         )}
+
+        {selectedPlan ? (
+          <div className="rounded-xl border border-[var(--border)] p-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
+              Paiement à l'inscription (optionnel)
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Montant (€)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  className="field"
+                  placeholder="Ex: 49.90"
+                />
+                <p className="mt-1 text-[0.7rem] text-[var(--muted-foreground)]">
+                  Montant dû: {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(selectedPlan.price / 100)}
+                </p>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Méthode</label>
+                <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="field">
+                  <option value="CASH">Espèces</option>
+                  <option value="CARD">Carte bancaire</option>
+                  <option value="TRANSFER">Virement</option>
+                  <option value="CHECK">Chèque</option>
+                </select>
+              </div>
+            </div>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Date de paiement</label>
+                <input
+                  type="date"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                  className="field"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Notes</label>
+                <input
+                  value={paymentNotes}
+                  onChange={(e) => setPaymentNotes(e.target.value)}
+                  className="field"
+                  placeholder="Remarque..."
+                />
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <FeedbackMessage message={message} />

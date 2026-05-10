@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { Users, Dumbbell, User, Archive, ArrowRight } from "lucide-react";
+import { Users, Dumbbell, User, Archive, ArrowRight, Wallet, ClipboardCheck, Activity } from "lucide-react";
+import { utcDateOnlyForTimeZone } from "@/lib/dates";
 
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -23,14 +24,15 @@ type DashboardSport = {
 
 type KpiCardProps = {
   label: string;
-  value: number;
+  value: number | string;
   icon: React.ReactNode;
   color: string;
+  href?: string;
 };
 
-function KpiCard({ label, value, icon, color }: KpiCardProps) {
-  return (
-    <Card className="relative overflow-hidden">
+function KpiCard({ label, value, icon, color, href }: KpiCardProps) {
+  const content = (
+    <Card className={`relative overflow-hidden transition ${href ? "hover:shadow-md" : ""}`}>
       <CardContent className="flex items-center gap-4 p-5">
         <div className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${color}`}>
           {icon}
@@ -42,6 +44,18 @@ function KpiCard({ label, value, icon, color }: KpiCardProps) {
       </CardContent>
     </Card>
   );
+
+  if (!href) return content;
+
+  return (
+    <Link href={href} className="block" aria-label={label}>
+      {content}
+    </Link>
+  );
+}
+
+function formatCurrency(cents: number) {
+  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
 }
 
 export default async function Home() {
@@ -52,10 +66,17 @@ export default async function Home() {
   let totalSports = 0;
   let activeCoaches = 0;
   let totalCoaches = 0;
+  let activeSubscriptions = 0;
+  let attendanceToday = 0;
+  let revenueToday = 0;
   let membersRows: DashboardMember[] = [];
   let sportsRows: DashboardSport[] = [];
 
   try {
+    const today = utcDateOnlyForTimeZone(new Date());
+    const tomorrow = new Date(today);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+
     const [
       fetchedActiveMembers,
       fetchedArchivedMembers,
@@ -63,6 +84,9 @@ export default async function Home() {
       fetchedTotalSports,
       fetchedActiveCoaches,
       fetchedTotalCoaches,
+      fetchedActiveSubscriptions,
+      fetchedAttendanceToday,
+      fetchedRevenueToday,
       fetchedRecentMembers,
       fetchedRecentSports,
     ] = await Promise.all([
@@ -72,6 +96,24 @@ export default async function Home() {
       prisma.sport.count(),
       prisma.coach.count({ where: { isActive: true } }),
       prisma.coach.count(),
+      prisma.memberSubscription.count({
+        where: {
+          status: "ACTIVE",
+          startDate: { lte: new Date() },
+          OR: [{ endDate: null }, { endDate: { gte: new Date() } }],
+          remainingSessions: { gt: 0 },
+        },
+      }),
+      prisma.attendance.count({
+        where: {
+          status: { in: ["PRESENT", "OVERRIDE"] },
+          session: { sessionDate: { gte: today, lt: tomorrow } },
+        },
+      }),
+      prisma.payment.aggregate({
+        _sum: { amount: true },
+        where: { paymentDate: { gte: today, lt: tomorrow } },
+      }),
       prisma.member.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
       prisma.sport.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
     ]);
@@ -82,6 +124,9 @@ export default async function Home() {
     totalSports = fetchedTotalSports;
     activeCoaches = fetchedActiveCoaches;
     totalCoaches = fetchedTotalCoaches;
+    activeSubscriptions = fetchedActiveSubscriptions;
+    attendanceToday = fetchedAttendanceToday;
+    revenueToday = fetchedRevenueToday._sum.amount ?? 0;
     membersRows = fetchedRecentMembers;
     sportsRows = fetchedRecentSports;
   } catch (error) {
@@ -113,13 +158,11 @@ export default async function Home() {
         </div>
       ) : null}
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <KpiCard label="Membres actifs" value={activeMembers} icon={<Users className="size-5 text-white" />} color="bg-[var(--primary)]" />
-        <KpiCard label="Membres archivés" value={archivedMembers} icon={<Archive className="size-5 text-white" />} color="bg-slate-500" />
-        <KpiCard label="Sports actifs" value={activeSports} icon={<Dumbbell className="size-5 text-white" />} color="bg-emerald-600" />
-        <KpiCard label="Total sports" value={totalSports} icon={<Dumbbell className="size-5 text-white" />} color="bg-emerald-400" />
-        <KpiCard label="Coachs actifs" value={activeCoaches} icon={<User className="size-5 text-white" />} color="bg-violet-600" />
-        <KpiCard label="Total coachs" value={totalCoaches} icon={<User className="size-5 text-white" />} color="bg-violet-400" />
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiCard label="Membres actifs" value={activeMembers} icon={<Users className="size-5 text-white" />} color="bg-[var(--primary)]" href="/members" />
+        <KpiCard label="CA du jour" value={formatCurrency(revenueToday)} icon={<Wallet className="size-5 text-white" />} color="bg-amber-500" href="/payments" />
+        <KpiCard label="Séances pointées" value={attendanceToday} icon={<Activity className="size-5 text-white" />} color="bg-sky-500" href="/attendance/today" />
+        <KpiCard label="Abonnements actifs" value={activeSubscriptions} icon={<ClipboardCheck className="size-5 text-white" />} color="bg-rose-500" href="/subscriptions" />
       </section>
 
       <section className="mt-7 grid gap-5 lg:grid-cols-2">

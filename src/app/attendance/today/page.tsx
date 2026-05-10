@@ -41,6 +41,7 @@ export default async function AttendanceTodayPage() {
       include: {
         group: {
           include: {
+            sport: { select: { id: true } },
             members: {
               where: { status: "ACTIVE" },
               include: {
@@ -62,7 +63,7 @@ export default async function AttendanceTodayPage() {
 
     // Collect all member IDs from sessions to check subscriptions
     const memberIds = Array.from(
-      new Set(sessions.flatMap((s) => s.group.members.map((gm) => gm.memberId)))
+      new Set(rawSessions.flatMap((s) => s.group.members.map((gm) => gm.memberId)))
     );
 
     if (memberIds.length > 0) {
@@ -75,9 +76,36 @@ export default async function AttendanceTodayPage() {
           OR: [{ endDate: null }, { endDate: { gte: now } }],
           remainingSessions: { gt: 0 },
         },
-        select: { memberId: true },
+        select: { 
+          memberId: true,
+          amount: true,
+          payments: { select: { amount: true } },
+          plan: { select: { sportId: true } }
+        },
       });
-      activeSubscriptionMemberIds = Array.from(new Set(subs.map((s) => s.memberId)));
+
+      const validKeys = new Set<string>();
+
+      for (const session of rawSessions) {
+        const sessionSportId = session.group.sportId;
+
+        for (const member of session.group.members) {
+          const memberSubs = subs.filter((s) => s.memberId === member.memberId);
+          
+          const hasValidSub = memberSubs.some((sub) => {
+            const totalPaid = sub.payments.reduce((acc, p) => acc + p.amount, 0);
+            if (totalPaid < sub.amount) return false;
+            if (sub.plan.sportId && sub.plan.sportId !== sessionSportId) return false;
+            return true;
+          });
+
+          if (hasValidSub) {
+            validKeys.add(`${session.id}_${member.memberId}`);
+          }
+        }
+      }
+
+      activeSubscriptionMemberIds = Array.from(validKeys);
     }
   } catch {
     hasError = true;
@@ -120,7 +148,7 @@ export default async function AttendanceTodayPage() {
       />
 
       <section className="panel panel-soft p-4 md:p-6">
-        <CheckInPanel data={{ sessions, activeSubscriptionMemberIds, now: new Date().toISOString() }} />
+        <CheckInPanel data={{ sessions, activeSubscriptionMemberIds }} />
       </section>
     </main>
   );

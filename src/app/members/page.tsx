@@ -18,6 +18,7 @@ export default async function MembersPage() {
     parentPhone: string | null;
     parentAddress: string | null;
     status: "ACTIVE" | "ARCHIVED";
+    paymentStatus: "PAID" | "PARTIAL" | "UNPAID";
     joinedAt: string;
     archivedAt: string | null;
     createdAt: string;
@@ -25,10 +26,11 @@ export default async function MembersPage() {
     groupIds: string[];
   }> = [];
 
-  let groupsOptions: Array<{ id: string; name: string }> = [];
+  let groupsOptions: Array<{ id: string; name: string; sportId: string }> = [];
+  let sportsOptions: Array<{ id: string; name: string }> = [];
 
   try {
-    const [members, groups] = await Promise.all([
+    const [members, groups, sports] = await Promise.all([
       prisma.member.findMany({
         orderBy: { createdAt: "desc" },
         take: 200,
@@ -37,16 +39,43 @@ export default async function MembersPage() {
             where: { status: "ACTIVE" },
             select: { groupId: true },
           },
+          subscriptions: {
+            where: { status: "ACTIVE" },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: {
+              amount: true,
+              payments: { select: { amount: true } },
+            },
+          },
         },
       }),
       prisma.group.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true, sportId: true },
+        orderBy: { name: "asc" },
+      }),
+      prisma.sport.findMany({
         where: { isActive: true },
         select: { id: true, name: true },
         orderBy: { name: "asc" },
       }),
     ]);
 
-    initialMembers = members.map((member) => ({
+    initialMembers = members.map((member) => {
+      const subscription = member.subscriptions[0];
+      const totalPaid = subscription
+        ? subscription.payments.reduce((sum, p) => sum + p.amount, 0)
+        : 0;
+      const paymentStatus = subscription
+        ? totalPaid >= subscription.amount
+          ? "PAID"
+          : totalPaid > 0
+            ? "PARTIAL"
+            : "UNPAID"
+        : "UNPAID";
+
+      return {
       id: member.id,
       firstName: member.firstName,
       lastName: member.lastName,
@@ -59,14 +88,17 @@ export default async function MembersPage() {
       parentPhone: member.parentPhone ?? null,
       parentAddress: member.parentAddress ?? null,
       status: member.status,
+      paymentStatus,
       joinedAt: member.joinedAt.toISOString(),
       archivedAt: member.archivedAt?.toISOString() ?? null,
       createdAt: member.createdAt.toISOString(),
       updatedAt: member.updatedAt.toISOString(),
       groupIds: (member.groups as unknown as Array<{ groupId: string }>).map((g) => g.groupId),
-    }));
+      };
+    });
 
-    groupsOptions = groups.map((g) => ({ id: g.id, name: g.name }));
+    groupsOptions = groups.map((g) => ({ id: g.id, name: g.name, sportId: g.sportId }));
+    sportsOptions = sports.map((s) => ({ id: s.id, name: s.name }));
   } catch (error) {
     hasMemberDataError = true;
     console.error("Members page degraded mode due to Prisma model mismatch:", error);
@@ -101,7 +133,11 @@ export default async function MembersPage() {
       />
 
       <section className="panel p-5">
-        <MemberListClient initialMembers={initialMembers} groupsOptions={groupsOptions} />
+        <MemberListClient
+          initialMembers={initialMembers}
+          groupsOptions={groupsOptions}
+          sportsOptions={sportsOptions}
+        />
       </section>
     </main>
   );

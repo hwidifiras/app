@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Clock, Users, DoorOpen, CalendarClock, CheckCircle2, XCircle, HelpCircle, User } from "lucide-react";
+import { Clock, Users, DoorOpen, CalendarClock, CheckCircle2, XCircle, User } from "lucide-react";
 
 export type SessionCardData = {
   id: string;
@@ -17,75 +17,28 @@ export type SessionCardData = {
   coach: { firstName: string; lastName: string } | null;
   attendances: Array<{ id: string; memberId: string; status: string }>;
 };
-
-export type WindowState = "UPCOMING" | "OPEN";
-
-function buildSessionStart(startTime: string, now: Date): Date {
-  const [h, m] = startTime.split(":").map(Number);
-  // Use the device's local date so the UX matches the club's real-world day.
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
-}
-
-export function getWindowState(startTime: string, now: Date): WindowState {
-  const sessionStart = buildSessionStart(startTime, now);
-  if (now < sessionStart) return "UPCOMING";
-  return "OPEN";
-}
-
-export function getWindowLabel(startTime: string, now: Date): string {
-  const state = getWindowState(startTime, now);
-  const sessionStart = buildSessionStart(startTime, now);
-
-  if (state === "UPCOMING") {
-    const diffMin = Math.ceil((sessionStart.getTime() - now.getTime()) / 60000);
-    const diffH = Math.floor(diffMin / 60);
-    const remMin = diffMin % 60;
-    if (diffH > 0) return `Ouverture dans ${diffH}h${remMin > 0 ? ` ${remMin}min` : ""}`;
-    return `Ouverture dans ${diffMin} min`;
-  }
-  return "Pointage disponible";
-}
-
 export function SessionCard({
   session,
-  now,
   isSelected,
   onSelect,
   postponeHref,
 }: {
   session: SessionCardData;
-  now: Date;
   isSelected: boolean;
   onSelect: () => void;
   postponeHref: string;
 }) {
-  const state = getWindowState(session.startTime, now);
-  const label = getWindowLabel(session.startTime, now);
+  const label = "Pointage disponible";
 
   const present = session.attendances.filter((a) => a.status === "PRESENT").length;
   const absent = session.attendances.filter((a) => a.status === "ABSENT").length;
-  const excused = session.attendances.filter((a) => a.status === "EXCUSED").length;
   const total = session.group.members.length;
-  const checked = present + absent + excused;
+  const checked = present + absent;
   const remaining = total - checked;
-  const progress = total > 0 ? Math.round((checked / total) * 100) : 0;
-
-  const stateStyles: Record<WindowState, string> = {
-    UPCOMING: "border-dashed border-[var(--border)] bg-white",
-    OPEN: "border-[var(--success)] bg-[var(--success)]/[0.02] shadow-[0_0_0_1px_rgba(16,185,129,0.15)]",
-  };
-
-  const stateBadge: Record<WindowState, { text: string; className: string; icon: React.ReactNode }> = {
-    UPCOMING: {
-      text: "À venir",
-      className: "bg-[var(--info)]/10 text-[var(--info)] border-[var(--info)]/20",
-      icon: <Clock className="size-3" />,
-    },
-    OPEN: {
-      text: "Pointage",
-      className: "bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/20",
-      icon: <CheckCircle2 className="size-3" />,
-    },
+  const badge = {
+    text: "Pointage",
+    className: "bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/20",
+    icon: <CheckCircle2 className="size-3" />,
   };
 
   // Mini preview: first 3 checked-in members
@@ -104,22 +57,17 @@ export function SessionCard({
       tabIndex={0}
       onClick={onSelect}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onSelect(); }}
-      className={`relative w-full rounded-xl border transition-all ${
-        isSelected && state === "OPEN"
+      className={`relative w-full rounded-xl border border-[var(--success)] bg-[var(--success)]/[0.02] transition-all ${
+        isSelected
           ? "ring-2 ring-[var(--success)] shadow-lg shadow-[var(--success)]/10"
           : ""
-      } ${stateStyles[state]} cursor-pointer hover:shadow-lg`}
+      } cursor-pointer hover:shadow-lg`}
     >
       {/* Top accent bar */}
-      {state === "OPEN" && (
-        <div className="absolute left-0 top-0 h-1.5 w-full rounded-t-xl bg-[var(--success)]" />
-      )}
-      {state === "UPCOMING" && (
-        <div className="absolute left-0 top-0 h-1 w-full rounded-t-xl bg-[var(--info)]" />
-      )}
+      <div className="absolute left-0 top-0 h-1.5 w-full rounded-t-xl bg-[var(--success)]" />
 
       {/* OPEN pulsing indicator */}
-      {state === "OPEN" && !isSelected && (
+      {!isSelected && (
         <div className="absolute -top-1.5 -right-1.5">
           <span className="relative flex size-3">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--success)] opacity-40" />
@@ -136,24 +84,18 @@ export function SessionCard({
               {session.group.name}
             </h3>
           </div>
-          <span className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[0.65rem] font-semibold ${stateBadge[state].className}`}>
-            {stateBadge[state].icon}
-            {stateBadge[state].text}
+          <span className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[0.65rem] font-semibold ${badge.className}`}>
+            {badge.icon}
+            {badge.text}
           </span>
         </div>
 
         {/* Time row - PROMINENT */}
         <div className="mt-3 flex items-center gap-3">
-          <div className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-bold ${
-            state === "OPEN"
-              ? "bg-[var(--success)] text-white shadow-sm"
-              : state === "UPCOMING"
-              ? "bg-[var(--info)]/10 text-[var(--info)]"
-              : "bg-[var(--surface-soft)] text-[var(--muted-foreground)]"
-          }`}>
+          <div className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-bold bg-[var(--success)] text-white shadow-sm">
             <Clock className="size-4" />
             {session.startTime}
-            <span className={`font-normal ${state === "OPEN" ? "text-white/80" : "opacity-70"}`}>– {session.endTime}</span>
+            <span className="font-normal text-white/80">– {session.endTime}</span>
           </div>
           <div className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
             <DoorOpen className="size-3" />
@@ -162,13 +104,13 @@ export function SessionCard({
         </div>
 
         {/* OPEN click hint */}
-        {state === "OPEN" && !isSelected && (
+        {!isSelected && (
           <div className="mt-2 flex items-center gap-1.5 text-[0.65rem] font-medium text-[var(--success)]">
             <span className="inline-flex size-1.5 rounded-full bg-[var(--success)] animate-pulse" />
             Cliquez pour pointer les membres
           </div>
         )}
-        {state === "OPEN" && isSelected && (
+        {isSelected && (
           <div className="mt-2 flex items-center gap-1.5 text-[0.65rem] font-medium text-[var(--primary)]">
             <CheckCircle2 className="size-3" />
             Pointage actif — sélectionnez un statut
@@ -201,10 +143,6 @@ export function SessionCard({
                 className="h-full rounded-full bg-[var(--danger)] transition-all"
                 style={{ width: `${(absent / total) * 100}%` }}
               />
-              <div
-                className="h-full rounded-full bg-[var(--info)] transition-all"
-                style={{ width: `${(excused / total) * 100}%` }}
-              />
             </div>
             <div className="mt-1 flex items-center gap-3 text-[0.65rem]">
               {present > 0 && (
@@ -217,12 +155,6 @@ export function SessionCard({
                 <span className="flex items-center gap-1 text-[var(--danger)]">
                   <XCircle className="size-3" />
                   {absent}
-                </span>
-              )}
-              {excused > 0 && (
-                <span className="flex items-center gap-1 text-[var(--info)]">
-                  <HelpCircle className="size-3" />
-                  {excused}
                 </span>
               )}
               {remaining > 0 && (

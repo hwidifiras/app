@@ -20,10 +20,60 @@ export async function GET(request: Request) {
         }
       : undefined,
     orderBy: { createdAt: "desc" },
-    take: 50,
+    take: 200,
+    include: {
+      groups: {
+        where: { status: "ACTIVE" },
+        select: { groupId: true },
+      },
+      subscriptions: {
+        where: { status: "ACTIVE" },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          amount: true,
+          payments: { select: { amount: true } },
+        },
+      },
+    },
   });
 
-  return NextResponse.json({ data: members });
+  const data = members.map((member) => {
+    const subscription = member.subscriptions[0];
+    const totalPaid = subscription
+      ? subscription.payments.reduce((sum, p) => sum + p.amount, 0)
+      : 0;
+    const paymentStatus = subscription
+      ? totalPaid >= subscription.amount
+        ? "PAID"
+        : totalPaid > 0
+          ? "PARTIAL"
+          : "UNPAID"
+      : "UNPAID";
+
+    return {
+      id: member.id,
+      firstName: member.firstName,
+      lastName: member.lastName,
+      phone: member.phone,
+      email: member.email,
+      memberType: member.memberType,
+      birthDate: member.birthDate?.toISOString() ?? null,
+      address: member.address ?? null,
+      parentName: member.parentName ?? null,
+      parentPhone: member.parentPhone ?? null,
+      parentAddress: member.parentAddress ?? null,
+      status: member.status,
+      paymentStatus,
+      joinedAt: member.joinedAt.toISOString(),
+      archivedAt: member.archivedAt?.toISOString() ?? null,
+      createdAt: member.createdAt.toISOString(),
+      updatedAt: member.updatedAt.toISOString(),
+      groupIds: (member.groups as unknown as Array<{ groupId: string }>).map((g) => g.groupId),
+    };
+  });
+
+  return NextResponse.json({ data });
 }
 
 export async function POST(request: Request) {
@@ -53,13 +103,29 @@ export async function POST(request: Request) {
   const parentPhoneValue = parsed.data.parentPhone?.trim() || null;
   const parentAddressValue = parsed.data.parentAddress?.trim() || null;
   const birthDateValue = new Date(parsed.data.birthDate);
-  const { groupId, subscriptionPlanId } = body as Record<string, unknown>;
+  const { groupId, subscriptionPlanId, paymentAmount, paymentMethod, paymentDate, paymentNotes } = body as Record<string, unknown>;
 
   const hasGroupId = typeof groupId === "string" && groupId.trim().length > 0;
   const hasPlanId = typeof subscriptionPlanId === "string" && subscriptionPlanId.trim().length > 0;
+  const paymentCents = typeof paymentAmount === "number" && Number.isFinite(paymentAmount)
+    ? Math.max(0, Math.round(paymentAmount))
+    : 0;
+  const paymentMethodValue = typeof paymentMethod === "string" && paymentMethod.trim().length > 0
+    ? paymentMethod.trim()
+    : null;
+  const paymentDateValue = typeof paymentDate === "string" && paymentDate.trim().length > 0
+    ? new Date(paymentDate)
+    : null;
+  const paymentNotesValue = typeof paymentNotes === "string" && paymentNotes.trim().length > 0
+    ? paymentNotes.trim()
+    : null;
 
   try {
     const member = await prisma.$transaction(async (tx) => {
+      if (!hasPlanId) {
+        throw new Error("SUBSCRIPTION_PLAN_REQUIRED");
+      }
+
       const created = await tx.member.create({
         data: {
           firstName: parsed.data.firstName,
@@ -95,7 +161,7 @@ export async function POST(request: Request) {
           const endDate = new Date(now);
           endDate.setDate(endDate.getDate() + plan.validityDays);
 
-          await tx.memberSubscription.create({
+          const subscription = await tx.memberSubscription.create({
             data: {
               memberId: created.id,
               planId: subscriptionPlanId,
@@ -106,6 +172,46 @@ export async function POST(request: Request) {
               status: "ACTIVE",
             },
           });
+
+            await tx.auditLog.create({
+              data: {
+                action: "MEMBER_SUBSCRIPTION_CREATED",
+                entityType: "MemberSubscription",
+                entityId: subscription.id,
+                details: JSON.stringify({
+                  memberId: created.id,
+                  planId: subscriptionPlanId,
+                  amount: plan.price,
+                  startDate: now.toISOString(),
+                  source: "member-inscription",
+                }),
+              },
+            });
+
+          if (paymentCents > 0) {
+            if (paymentCents > plan.price) {
+              throw new Error("PAYMENT_EXCEEDS_DUE");
+            }
+
+            const payment = await tx.payment.create({
+              data: {
+                memberSubscriptionId: subscription.id,
+                amount: paymentCents,
+                paymentDate: paymentDateValue ?? new Date(),
+                paymentMethod: paymentMethodValue,
+                notes: paymentNotesValue,
+              },
+            });
+
+            await tx.auditLog.create({
+              data: {
+                action: "PAYMENT_CREATED",
+                entityType: "Payment",
+                entityId: payment.id,
+                details: JSON.stringify({ amount: paymentCents, memberId: created.id }),
+              },
+            });
+          }
         }
       }
 
@@ -119,6 +225,14 @@ export async function POST(request: Request) {
       error !== null &&
       "code" in error &&
       (error as { code?: string }).code === "P2002";
+
+    if (error instanceof Error && error.message === "PAYMENT_EXCEEDS_DUE") {
+      return NextResponse.json({ error: "Le paiement depasse le montant du plan" }, { status: 409 });
+    }
+
+    if (error instanceof Error && error.message === "SUBSCRIPTION_PLAN_REQUIRED") {
+      return NextResponse.json({ error: "Un plan d'abonnement est obligatoire pour l'inscription" }, { status: 400 });
+    }
 
     const message = isDuplicatePhone
       ? "Un membre avec ce téléphone existe déjà"

@@ -8,7 +8,6 @@ function statusVariant(status: AttendanceStatus) {
   switch (status) {
     case "PRESENT": return "success";
     case "ABSENT": return "danger";
-    case "EXCUSED": return "info";
     case "OVERRIDE": return "warning";
     default: return "muted";
   }
@@ -17,7 +16,6 @@ function statusLabel(status: AttendanceStatus) {
   switch (status) {
     case "PRESENT": return "Présent";
     case "ABSENT": return "Absent";
-    case "EXCUSED": return "Excusé";
     case "OVERRIDE": return "Exception";
     default: return status;
   }

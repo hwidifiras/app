@@ -57,8 +57,8 @@ export default async function NewSubscriptionPage() {
 
       <PageHeader
         overline="Abonnements & Finance"
-        title="Nouvel abonnement"
-        description="Créer un abonnement pour un membre existant. Sélectionnez un plan pour auto-remplir le montant et la durée."
+        title="Renouvellement d'abonnement"
+        description="Créer un nouvel abonnement pour un membre existant sans perdre l'historique. Le dernier abonnement est affiché avant validation."
       />
 
       <section className="panel panel-soft p-6">

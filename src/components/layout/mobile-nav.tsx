@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useCallback, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, X, Dumbbell } from "lucide-react";
@@ -51,12 +52,12 @@ export function MobileNav() {
     <>
       {/* Burger button */}
       <div className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b border-[var(--border)] bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
-        <div className="flex items-center gap-2.5">
+        <Link href="/" className="flex items-center gap-2.5 rounded-lg px-1 py-1 transition hover:bg-[var(--surface-soft)]">
           <div className="flex size-8 items-center justify-center rounded-lg bg-[var(--primary)] text-white">
             <Dumbbell className="size-4" />
           </div>
           <span className="text-sm font-bold text-[var(--foreground)]">GYM SaaS</span>
-        </div>
+        </Link>
         <button
           onClick={() => setOpen((v) => !v)}
           className="flex size-9 items-center justify-center rounded-lg text-[var(--foreground)] transition-colors hover:bg-[var(--surface-soft)]"

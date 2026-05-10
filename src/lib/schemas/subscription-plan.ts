@@ -7,6 +7,7 @@ export const createSubscriptionPlanSchema = z.object({
   totalSessions: z.number().int().min(1, "Minimum 1 séance").max(999, "Maximum 999 séances"),
   sessionsPerWeek: z.number().int().min(1, "Minimum 1 fois par semaine").max(7, "Maximum 7 fois par semaine").optional(),
   validityDays: z.number().int().min(1, "Durée minimum 1 jour").max(3650, "Durée maximum 10 ans"),
+  sportId: z.string().trim().optional().or(z.literal("")),
 });
 
 export type CreateSubscriptionPlanInput = z.infer<typeof createSubscriptionPlanSchema>;
@@ -20,6 +21,7 @@ export const updateSubscriptionPlanSchema = z
     sessionsPerWeek: z.number().int().min(1).max(7).optional(),
     validityDays: z.number().int().min(1).max(3650).optional(),
     isActive: z.boolean().optional(),
+    sportId: z.string().trim().optional().or(z.literal("")).optional(),
   })
   .refine(
     (payload) =>
@@ -29,7 +31,8 @@ export const updateSubscriptionPlanSchema = z
       payload.totalSessions !== undefined ||
       payload.sessionsPerWeek !== undefined ||
       payload.validityDays !== undefined ||
-      payload.isActive !== undefined,
+      payload.isActive !== undefined ||
+      payload.sportId !== undefined,
     {
       message: "Aucun champ à mettre à jour",
       path: ["_root"],

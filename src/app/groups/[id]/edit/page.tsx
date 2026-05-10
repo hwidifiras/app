@@ -65,11 +65,18 @@ export default async function EditGroupPage({ params }: { params: Promise<{ id: 
     phone: m.phone,
     email: m.email,
     memberType: m.memberType,
+    birthDate: m.birthDate?.toISOString() ?? null,
+    address: m.address ?? null,
+    parentName: m.parentName ?? null,
+    parentPhone: m.parentPhone ?? null,
+    parentAddress: m.parentAddress ?? null,
     status: m.status,
+    paymentStatus: "UNPAID", // Placeholder pour l'UI, ce champ est géré via API
     joinedAt: m.joinedAt.toISOString(),
     archivedAt: m.archivedAt?.toISOString() ?? null,
     createdAt: m.createdAt.toISOString(),
     updatedAt: m.updatedAt.toISOString(),
+    groupIds: [], // Placeholder
   }));
 
   const initialMemberIds = group.members.map((gm) => gm.memberId);

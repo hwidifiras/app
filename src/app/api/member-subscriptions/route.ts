@@ -24,7 +24,16 @@ export async function GET(request: Request) {
       ...(planId ? { planId } : {}),
       ...(status ? { status } : {}),
     },
-    include: {
+    select: {
+      id: true,
+      memberId: true,
+      planId: true,
+      startDate: true,
+      endDate: true,
+      amount: true,
+      remainingSessions: true,
+      status: true,
+      createdAt: true,
       member: { select: { id: true, firstName: true, lastName: true, phone: true } },
       plan: { select: { id: true, name: true, price: true, totalSessions: true, sessionsPerWeek: true, validityDays: true } },
       payments: { select: { id: true, amount: true, paymentDate: true } },
@@ -57,7 +66,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { memberId, planId, startDate, endDate, amount, remainingSessions, status } = parsed.data;
+  const { memberId, planId, startDate, endDate, amount, remainingSessions } = parsed.data;
 
   try {
     const memberExists = await prisma.member.findUnique({ where: { id: memberId } });
@@ -70,20 +79,73 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Plan introuvable" }, { status: 404 });
     }
 
-    const subscription = await prisma.memberSubscription.create({
-      data: {
+    const currentActiveCount = await prisma.memberSubscription.count({
+      where: {
         memberId,
-        planId,
-        startDate: new Date(startDate),
-        endDate: endDate ? new Date(endDate) : null,
-        amount,
-        remainingSessions: remainingSessions ?? plan.totalSessions,
-        status,
+        status: "ACTIVE",
+        startDate: { lte: new Date() },
+        OR: [{ endDate: null }, { endDate: { gte: new Date() } }],
       },
-      include: {
-        member: { select: { id: true, firstName: true, lastName: true } },
-        plan: { select: { id: true, name: true } },
-      },
+    });
+
+    if (currentActiveCount > 1) {
+      return NextResponse.json(
+        { error: "Plusieurs abonnements actifs détectés pour ce membre. Corrigez l'historique avant de renouveler." },
+        { status: 409 },
+      );
+    }
+
+    const subscription = await prisma.$transaction(async (tx) => {
+      const currentActive = await tx.memberSubscription.findFirst({
+        where: {
+          memberId,
+          status: "ACTIVE",
+          startDate: { lte: new Date() },
+          OR: [{ endDate: null }, { endDate: { gte: new Date() } }],
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      if (currentActive) {
+        await tx.memberSubscription.update({
+          where: { id: currentActive.id },
+          data: { status: "EXPIRED" },
+        });
+      }
+
+      const created = await tx.memberSubscription.create({
+        data: {
+          memberId,
+          planId,
+          startDate: new Date(startDate),
+          endDate: endDate ? new Date(endDate) : null,
+          amount,
+          remainingSessions: remainingSessions ?? plan.totalSessions,
+          status: "ACTIVE",
+        },
+        include: {
+          member: { select: { id: true, firstName: true, lastName: true } },
+          plan: { select: { id: true, name: true } },
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          action: currentActive ? "MEMBER_SUBSCRIPTION_RENEWED" : "MEMBER_SUBSCRIPTION_CREATED",
+          entityType: "MemberSubscription",
+          entityId: created.id,
+          details: JSON.stringify({
+            memberId,
+            planId,
+            previousSubscriptionId: currentActive?.id ?? null,
+            amount,
+            startDate,
+            status: "ACTIVE",
+          }),
+        },
+      });
+
+      return created;
     });
 
     return NextResponse.json({ data: subscription }, { status: 201 });

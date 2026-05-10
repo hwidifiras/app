@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { Check, X, AlertCircle, XIcon } from "lucide-react";
+import { Check, X, XIcon } from "lucide-react";
 import type { SessionCardData } from "./session-card";
 
 export function CheckInDrawer({
@@ -24,7 +24,7 @@ export function CheckInDrawer({
   const [reason, setReason] = useState("");
 
   function hasSub(mid: string) {
-    return activeSubscriptionMemberIds.includes(mid);
+    return activeSubscriptionMemberIds.includes(`${session.id}_${mid}`);
   }
 
   function getAtt(mid: string) {
@@ -116,8 +116,6 @@ export function CheckInDrawer({
                                 ? "success"
                                 : att.status === "ABSENT"
                                 ? "danger"
-                                : att.status === "EXCUSED"
-                                ? "info"
                                 : "warning"
                             }
                           >
@@ -125,8 +123,6 @@ export function CheckInDrawer({
                               ? "Présent"
                               : att.status === "ABSENT"
                               ? "Absent"
-                              : att.status === "EXCUSED"
-                              ? "Excusé"
                               : "Exception"}
                           </StatusBadge>
                         )}
@@ -153,15 +149,6 @@ export function CheckInDrawer({
                       <X className="size-4" />
                       <span className="hidden sm:inline">Absent</span>
                     </button>
-                    <button
-                      onClick={() => handleClick(mid, "EXCUSED")}
-                      disabled={loadingId === mid}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--info)] px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-[var(--info)]/90 active:scale-95 transition-all disabled:opacity-50"
-                      title="Excusé"
-                    >
-                      <AlertCircle className="size-4" />
-                      <span className="hidden sm:inline">Excusé</span>
-                    </button>
                   </div>
                 </div>
               );
@@ -176,7 +163,7 @@ export function CheckInDrawer({
           <div className="w-full max-w-sm rounded-xl border border-[var(--border)] bg-white p-5 shadow-lg">
             <h3 className="text-base font-semibold text-[var(--foreground)]">Passage exceptionnel</h3>
             <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-              {modalMember.name} n&apos;a pas d&apos;abonnement actif. Un motif est obligatoire.
+              {modalMember.name} n&apos;est pas en règle (abonnement inactif, impayé, ou sport non inclus). Un motif est obligatoire.
             </p>
             <textarea
               value={reason}

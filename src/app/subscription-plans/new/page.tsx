@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
-import { PlanAddForm } from "@/components/subscription-plans/plan-add-form";
+import { SubscriptionPlanForm } from "@/components/subscription-plans/subscription-plan-form";
 
 export default function NewPlanPage() {
   return (
@@ -17,7 +17,7 @@ export default function NewPlanPage() {
       />
 
       <section className="panel panel-soft p-6">
-        <PlanAddForm />
+        <SubscriptionPlanForm mode="create" />
       </section>
     </main>
   );

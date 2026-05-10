@@ -9,7 +9,7 @@ export const createMemberSubscriptionSchema = z.object({
   endDate: z.string().datetime().nullable().optional(),
   amount: z.number().int().min(0, "Montant invalide"),
   remainingSessions: z.number().int().min(0).optional(),
-  status: subscriptionStatusEnum.default("DRAFT"),
+  status: subscriptionStatusEnum.default("ACTIVE"),
 });
 
 export type CreateMemberSubscriptionInput = z.infer<typeof createMemberSubscriptionSchema>;

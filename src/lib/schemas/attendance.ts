@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const attendanceStatusEnum = z.enum(["PRESENT", "ABSENT", "EXCUSED", "OVERRIDE"]);
+const attendanceStatusEnum = z.enum(["PRESENT", "ABSENT", "OVERRIDE"]);
 
 export const createAttendanceSchema = z.object({
   sessionId: z.string().trim().min(1, "Séance requise"),

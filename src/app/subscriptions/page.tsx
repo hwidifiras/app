@@ -116,7 +116,7 @@ export default async function SubscriptionsPage() {
         description="Suivi des abonnements membres, statuts et paiements associés."
         actions={
           <Link href="/subscriptions/new" className="btn btn-primary inline-flex items-center gap-1.5 text-sm">
-            <Plus className="size-4" /> Nouvel abonnement
+            <Plus className="size-4" /> Renouvellement d&apos;abonnement
           </Link>
         }
       />

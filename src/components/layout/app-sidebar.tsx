@@ -120,17 +120,19 @@ export function AppSidebar() {
 
   return (
     <aside className="hidden border-b border-[var(--border)] bg-white/90 backdrop-blur lg:sticky lg:block lg:top-0 lg:h-screen lg:overflow-y-auto lg:border-r lg:border-b-0">
-      <div className="flex items-center gap-3 border-b border-[var(--border)] px-4 py-4 lg:px-5">
-        <div className="flex size-9 items-center justify-center rounded-lg bg-[var(--primary)] text-white">
-          <Dumbbell className="size-5" />
+      <Link href="/" className="block border-b border-[var(--border)] px-4 py-4 lg:px-5">
+        <div className="flex items-center gap-3 rounded-xl transition hover:bg-[var(--surface-soft)]">
+          <div className="flex size-9 items-center justify-center rounded-lg bg-[var(--primary)] text-white">
+            <Dumbbell className="size-5" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-[var(--foreground)]">GYM SaaS</p>
+            <p className="text-[0.65rem] font-medium uppercase tracking-widest text-[var(--muted-foreground)]">
+              Réception
+            </p>
+          </div>
         </div>
-        <div>
-          <p className="text-sm font-bold text-[var(--foreground)]">GYM SaaS</p>
-          <p className="text-[0.65rem] font-medium uppercase tracking-widest text-[var(--muted-foreground)]">
-            Réception
-          </p>
-        </div>
-      </div>
+      </Link>
 
       <nav className="flex gap-1 overflow-x-auto px-2 py-2 lg:flex-col lg:overflow-visible lg:px-3 lg:py-4">
         {navSections.map((section) => (

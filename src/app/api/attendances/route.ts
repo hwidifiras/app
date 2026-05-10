@@ -34,14 +34,15 @@ async function getActiveSubscription(memberId: string) {
       OR: [{ endDate: null }, { endDate: { gte: now } }],
       remainingSessions: { gt: 0 },
     },
-    select: { id: true, remainingSessions: true },
+    select: { 
+      id: true, 
+      remainingSessions: true,
+      amount: true,
+      payments: { select: { amount: true } },
+      plan: { select: { sportId: true } }
+    },
     orderBy: { endDate: "asc" },
   });
-}
-
-async function hasActiveSubscription(memberId: string): Promise<boolean> {
-  const sub = await getActiveSubscription(memberId);
-  return !!sub;
 }
 
 export async function GET(request: Request) {
@@ -97,7 +98,10 @@ export async function POST(request: Request) {
   const actor = getRequestUser(request);
 
   try {
-    const sessionExists = await prisma.session.findUnique({ where: { id: sessionId } });
+    const sessionExists = await prisma.session.findUnique({ 
+      where: { id: sessionId },
+      include: { group: { select: { id: true, sportId: true } } }
+    });
     if (!sessionExists) {
       return NextResponse.json({ error: "Séance introuvable" }, { status: 404 });
     }
@@ -111,9 +115,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Impossible de pointer un membre archivé" }, { status: 403 });
     }
 
-    const isSubActive = await hasActiveSubscription(memberId);
+    const activeSub = await getActiveSubscription(memberId);
+    const isSubActive = !!activeSub;
 
-    if (status === "PRESENT" || status === "ABSENT" || status === "EXCUSED") {
+    if (status === "PRESENT" || status === "ABSENT") {
+      const assignment = await prisma.groupMember.findFirst({
+        where: { groupId: sessionExists.group.id, memberId, status: "ACTIVE" }
+      });
+
+      if (!assignment) {
+        return NextResponse.json(
+          {
+            error: "Le membre n'est pas assigné à ce groupe — passage exceptionnel requis",
+            code: "NOT_ASSIGNED_TO_GROUP",
+          },
+          { status: 403 }
+        );
+      }
+
       if (!isSubActive) {
         return NextResponse.json(
           {
@@ -121,6 +140,27 @@ export async function POST(request: Request) {
             code: "SUBSCRIPTION_INACTIVE",
           },
           { status: 403 },
+        );
+      }
+
+      const totalPaid = activeSub.payments.reduce((sum, p) => sum + p.amount, 0);
+      if (totalPaid < activeSub.amount) {
+        return NextResponse.json(
+          {
+            error: "Abonnement non payé — passage exceptionnel requis",
+            code: "SUBSCRIPTION_UNPAID",
+          },
+          { status: 403 }
+        );
+      }
+
+      if (activeSub.plan.sportId && activeSub.plan.sportId !== sessionExists.group.sportId) {
+        return NextResponse.json(
+          {
+            error: "L'abonnement du membre n'est pas valide pour ce sport — passage exceptionnel requis",
+            code: "SPORT_MISMATCH",
+          },
+          { status: 403 }
         );
       }
     }
@@ -156,12 +196,11 @@ export async function POST(request: Request) {
     let remainingSessionsBefore: number | null = null;
 
     if (status === "PRESENT" && isSubActive) {
-      const sub = await getActiveSubscription(memberId);
-      if (sub) {
-        activeSubscriptionId = sub.id;
-        remainingSessionsBefore = sub.remainingSessions;
+      if (activeSub) {
+        activeSubscriptionId = activeSub.id;
+        remainingSessionsBefore = activeSub.remainingSessions;
         await prisma.memberSubscription.update({
-          where: { id: sub.id },
+          where: { id: activeSub.id },
           data: { remainingSessions: { decrement: 1 } },
         });
       }

@@ -311,12 +311,10 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                               ? "success"
                               : a.status === "ABSENT"
                                 ? "danger"
-                                : a.status === "EXCUSED"
-                                  ? "info"
-                                  : "warning"
+                                : "warning"
                           }
                         >
-                          {a.status === "PRESENT" ? "Présent" : a.status === "ABSENT" ? "Absent" : a.status === "EXCUSED" ? "Excusé" : "Exception"}
+                          {a.status === "PRESENT" ? "Présent" : a.status === "ABSENT" ? "Absent" : "Exception"}
                         </StatusBadge>
                       </td>
                       <td className="px-3 py-2 hidden sm:table-cell text-[var(--muted-foreground)] text-xs">

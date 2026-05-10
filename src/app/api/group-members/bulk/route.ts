@@ -5,6 +5,13 @@ import { bulkCreateGroupMembersSchema, bulkDeleteGroupMembersSchema } from "@/li
 
 export const runtime = "nodejs";
 
+function isMemberAllowed(groupType: "KIDS" | "ADULTS", memberType: "KID" | "ADULT" | "NOT_SPECIFIED") {
+  if (groupType === "KIDS") {
+    return memberType === "KID" || memberType === "NOT_SPECIFIED";
+  }
+  return memberType === "ADULT" || memberType === "NOT_SPECIFIED";
+}
+
 function timeToMinutes(time: string): number {
   const [h, m] = time.split(":").map(Number);
   return h * 60 + m;
@@ -87,7 +94,7 @@ export async function POST(request: Request) {
 
   const group = await prisma.group.findUnique({
     where: { id: payload.groupId },
-    select: { id: true, isActive: true, capacity: true },
+    select: { id: true, isActive: true, capacity: true, groupType: true },
   });
 
   if (!group) {
@@ -100,7 +107,7 @@ export async function POST(request: Request) {
 
   const members = await prisma.member.findMany({
     where: { id: { in: uniqueMemberIds } },
-    select: { id: true, status: true },
+    select: { id: true, status: true, memberType: true },
   });
 
   const membersMap = new Map(members.map((item) => [item.id, item]));
@@ -131,6 +138,7 @@ export async function POST(request: Request) {
   let skippedAlreadyActiveCount = 0;
   let skippedCapacityCount = 0;
   let skippedScheduleConflictCount = 0;
+  let skippedTypeMismatchCount = 0;
 
   for (const memberId of uniqueMemberIds) {
     const member = membersMap.get(memberId);
@@ -141,6 +149,11 @@ export async function POST(request: Request) {
 
     if (member.status !== "ACTIVE") {
       skippedArchivedCount += 1;
+      continue;
+    }
+
+    if (!isMemberAllowed(group.groupType, member.memberType)) {
+      skippedTypeMismatchCount += 1;
       continue;
     }
 
@@ -200,6 +213,7 @@ export async function POST(request: Request) {
       skippedAlreadyActiveCount,
       skippedCapacityCount,
       skippedScheduleConflictCount,
+      skippedTypeMismatchCount,
     },
   });
 }
