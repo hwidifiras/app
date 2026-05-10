@@ -58,7 +58,6 @@ enum SubscriptionStatus {
 enum AttendanceStatus {
   PRESENT
   ABSENT
-  EXCUSED
   OVERRIDE
 }
 
@@ -107,6 +106,7 @@ model Sport {
   isActive    Boolean  @default(true)
   coaches     Coach[]
   groups      Group[]
+  subscriptionPlans SubscriptionPlan[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -206,6 +206,8 @@ model SubscriptionPlan {
   sessionsPerWeek Int?   // limite hebdomadaire optionnelle (ex: 3)
   validityDays  Int      // durée de validité en jours (ex: 30 pour mensuel)
   isActive      Boolean  @default(true)
+  sportId       String?
+  sport         Sport?   @relation(fields: [sportId], references: [id], onDelete: SetNull)
   subscriptions MemberSubscription[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

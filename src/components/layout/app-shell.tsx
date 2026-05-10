@@ -7,7 +7,11 @@ import { MobileNav } from "@/components/layout/mobile-nav";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isAuthRoute = pathname === "/login" || pathname.startsWith("/login/");
+  const isAuthRoute =
+    pathname === "/login" ||
+    pathname.startsWith("/login/") ||
+    pathname === "/register" ||
+    pathname.startsWith("/register/");
 
   if (isAuthRoute) {
     return <div className="min-h-screen">{children}</div>;

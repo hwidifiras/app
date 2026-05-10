@@ -2,22 +2,26 @@
 
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const registrationSuccess = searchParams.get("registered") === "1";
 
   const nextPath = useMemo(() => {
     const raw = searchParams.get("next");
     return raw && raw.startsWith("/") ? raw : "/";
   }, [searchParams]);
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(searchParams.get("email") ?? "");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(
+    registrationSuccess ? "Compte créé. Connectez-vous avec votre email et votre mot de passe." : null,
+  );
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -82,7 +86,11 @@ export function LoginForm() {
       </button>
 
       <p className="text-xs text-[var(--muted-foreground)]">
-        Si vous n&apos;avez pas encore de compte, créez d&apos;abord un utilisateur ADMIN via seed.
+        Si vous n&apos;avez pas encore de compte, vous pouvez en créer un{" "}
+        <Link href="/register" className="font-medium text-[var(--foreground)] underline underline-offset-4">
+          ici
+        </Link>
+        .
       </p>
     </form>
   );

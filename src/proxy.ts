@@ -4,13 +4,14 @@ import { AUTH_COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 
 function isPublicPath(pathname: string): boolean {
   if (pathname === "/login") return true;
+  if (pathname === "/register") return true;
   if (pathname.startsWith("/api/auth")) return true;
   if (pathname.startsWith("/_next")) return true;
   if (pathname === "/favicon.ico") return true;
   return false;
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (isPublicPath(pathname)) {
