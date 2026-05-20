@@ -1,26 +1,15 @@
-import { prisma } from "@/lib/prisma";
+﻿import { prisma } from "@/lib/prisma";
+import { getClubSettings } from "@/lib/club-settings";
 import Link from "next/link";
-import { Users, Dumbbell, User, Archive, ArrowRight, Wallet, ClipboardCheck, Activity } from "lucide-react";
+import { Activity, BadgeCheck, CalendarPlus, ClipboardCheck, UserPlus, Users, Wallet } from "lucide-react";
 import { utcDateOnlyForTimeZone } from "@/lib/dates";
 
+import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-type DashboardMember = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  status: "ACTIVE" | "ARCHIVED";
-};
-
-type DashboardSport = {
-  id: string;
-  name: string;
-  description: string | null;
-  isActive: boolean;
-};
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 type KpiCardProps = {
   label: string;
@@ -32,14 +21,17 @@ type KpiCardProps = {
 
 function KpiCard({ label, value, icon, color, href }: KpiCardProps) {
   const content = (
-    <Card className={`relative overflow-hidden transition ${href ? "hover:shadow-md" : ""}`}>
-      <CardContent className="flex items-center gap-4 p-5">
-        <div className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${color}`}>
+    <Card
+      size="sm"
+      className={cn("shadow-sm transition active:scale-[0.98]", href && "hover:border-primary/30 hover:shadow-md")}
+    >
+      <CardContent className="flex items-center gap-2 p-2.5 sm:gap-3 sm:p-3.5">
+        <div className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg sm:size-9", color)}>
           {icon}
         </div>
-        <div>
-          <p className="text-[0.78rem] font-medium text-[var(--muted-foreground)]">{label}</p>
-          <p className="text-2xl font-bold tracking-tight text-[var(--foreground)]">{value}</p>
+        <div className="min-w-0 flex-1">
+          <p className="text-[0.62rem] font-medium leading-tight text-muted-foreground sm:text-xs">{label}</p>
+          <p className="truncate text-base font-bold leading-tight tracking-tight text-foreground sm:text-xl">{value}</p>
         </div>
       </CardContent>
     </Card>
@@ -48,8 +40,30 @@ function KpiCard({ label, value, icon, color, href }: KpiCardProps) {
   if (!href) return content;
 
   return (
-    <Link href={href} className="block" aria-label={label}>
+    <Link href={href} className="block min-h-[2.85rem] touch-manipulation" aria-label={label}>
       {content}
+    </Link>
+  );
+}
+
+type QuickActionProps = {
+  title: string;
+  description: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  tone: string;
+};
+
+function QuickActionLink({ title, description, href, icon: Icon, tone }: QuickActionProps) {
+  return (
+    <Link href={href} className="quick-action-btn" aria-label={title}>
+      <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg sm:size-9", tone)}>
+        <Icon className="size-4 text-white" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[0.72rem] font-semibold leading-tight text-foreground sm:text-sm">{title}</span>
+        <span className="mt-0.5 hidden text-[0.65rem] leading-snug text-muted-foreground md:block">{description}</span>
+      </span>
     </Link>
   );
 }
@@ -58,10 +72,41 @@ function formatCurrency(cents: number) {
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
 }
 
+const quickLinks = [
+  {
+    title: "Créer un membre",
+    description: "Inscription complète avec groupe, abonnement et premier paiement.",
+    href: "/members/new",
+    icon: UserPlus,
+    tone: "bg-sky-500",
+  },
+  {
+    title: "Nouveau paiement",
+    description: "Encaisser une avance ou solder un abonnement existant.",
+    href: "/payments/new",
+    icon: Wallet,
+    tone: "bg-emerald-600",
+  },
+  {
+    title: "Planifier une séance",
+    description: "Ouvrir le planning et ajuster les séances de la semaine.",
+    href: "/sessions",
+    icon: CalendarPlus,
+    tone: "bg-indigo-600",
+  },
+  {
+    title: "Pointage",
+    description: "Contrôler les présences du jour avec les règles d'abonnement.",
+    href: "/attendance/today",
+    icon: BadgeCheck,
+    tone: "bg-rose-600",
+  },
+];
+
 export default async function Home() {
   let hasSportDataError = false;
   let activeMembers = 0;
-  let archivedMembers = 0;
+  let resignedMembers = 0;
   let activeSports = 0;
   let totalSports = 0;
   let activeCoaches = 0;
@@ -69,17 +114,20 @@ export default async function Home() {
   let activeSubscriptions = 0;
   let attendanceToday = 0;
   let revenueToday = 0;
-  let membersRows: DashboardMember[] = [];
-  let sportsRows: DashboardSport[] = [];
+  let debts: Array<{ memberId: string; memberName: string; phone: string; totalDebt: number; subscriptions: number }> = [];
+
+  let debtThresholdCents = 0;
 
   try {
+    const clubSettings = await getClubSettings();
+    debtThresholdCents = clubSettings.debtAlertThresholdCents;
     const today = utcDateOnlyForTimeZone(new Date());
     const tomorrow = new Date(today);
     tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
 
     const [
       fetchedActiveMembers,
-      fetchedArchivedMembers,
+      fetchedResignedMembers,
       fetchedActiveSports,
       fetchedTotalSports,
       fetchedActiveCoaches,
@@ -87,8 +135,7 @@ export default async function Home() {
       fetchedActiveSubscriptions,
       fetchedAttendanceToday,
       fetchedRevenueToday,
-      fetchedRecentMembers,
-      fetchedRecentSports,
+      fetchedSubscriptions,
     ] = await Promise.all([
       prisma.member.count({ where: { status: "ACTIVE" } }),
       prisma.member.count({ where: { status: "ARCHIVED" } }),
@@ -114,12 +161,19 @@ export default async function Home() {
         _sum: { amount: true },
         where: { paymentDate: { gte: today, lt: tomorrow } },
       }),
-      prisma.member.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
-      prisma.sport.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
+      prisma.memberSubscription.findMany({
+        select: {
+          id: true,
+          amount: true,
+          memberId: true,
+          member: { select: { firstName: true, lastName: true, phone: true } },
+          payments: { select: { amount: true } },
+        },
+      }),
     ]);
 
     activeMembers = fetchedActiveMembers;
-    archivedMembers = fetchedArchivedMembers;
+    resignedMembers = fetchedResignedMembers;
     activeSports = fetchedActiveSports;
     totalSports = fetchedTotalSports;
     activeCoaches = fetchedActiveCoaches;
@@ -127,121 +181,122 @@ export default async function Home() {
     activeSubscriptions = fetchedActiveSubscriptions;
     attendanceToday = fetchedAttendanceToday;
     revenueToday = fetchedRevenueToday._sum.amount ?? 0;
-    membersRows = fetchedRecentMembers;
-    sportsRows = fetchedRecentSports;
+
+    const debtMap = new Map<string, { memberId: string; memberName: string; phone: string; totalDebt: number; subscriptions: number }>();
+    for (const sub of fetchedSubscriptions) {
+      const totalPaid = sub.payments.reduce((sum, p) => sum + p.amount, 0);
+      const outstanding = Math.max(0, sub.amount - totalPaid);
+      if (outstanding <= 0) continue;
+      const key = sub.memberId;
+      const entry = debtMap.get(key) ?? {
+        memberId: sub.memberId,
+        memberName: `${sub.member.firstName} ${sub.member.lastName}`,
+        phone: sub.member.phone,
+        totalDebt: 0,
+        subscriptions: 0,
+      };
+      entry.totalDebt += outstanding;
+      entry.subscriptions += 1;
+      debtMap.set(key, entry);
+    }
+
+    debts = Array.from(debtMap.values())
+      .filter((d) => debtThresholdCents <= 0 || d.totalDebt >= debtThresholdCents)
+      .sort((a, b) => b.totalDebt - a.totalDebt)
+      .slice(0, 10);
   } catch (error) {
     hasSportDataError = true;
     console.error("Dashboard degraded mode due to Prisma model mismatch:", error);
 
-    const [fetchedActiveMembers, fetchedArchivedMembers, fetchedRecentMembers] = await Promise.all([
+    const [fetchedActiveMembers, fetchedResignedMembers] = await Promise.all([
       prisma.member.count({ where: { status: "ACTIVE" } }),
       prisma.member.count({ where: { status: "ARCHIVED" } }),
-      prisma.member.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
     ]);
 
     activeMembers = fetchedActiveMembers;
-    archivedMembers = fetchedArchivedMembers;
-    membersRows = fetchedRecentMembers;
+    resignedMembers = fetchedResignedMembers;
   }
 
   return (
-    <main className="app-shell py-6 md:py-8">
+    <main className="app-shell py-4 md:py-8">
       <PageHeader
         overline="Vue d'ensemble"
         title="Dashboard réception"
-        description="Pilotage rapide des référentiels et actions quotidiennes du front desk."
+        description="Pilotage rapide des actions quotidiennes du front desk."
       />
 
       {hasSportDataError ? (
-        <div className="mb-5 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-700">
-          Données sports/coachs temporairement indisponibles. Exécutez <code className="mx-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs">npm run prisma:generate</code> puis redémarrez.
+        <div className="mb-5 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-200">
+          Données sports/coachs temporairement indisponibles. Exécutez{" "}
+          <code className="rounded bg-amber-100 px-1.5 py-0.5 text-xs dark:bg-amber-500/25">npm run prisma:generate</code> puis redémarrez.
         </div>
       ) : null}
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label="Membres actifs" value={activeMembers} icon={<Users className="size-5 text-white" />} color="bg-[var(--primary)]" href="/members" />
-        <KpiCard label="CA du jour" value={formatCurrency(revenueToday)} icon={<Wallet className="size-5 text-white" />} color="bg-amber-500" href="/payments" />
-        <KpiCard label="Séances pointées" value={attendanceToday} icon={<Activity className="size-5 text-white" />} color="bg-sky-500" href="/attendance/today" />
-        <KpiCard label="Abonnements actifs" value={activeSubscriptions} icon={<ClipboardCheck className="size-5 text-white" />} color="bg-rose-500" href="/subscriptions" />
+      <section className="kpi-grid">
+        <KpiCard label="Membres actifs" value={activeMembers} icon={<Users className="size-4 text-white sm:size-5" />} color="bg-[var(--primary)]" href="/members" />
+        <KpiCard label="CA du jour" value={formatCurrency(revenueToday)} icon={<Wallet className="size-4 text-white sm:size-5" />} color="bg-amber-500" href="/payments" />
+        <KpiCard label="Séances pointées" value={attendanceToday} icon={<Activity className="size-4 text-white sm:size-5" />} color="bg-sky-500" href="/attendance/today" />
+        <KpiCard label="Abonnements actifs" value={activeSubscriptions} icon={<ClipboardCheck className="size-4 text-white sm:size-5" />} color="bg-rose-500" href="/subscriptions" />
       </section>
 
-      <section className="mt-7 grid gap-5 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
-            <CardTitle className="text-base font-semibold">Membres récents</CardTitle>
-            <Link href="/members" className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--primary)] hover:underline">
-              Voir tout <ArrowRight className="size-3" />
-            </Link>
-          </CardHeader>
-          <CardContent className="px-0 pb-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-t border-b border-[var(--border)] bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
-                  <tr>
-                    <th className="px-5 py-2.5 text-left font-semibold">Nom</th>
-                    <th className="px-5 py-2.5 text-left font-semibold">Téléphone</th>
-                    <th className="px-5 py-2.5 text-right font-semibold">Statut</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border)]">
-                  {membersRows.map((member) => (
-                    <tr key={member.id} className="transition-colors hover:bg-[var(--surface-soft)]">
-                      <td className="px-5 py-2.5 font-medium">{member.firstName} {member.lastName}</td>
-                      <td className="px-5 py-2.5 text-[var(--muted-foreground)]">{member.phone}</td>
-                      <td className="px-5 py-2.5 text-right">
-                        <StatusBadge variant={member.status === "ACTIVE" ? "success" : "muted"}>
-                          {member.status === "ACTIVE" ? "Actif" : "Archivé"}
-                        </StatusBadge>
-                      </td>
-                    </tr>
-                  ))}
-                  {membersRows.length === 0 ? (
-                    <tr><td colSpan={3} className="px-5 py-6 text-center text-[var(--muted-foreground)]">Aucun membre.</td></tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+      <section className="mt-4 sm:mt-6">
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:text-sm sm:normal-case sm:tracking-normal">
+          Actions rapides
+        </h2>
+        <div className="quick-actions-grid">
+          {quickLinks.map((item) => (
+            <QuickActionLink key={item.href} {...item} />
+          ))}
+        </div>
+        <p className="mt-2.5 text-[0.65rem] leading-relaxed text-muted-foreground sm:mt-3 sm:text-xs">
+          Membres résiliés: {resignedMembers} · Sports actifs: {activeSports}/{totalSports} · Coachs actifs:{" "}
+          {activeCoaches}/{totalCoaches}
+        </p>
+      </section>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
-            <CardTitle className="text-base font-semibold">Sports récents</CardTitle>
-            <Link href="/sports" className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--primary)] hover:underline">
-              Voir tout <ArrowRight className="size-3" />
-            </Link>
+      <section className="mt-4 sm:mt-6">
+        <Card size="sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold sm:text-base">Dettes en cours</CardTitle>
           </CardHeader>
-          <CardContent className="px-0 pb-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-t border-b border-[var(--border)] bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
-                  <tr>
-                    <th className="px-5 py-2.5 text-left font-semibold">Sport</th>
-                    <th className="px-5 py-2.5 text-left font-semibold">Description</th>
-                    <th className="px-5 py-2.5 text-right font-semibold">Statut</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border)]">
-                  {sportsRows.map((sport) => (
-                    <tr key={sport.id} className="transition-colors hover:bg-[var(--surface-soft)]">
-                      <td className="px-5 py-2.5 font-medium">{sport.name}</td>
-                      <td className="max-w-[200px] truncate px-5 py-2.5 text-[var(--muted-foreground)]">{sport.description ?? "—"}</td>
-                      <td className="px-5 py-2.5 text-right">
-                        <StatusBadge variant={sport.isActive ? "success" : "muted"}>
-                          {sport.isActive ? "Actif" : "Inactif"}
-                        </StatusBadge>
-                      </td>
+          <CardContent className="pt-0">
+            {debts.length === 0 ? (
+              <p className="text-sm text-[var(--muted-foreground)]">Aucune dette en cours.</p>
+            ) : (
+              <div className="data-table overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-semibold">Membre</th>
+                      <th className="px-4 py-3 text-left font-semibold">Telephone</th>
+                      <th className="px-4 py-3 text-right font-semibold">Montant</th>
+                      <th className="px-4 py-3 text-right font-semibold hidden sm:table-cell">Dossiers</th>
                     </tr>
-                  ))}
-                  {sportsRows.length === 0 ? (
-                    <tr><td colSpan={3} className="px-5 py-6 text-center text-[var(--muted-foreground)]">Aucun sport.</td></tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border)]">
+                    {debts.map((item) => (
+                      <tr key={item.memberId} className="hover:bg-[var(--surface-soft)] transition-colors">
+                        <td className="data-table-primary px-4 py-3 font-medium text-[var(--foreground)]" data-label="Membre">
+                          {item.memberName}
+                        </td>
+                        <td className="px-4 py-3" data-label="Telephone">{item.phone}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-[var(--danger)]" data-label="Montant">
+                          {formatCurrency(item.totalDebt)}
+                        </td>
+                        <td className="px-4 py-3 text-right hidden sm:table-cell" data-label="Dossiers">
+                          {item.subscriptions}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </CardContent>
         </Card>
       </section>
     </main>
   );
 }
+
+

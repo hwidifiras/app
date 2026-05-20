@@ -2,7 +2,13 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { createAttendanceSchema, updateAttendanceSchema } from "@/lib/schemas/attendance";
-import { getRequestUser } from "@/lib/request-user";
+import { getClubSettings } from "@/lib/club-settings";
+import { requireAuth } from "@/lib/request-user";
+import { getWeekRangeUtc } from "@/lib/dates";
+import {
+  canCheckInWithPayment,
+  resolveActiveSubscription,
+} from "@/lib/membership-rules";
 
 export const runtime = "nodejs";
 
@@ -24,28 +30,13 @@ async function countOverrides(memberId: string): Promise<number> {
   });
 }
 
-async function getActiveSubscription(memberId: string) {
-  const now = new Date();
-  return prisma.memberSubscription.findFirst({
-    where: {
-      memberId,
-      status: "ACTIVE",
-      startDate: { lte: now },
-      OR: [{ endDate: null }, { endDate: { gte: now } }],
-      remainingSessions: { gt: 0 },
-    },
-    select: { 
-      id: true, 
-      remainingSessions: true,
-      amount: true,
-      payments: { select: { amount: true } },
-      plan: { select: { sportId: true } }
-    },
-    orderBy: { endDate: "asc" },
-  });
-}
-
 export async function GET(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const sessionId = searchParams.get("sessionId")?.trim();
   const memberId = searchParams.get("memberId")?.trim();
@@ -74,6 +65,13 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  let actor;
+  try {
+    actor = await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {
@@ -95,8 +93,6 @@ export async function POST(request: Request) {
   }
 
   const { sessionId, memberId, status, overrideReason, checkedBy } = parsed.data;
-  const actor = getRequestUser(request);
-
   try {
     const sessionExists = await prisma.session.findUnique({ 
       where: { id: sessionId },
@@ -112,10 +108,11 @@ export async function POST(request: Request) {
     }
 
     if (memberExists.status === "ARCHIVED") {
-      return NextResponse.json({ error: "Impossible de pointer un membre archivé" }, { status: 403 });
+      return NextResponse.json({ error: "Impossible de pointer un membre résilié" }, { status: 403 });
     }
 
-    const activeSub = await getActiveSubscription(memberId);
+    const sportId = sessionExists.group.sportId;
+    const activeSub = await resolveActiveSubscription(memberId, sportId);
     const isSubActive = !!activeSub;
 
     if (status === "PRESENT" || status === "ABSENT") {
@@ -143,25 +140,39 @@ export async function POST(request: Request) {
         );
       }
 
-      const totalPaid = activeSub.payments.reduce((sum, p) => sum + p.amount, 0);
-      if (totalPaid < activeSub.amount) {
+      const payCheck = await canCheckInWithPayment(activeSub);
+      if (!payCheck.allowed) {
         return NextResponse.json(
           {
-            error: "Abonnement non payé — passage exceptionnel requis",
+            error: payCheck.reason ?? "Abonnement non payé — passage exceptionnel requis",
             code: "SUBSCRIPTION_UNPAID",
           },
-          { status: 403 }
+          { status: 403 },
         );
       }
 
-      if (activeSub.plan.sportId && activeSub.plan.sportId !== sessionExists.group.sportId) {
-        return NextResponse.json(
-          {
-            error: "L'abonnement du membre n'est pas valide pour ce sport — passage exceptionnel requis",
-            code: "SPORT_MISMATCH",
+      if (activeSub.plan.sessionsPerWeek) {
+        const { start, end } = getWeekRangeUtc(sessionExists.sessionDate);
+        const weeklyCount = await prisma.attendance.count({
+          where: {
+            memberSubscriptionId: activeSub.id,
+            status: "PRESENT",
+            session: {
+              sessionDate: { gte: start, lt: end },
+            },
           },
-          { status: 403 }
-        );
+        });
+
+        if (weeklyCount >= activeSub.plan.sessionsPerWeek) {
+          return NextResponse.json(
+            {
+              error: "Quota hebdomadaire atteint — passage exceptionnel requis",
+              code: "SUBSCRIPTION_WEEK_LIMIT_REACHED",
+              limit: activeSub.plan.sessionsPerWeek,
+            },
+            { status: 403 },
+          );
+        }
       }
     }
 
@@ -170,6 +181,17 @@ export async function POST(request: Request) {
         return NextResponse.json(
           { error: "Motif obligatoire pour un passage exceptionnel" },
           { status: 400 },
+        );
+      }
+
+      const clubSettings = await getClubSettings();
+      if (!clubSettings.allowCheckInWithoutSubscription && !isSubActive) {
+        return NextResponse.json(
+          {
+            error: "Pointage sans abonnement désactivé — règles du club",
+            code: "OVERRIDE_WITHOUT_SUBSCRIPTION_DISABLED",
+          },
+          { status: 403 },
         );
       }
 
@@ -192,62 +214,76 @@ export async function POST(request: Request) {
       }
     }
 
-    let activeSubscriptionId: string | null = null;
-    let remainingSessionsBefore: number | null = null;
+    const result = await prisma.$transaction(async (tx) => {
+      let activeSubscriptionId: string | null = null;
+      let remainingSessionsBefore: number | null = null;
 
-    if (status === "PRESENT" && isSubActive) {
-      if (activeSub) {
+      if (status === "PRESENT" && isSubActive && activeSub) {
         activeSubscriptionId = activeSub.id;
         remainingSessionsBefore = activeSub.remainingSessions;
-        await prisma.memberSubscription.update({
-          where: { id: activeSub.id },
+
+        const updated = await tx.memberSubscription.updateMany({
+          where: {
+            id: activeSub.id,
+            remainingSessions: { gt: 0 },
+          },
           data: { remainingSessions: { decrement: 1 } },
         });
+
+        if (updated.count === 0) {
+          throw new Error("NO_SESSIONS_LEFT");
+        }
       }
-    }
 
-    const attendance = await prisma.attendance.create({
-      data: {
-        sessionId,
-        memberId,
-        status,
-        overrideReason: overrideReason?.trim() || null,
-        checkedBy: checkedBy?.trim() || actor?.name || null,
-        memberSubscriptionId: activeSubscriptionId,
-      },
-      include: {
-        session: {
-          select: {
-            id: true,
-            sessionDate: true,
-            startTime: true,
-            group: { select: { id: true, name: true } },
-          },
-        },
-        member: { select: { id: true, firstName: true, lastName: true } },
-      },
-    });
-
-    await prisma.auditLog.create({
-      data: {
-        action: "ATTENDANCE_CREATED",
-        entityType: "Attendance",
-        entityId: attendance.id,
-        userId: actor?.id ?? null,
-        details: JSON.stringify({
+      const attendance = await tx.attendance.create({
+        data: {
           sessionId,
           memberId,
           status,
-          overrideReason: overrideReason || null,
-          subscriptionActive: isSubActive,
-          remainingSessionsBefore,
-        }),
-      },
+          overrideReason: overrideReason?.trim() || null,
+          checkedBy: actor.name,
+          memberSubscriptionId: activeSubscriptionId,
+        },
+        include: {
+          session: {
+            select: {
+              id: true,
+              sessionDate: true,
+              startTime: true,
+              group: { select: { id: true, name: true, sport: { select: { name: true } } } },
+            },
+          },
+          member: { select: { id: true, firstName: true, lastName: true } },
+          memberSubscription: {
+            select: { id: true, sport: { select: { name: true } } },
+          },
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          action: "ATTENDANCE_CREATED",
+          entityType: "Attendance",
+          entityId: attendance.id,
+          userId: actor.id,
+          details: JSON.stringify({
+            sessionId,
+            memberId,
+            status,
+            sportId,
+            overrideReason: overrideReason || null,
+            subscriptionActive: isSubActive,
+            remainingSessionsBefore,
+          }),
+        },
+      });
+
+      return attendance;
     });
 
     return NextResponse.json(
       {
-        data: attendance,
+        data: result,
         warning:
           status === "OVERRIDE" && (await countOverrides(memberId)) >= 2
             ? "Attention: 2 passages exceptionnels sur 30 jours"
@@ -256,6 +292,13 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
+    if (error instanceof Error && error.message === "NO_SESSIONS_LEFT") {
+      return NextResponse.json(
+        { error: "Plus de séances disponibles sur cet abonnement", code: "NO_SESSIONS_LEFT" },
+        { status: 403 },
+      );
+    }
+
     const isDuplicate =
       typeof error === "object" &&
       error !== null &&
@@ -275,7 +318,12 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const actor = getRequestUser(request);
+  let actor;
+  try {
+    actor = await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
   let body: unknown;
 
   try {
@@ -393,7 +441,12 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const actor = getRequestUser(request);
+  let actor;
+  try {
+    actor = await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
   let body: unknown;
 
   try {
