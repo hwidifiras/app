@@ -16,10 +16,12 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q")?.trim();
+  const searchLimit = query ? 20 : 200;
 
-  const members = await prisma.member.findMany({
+  let members = await prisma.member.findMany({
     where: query
       ? {
+          status: "ACTIVE",
           OR: [
             { firstName: { contains: query } },
             { lastName: { contains: query } },
@@ -28,7 +30,7 @@ export async function GET(request: Request) {
         }
       : undefined,
     orderBy: { createdAt: "desc" },
-    take: 200,
+    take: query ? 300 : searchLimit,
     include: {
       groups: {
         where: { status: "ACTIVE" },
@@ -45,6 +47,24 @@ export async function GET(request: Request) {
       },
     },
   });
+
+  if (query) {
+    const q = query.toLowerCase();
+    const phoneNorm = query.replace(/\s/g, "");
+    members = members
+      .filter((m) => {
+        const full = `${m.firstName} ${m.lastName}`.toLowerCase();
+        const phone = m.phone.replace(/\s/g, "");
+        return (
+          full.includes(q) ||
+          m.firstName.toLowerCase().includes(q) ||
+          m.lastName.toLowerCase().includes(q) ||
+          phone.includes(phoneNorm) ||
+          m.phone.includes(query)
+        );
+      })
+      .slice(0, searchLimit);
+  }
 
   const data = members.map((member) => {
     const subscription = member.subscriptions[0];

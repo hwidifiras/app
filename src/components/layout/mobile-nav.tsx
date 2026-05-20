@@ -141,7 +141,7 @@ export function MobileNav() {
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[var(--border)] bg-[var(--surface)]/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-10px_28px_rgba(0,0,0,0.18)] backdrop-blur lg:hidden dark:shadow-[0_-10px_28px_rgba(0,0,0,0.45)]">
-        <nav className="grid grid-cols-5 gap-1">
+        <nav className="mobile-quick-nav grid grid-cols-5 gap-1">
           <QuickMobileLink href="/" label="Accueil" icon={Home} pathname={pathname} />
           <QuickMobileLink href="/attendance/today" label="Pointer" icon={Clock} pathname={pathname} />
           <QuickMobileLink href="/enrollment" label="Inscrire" icon={PlusCircle} pathname={pathname} featured />
@@ -171,20 +171,27 @@ function QuickMobileLink({
 }) {
   const active = href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
 
+  const activeFg = "text-[var(--primary-foreground)]";
+
   return (
     <Link
       href={href}
+      aria-current={active ? "page" : undefined}
       className={cn(
         "flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 text-[0.64rem] font-bold transition",
         active
-          ? "bg-[var(--primary)] text-white shadow-sm"
+          ? cn(
+              "bg-[var(--primary)] shadow-sm",
+              activeFg,
+              "[&_svg]:text-[var(--primary-foreground)]",
+            )
           : featured
-            ? "bg-[var(--primary)]/10 text-[var(--primary)]"
-            : "text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)]",
+            ? "bg-[var(--primary)]/10 text-[var(--primary)] [&_svg]:text-[var(--primary)]"
+            : "text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)] [&_svg]:text-[var(--muted-foreground)]",
       )}
     >
-      <Icon className="size-4 shrink-0" />
-      <span className="max-w-full truncate">{label}</span>
+      <Icon className={cn("size-4 shrink-0", active && activeFg)} />
+      <span className={cn("max-w-full truncate", active && activeFg)}>{label}</span>
     </Link>
   );
 }

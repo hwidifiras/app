@@ -2,6 +2,12 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import type { OfferLike } from "@/lib/offer-display";
+import {
+  formatOfferRulesSummary,
+  getOfferKindLabel,
+} from "@/lib/offer-display";
+import type { OfferKind } from "@prisma/client";
 
 type OfferRow = {
   id: string;
@@ -63,35 +69,44 @@ export function OffersManager() {
       return;
     }
     setName("");
+    setMessage("Offre créée — utilisable à l'inscription (étape Offre).");
     load();
   }
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <section className="panel p-5">
-        <h2 className="mb-4 text-lg font-semibold">Créer une offre</h2>
-        {message && <FeedbackMessage variant="error" message={message} />}
+        <h2 className="mb-2 text-lg font-semibold">Créer une offre</h2>
+        <p className="mb-4 text-sm text-[var(--muted-foreground)]">
+          Les offres s&apos;appliquent uniquement dans le parcours <strong>Inscription</strong>, au moment du devis.
+        </p>
+        {message && (
+          <FeedbackMessage
+            variant={message.startsWith("Offre créée") ? "success" : "error"}
+            message={message}
+          />
+        )}
         <form onSubmit={onSubmit} className="space-y-3">
           <input
-            className="w-full rounded border px-3 py-2"
-            placeholder="Nom de l'offre"
+            className="field"
+            placeholder="Nom de l'offre (ex. Famille 2 pers.)"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
           />
           <select
-            className="w-full rounded border px-3 py-2"
+            className="field"
             value={kind}
             onChange={(e) => setKind(e.target.value as typeof kind)}
           >
-            <option value="PERCENT_OFF">Réduction %</option>
-            <option value="FIXED_OFF">Montant fixe offert (€)</option>
-            <option value="FAMILY_BUNDLE">Forfait famille</option>
-            <option value="SECOND_DISCIPLINE">2e discipline</option>
+            <option value="PERCENT_OFF">Réduction % sur le devis</option>
+            <option value="FIXED_OFF">Montant fixe offert par ligne (€)</option>
+            <option value="FAMILY_BUNDLE">Forfait famille (prix total)</option>
+            <option value="SECOND_DISCIPLINE">Réduction 2e discipline (%)</option>
           </select>
           {(kind === "PERCENT_OFF" || kind === "SECOND_DISCIPLINE") && (
             <input
-              className="w-full rounded border px-3 py-2"
+              className="field"
               placeholder="% de réduction"
               value={percentOff}
               onChange={(e) => setPercentOff(e.target.value)}
@@ -99,8 +114,8 @@ export function OffersManager() {
           )}
           {kind === "FIXED_OFF" && (
             <input
-              className="w-full rounded border px-3 py-2"
-              placeholder="Montant en €"
+              className="field"
+              placeholder="Montant offert par ligne (€)"
               value={percentOff}
               onChange={(e) => setPercentOff(e.target.value)}
             />
@@ -108,20 +123,24 @@ export function OffersManager() {
           {kind === "FAMILY_BUNDLE" && (
             <>
               <input
-                className="w-full rounded border px-3 py-2"
-                placeholder="Prix forfait famille (€)"
+                className="field"
+                placeholder="Prix total du forfait (€)"
                 value={bundlePrice}
                 onChange={(e) => setBundlePrice(e.target.value)}
               />
               <input
-                className="w-full rounded border px-3 py-2"
-                placeholder="Nombre min. de membres"
+                className="field"
+                placeholder="Nombre min. d'inscriptions dans le devis"
                 value={minMembers}
                 onChange={(e) => setMinMembers(e.target.value)}
               />
+              <p className="text-xs text-[var(--muted-foreground)]">
+                Les élèves existants doivent être dans le même foyer. Deux nouveaux élèves dans le même devis
+                sont acceptés ; le foyer sera créé automatiquement à la validation.
+              </p>
             </>
           )}
-          <button type="submit" className="btn-primary" disabled={loading}>
+          <button type="submit" className="btn btn-primary" disabled={loading}>
             {loading ? "Création…" : "Créer l'offre"}
           </button>
         </form>
@@ -130,13 +149,18 @@ export function OffersManager() {
         <h2 className="mb-4 text-lg font-semibold">Offres actives</h2>
         <ul className="space-y-2 text-sm">
           {offers.map((o) => (
-            <li key={o.id} className="rounded border p-3">
-              <p className="font-medium">{o.name}</p>
-              <p className="text-[var(--muted-foreground)]">{o.kind}</p>
+            <li key={o.id} className="rounded-xl border border-[var(--border)] p-3">
+              <p className="font-medium text-[var(--foreground)]">{o.name}</p>
+              <p className="text-xs font-semibold text-[var(--primary)]">
+                {getOfferKindLabel(o.kind as OfferKind)}
+              </p>
+              <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                {formatOfferRulesSummary(o as OfferLike)}
+              </p>
             </li>
           ))}
           {offers.length === 0 && (
-            <p className="text-[var(--muted-foreground)]">Aucune offre — créez-en une à gauche.</p>
+            <p className="text-[var(--muted-foreground)]">Aucune offre active.</p>
           )}
         </ul>
       </section>

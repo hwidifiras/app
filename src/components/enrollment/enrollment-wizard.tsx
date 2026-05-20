@@ -6,6 +6,13 @@ import Link from "next/link";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions } from "@/components/ui/form-layout";
+import type { OfferLike } from "@/lib/offer-display";
+import {
+  formatOfferRulesSummary,
+  getOfferEnrollmentHint,
+  getOfferKindLabel,
+} from "@/lib/offer-display";
+import type { OfferKind } from "@prisma/client";
 
 type MemberOption = { id: string; firstName: string; lastName: string; phone: string };
 type GroupOption = {
@@ -23,7 +30,7 @@ type PlanOption = {
   sportId: string;
   sportName: string;
 };
-type OfferOption = { id: string; name: string; kind: string };
+type OfferOption = OfferLike;
 
 type LineState = {
   key: string;
@@ -211,6 +218,16 @@ export function EnrollmentWizard() {
     return plans.filter((p) => p.sportId === g.sportId);
   }
 
+  const selectedOffer = useMemo(
+    () => offers.find((o) => o.id === offerId) ?? null,
+    [offers, offerId],
+  );
+
+  const offerHint = useMemo(() => {
+    if (!selectedOffer) return null;
+    return getOfferEnrollmentHint(selectedOffer, lines.length);
+  }, [selectedOffer, lines.length]);
+
   const selectedCount = useMemo(
     () => lines.filter((l) => l.mode === "existing" && l.memberId).length,
     [lines],
@@ -297,8 +314,8 @@ export function EnrollmentWizard() {
           <h2 className="text-lg font-semibold">Offre</h2>
           <p className="text-sm text-[var(--muted-foreground)]">
             {selectedCount >= 2
-              ? "Plusieurs élèves — offre famille possible."
-              : "Réduction optionnelle."}
+              ? "Plusieurs inscriptions dans ce devis — un forfait famille peut s'appliquer."
+              : "Réduction optionnelle (%, montant fixe, 2e discipline…)."}
           </p>
           <select
             className="field"
@@ -308,12 +325,24 @@ export function EnrollmentWizard() {
             <option value="">Aucune offre</option>
             {offers.map((o) => (
               <option key={o.id} value={o.id}>
-                {o.name}
+                {o.name} — {getOfferKindLabel(o.kind as OfferKind)}
               </option>
             ))}
           </select>
+          {selectedOffer && (
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--muted)]/30 p-3 text-sm">
+              <p className="font-medium text-[var(--foreground)]">{selectedOffer.name}</p>
+              <p className="text-xs text-[var(--primary)]">{getOfferKindLabel(selectedOffer.kind)}</p>
+              <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                {formatOfferRulesSummary(selectedOffer)}
+              </p>
+              {offerHint && (
+                <p className="mt-2 text-xs text-amber-800 dark:text-amber-200">{offerHint}</p>
+              )}
+            </div>
+          )}
           <Link href="/offers" className="text-sm text-[var(--primary)] hover:underline">
-            Créer une offre
+            Gérer les offres
           </Link>
           <FormActions sticky>
             <button type="button" className="btn btn-ghost btn-block-mobile" onClick={() => setStep(1)}>

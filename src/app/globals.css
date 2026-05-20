@@ -103,6 +103,16 @@ a {
   color: inherit;
 }
 
+/* Mobile bottom nav: active tab must keep readable icon + label on primary background */
+.mobile-quick-nav a[aria-current="page"] {
+  color: var(--primary-foreground) !important;
+}
+
+.mobile-quick-nav a[aria-current="page"] svg {
+  color: var(--primary-foreground);
+  stroke: currentColor;
+}
+
 .app-shell {
   width: 100%;
   max-width: 1280px;

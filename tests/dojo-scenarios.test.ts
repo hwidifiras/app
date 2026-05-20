@@ -445,7 +445,7 @@ describe("subscriptions, payments and offers", () => {
     );
 
     expect(quote.blocked).toBe(true);
-    expect(quote.warnings.join(" ")).toContain("même foyer");
+    expect(quote.warnings.join(" ")).toMatch(/foyer/i);
   });
 
   it("applies family bundle for linked household members", async () => {
@@ -476,6 +476,47 @@ describe("subscriptions, payments and offers", () => {
     expect(quote.blocked).toBe(false);
     expect(quote.totalFinalCents).toBe(18000);
     expect(quote.totalDiscountCents).toBe(6000);
+  });
+
+  it("applies family bundle for two new members in the same quote", async () => {
+    const fx = await dojoFixture();
+    const offer = await prisma.offer.create({
+      data: {
+        name: "Famille nouveaux",
+        kind: "FAMILY_BUNDLE",
+        rules: JSON.stringify({ minMembers: 2, requiresHousehold: true, bundlePriceCents: 18000 }),
+      },
+    });
+
+    const quote = await buildEnrollmentQuote(
+      [
+        {
+          newMember: {
+            firstName: "Parent",
+            lastName: "Un",
+            phone: "new-adult-1",
+            memberType: "ADULT",
+          },
+          groupId: fx.adultBjj.id,
+          planId: fx.bjjPlan.id,
+        },
+        {
+          newMember: {
+            firstName: "Parent",
+            lastName: "Deux",
+            phone: "new-adult-2",
+            memberType: "ADULT",
+          },
+          groupId: fx.adultBjj.id,
+          planId: fx.bjjPlan.id,
+        },
+      ],
+      offer.id,
+    );
+
+    expect(quote.blocked).toBe(false);
+    expect(quote.totalFinalCents).toBe(18000);
+    expect(quote.warnings.join(" ")).not.toContain("même foyer");
   });
 
   it("applies second discipline discount when student already has another active sport", async () => {

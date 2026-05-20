@@ -307,10 +307,34 @@ async function resolveEnrollmentLines(lines: EnrollmentLineInput[], startDateInp
   return resolved;
 }
 
+function validateFamilyBundleHousehold(
+  resolved: ResolvedLine[],
+  requiresHousehold: boolean,
+  householdByMember: Map<string, string>,
+): string | null {
+  if (!requiresHousehold) return null;
+
+  const existingIds = [...new Set(resolved.map((x) => x.memberId).filter(Boolean))];
+  if (existingIds.length === 0) {
+    return null;
+  }
+
+  const householdIds = existingIds.map((id) => householdByMember.get(id)).filter(Boolean) as string[];
+  if (householdIds.length !== existingIds.length) {
+    return "Offre famille : chaque élève existant doit être rattaché à un foyer (fiche élève → Famille)";
+  }
+
+  if (new Set(householdIds).size !== 1) {
+    return "Offre famille : tous les élèves existants doivent être dans le même foyer";
+  }
+
+  return null;
+}
+
 function applyOfferToLines(
   resolved: ResolvedLine[],
   offer: Offer | null,
-  memberIdsInHousehold: Map<string, boolean>,
+  householdByMember: Map<string, string>,
   secondSportEligible: Map<string, boolean>,
 ): { discounts: number[]; offerName: string | null; warnings: string[] } {
   const discounts = resolved.map(() => 0);
@@ -323,23 +347,21 @@ function applyOfferToLines(
   switch (offer.kind as OfferKind) {
     case "FAMILY_BUNDLE": {
       const r = rules as { minMembers: number; requiresHousehold: boolean; bundlePriceCents: number; sportId?: string };
-      const memberIds = resolved.map((x) => x.memberId).filter(Boolean);
-      const uniqueMembers = new Set(memberIds);
-      if (uniqueMembers.size < r.minMembers) {
-        warnings.push(`Offre famille: minimum ${r.minMembers} membres`);
+      if (resolved.length < r.minMembers) {
+        warnings.push(`Offre famille : au moins ${r.minMembers} inscription(s) dans ce devis`);
         return { discounts, offerName: offer.name, warnings };
       }
-      if (r.requiresHousehold) {
-        const allLinked = memberIds.every((id) => memberIdsInHousehold.get(id));
-        if (!allLinked) {
-          warnings.push("Offre famille: tous les membres existants doivent être dans le même foyer");
-          return { discounts, offerName: offer.name, warnings };
-        }
+
+      const householdError = validateFamilyBundleHousehold(resolved, r.requiresHousehold, householdByMember);
+      if (householdError) {
+        warnings.push(householdError);
+        return { discounts, offerName: offer.name, warnings };
       }
+
       if (r.sportId) {
         const sameSport = resolved.every((x) => x.plan.sportId === r.sportId);
         if (!sameSport) {
-          warnings.push("Offre famille: même discipline requise");
+          warnings.push("Offre famille : même discipline requise");
           return { discounts, offerName: offer.name, warnings };
         }
       }
@@ -356,9 +378,12 @@ function applyOfferToLines(
       const r = rules as { percentOff: number };
       for (let i = 0; i < resolved.length; i++) {
         const mid = resolved[i].memberId;
-        if (secondSportEligible.get(mid)) {
+        if (mid && secondSportEligible.get(mid)) {
           discounts[i] = Math.round((listPrices[i] * r.percentOff) / 100);
         }
+      }
+      if (discounts.every((d) => d === 0)) {
+        warnings.push("Offre 2e discipline : aucune ligne éligible (pas de 2e discipline pour ces élèves)");
       }
       return { discounts, offerName: offer.name, warnings };
     }
@@ -396,14 +421,6 @@ export async function buildEnrollmentQuote(
     select: { memberId: true, householdId: true },
   });
   const householdByMember = new Map(householdLinks.map((h) => [h.memberId, h.householdId]));
-  const memberIdsInHousehold = new Map<string, boolean>();
-  if (householdLinks.length > 0) {
-    const hid = householdLinks[0].householdId;
-    const sameHousehold = householdLinks.every((h) => h.householdId === hid);
-    for (const id of memberIds) {
-      memberIdsInHousehold.set(id, sameHousehold && householdByMember.has(id));
-    }
-  }
 
   const secondSportEligible = new Map<string, boolean>();
   for (const mid of memberIds) {
@@ -427,13 +444,16 @@ export async function buildEnrollmentQuote(
   const { discounts, offerName, warnings: offerWarnings } = applyOfferToLines(
     resolved,
     offer,
-    memberIdsInHousehold,
+    householdByMember,
     secondSportEligible,
   );
 
   const quoteLines: QuoteLineResult[] = [];
   const allWarnings: string[] = [...offerWarnings];
-  let blocked = offerWarnings.length > 0;
+  const offerBlocksQuote = offerWarnings.some((w) =>
+    w.startsWith("Offre famille") || w.startsWith("Offre 2e discipline : aucune"),
+  );
+  let blocked = offerBlocksQuote;
   const groupSeatNeeds = new Map<string, number>();
   for (const r of resolved) {
     const existingAssignment = r.memberId
@@ -518,6 +538,44 @@ export async function buildEnrollmentQuote(
     blocked,
     warnings: allWarnings,
   };
+}
+
+/** After a family enrollment, link all members into one household when needed. */
+export async function ensureSharedHouseholdForMembers(
+  tx: Pick<typeof prisma, "household" | "householdMember">,
+  memberIds: string[],
+): Promise<void> {
+  if (memberIds.length < 2) return;
+
+  const links = await tx.householdMember.findMany({
+    where: { memberId: { in: memberIds } },
+    select: { memberId: true, householdId: true },
+  });
+  const byMember = new Map(links.map((l) => [l.memberId, l.householdId]));
+
+  let targetHouseholdId: string | null = null;
+  for (const id of memberIds) {
+    const hid = byMember.get(id);
+    if (!hid) continue;
+    if (targetHouseholdId && targetHouseholdId !== hid) {
+      throw new Error("HOUSEHOLD_CONFLICT");
+    }
+    targetHouseholdId = hid;
+  }
+
+  if (!targetHouseholdId) {
+    const created = await tx.household.create({ data: { label: null } });
+    targetHouseholdId = created.id;
+  }
+
+  for (const id of memberIds) {
+    if (byMember.has(id)) continue;
+    const taken = await tx.householdMember.findUnique({ where: { memberId: id } });
+    if (taken) throw new Error("HOUSEHOLD_MEMBER_TAKEN");
+    await tx.householdMember.create({
+      data: { householdId: targetHouseholdId, memberId: id, relationship: "OTHER" },
+    });
+  }
 }
 
 export async function validateStaffOfferDiscount(
