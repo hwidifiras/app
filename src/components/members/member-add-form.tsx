@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { FormActions, FormField, FormGrid, FormSection } from "@/components/ui/form-layout";
 
 type GroupOption = { id: string; name: string };
 type PlanOption = { id: string; name: string; price: number; totalSessions: number; validityDays: number };
@@ -58,7 +59,7 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
       parentPhone: memberType === "KID" ? parentPhone : "",
       parentAddress: memberType === "KID" ? parentAddress : "",
     };
-    if (groupId) payload.groupId = groupId;
+    payload.groupId = groupId;
     payload.subscriptionPlanId = planId;
     if (paymentCents > 0) {
       payload.paymentAmount = paymentCents;
@@ -219,6 +220,7 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
               onChange={(e) => setParentAddress(e.target.value)}
               placeholder="Adresse"
               className="field"
+              required
             />
           </div>
         </div>
@@ -328,18 +330,14 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
 
       <FeedbackMessage message={message} />
 
-      <div className="flex items-center gap-3 pt-1">
-        <button type="submit" disabled={loading} className="btn btn-primary">
-          {loading ? "Enregistrement..." : "Inscrire membre"}
-        </button>
-        <button
-          type="button"
-          onClick={() => router.push("/members")}
-          className="btn btn-ghost"
-        >
+      <FormActions sticky>
+        <button type="button" onClick={() => router.push("/members")} className="btn btn-ghost btn-block-mobile">
           Annuler
         </button>
-      </div>
+        <button type="submit" disabled={loading} className="btn btn-primary btn-block-mobile">
+          {loading ? "Enregistrement..." : "Inscrire membre"}
+        </button>
+      </FormActions>
     </form>
   );
 }

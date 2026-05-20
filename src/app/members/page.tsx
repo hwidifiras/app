@@ -3,6 +3,9 @@ import Link from "next/link";
 import { MemberListClient } from "@/components/members/member-list-client";
 import { PageHeader } from "@/components/ui/page-header";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function MembersPage() {
   let hasMemberDataError = false;
   let initialMembers: Array<{

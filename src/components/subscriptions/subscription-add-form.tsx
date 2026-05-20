@@ -133,7 +133,6 @@ export function SubscriptionAddForm({ membersOptions, plansOptions }: Subscripti
       planId,
       startDate: new Date(startDate).toISOString(),
       endDate: endDate ? new Date(endDate).toISOString() : null,
-      amount: Math.round(parseFloat(amount || "0") * 100),
     };
 
     const response = await fetch("/api/member-subscriptions", {

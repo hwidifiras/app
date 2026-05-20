@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, CreditCard, Wallet, Banknote, CheckCircle2 } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { FormActions, FormField, FormGrid, FormSection } from "@/components/ui/form-layout";
 
 const METHODS = [
   { value: "CASH", label: "Espèces", icon: <Banknote className="size-4" /> },
@@ -25,8 +26,8 @@ export function PaymentAddForm({
     id: string;
     memberName: string;
     planName: string;
-    amount: number; // montant dû en centimes
-    totalPaid: number; // déjà payé en centimes
+    amount: number;
+    totalPaid: number;
   }>;
   defaultSubscriptionId?: string;
 }) {
@@ -80,70 +81,65 @@ export function PaymentAddForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-4">
       {message && <FeedbackMessage message={message} />}
 
-      {/* Subscription selector */}
-      <div className="space-y-1.5">
-        <label htmlFor="subscription" className="text-sm font-semibold text-[var(--foreground)]">
-          Abonnement <span className="text-[var(--danger)]">*</span>
-        </label>
-        <select
-          id="subscription"
-          value={subscriptionId}
-          onChange={(e) => setSubscriptionId(e.target.value)}
-          required
-          className="field"
-        >
-          <option value="">Sélectionner un abonnement...</option>
-          {subscriptions.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.memberName} — {s.planName} (dû: {formatCurrency(s.amount)}, payé: {formatCurrency(s.totalPaid)})
-            </option>
-          ))}
-        </select>
-        {subscriptions.length === 0 && (
-          <p className="text-xs text-[var(--warning)]">Aucun abonnement actif trouvé. Créez d&apos;abord un abonnement.</p>
-        )}
-      </div>
-
-      {/* Amount */}
-      <div className="space-y-1.5">
-        <label htmlFor="amount" className="text-sm font-semibold text-[var(--foreground)]">
-          Montant (€) <span className="text-[var(--danger)]">*</span>
-        </label>
-        <div className="relative">
-          <input
-            id="amount"
-            type="number"
-            step="0.01"
-            min="0.01"
+      <FormSection title="Abonnement" description="Sélectionnez l'abonnement à régler.">
+        <FormField label="Abonnement *" htmlFor="subscription">
+          <select
+            id="subscription"
+            value={subscriptionId}
+            onChange={(e) => setSubscriptionId(e.target.value)}
             required
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className={`field pr-10 ${wouldExceed ? "border-[var(--danger)] ring-1 ring-[var(--danger)]" : ""}`}
-            placeholder="Ex: 49.90"
-          />
-          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[var(--muted-foreground)]">€</span>
-        </div>
-        {selected && (
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-[var(--muted-foreground)]">
-              Restant dû: <strong className="text-[var(--foreground)]">{formatCurrency(remaining)}</strong>
-            </span>
-            {wouldExceed && (
-              <span className="text-[var(--danger)] font-medium">Dépassement !</span>
-            )}
-          </div>
-        )}
-      </div>
+            className="field"
+          >
+            <option value="">Sélectionner un abonnement...</option>
+            {subscriptions.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.memberName} — {s.planName} (dû: {formatCurrency(s.amount)}, payé:{" "}
+                {formatCurrency(s.totalPaid)})
+              </option>
+            ))}
+          </select>
+          {subscriptions.length === 0 && (
+            <p className="mt-1 text-xs text-[var(--warning)]">
+              Aucun abonnement actif trouvé. Créez d&apos;abord un abonnement.
+            </p>
+          )}
+        </FormField>
+      </FormSection>
 
-      {/* Date + Method row */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <label htmlFor="paymentDate" className="text-sm font-semibold text-[var(--foreground)]">
-            Date de paiement
-          </label>
+      <FormSection title="Montant">
+        <FormField label="Montant (€) *" htmlFor="amount">
+          <div className="relative">
+            <input
+              id="amount"
+              type="number"
+              step="0.01"
+              min="0.01"
+              required
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className={`field pr-10 ${wouldExceed ? "border-[var(--danger)] ring-1 ring-[var(--danger)]" : ""}`}
+              placeholder="Ex: 49.90"
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[var(--muted-foreground)]">
+              €
+            </span>
+          </div>
+          {selected && (
+            <div className="mt-1 flex items-center justify-between text-xs">
+              <span className="text-[var(--muted-foreground)]">
+                Restant dû: <strong className="text-[var(--foreground)]">{formatCurrency(remaining)}</strong>
+              </span>
+              {wouldExceed && <span className="font-medium text-[var(--danger)]">Dépassement !</span>}
+            </div>
+          )}
+        </FormField>
+      </FormSection>
+
+      <FormGrid>
+        <FormField label="Date de paiement" htmlFor="paymentDate">
           <input
             id="paymentDate"
             type="date"
@@ -151,53 +147,39 @@ export function PaymentAddForm({
             onChange={(e) => setPaymentDate(e.target.value)}
             className="field"
           />
-        </div>
-
-        <div className="space-y-1.5">
-          <label htmlFor="method" className="text-sm font-semibold text-[var(--foreground)]">
-            Méthode
-          </label>
-          <select
-            id="method"
-            value={method}
-            onChange={(e) => setMethod(e.target.value)}
-            className="field"
-          >
+        </FormField>
+        <FormField label="Méthode" htmlFor="method">
+          <select id="method" value={method} onChange={(e) => setMethod(e.target.value)} className="field">
             {METHODS.map((m) => (
-              <option key={m.value} value={m.value}>{m.label}</option>
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
             ))}
           </select>
-        </div>
-      </div>
+        </FormField>
+      </FormGrid>
 
-      {/* Notes */}
-      <div className="space-y-1.5">
-        <label htmlFor="notes" className="text-sm font-semibold text-[var(--foreground)]">
-          Notes
-        </label>
-        <textarea
-          id="notes"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          className="field min-h-[80px]"
-          placeholder="Numéro de chèque, remarque..."
-        />
-      </div>
+      <FormSection>
+        <FormField label="Notes" htmlFor="notes">
+          <textarea
+            id="notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className="field min-h-[80px]"
+            placeholder="Numéro de chèque, remarque..."
+          />
+        </FormField>
+      </FormSection>
 
-      {/* Actions */}
-      <div className="flex items-center justify-between pt-2">
-        <button
-          type="button"
-          onClick={() => router.push("/payments")}
-          className="btn btn-ghost inline-flex items-center gap-1.5"
-        >
+      <FormActions sticky>
+        <button type="button" onClick={() => router.push("/payments")} className="btn btn-ghost btn-block-mobile">
           <ArrowLeft className="size-4" />
           Annuler
         </button>
         <button
           type="submit"
           disabled={loading || !subscriptionId || amountNum <= 0 || wouldExceed}
-          className="btn btn-primary inline-flex items-center gap-1.5"
+          className="btn btn-primary btn-block-mobile"
         >
           {loading ? (
             <span className="inline-block size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -206,7 +188,7 @@ export function PaymentAddForm({
           )}
           Enregistrer le paiement
         </button>
-      </div>
+      </FormActions>
     </form>
   );
 }

@@ -2,10 +2,17 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { createPaymentSchema, updatePaymentSchema } from "@/lib/schemas/payment";
+import { requireAuth } from "@/lib/request-user";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const memberSubscriptionId = searchParams.get("memberSubscriptionId")?.trim();
   const memberId = searchParams.get("memberId")?.trim();
@@ -39,6 +46,12 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {
@@ -62,64 +75,76 @@ export async function POST(request: Request) {
   const { memberSubscriptionId, amount, paymentDate, paymentMethod, notes } = parsed.data;
 
   try {
-    const subscription = await prisma.memberSubscription.findUnique({
-      where: { id: memberSubscriptionId },
-      include: { payments: { select: { amount: true } } },
-    });
+    const payment = await prisma.$transaction(async (tx) => {
+      const subscription = await tx.memberSubscription.findUnique({
+        where: { id: memberSubscriptionId },
+        include: { payments: { select: { amount: true } } },
+      });
 
-    if (!subscription) {
-      return NextResponse.json({ error: "Abonnement introuvable" }, { status: 404 });
-    }
+      if (!subscription) {
+        throw new Error("SUB_NOT_FOUND");
+      }
 
-    const totalPaid = subscription.payments.reduce((sum: number, p: { amount: number }) => sum + p.amount, 0);
-    const newTotal = totalPaid + amount;
+      const totalPaid = subscription.payments.reduce((sum, p) => sum + p.amount, 0);
+      const newTotal = totalPaid + amount;
 
-    if (newTotal > subscription.amount) {
-      return NextResponse.json(
-        {
-          error: "Dépassement du montant dû",
-          details: { totalPaid, amountDue: subscription.amount, attempted: amount },
+      if (newTotal > subscription.amount) {
+        throw new Error("OVERPAY");
+      }
+
+      const created = await tx.payment.create({
+        data: {
+          memberSubscriptionId,
+          amount,
+          paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
+          paymentMethod: paymentMethod?.trim() || null,
+          notes: notes?.trim() || null,
         },
-        { status: 409 },
-      );
-    }
-
-    const payment = await prisma.payment.create({
-      data: {
-        memberSubscriptionId,
-        amount,
-        paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
-        paymentMethod: paymentMethod?.trim() || null,
-        notes: notes?.trim() || null,
-      },
-      include: {
-        memberSubscription: {
-          select: {
-            id: true,
-            member: { select: { id: true, firstName: true, lastName: true } },
-            plan: { select: { id: true, name: true } },
+        include: {
+          memberSubscription: {
+            select: {
+              id: true,
+              member: { select: { id: true, firstName: true, lastName: true } },
+              plan: { select: { id: true, name: true } },
+            },
           },
         },
-      },
-    });
+      });
 
-    await prisma.auditLog.create({
-      data: {
-        action: "PAYMENT_CREATED",
-        entityType: "Payment",
-        entityId: payment.id,
-        details: JSON.stringify({ amount, memberSubscriptionId }),
-      },
+      await tx.auditLog.create({
+        data: {
+          action: "PAYMENT_CREATED",
+          entityType: "Payment",
+          entityId: created.id,
+          details: JSON.stringify({ amount, memberSubscriptionId }),
+        },
+      });
+
+      return created;
     });
 
     return NextResponse.json({ data: payment }, { status: 201 });
   } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "SUB_NOT_FOUND") {
+        return NextResponse.json({ error: "Abonnement introuvable" }, { status: 404 });
+      }
+      if (error.message === "OVERPAY") {
+        return NextResponse.json({ error: "Dépassement du montant dû" }, { status: 409 });
+      }
+    }
     console.error("[POST /api/payments] error:", error);
     return NextResponse.json({ error: "Erreur serveur lors de la création du paiement" }, { status: 500 });
   }
 }
 
 export async function PATCH(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {
@@ -217,6 +242,12 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {

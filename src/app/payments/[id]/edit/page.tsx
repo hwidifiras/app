@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { PaymentEditForm } from "@/components/payments/payment-edit-form";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function EditPaymentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 

@@ -7,7 +7,7 @@ export const createSubscriptionPlanSchema = z.object({
   totalSessions: z.number().int().min(1, "Minimum 1 séance").max(999, "Maximum 999 séances"),
   sessionsPerWeek: z.number().int().min(1, "Minimum 1 fois par semaine").max(7, "Maximum 7 fois par semaine").optional(),
   validityDays: z.number().int().min(1, "Durée minimum 1 jour").max(3650, "Durée maximum 10 ans"),
-  sportId: z.string().trim().optional().or(z.literal("")),
+  sportId: z.string().trim().min(1, "Discipline requise"),
 });
 
 export type CreateSubscriptionPlanInput = z.infer<typeof createSubscriptionPlanSchema>;

@@ -5,8 +5,15 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { SubscriptionPlanForm } from "@/components/subscription-plans/subscription-plan-form";
 
-export default async function EditSubscriptionPlanPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+export default async function EditSubscriptionPlanPage({ 
+  params 
+}: { 
+  params: Promise<{ id: string }> 
+}) {
+  const { id } = await params;
 
   const plan = await prisma.subscriptionPlan.findUnique({
     where: { id },

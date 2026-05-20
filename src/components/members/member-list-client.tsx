@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { ChevronDown } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -55,8 +56,15 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
   const [paymentFilter, setPaymentFilter] = useState<"ALL" | "PAID" | "PARTIAL" | "UNPAID">("ALL");
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+  const [expandedMemberIds, setExpandedMemberIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [message, setMessage] = useState<string | null>(null);
+
+  function toggleExpandMember(memberId: string) {
+    setExpandedMemberIds((current) =>
+      current.includes(memberId) ? current.filter((id) => id !== memberId) : [...current, memberId],
+    );
+  }
 
   function paymentBadge(status: MemberWithGroups["paymentStatus"]) {
     if (status === "PAID") return { label: "Payé", className: "bg-emerald-100 text-emerald-700" };
@@ -125,7 +133,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
   };
 
   async function archiveMember(memberId: string) {
-    const confirmed = window.confirm("Confirmer l'archivage de ce membre ?");
+    const confirmed = window.confirm("Confirmer la résiliation de ce membre ?");
     if (!confirmed) return;
 
     setActionLoadingId(memberId);
@@ -140,12 +148,12 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
     const result = await response.json();
 
     if (!response.ok) {
-      setMessage(result.error ?? "Erreur lors de l'archivage");
+      setMessage(result.error ?? "Erreur lors de la résiliation");
       setActionLoadingId(null);
       return;
     }
 
-    setMessage("Membre archivé avec succès");
+    setMessage("Membre résilié avec succès");
     await reloadMembers();
     setActionLoadingId(null);
   }
@@ -226,10 +234,15 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
   }
 
   function renderMemberRow(member: MemberWithGroups, selectable = false) {
+    const isExpanded = expandedMemberIds.includes(member.id);
+
     return (
-      <tr key={member.id} className="transition-colors hover:bg-(--surface-soft)">
+      <tr
+        key={member.id}
+        className={`mobile-collapsible-row transition-colors hover:bg-(--surface-soft) ${isExpanded ? "is-expanded" : ""}`}
+      >
         {selectable ? (
-          <td className="px-4 py-3 align-top">
+          <td className="hidden px-4 py-3 align-top sm:table-cell">
             <input
               type="checkbox"
               checked={selectedMemberIds.includes(member.id)}
@@ -238,12 +251,12 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
             />
           </td>
         ) : null}
-        <td className="px-4 py-3 font-medium text-foreground">
+        <td className="data-table-primary px-4 py-3 font-medium text-foreground" data-label="Nom">
           {member.firstName} {member.lastName}
         </td>
-        <td className="px-4 py-3">{member.phone}</td>
-        <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell">{member.email ?? "-"}</td>
-        <td className="hidden px-4 py-3 lg:table-cell">
+        <td className="px-4 py-3 mobile-detail-cell" data-label="Téléphone">{member.phone}</td>
+        <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell mobile-detail-cell" data-label="Email">{member.email ?? "-"}</td>
+        <td className="hidden px-4 py-3 lg:table-cell mobile-detail-cell" data-label="Groupes">
           {member.groupIds.length === 0 ? (
             <span className="text-xs text-muted-foreground">-</span>
           ) : (
@@ -259,17 +272,17 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
             </div>
           )}
         </td>
-        <td className="px-4 py-3">
+        <td className="px-4 py-3 mobile-detail-cell" data-label="Paiement">
           <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[0.7rem] font-semibold ${paymentBadge(member.paymentStatus).className}`}>
             {paymentBadge(member.paymentStatus).label}
           </span>
         </td>
-        <td className="px-4 py-3">
-          <StatusBadge variant={member.status === "ACTIVE" ? "success" : "muted"}>{member.status === "ACTIVE" ? "Actif" : "Archivé"}</StatusBadge>
+        <td className="px-4 py-3 mobile-detail-cell" data-label="Statut">
+          <StatusBadge variant={member.status === "ACTIVE" ? "success" : "muted"}>{member.status === "ACTIVE" ? "Actif" : "Résilié"}</StatusBadge>
         </td>
-        <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">{new Date(member.createdAt).toLocaleDateString("fr-FR")}</td>
-        <td className="px-4 py-3 text-right">
-          <div className="flex items-center justify-end gap-2">
+        <td className="hidden px-4 py-3 text-muted-foreground md:table-cell mobile-detail-cell" data-label="Inscrit le">{new Date(member.createdAt).toLocaleDateString("fr-FR")}</td>
+        <td className="px-4 py-3 text-right card-actions-cell mobile-detail-cell" data-label="Actions">
+          <div className="flex items-center justify-end gap-2 card-actions-stack">
             <Link href={`/members/${member.id}`} className="btn btn-ghost min-h-0 px-2 py-1 text-xs">
               Détails
             </Link>
@@ -279,7 +292,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
               disabled={actionLoadingId === member.id || member.status === "ARCHIVED"}
               className="btn btn-danger min-h-0 px-2 py-1 text-xs"
             >
-              {actionLoadingId === member.id ? "..." : "Archiver"}
+              {actionLoadingId === member.id ? "..." : "Résilier"}
             </button>
             <button
               type="button"
@@ -291,6 +304,17 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
               {actionLoadingId === member.id ? "..." : "Supprimer"}
             </button>
           </div>
+        </td>
+        <td className="px-4 py-3 text-center sm:hidden mobile-toggle-cell">
+          <button
+            type="button"
+            className="mobile-card-toggle"
+            onClick={() => toggleExpandMember(member.id)}
+            aria-expanded={isExpanded}
+          >
+            {isExpanded ? "Voir moins" : "Voir plus"}
+            <ChevronDown className={`size-3 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+          </button>
         </td>
       </tr>
     );
@@ -319,7 +343,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
           }} className="field w-full text-xs sm:w-auto sm:min-w-32">
             <option value="ALL">Tous</option>
             <option value="ACTIVE">Actifs</option>
-            <option value="ARCHIVED">Archivés</option>
+            <option value="ARCHIVED">Résiliés</option>
           </select>
         </div>
         <div>
@@ -359,7 +383,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
           </select>
         </div>
         <div className="sm:ml-auto">
-          <Link href="/members/new" className="btn btn-primary inline-flex w-full justify-center sm:w-auto">
+          <Link href="/members/new" className="btn btn-primary btn-block-mobile inline-flex justify-center">
             + Ajouter un membre
           </Link>
         </div>
@@ -388,7 +412,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
             </div>
           </div>
 
-          <div className="overflow-x-auto rounded-xl border-border">
+          <div className="data-table overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-(--surface-soft) text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
@@ -405,10 +429,11 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
                   <th className="px-4 py-3 text-left font-semibold">Téléphone</th>
                   <th className="hidden px-4 py-3 text-left font-semibold sm:table-cell">Email</th>
                   <th className="hidden px-4 py-3 text-left font-semibold lg:table-cell">Groupes</th>
-                  <th className="px-4 py-3 text-left font-semibold">Paiement</th>
-                  <th className="px-4 py-3 text-left font-semibold">Statut</th>
+                  <th className="hidden px-4 py-3 text-left font-semibold sm:table-cell">Paiement</th>
+                  <th className="hidden px-4 py-3 text-left font-semibold sm:table-cell">Statut</th>
                   <th className="hidden px-4 py-3 text-left font-semibold md:table-cell">Inscrit le</th>
-                  <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                  <th className="hidden px-4 py-3 text-right font-semibold sm:table-cell">Actions</th>
+                  <th className="px-4 py-3 text-center sm:hidden font-semibold"> </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

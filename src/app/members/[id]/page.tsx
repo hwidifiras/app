@@ -4,6 +4,11 @@ import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { MemberEditCard } from "@/components/members/member-edit-card";
+import { HouseholdCard } from "@/components/members/household-card";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function formatCurrency(cents: number) {
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
@@ -13,24 +18,6 @@ function formatDate(date: Date | string) {
   return new Date(date).toLocaleDateString("fr-FR");
 }
 
-function memberTypeLabel(value: string) {
-  if (value === "KID") return "Enfant";
-  if (value === "ADULT") return "Adulte";
-  return "Non spécifié";
-}
-
-function computeAge(date: Date | null) {
-  if (!date) return null;
-  const now = new Date();
-  let age = now.getFullYear() - date.getFullYear();
-  const hasBirthdayPassed =
-    now.getMonth() > date.getMonth() ||
-    (now.getMonth() === date.getMonth() && now.getDate() >= date.getDate());
-  if (!hasBirthdayPassed) {
-    age -= 1;
-  }
-  return Math.max(0, age);
-}
 
 export default async function MemberDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -57,6 +44,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
         orderBy: { createdAt: "desc" },
         take: 20,
         include: {
+          sport: { select: { id: true, name: true } },
           plan: { select: { name: true, price: true, totalSessions: true } },
           payments: { select: { amount: true, paymentDate: true }, orderBy: { paymentDate: "desc" }, take: 10 },
         },
@@ -83,9 +71,11 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
 
   const activeGroups = member.groups.filter((g) => g.status === "ACTIVE");
   const inactiveGroups = member.groups.filter((g) => g.status === "INACTIVE");
-  const birthDate = member.birthDate ? new Date(member.birthDate) : null;
-  const age = computeAge(birthDate);
-
+  const activeSubsBySport = member.subscriptions.filter((s) => s.status === "ACTIVE");
+  const totalDebt = member.subscriptions.reduce((sum, sub) => {
+    const totalPaid = sub.payments.reduce((acc, payment) => acc + payment.amount, 0);
+    return sum + Math.max(0, sub.amount - totalPaid);
+  }, 0);
   return (
     <main className="app-shell py-4 md:py-8">
       <Link
@@ -98,72 +88,71 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
       <PageHeader
         overline="Dossier membre"
         title={`${member.firstName} ${member.lastName}`}
+        description={
+          totalDebt > 0
+            ? `Dette en cours: ${formatCurrency(totalDebt)}`
+            : "Aucune dette en cours"
+        }
       />
 
       <div className="grid gap-6 md:grid-cols-3">
         {/* Carte identité */}
-        <section className="panel panel-soft p-5 md:col-span-1">
-          <h2 className="text-lg font-semibold text-[var(--foreground)]">Informations</h2>
-          <dl className="mt-4 space-y-3 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-[var(--muted-foreground)]">Statut</dt>
-              <dd>
-                <StatusBadge variant={member.status === "ACTIVE" ? "success" : "muted"}>
-                  {member.status === "ACTIVE" ? "Actif" : "Archivé"}
-                </StatusBadge>
-              </dd>
+        <MemberEditCard
+          member={{
+            id: member.id,
+            firstName: member.firstName,
+            lastName: member.lastName,
+            phone: member.phone,
+            email: member.email,
+            memberType: member.memberType,
+            birthDate: member.birthDate?.toISOString() ?? null,
+            address: member.address,
+            parentName: member.parentName,
+            parentPhone: member.parentPhone,
+            parentAddress: member.parentAddress,
+            status: member.status,
+            joinedAt: member.joinedAt.toISOString(),
+            archivedAt: member.archivedAt?.toISOString() ?? null,
+          }}
+        />
+
+        <HouseholdCard memberId={member.id} />
+
+        {activeSubsBySport.length > 0 && (
+          <section className="panel p-5 md:col-span-3">
+            <h2 className="text-lg font-semibold">Abonnements actifs par discipline</h2>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {activeSubsBySport.map((sub) => {
+                const paid = sub.payments.reduce((s, p) => s + p.amount, 0);
+                return (
+                  <div key={sub.id} className="rounded-lg border p-3">
+                    <p className="font-medium">{sub.sport.name}</p>
+                    <p className="text-sm text-[var(--muted-foreground)]">{sub.plan.name}</p>
+                    <p className="text-sm">
+                      {formatCurrency(paid)} / {formatCurrency(sub.amount)} — {sub.remainingSessions} séances
+                    </p>
+                  </div>
+                );
+              })}
             </div>
-            <div className="flex justify-between">
-              <dt className="text-[var(--muted-foreground)]">Téléphone</dt>
-              <dd className="font-medium">{member.phone}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-[var(--muted-foreground)]">Type</dt>
-              <dd className="font-medium">{memberTypeLabel(member.memberType)}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-[var(--muted-foreground)]">Date de naissance</dt>
-              <dd className="font-medium">
-                {birthDate ? formatDate(birthDate) : "-"}
-                {age !== null ? ` (${age} ans)` : ""}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-[var(--muted-foreground)]">Adresse</dt>
-              <dd className="font-medium">{member.address ?? "-"}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-[var(--muted-foreground)]">Email</dt>
-              <dd className="font-medium">{member.email ?? "-"}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-[var(--muted-foreground)]">Inscription</dt>
-              <dd className="font-medium">{new Date(member.joinedAt).toLocaleDateString("fr-FR")}</dd>
-            </div>
-            {member.archivedAt ? (
-              <div className="flex justify-between">
-                <dt className="text-[var(--muted-foreground)]">Archivé le</dt>
-                <dd className="font-medium text-[var(--danger)]">
-                  {new Date(member.archivedAt).toLocaleDateString("fr-FR")}
-                </dd>
-              </div>
-            ) : null}
-            {member.memberType === "KID" ? (
-              <div className="rounded-lg border border-[var(--border)] p-3 text-xs">
-                <p className="mb-2 text-[var(--muted-foreground)]">Responsable légal</p>
-                <p className="font-medium">{member.parentName ?? "-"}</p>
-                <p className="text-[var(--muted-foreground)]">{member.parentPhone ?? "-"}</p>
-                <p className="text-[var(--muted-foreground)]">{member.parentAddress ?? "-"}</p>
-              </div>
-            ) : null}
-          </dl>
-        </section>
+          </section>
+        )}
 
         {/* Groupes actifs */}
         <section className="panel p-5 md:col-span-2">
-          <h2 className="text-lg font-semibold text-[var(--foreground)]">
-            Groupes actifs ({activeGroups.length})
-          </h2>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">
+              Groupes actifs ({activeGroups.length})
+            </h2>
+            {member.status === "ACTIVE" && (
+              <Link
+                href={`/members/${member.id}/add-to-group`}
+                className="btn btn-primary text-xs"
+              >
+                + Ajouter
+              </Link>
+            )}
+          </div>
           {activeGroups.length === 0 ? (
             <p className="mt-3 text-sm text-[var(--muted-foreground)]">Aucun groupe actif.</p>
           ) : (
@@ -300,11 +289,11 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                 <tbody className="divide-y divide-[var(--border)]">
                   {member.attendances.map((a) => (
                     <tr key={a.id} className="hover:bg-[var(--surface-soft)]">
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-2" data-label="Date">
                         {formatDate(a.session.sessionDate)} {a.session.startTime}
                       </td>
-                      <td className="px-3 py-2">{a.session.group?.name ?? "—"}</td>
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-2" data-label="Groupe">{a.session.group?.name ?? "—"}</td>
+                      <td className="px-3 py-2" data-label="Statut">
                         <StatusBadge
                           variant={
                             a.status === "PRESENT"
@@ -317,7 +306,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                           {a.status === "PRESENT" ? "Présent" : a.status === "ABSENT" ? "Absent" : "Exception"}
                         </StatusBadge>
                       </td>
-                      <td className="px-3 py-2 hidden sm:table-cell text-[var(--muted-foreground)] text-xs">
+                      <td className="px-3 py-2 hidden sm:table-cell text-[var(--muted-foreground)] text-xs" data-label="Pointage">
                         {formatDate(a.checkedAt)}
                       </td>
                     </tr>

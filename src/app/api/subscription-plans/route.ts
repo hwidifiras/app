@@ -5,12 +5,19 @@ import {
   createSubscriptionPlanSchema,
   updateSubscriptionPlanSchema,
 } from "@/lib/schemas/subscription-plan";
+import { requireAuth } from "@/lib/request-user";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q")?.trim();
+
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
 
   const plans = await prisma.subscriptionPlan.findMany({
     where: query
@@ -28,6 +35,12 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   let body: unknown;
+
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
 
   try {
     body = await request.json();
@@ -58,7 +71,7 @@ export async function POST(request: Request) {
         totalSessions: parsed.data.totalSessions,
         sessionsPerWeek: parsed.data.sessionsPerWeek ?? null,
         validityDays: parsed.data.validityDays,
-        sportId: parsed.data.sportId || null,
+        sportId: parsed.data.sportId,
       },
     });
 
@@ -80,6 +93,12 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   let body: unknown;
+
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
 
   try {
     body = await request.json();
@@ -127,7 +146,7 @@ export async function PATCH(request: Request) {
         sessionsPerWeek: payload.sessionsPerWeek,
         validityDays: payload.validityDays,
         isActive: payload.isActive,
-        sportId: payload.sportId === undefined ? undefined : payload.sportId === "" ? null : payload.sportId,
+        sportId: payload.sportId === undefined ? undefined : payload.sportId === "" ? undefined : payload.sportId,
       },
     });
 
@@ -159,6 +178,12 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   let body: unknown;
+
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
 
   try {
     body = await request.json();

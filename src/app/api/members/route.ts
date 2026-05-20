@@ -2,10 +2,18 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { createMemberSchema, updateMemberSchema } from "@/lib/schemas/member";
+import { requireAuth } from "@/lib/request-user";
+import { expireStaleSubscriptions } from "@/lib/membership-rules";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q")?.trim();
 
@@ -77,6 +85,12 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {
@@ -107,6 +121,8 @@ export async function POST(request: Request) {
 
   const hasGroupId = typeof groupId === "string" && groupId.trim().length > 0;
   const hasPlanId = typeof subscriptionPlanId === "string" && subscriptionPlanId.trim().length > 0;
+  const groupIdValue = hasGroupId ? groupId.trim() : "";
+  const planIdValue = hasPlanId && typeof subscriptionPlanId === "string" ? subscriptionPlanId.trim() : "";
   const paymentCents = typeof paymentAmount === "number" && Number.isFinite(paymentAmount)
     ? Math.max(0, Math.round(paymentAmount))
     : 0;
@@ -126,6 +142,28 @@ export async function POST(request: Request) {
         throw new Error("SUBSCRIPTION_PLAN_REQUIRED");
       }
 
+      if (!hasGroupId) {
+        throw new Error("GROUP_REQUIRED");
+      }
+
+      const [group, plan] = await Promise.all([
+        tx.group.findUnique({
+          where: { id: groupIdValue },
+          include: { _count: { select: { members: { where: { status: "ACTIVE" } } } } },
+        }),
+        tx.subscriptionPlan.findUnique({ where: { id: planIdValue } }),
+      ]);
+
+      if (!group) throw new Error("GROUP_NOT_FOUND");
+      if (!group.isActive) throw new Error("GROUP_INACTIVE");
+      if (!plan) throw new Error("PLAN_NOT_FOUND");
+      if (!plan.isActive) throw new Error("PLAN_INACTIVE");
+      if (group.groupType === "KIDS" && parsed.data.memberType === "ADULT") throw new Error("MEMBER_TYPE_MISMATCH");
+      if (group.groupType === "ADULTS" && parsed.data.memberType === "KID") throw new Error("MEMBER_TYPE_MISMATCH");
+      if (plan.sportId && plan.sportId !== group.sportId) throw new Error("PLAN_SPORT_MISMATCH");
+      if (group._count.members >= group.capacity) throw new Error("GROUP_CAPACITY_REACHED");
+      if (paymentCents > plan.price) throw new Error("PAYMENT_EXCEEDS_DUE");
+
       const created = await tx.member.create({
         data: {
           firstName: parsed.data.firstName,
@@ -141,78 +179,66 @@ export async function POST(request: Request) {
         },
       });
 
-      if (hasGroupId) {
-        const group = await tx.group.findUnique({ where: { id: groupId } });
-        if (group) {
-          await tx.groupMember.create({
-            data: {
-              groupId,
-              memberId: created.id,
-              startDate: new Date(),
-            },
-          });
-        }
-      }
+      const now = new Date();
+      const endDate = new Date(now);
+      endDate.setDate(endDate.getDate() + plan.validityDays);
 
-      if (hasPlanId) {
-        const plan = await tx.subscriptionPlan.findUnique({ where: { id: subscriptionPlanId } });
-        if (plan) {
-          const now = new Date();
-          const endDate = new Date(now);
-          endDate.setDate(endDate.getDate() + plan.validityDays);
+      const subscription = await tx.memberSubscription.create({
+        data: {
+          memberId: created.id,
+          planId: planIdValue,
+          sportId: plan.sportId,
+          startDate: now,
+          endDate,
+          amount: plan.price,
+          remainingSessions: plan.totalSessions,
+          status: "ACTIVE",
+        },
+      });
 
-          const subscription = await tx.memberSubscription.create({
-            data: {
-              memberId: created.id,
-              planId: subscriptionPlanId,
-              startDate: now,
-              endDate,
-              amount: plan.price,
-              remainingSessions: plan.totalSessions,
-              status: "ACTIVE",
-            },
-          });
+      await tx.groupMember.create({
+        data: {
+          groupId: groupIdValue,
+          memberId: created.id,
+          startDate: now,
+        },
+      });
 
-            await tx.auditLog.create({
-              data: {
-                action: "MEMBER_SUBSCRIPTION_CREATED",
-                entityType: "MemberSubscription",
-                entityId: subscription.id,
-                details: JSON.stringify({
-                  memberId: created.id,
-                  planId: subscriptionPlanId,
-                  amount: plan.price,
-                  startDate: now.toISOString(),
-                  source: "member-inscription",
-                }),
-              },
-            });
+      await tx.auditLog.create({
+        data: {
+          action: "MEMBER_SUBSCRIPTION_CREATED",
+          entityType: "MemberSubscription",
+          entityId: subscription.id,
+          details: JSON.stringify({
+            memberId: created.id,
+            planId: planIdValue,
+            groupId: groupIdValue,
+            amount: plan.price,
+            startDate: now.toISOString(),
+            source: "member-inscription",
+          }),
+        },
+      });
 
-          if (paymentCents > 0) {
-            if (paymentCents > plan.price) {
-              throw new Error("PAYMENT_EXCEEDS_DUE");
-            }
+      if (paymentCents > 0) {
+        const payment = await tx.payment.create({
+          data: {
+            memberSubscriptionId: subscription.id,
+            amount: paymentCents,
+            paymentDate: paymentDateValue ?? new Date(),
+            paymentMethod: paymentMethodValue,
+            notes: paymentNotesValue,
+          },
+        });
 
-            const payment = await tx.payment.create({
-              data: {
-                memberSubscriptionId: subscription.id,
-                amount: paymentCents,
-                paymentDate: paymentDateValue ?? new Date(),
-                paymentMethod: paymentMethodValue,
-                notes: paymentNotesValue,
-              },
-            });
-
-            await tx.auditLog.create({
-              data: {
-                action: "PAYMENT_CREATED",
-                entityType: "Payment",
-                entityId: payment.id,
-                details: JSON.stringify({ amount: paymentCents, memberId: created.id }),
-              },
-            });
-          }
-        }
+        await tx.auditLog.create({
+          data: {
+            action: "PAYMENT_CREATED",
+            entityType: "Payment",
+            entityId: payment.id,
+            details: JSON.stringify({ amount: paymentCents, memberId: created.id }),
+          },
+        });
       }
 
       return created;
@@ -234,6 +260,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Un plan d'abonnement est obligatoire pour l'inscription" }, { status: 400 });
     }
 
+    if (error instanceof Error && error.message === "GROUP_REQUIRED") {
+      return NextResponse.json({ error: "Un groupe est obligatoire pour l'inscription" }, { status: 400 });
+    }
+
+    if (error instanceof Error && error.message === "GROUP_NOT_FOUND") {
+      return NextResponse.json({ error: "Groupe introuvable" }, { status: 404 });
+    }
+
+    if (error instanceof Error && error.message === "PLAN_NOT_FOUND") {
+      return NextResponse.json({ error: "Plan introuvable" }, { status: 404 });
+    }
+
+    if (error instanceof Error && error.message === "GROUP_INACTIVE") {
+      return NextResponse.json({ error: "Impossible d'inscrire dans un groupe inactif" }, { status: 409 });
+    }
+
+    if (error instanceof Error && error.message === "PLAN_INACTIVE") {
+      return NextResponse.json({ error: "Impossible d'utiliser un plan inactif" }, { status: 409 });
+    }
+
+    if (error instanceof Error && error.message === "MEMBER_TYPE_MISMATCH") {
+      return NextResponse.json({ error: "Type de membre incompatible avec ce groupe" }, { status: 409 });
+    }
+
+    if (error instanceof Error && error.message === "PLAN_SPORT_MISMATCH") {
+      return NextResponse.json({ error: "Le plan choisi n'est pas compatible avec le sport du groupe" }, { status: 409 });
+    }
+
+    if (error instanceof Error && error.message === "GROUP_CAPACITY_REACHED") {
+      return NextResponse.json({ error: "Capacité du groupe atteinte" }, { status: 409 });
+    }
+
     const message = isDuplicatePhone
       ? "Un membre avec ce téléphone existe déjà"
       : "Erreur serveur lors de la création du membre";
@@ -243,6 +301,12 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {
@@ -326,6 +390,13 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  let actor;
+  try {
+    actor = await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {
@@ -367,7 +438,24 @@ export async function DELETE(request: Request) {
         },
       });
 
+      await tx.memberSubscription.updateMany({
+        where: { memberId, status: "ACTIVE" },
+        data: { status: "CANCELLED" },
+      });
+
       return member;
+    });
+
+    await expireStaleSubscriptions(memberId);
+
+    await prisma.auditLog.create({
+      data: {
+        action: "MEMBER_ARCHIVED",
+        entityType: "Member",
+        entityId: memberId,
+        userId: actor.id,
+        details: JSON.stringify({ archivedAt: now.toISOString() }),
+      },
     });
 
     return NextResponse.json({ data: archived });
@@ -382,6 +470,6 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
     }
 
-    return NextResponse.json({ error: "Erreur serveur lors de l'archivage" }, { status: 500 });
+    return NextResponse.json({ error: "Erreur serveur lors de la résiliation" }, { status: 500 });
   }
 }

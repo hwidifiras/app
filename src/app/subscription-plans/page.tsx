@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { SubscriptionPlansTable } from "@/components/subscription-plans/subscription-plans-table";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function SubscriptionPlansPage() {
   let plans = [] as Array<{
     id: string;
@@ -54,13 +57,15 @@ export default async function SubscriptionPlansPage() {
         overline="Abonnements & Finance"
         title="Plans d'abonnement"
         description={`${plans.length} plan${plans.length > 1 ? "s" : ""} configuré${plans.length > 1 ? "s" : ""}. Créez et gérez les forfaits proposés aux membres.`}
+        actions={
+          <Link
+            href="/subscription-plans/new"
+            className="btn btn-primary btn-block-mobile inline-flex items-center justify-center gap-1.5"
+          >
+            <Plus className="size-4" /> Nouveau plan
+          </Link>
+        }
       />
-
-      <div className="mb-4 flex justify-end">
-        <Link href="/subscription-plans/new" className="btn btn-primary inline-flex items-center gap-1.5">
-          <Plus className="size-4" /> Nouveau plan
-        </Link>
-      </div>
 
       <section className="panel overflow-hidden">
         <SubscriptionPlansTable plans={plans} />

@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { SubscriptionAddForm } from "@/components/subscriptions/subscription-add-form";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function NewSubscriptionPage() {
   let hasError = false;
   let membersOptions: Array<{ id: string; firstName: string; lastName: string; phone: string }> = [];

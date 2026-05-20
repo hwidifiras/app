@@ -3,6 +3,9 @@ import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { PaymentsTable } from "@/components/payments/payments-table";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function formatCurrency(cents: number) {
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
 }
@@ -154,19 +157,16 @@ export default async function PaymentsPage() {
 
   return (
     <main className="app-shell py-4 md:py-8">
-      <div className="flex items-start justify-between gap-4">
-        <PageHeader
-          overline="Abonnements & Finance"
-          title="Paiements"
-          description={`${totalCount} versement(s) enregistré(s) — total ${formatCurrency(totalPayments)}.`}
-        />
-        <Link
-          href="/payments/new"
-          className="btn btn-primary shrink-0"
-        >
-          + Nouveau paiement
-        </Link>
-      </div>
+      <PageHeader
+        overline="Abonnements & Finance"
+        title="Paiements"
+        description={`${totalCount} versement(s) enregistré(s) — total ${formatCurrency(totalPayments)}.`}
+        actions={
+          <Link href="/payments/new" className="btn btn-primary btn-block-mobile">
+            + Nouveau paiement
+          </Link>
+        }
+      />
 
       <section className="panel p-5">
         <PaymentsTable groups={paymentGroups} />

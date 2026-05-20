@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { PaymentAddForm } from "@/components/payments/payment-add-form";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function NewPaymentPage({
   searchParams,
 }: {
