@@ -1,0 +1,27 @@
+# Dev/staging fork — isolated DB and port 3001 (production stays on 3000)
+# Usage:
+#   copy .env.development.example .env.development
+#   docker compose -f docker-compose.dev.yml up -d --build
+#   open http://localhost:3001
+
+services:
+  dojo-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dojo-saas-dev
+    restart: unless-stopped
+    env_file:
+      - path: .env.development
+        required: false
+    environment:
+      DATABASE_URL: file:/app/data/dev.db
+      NODE_ENV: production
+      PORT: 3000
+    ports:
+      - "3001:3000"
+    volumes:
+      - dojo_data_dev:/app/data
+
+volumes:
+  dojo_data_dev:

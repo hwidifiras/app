@@ -1,0 +1,21 @@
+services:
+  dojo-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dojo-saas-app
+    restart: unless-stopped
+    env_file:
+      - path: .env.production
+        required: false
+    environment:
+      DATABASE_URL: file:/app/data/prod.db
+      NODE_ENV: production
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - dojo_data:/app/data
+
+volumes:
+  dojo_data:
