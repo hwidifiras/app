@@ -47,11 +47,16 @@ if (!to) {
 const resetUrl = `${env.APP_URL || "http://localhost:3000"}/reset-password?token=test-preview-token`;
 const { subject, html, text } = buildPasswordResetEmail({ resetUrl, expiresInMinutes: 60 });
 
-const resend = new Resend(apiKey);
-const { data, error } = await resend.emails.send({ from, to, subject, html, text });
+async function main() {
+  const resend = new Resend(apiKey);
+  const { data, error } = await resend.emails.send({ from, to, subject, html, text });
 
-console.log("App name:", env.APP_NAME || "(default GymDay)");
-console.log("From:", from);
-console.log("To:", to);
-console.log("Subject:", subject);
-console.log("Result:", error ? { ok: false, error } : { ok: true, id: data?.id });
+  console.log("App name:", env.APP_NAME || "(default GymDay)");
+  console.log("From:", from);
+  console.log("To:", to);
+  console.log("Subject:", subject);
+  console.log("Result:", error ? { ok: false, error } : { ok: true, id: data?.id });
+  if (error) process.exit(1);
+}
+
+main();

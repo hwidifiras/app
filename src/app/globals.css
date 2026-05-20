@@ -861,6 +861,25 @@ a {
   }
 }
 
+/* Pointage drawer: grow with content, cap on tall lists */
+.drawer-sheet-adaptive {
+  height: auto;
+  max-height: min(92vh, 100%);
+}
+
+@supports (height: 100dvh) {
+  .drawer-sheet-adaptive {
+    max-height: min(92dvh, 100%);
+  }
+}
+
+@media (min-width: 768px) {
+  .drawer-sheet-adaptive {
+    height: 100%;
+    max-height: none;
+  }
+}
+
 /* Sidebar & drawer scrollbars */
 .sidebar-scroll {
   scrollbar-gutter: stable;

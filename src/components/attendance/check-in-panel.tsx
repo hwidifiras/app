@@ -16,7 +16,12 @@ export function CheckInPanel({ data }: { data: TodayData }) {
 
   const effectiveSession = selectedId ? sessions.find((s) => s.id === selectedId) : null;
 
-  async function submitCheckIn(sessionId: string, mid: string, status: string, overrideReason?: string) {
+  async function submitCheckIn(
+    sessionId: string,
+    mid: string,
+    status: string,
+    overrideReason?: string,
+  ): Promise<boolean> {
     setLoadingId(mid);
 
     // Find existing attendance for this session+member
@@ -48,18 +53,29 @@ export function CheckInPanel({ data }: { data: TodayData }) {
     if (!res.ok) {
       setMessage(json.error ?? "Erreur");
       setLoadingId(null);
-      return;
+      return false;
     }
 
     setSessions((prev) =>
       prev.map((s) =>
         s.id === sessionId
-          ? { ...s, attendances: [...s.attendances.filter((a) => a.memberId !== mid), { id: json.data?.id ?? existingAtt?.id ?? "", memberId: mid, status: json.data?.status ?? status }] }
-          : s
-      )
+          ? {
+              ...s,
+              attendances: [
+                ...s.attendances.filter((a) => a.memberId !== mid),
+                {
+                  id: json.data?.id ?? existingAtt?.id ?? "",
+                  memberId: mid,
+                  status: json.data?.status ?? status,
+                },
+              ],
+            }
+          : s,
+      ),
     );
     setMessage(json.warning ?? "Pointage enregistré");
     setLoadingId(null);
+    return true;
   }
 
   if (sessions.length === 0) {

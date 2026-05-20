@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
+
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -22,6 +24,16 @@ function statusVariant(status: string) {
   return "muted";
 }
 
+function sessionStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    PLANNED: "Planifiée",
+    RESCHEDULED: "Reportée",
+    COMPLETED: "Terminée",
+    CANCELLED: "Annulée",
+  };
+  return labels[status] ?? status;
+}
+
 export default async function AttendanceByGroupPage({
   searchParams,
 }: {
@@ -42,6 +54,13 @@ export default async function AttendanceByGroupPage({
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });
+
+  const memberCounts = await prisma.groupMember.groupBy({
+    by: ["groupId"],
+    where: { status: "ACTIVE" },
+    _count: { _all: true },
+  });
+  const enrolledByGroup = new Map(memberCounts.map((r) => [r.groupId, r._count._all]));
 
   const sessions = await prisma.session.findMany({
     where: {
@@ -72,7 +91,9 @@ export default async function AttendanceByGroupPage({
         present: number;
         absent: number;
         override: number;
-        total: number;
+        checked: number;
+        enrolled: number;
+        notMarked: number;
       }>;
     }
   >();
@@ -81,8 +102,10 @@ export default async function AttendanceByGroupPage({
     const present = session.attendances.filter((a) => a.status === "PRESENT").length;
     const absent = session.attendances.filter((a) => a.status === "ABSENT").length;
     const override = session.attendances.filter((a) => a.status === "OVERRIDE").length;
-    const total = present + absent + override;
-    const coachName = session.coach ? `${session.coach.firstName} ${session.coach.lastName}` : "-";
+    const checked = present + absent + override;
+    const enrolled = enrolledByGroup.get(session.groupId) ?? 0;
+    const notMarked = Math.max(0, enrolled - checked);
+    const coachName = session.coach ? `${session.coach.firstName} ${session.coach.lastName}` : "—";
 
     if (!grouped.has(session.groupId)) {
       grouped.set(session.groupId, {
@@ -102,7 +125,9 @@ export default async function AttendanceByGroupPage({
       present,
       absent,
       override,
-      total,
+      checked,
+      enrolled,
+      notMarked,
     });
   }
 
@@ -112,13 +137,13 @@ export default async function AttendanceByGroupPage({
         href="/attendance"
         className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--primary)] hover:underline"
       >
-        Retour aux presences
+        Retour aux présences
       </Link>
 
       <PageHeader
         overline="Suivi"
-        title="Presences par groupe"
-        description="Suivi des presences par groupe et par seance."
+        title="Présences par groupe"
+        description="Rapport par séance : pointages, effectif du cours et détail par élève."
       />
 
       <section className="panel p-5">
@@ -133,47 +158,86 @@ export default async function AttendanceByGroupPage({
           </select>
           <input name="from" type="date" defaultValue={formatDateInput(fromDate)} className="field text-sm" />
           <input name="to" type="date" defaultValue={formatDateInput(toDate)} className="field text-sm" />
-          <button type="submit" className="btn btn-primary">Filtrer</button>
+          <button type="submit" className="btn btn-primary">
+            Filtrer
+          </button>
         </form>
 
         {grouped.size === 0 ? (
-          <p className="text-sm text-[var(--muted-foreground)]">Aucune seance sur cette periode.</p>
+          <p className="text-sm text-[var(--muted-foreground)]">Aucune séance sur cette période.</p>
         ) : (
           <div className="space-y-4">
             {Array.from(grouped.values()).map((group) => (
-              <details key={group.groupId} className="rounded-xl border border-[var(--border)] bg-[var(--surface)]" open>
+              <details
+                key={group.groupId}
+                className="rounded-xl border border-[var(--border)] bg-[var(--surface)]"
+                open
+              >
                 <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-semibold text-[var(--foreground)]">
                   <span>{group.groupName}</span>
-                  <span className="text-xs text-[var(--muted-foreground)]">{group.rows.length} seance(s)</span>
+                  <span className="text-xs text-[var(--muted-foreground)]">{group.rows.length} séance(s)</span>
                 </summary>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto border-t border-[var(--border)]">
                   <table className="w-full text-sm">
                     <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
                       <tr>
                         <th className="px-4 py-3 text-left font-semibold">Date</th>
                         <th className="px-4 py-3 text-left font-semibold">Horaire</th>
                         <th className="px-4 py-3 text-left font-semibold hidden sm:table-cell">Coach</th>
-                        <th className="px-4 py-3 text-center font-semibold">Present</th>
-                        <th className="px-4 py-3 text-center font-semibold">Absent</th>
-                        <th className="px-4 py-3 text-center font-semibold hidden sm:table-cell">Exception</th>
-                        <th className="px-4 py-3 text-center font-semibold">Total</th>
+                        <th className="px-4 py-3 text-center font-semibold">Prés.</th>
+                        <th className="px-4 py-3 text-center font-semibold">Abs.</th>
+                        <th className="px-4 py-3 text-center font-semibold hidden sm:table-cell">Exc.</th>
+                        <th className="px-4 py-3 text-center font-semibold">Pointés</th>
+                        <th className="px-4 py-3 text-center font-semibold hidden md:table-cell">Inscrits</th>
                         <th className="px-4 py-3 text-right font-semibold">Statut</th>
+                        <th className="px-4 py-3 text-right font-semibold" />
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--border)]">
                       {group.rows.map((row) => (
                         <tr key={row.id} className="hover:bg-[var(--surface-soft)] transition-colors">
-                          <td className="px-4 py-3" data-label="Date">{formatDate(row.date)}</td>
-                          <td className="px-4 py-3" data-label="Horaire">
-                            {row.startTime} - {row.endTime}
+                          <td className="px-4 py-3 whitespace-nowrap" data-label="Date">
+                            {formatDate(row.date)}
                           </td>
-                          <td className="px-4 py-3 hidden sm:table-cell" data-label="Coach">{row.coachName}</td>
-                          <td className="px-4 py-3 text-center" data-label="Present">{row.present}</td>
-                          <td className="px-4 py-3 text-center" data-label="Absent">{row.absent}</td>
-                          <td className="px-4 py-3 text-center hidden sm:table-cell" data-label="Exception">{row.override}</td>
-                          <td className="px-4 py-3 text-center" data-label="Total">{row.total}</td>
+                          <td className="px-4 py-3 whitespace-nowrap" data-label="Horaire">
+                            {row.startTime} – {row.endTime}
+                          </td>
+                          <td className="px-4 py-3 hidden sm:table-cell" data-label="Coach">
+                            {row.coachName}
+                          </td>
+                          <td className="px-4 py-3 text-center font-medium text-[var(--success)]" data-label="Présents">
+                            {row.present}
+                          </td>
+                          <td className="px-4 py-3 text-center font-medium text-[var(--danger)]" data-label="Absents">
+                            {row.absent}
+                          </td>
+                          <td className="px-4 py-3 text-center hidden sm:table-cell" data-label="Exceptions">
+                            {row.override}
+                          </td>
+                          <td className="px-4 py-3 text-center" data-label="Pointés">
+                            {row.checked}
+                            {row.notMarked > 0 && (
+                              <span className="block text-[0.65rem] text-[var(--muted-foreground)]">
+                                {row.notMarked} non pointé{row.notMarked > 1 ? "s" : ""}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center hidden md:table-cell text-[var(--muted-foreground)]" data-label="Inscrits">
+                            {row.enrolled}
+                          </td>
                           <td className="px-4 py-3 text-right" data-label="Statut">
-                            <StatusBadge variant={statusVariant(row.status)}>{row.status}</StatusBadge>
+                            <StatusBadge variant={statusVariant(row.status)}>
+                              {sessionStatusLabel(row.status)}
+                            </StatusBadge>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <Link
+                              href={`/attendance/sessions/${row.id}`}
+                              className="inline-flex items-center gap-0.5 text-xs font-semibold text-[var(--primary)] hover:underline"
+                            >
+                              Détail
+                              <ChevronRight className="size-3.5" />
+                            </Link>
                           </td>
                         </tr>
                       ))}
