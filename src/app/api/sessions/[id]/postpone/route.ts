@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { getRequestUser } from "@/lib/request-user";
+import { requireAuth } from "@/lib/request-user";
 import { getAppTimeZone, utcDateOnlyForTimeZone } from "@/lib/dates";
 import { postponeSessionSchema } from "@/lib/schemas/session";
 
@@ -45,6 +45,13 @@ function addMinutesToTime(startTime: string, durationMinutes: number) {
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
+  let actor;
+  try {
+    actor = await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {
@@ -73,6 +80,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       sessionDate: true,
       startTime: true,
       endTime: true,
+      postponementDetails: true,
     },
   });
 
@@ -105,6 +113,37 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Une séance existe déjà sur ce créneau" }, { status: 409 });
   }
 
+  let originalInfo = {
+    date: existing.sessionDate.toISOString(),
+    startTime: existing.startTime,
+    endTime: existing.endTime,
+  };
+
+  if (existing.postponementDetails) {
+    try {
+      const parsedDetails = JSON.parse(existing.postponementDetails) as {
+        original?: { date?: string; startTime?: string; endTime?: string };
+      };
+      if (parsedDetails?.original?.date && parsedDetails?.original?.startTime && parsedDetails?.original?.endTime) {
+        originalInfo = {
+          date: parsedDetails.original.date,
+          startTime: parsedDetails.original.startTime,
+          endTime: parsedDetails.original.endTime,
+        };
+      }
+    } catch {
+      // Ignore invalid JSON and keep current session as original.
+    }
+  }
+
+  const postponementPayload = {
+    original: originalInfo,
+    postponedTo: postponementDate.toISOString(),
+    postponedAt: new Date().toISOString(),
+    reason: parsed.data.reason,
+    notes: parsed.data.details?.trim() || null,
+  };
+
   const updated = await prisma.session.update({
     where: { id },
     data: {
@@ -114,11 +153,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       status: "RESCHEDULED",
       postponedTo: postponementDate,
       postponementReason: parsed.data.reason,
-      postponementDetails: parsed.data.details?.trim() || null,
+      postponementDetails: JSON.stringify(postponementPayload),
     },
   });
 
-  const actor = getRequestUser(request);
   await prisma.auditLog.create({
     data: {
       action: "SESSION_POSTPONED",
@@ -126,8 +164,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       entityId: updated.id,
       userId: actor?.id ?? null,
       details: JSON.stringify({
-        fromDate: existing.sessionDate.toISOString(),
-        fromTime: existing.startTime,
+        fromDate: originalInfo.date,
+        fromTime: originalInfo.startTime,
         toDate: updated.sessionDate.toISOString(),
         toTime: updated.startTime,
         reason: updated.postponementReason,

@@ -1,9 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { CheckInPanel } from "@/components/attendance/check-in-panel";
-import { utcDateOnlyForTimeZone } from "@/lib/dates";
+import { getWeekRangeUtc, utcDateOnlyForTimeZone } from "@/lib/dates";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function AttendanceTodayPage() {
   const today = utcDateOnlyForTimeZone(new Date());
@@ -17,6 +20,8 @@ export default async function AttendanceTodayPage() {
     endTime: string;
     room: string;
     status: string;
+    postponedTo: string | null;
+    postponementDetails: string | null;
     group: {
       id: string;
       name: string;
@@ -59,6 +64,8 @@ export default async function AttendanceTodayPage() {
     sessions = rawSessions.map((s) => ({
       ...s,
       sessionDate: s.sessionDate.toISOString(),
+      postponedTo: s.postponedTo ? s.postponedTo.toISOString() : null,
+      postponementDetails: s.postponementDetails ?? null,
     }));
 
     // Collect all member IDs from sessions to check subscriptions
@@ -77,12 +84,39 @@ export default async function AttendanceTodayPage() {
           remainingSessions: { gt: 0 },
         },
         select: { 
+          id: true,
           memberId: true,
           amount: true,
+          remainingSessions: true,
           payments: { select: { amount: true } },
-          plan: { select: { sportId: true } }
+          plan: { select: { sportId: true, sessionsPerWeek: true } }
         },
       });
+
+      const { start: weekStart, end: weekEnd } = getWeekRangeUtc(new Date());
+      const subIds = subs.map((sub) => sub.id);
+      const weeklyCounts = new Map<string, number>();
+
+      if (subIds.length > 0) {
+        const weeklyRows = await prisma.attendance.findMany({
+          where: {
+            status: "PRESENT",
+            memberSubscriptionId: { in: subIds },
+            session: {
+              sessionDate: { gte: weekStart, lt: weekEnd },
+            },
+          },
+          select: { memberSubscriptionId: true },
+        });
+
+        for (const row of weeklyRows) {
+          if (!row.memberSubscriptionId) continue;
+          weeklyCounts.set(
+            row.memberSubscriptionId,
+            (weeklyCounts.get(row.memberSubscriptionId) ?? 0) + 1,
+          );
+        }
+      }
 
       const validKeys = new Set<string>();
 
@@ -96,6 +130,10 @@ export default async function AttendanceTodayPage() {
             const totalPaid = sub.payments.reduce((acc, p) => acc + p.amount, 0);
             if (totalPaid < sub.amount) return false;
             if (sub.plan.sportId && sub.plan.sportId !== sessionSportId) return false;
+            if (sub.plan.sessionsPerWeek) {
+              const count = weeklyCounts.get(sub.id) ?? 0;
+              if (count >= sub.plan.sessionsPerWeek) return false;
+            }
             return true;
           });
 

@@ -18,6 +18,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [sportId, setSportId] = useState("");
+  const [sports, setSports] = useState<SportDto[]>(sportsOptions);
   const [coaches, setCoaches] = useState<CoachDto[]>(initialCoaches);
   const [loading, setLoading] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
@@ -42,6 +43,14 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
     const response = await fetch(endpoint, { cache: "no-store" });
     const result = await response.json();
     setCoaches(result.data ?? []);
+  }
+
+  async function reloadSports() {
+    const response = await fetch("/api/sports?active=true", { cache: "no-store" });
+    const result = await response.json();
+    if (response.ok) {
+      setSports(result.data ?? []);
+    }
   }
 
   async function onSearchSubmit(event: FormEvent<HTMLFormElement>) {
@@ -207,9 +216,15 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
               placeholder="Email (optionnel)"
               className="field"
             />
-            <select value={sportId} onChange={(e) => setSportId(e.target.value)} className="field">
+            <select
+              value={sportId}
+              onFocus={() => void reloadSports()}
+              onClick={() => void reloadSports()}
+              onChange={(e) => setSportId(e.target.value)}
+              className="field"
+            >
               <option value="">Spécialité non renseignée</option>
-              {sportsOptions.map((sport) => (
+              {sports.map((sport) => (
                 <option key={sport.id} value={sport.id}>
                   {sport.name}
                 </option>
@@ -269,9 +284,15 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                       placeholder="Email"
                       className="field text-xs"
                     />
-                    <select value={editSportId} onChange={(e) => setEditSportId(e.target.value)} className="field text-xs">
+                    <select
+                      value={editSportId}
+                      onFocus={() => void reloadSports()}
+                      onClick={() => void reloadSports()}
+                      onChange={(e) => setEditSportId(e.target.value)}
+                      className="field text-xs"
+                    >
                       <option value="">Spécialité non renseignée</option>
-                      {sportsOptions.map((sport) => (
+                      {sports.map((sport) => (
                         <option key={sport.id} value={sport.id}>
                           {sport.name}
                         </option>

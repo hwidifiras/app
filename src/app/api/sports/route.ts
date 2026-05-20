@@ -2,20 +2,32 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { createSportSchema, updateSportSchema } from "@/lib/schemas/sport";
+import { requireAuth } from "@/lib/request-user";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q")?.trim();
+  const active = searchParams.get("active");
 
   const sports = await prisma.sport.findMany({
-    where: query
-      ? {
-          OR: [{ name: { contains: query } }, { description: { contains: query } }],
-        }
-      : undefined,
-    orderBy: { createdAt: "desc" },
+    where: {
+      ...(active === "true" ? { isActive: true } : {}),
+      ...(query
+        ? {
+            OR: [{ name: { contains: query } }, { description: { contains: query } }],
+          }
+        : {}),
+    },
+    orderBy: query ? { createdAt: "desc" } : { name: "asc" },
     take: 50,
   });
 
@@ -23,6 +35,12 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {
@@ -70,6 +88,12 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {
@@ -144,6 +168,12 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {
@@ -162,17 +192,46 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "sportId invalide" }, { status: 400 });
   }
 
-  const linkedGroups = await prisma.group.findMany({
-    where: { sportId },
-    select: { id: true, name: true },
-    orderBy: { name: "asc" },
-  });
+  const [linkedGroups, linkedPlans, linkedSubscriptions] = await Promise.all([
+    prisma.group.findMany({
+      where: { sportId },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.subscriptionPlan.findMany({
+      where: { sportId },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.memberSubscription.findMany({
+      where: { sportId },
+      select: {
+        id: true,
+        member: { select: { firstName: true, lastName: true } },
+        plan: { select: { name: true } },
+      },
+      take: 20,
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
 
-  if (linkedGroups.length > 0) {
+  if (linkedGroups.length > 0 || linkedPlans.length > 0 || linkedSubscriptions.length > 0) {
+    const parts: string[] = [];
+    if (linkedGroups.length > 0) parts.push(`${linkedGroups.length} cours`);
+    if (linkedPlans.length > 0) parts.push(`${linkedPlans.length} formule(s)`);
+    if (linkedSubscriptions.length > 0) parts.push(`${linkedSubscriptions.length} abonnement(s)`);
+
     return NextResponse.json(
       {
-        error: "Ce sport est deja utilise par des groupes",
-        details: { groups: linkedGroups },
+        error: `Cette discipline est encore utilisée (${parts.join(", ")}). Désactivez-la ou supprimez les éléments liés d'abord.`,
+        details: {
+          groups: linkedGroups,
+          plans: linkedPlans,
+          subscriptions: linkedSubscriptions.map((s) => ({
+            id: s.id,
+            label: `${s.member.firstName} ${s.member.lastName} — ${s.plan.name}`,
+          })),
+        },
       },
       { status: 409 },
     );
@@ -185,16 +244,26 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ data: { id: sportId } });
   } catch (error) {
-    const isNotFound =
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      (error as { code?: string }).code === "P2025";
+    const code =
+      typeof error === "object" && error !== null && "code" in error
+        ? (error as { code?: string }).code
+        : undefined;
 
-    if (isNotFound) {
-      return NextResponse.json({ error: "Sport introuvable" }, { status: 404 });
+    if (code === "P2025") {
+      return NextResponse.json({ error: "Discipline introuvable" }, { status: 404 });
     }
 
+    if (code === "P2003") {
+      return NextResponse.json(
+        {
+          error:
+            "Impossible de supprimer : cette discipline est encore référencée (cours, formules ou abonnements).",
+        },
+        { status: 409 },
+      );
+    }
+
+    console.error("[DELETE /api/sports]", error);
     return NextResponse.json({ error: "Erreur serveur lors de la suppression" }, { status: 500 });
   }
 }

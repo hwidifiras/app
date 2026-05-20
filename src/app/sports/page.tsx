@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 type SportRecord = {
   id: string;
   name: string;

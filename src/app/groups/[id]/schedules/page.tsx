@@ -6,6 +6,9 @@ import { notFound } from "next/navigation";
 import { GroupSchedulesManager } from "@/components/groups/group-schedules-manager";
 import { PageHeader } from "@/components/ui/page-header";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function GroupSchedulesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 

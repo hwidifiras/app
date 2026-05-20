@@ -4,6 +4,9 @@ import { SessionsPlanner } from "@/components/sessions/sessions-planner";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function startOfWeek(date: Date) {
   const copy = new Date(date);
   copy.setHours(0, 0, 0, 0);

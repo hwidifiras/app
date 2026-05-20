@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { createGroupMemberSchema, updateGroupMemberSchema } from "@/lib/schemas/group-member";
+import { requireAuth } from "@/lib/request-user";
+import { resolveActiveSubscription } from "@/lib/membership-rules";
 
 export const runtime = "nodejs";
 
@@ -125,6 +127,12 @@ async function ensureCapacity(groupId: string, ignoredAssignmentId?: string) {
 }
 
 export async function GET(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const groupId = searchParams.get("groupId")?.trim();
   const memberId = searchParams.get("memberId")?.trim();
@@ -146,6 +154,12 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {
@@ -187,32 +201,33 @@ export async function POST(request: Request) {
   }
 
   if (member.status !== "ACTIVE") {
-    return NextResponse.json({ error: "Impossible d'affecter un membre archivé" }, { status: 409 });
+    return NextResponse.json({ error: "Impossible d'affecter un membre résilié" }, { status: 409 });
   }
 
   if (!isMemberAllowed(group.groupType, member.memberType)) {
     return NextResponse.json({ error: "Type de membre incompatible avec ce groupe" }, { status: 409 });
   }
 
-  const now = new Date();
-  const activeSub = await prisma.memberSubscription.findFirst({
-    where: {
-      memberId: parsed.data.memberId,
-      status: "ACTIVE",
-      startDate: { lte: now },
-      OR: [{ endDate: null }, { endDate: { gte: now } }],
-      remainingSessions: { gt: 0 },
-    },
-    select: { id: true, plan: { select: { sportId: true } } },
-    orderBy: { endDate: "asc" },
-  });
-
-  if (!activeSub) {
-    return NextResponse.json({ error: "Le membre doit avoir un abonnement actif pour être affecté à un groupe" }, { status: 403 });
+  const selectedPlanId = parsed.data.planId?.trim() ?? "";
+  if (!selectedPlanId) {
+    return NextResponse.json({ error: "planId requis pour créer l'abonnement automatiquement" }, { status: 400 });
   }
 
-  if (activeSub.plan.sportId && activeSub.plan.sportId !== group.sportId) {
-    return NextResponse.json({ error: "L'abonnement actif du membre n'est pas compatible avec le sport de ce groupe" }, { status: 403 });
+  const selectedPlan = await prisma.subscriptionPlan.findUnique({
+    where: { id: selectedPlanId },
+    select: { id: true, name: true, price: true, totalSessions: true, validityDays: true, sportId: true, isActive: true },
+  });
+
+  if (!selectedPlan) {
+    return NextResponse.json({ error: "Plan introuvable" }, { status: 404 });
+  }
+
+  if (!selectedPlan.isActive) {
+    return NextResponse.json({ error: "Plan inactif" }, { status: 409 });
+  }
+
+  if (selectedPlan.sportId && selectedPlan.sportId !== group.sportId) {
+    return NextResponse.json({ error: "Le plan choisi n'est pas compatible avec le sport de ce groupe" }, { status: 403 });
   }
 
   const capacityCheck = await ensureCapacity(parsed.data.groupId);
@@ -226,18 +241,81 @@ export async function POST(request: Request) {
   }
 
   try {
-    const created = await prisma.groupMember.create({
-      data: {
-        groupId: parsed.data.groupId,
-        memberId: parsed.data.memberId,
-        startDate: new Date(parsed.data.startDate),
-        endDate: parsed.data.endDate ? new Date(parsed.data.endDate) : null,
-        status: "ACTIVE",
-      },
-      include: {
-        group: { select: { name: true } },
-        member: { select: { firstName: true, lastName: true, phone: true } },
-      },
+    const created = await prisma.$transaction(async (tx) => {
+      const now = new Date();
+      const groupCapacity = await tx.group.findUnique({
+        where: { id: parsed.data.groupId },
+        select: {
+          capacity: true,
+          _count: { select: { members: { where: { status: "ACTIVE" } } } },
+        },
+      });
+
+      if (!groupCapacity) throw new Error("GROUP_NOT_FOUND");
+      if (groupCapacity._count.members >= groupCapacity.capacity) {
+        throw new Error("GROUP_CAPACITY_REACHED");
+      }
+
+      const activeCompatibleSubscription = await tx.memberSubscription.findFirst({
+        where: {
+          memberId: parsed.data.memberId,
+          sportId: group.sportId,
+          status: "ACTIVE",
+          startDate: { lte: now },
+          OR: [{ endDate: null }, { endDate: { gte: now } }],
+          remainingSessions: { gt: 0 },
+        },
+        select: { id: true },
+      });
+
+      if (!activeCompatibleSubscription) {
+        const start = new Date(parsed.data.startDate);
+        const endDate = parsed.data.endDate
+          ? new Date(parsed.data.endDate)
+          : (() => {
+              const e = new Date(start);
+              e.setDate(e.getDate() + selectedPlan.validityDays);
+              return e;
+            })();
+
+        await tx.memberSubscription.updateMany({
+          where: {
+            memberId: parsed.data.memberId,
+            sportId: group.sportId,
+            status: "ACTIVE",
+          },
+          data: { status: "EXPIRED" },
+        });
+
+        await tx.memberSubscription.create({
+          data: {
+            memberId: parsed.data.memberId,
+            planId: selectedPlan.id,
+            sportId: group.sportId,
+            startDate: start,
+            endDate,
+            amount: selectedPlan.price,
+            remainingSessions: selectedPlan.totalSessions,
+            status: "ACTIVE",
+          },
+        });
+      }
+
+      const createdAssignment = await tx.groupMember.create({
+        data: {
+          groupId: parsed.data.groupId,
+          memberId: parsed.data.memberId,
+          startDate: new Date(parsed.data.startDate),
+          endDate: parsed.data.endDate ? new Date(parsed.data.endDate) : null,
+          status: "ACTIVE",
+        },
+        include: {
+          group: { select: { name: true } },
+          member: { select: { firstName: true, lastName: true, phone: true } },
+        },
+      });
+
+      return createdAssignment;
     });
 
     return NextResponse.json({ data: toGroupMemberDto(created) }, { status: 201 });
@@ -252,11 +330,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Ce membre est déjà affecté à ce groupe" }, { status: 409 });
     }
 
+    if (error instanceof Error && error.message === "GROUP_CAPACITY_REACHED") {
+      return NextResponse.json({ error: "Capacité du groupe atteinte" }, { status: 409 });
+    }
+
+    if (error instanceof Error && error.message === "GROUP_NOT_FOUND") {
+      return NextResponse.json({ error: "Groupe introuvable" }, { status: 404 });
+    }
+
     return NextResponse.json({ error: "Erreur serveur lors de l'affectation" }, { status: 500 });
   }
 }
 
 export async function PATCH(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {
@@ -304,25 +396,19 @@ export async function PATCH(request: Request) {
         return NextResponse.json({ error: capacityCheck.error }, { status: capacityCheck.status });
       }
 
-      const now = new Date();
-      const activeSub = await prisma.memberSubscription.findFirst({
-        where: {
-          memberId: existing.memberId,
-          status: "ACTIVE",
-          startDate: { lte: now },
-          OR: [{ endDate: null }, { endDate: { gte: now } }],
-          remainingSessions: { gt: 0 },
-        },
-        select: { id: true, plan: { select: { sportId: true } } },
-        orderBy: { endDate: "asc" },
-      });
+      const activeSub = await resolveActiveSubscription(existing.memberId, existing.group.sportId);
 
       if (!activeSub) {
-        return NextResponse.json({ error: "Le membre doit avoir un abonnement actif pour être réaffecté à un groupe" }, { status: 403 });
+        return NextResponse.json({ error: "Le membre doit avoir un abonnement actif pour cette discipline" }, { status: 403 });
       }
 
-      if (activeSub.plan.sportId && activeSub.plan.sportId !== existing.group.sportId) {
-        return NextResponse.json({ error: "L'abonnement actif du membre n'est pas compatible avec le sport de ce groupe" }, { status: 403 });
+      const settings = await import("@/lib/club-settings").then((m) => m.getClubSettings());
+      const paidEnough =
+        activeSub.totalPaid >= activeSub.amount ||
+        (settings.allowCheckInWithPartialPayment && activeSub.totalPaid > 0);
+
+      if (!paidEnough) {
+        return NextResponse.json({ error: "Le membre doit solder son abonnement avant d'être réaffecté à un cours" }, { status: 403 });
       }
 
       const existingMember = await prisma.groupMember.findUnique({
@@ -365,6 +451,12 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {

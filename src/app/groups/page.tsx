@@ -4,6 +4,9 @@ import { GroupListClient } from "@/components/groups/group-list-client";
 import { GroupDto } from "@/types/group";
 import { PageHeader } from "@/components/ui/page-header";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function GroupsPage() {
   let hasGroupDataError = false;
   let initialGroups: GroupDto[] = [];

@@ -18,6 +18,7 @@ export function GroupAddForm({
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
+  const [sports, setSports] = useState<SportDto[]>(sportsOptions);
   const [groupType, setGroupType] = useState<"KIDS" | "ADULTS">("ADULTS");
   const [sportId, setSportId] = useState("");
   const [coachId, setCoachId] = useState("");
@@ -27,6 +28,14 @@ export function GroupAddForm({
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  async function reloadSports() {
+    const response = await fetch("/api/sports?active=true", { cache: "no-store" });
+    const result = await response.json();
+    if (response.ok) {
+      setSports(result.data ?? []);
+    }
+  }
 
   function isMemberAllowed(memberType: MemberDto["memberType"]) {
     if (groupType === "KIDS") {
@@ -122,12 +131,24 @@ export function GroupAddForm({
           </div>
           <div>
             <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Sport</label>
-            <select value={sportId} onChange={(e) => setSportId(e.target.value)} className="field text-sm" required>
+            <select
+              value={sportId}
+              onFocus={() => void reloadSports()}
+              onClick={() => void reloadSports()}
+              onChange={(e) => setSportId(e.target.value)}
+              className="field text-sm"
+              required
+            >
               <option value="">Choisir</option>
-              {sportsOptions.map((sport) => (
+              {sports.map((sport) => (
                 <option key={sport.id} value={sport.id}>{sport.name}</option>
               ))}
             </select>
+            {sports.length === 0 ? (
+              <p className="mt-1 text-xs text-[var(--danger)]">
+                Aucune discipline active trouvée. Créez ou activez une discipline.
+              </p>
+            ) : null}
           </div>
           <div>
             <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Type de groupe</label>
@@ -204,7 +225,7 @@ export function GroupAddForm({
                   className={`hover:bg-[var(--surface-soft)] transition-colors cursor-pointer ${selectedMemberIds.includes(member.id) ? "bg-[var(--surface-soft)]" : ""}`}
                   onClick={() => toggleMemberSelection(member.id)}
                 >
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-2" data-label="Sélection">
                     <input
                       type="checkbox"
                       checked={selectedMemberIds.includes(member.id)}
@@ -212,17 +233,17 @@ export function GroupAddForm({
                       onClick={(e) => e.stopPropagation()}
                     />
                   </td>
-                  <td className="px-3 py-2 font-medium text-[var(--foreground)]">
+                  <td className="px-3 py-2 font-medium text-[var(--foreground)]" data-label="Nom">
                     {member.firstName} {member.lastName}
                   </td>
-                  <td className="px-3 py-2">{member.phone}</td>
-                  <td className="px-3 py-2 hidden sm:table-cell text-[var(--muted-foreground)]">{member.email ?? "-"}</td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-2" data-label="Téléphone">{member.phone}</td>
+                  <td className="px-3 py-2 hidden sm:table-cell text-[var(--muted-foreground)]" data-label="Email">{member.email ?? "-"}</td>
+                  <td className="px-3 py-2" data-label="Statut">
                     <span className={`chip ${member.status === "ACTIVE" ? "chip-active" : "chip-muted"}`}>
-                      {member.status === "ACTIVE" ? "ACTIF" : "ARCHIVÉ"}
+                      {member.status === "ACTIVE" ? "ACTIF" : "RÉSILIÉ"}
                     </span>
                   </td>
-                  <td className="px-3 py-2 hidden md:table-cell text-[var(--muted-foreground)]">
+                  <td className="px-3 py-2 hidden md:table-cell text-[var(--muted-foreground)]" data-label="Inscrit le">
                     {new Date(member.createdAt).toLocaleDateString("fr-FR")}
                   </td>
                 </tr>

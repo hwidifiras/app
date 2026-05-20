@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { createCoachSchema, updateCoachSchema } from "@/lib/schemas/coach";
+import { requireAuth } from "@/lib/request-user";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 function toCoachDto(coach: {
   id: string;
@@ -32,6 +34,12 @@ function toCoachDto(coach: {
 }
 
 export async function GET(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q")?.trim();
 
@@ -55,6 +63,12 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {
@@ -114,6 +128,12 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {
@@ -201,6 +221,12 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {

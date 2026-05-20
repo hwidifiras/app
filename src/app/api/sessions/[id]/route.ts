@@ -3,10 +3,17 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { utcDateOnlyForTimeZone } from "@/lib/dates";
 import { updateSessionSchema } from "@/lib/schemas/session";
+import { requireAuth } from "@/lib/request-user";
 
 export const runtime = "nodejs";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    await requireAuth(_request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   const { id } = await params;
 
   const session = await prisma.session.findUnique({
@@ -52,6 +59,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   const { id } = await params;
 
   let body: unknown;
@@ -237,6 +250,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    await requireAuth(_request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   const { id } = await params;
 
   const existing = await prisma.session.findUnique({

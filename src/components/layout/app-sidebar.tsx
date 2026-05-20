@@ -18,10 +18,14 @@ import {
   UserPlus,
   Banknote,
   ChevronDown,
+  CircleUser,
+  SlidersHorizontal,
 } from "lucide-react";
 
+import { APP_BRAND_NAME } from "@/lib/app-name";
 import { cn } from "@/lib/utils";
 import { LogoutButton } from "@/components/auth/logout-button";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 export type NavItem = {
   href: string;
@@ -40,7 +44,7 @@ export const dailySection: NavSection = {
   items: [
     { href: "/", label: "Tableau de bord", icon: LayoutDashboard },
     { href: "/attendance/today", label: "Pointer du jour", icon: Clock },
-    { href: "/members/new", label: "Nouvelle inscription", icon: UserPlus },
+    { href: "/enrollment", label: "Inscription", icon: UserPlus },
     { href: "/payments/new", label: "Encaisser", icon: Banknote },
     { href: "/sessions", label: "Planning semaine", icon: CalendarRange },
   ],
@@ -50,7 +54,7 @@ export const dailySection: NavSection = {
 export const membersSection: NavSection = {
   title: "Adhérents",
   items: [
-    { href: "/members", label: "Liste des membres", icon: Users },
+    { href: "/members", label: "Élèves", icon: Users },
     { href: "/subscriptions", label: "Abonnements", icon: CreditCard },
   ],
 };
@@ -61,6 +65,7 @@ export const cashSection: NavSection = {
   items: [
     { href: "/payments", label: "Paiements reçus", icon: Wallet },
     { href: "/attendance", label: "Historique présences", icon: Activity },
+    { href: "/attendance/groups", label: "Présences par groupe", icon: ClipboardCheck },
   ],
 };
 
@@ -68,11 +73,15 @@ export const cashSection: NavSection = {
 export const settingsSection: NavSection = {
   title: "Paramètres",
   items: [
-    { href: "/sports", label: "Sports", icon: Dumbbell },
+    { href: "/settings/club", label: "Règles du club", icon: SlidersHorizontal },
+    { href: "/sports", label: "Disciplines", icon: Dumbbell },
     { href: "/coaches", label: "Coachs", icon: User },
-    { href: "/groups", label: "Groupes & créneaux", icon: CalendarDays },
-    { href: "/subscription-plans", label: "Plans & tarifs", icon: ClipboardCheck },
+    { href: "/groups", label: "Cours & créneaux", icon: CalendarDays },
+    { href: "/subscription-plans", label: "Formules & tarifs", icon: ClipboardCheck },
+    { href: "/offers", label: "Offres", icon: CreditCard },
     { href: "/settings/users", label: "Utilisateurs", icon: Users },
+    { href: "/settings/account", label: "Mon compte", icon: CircleUser },
+    { href: "/logs", label: "Journal actions", icon: Activity },
   ],
 };
 
@@ -119,14 +128,14 @@ export function AppSidebar() {
   const inSettings = settingsSection.items.some((i) => isLinkActive(pathname, i.href));
 
   return (
-    <aside className="hidden border-b border-[var(--border)] bg-white/90 backdrop-blur lg:sticky lg:block lg:top-0 lg:h-screen lg:overflow-y-auto lg:border-r lg:border-b-0">
+    <aside className="hidden border-b border-[var(--border)] bg-[var(--surface)]/95 backdrop-blur lg:sticky lg:block lg:top-0 lg:h-screen lg:overflow-y-auto lg:border-r lg:border-b-0">
       <Link href="/" className="block border-b border-[var(--border)] px-4 py-4 lg:px-5">
         <div className="flex items-center gap-3 rounded-xl transition hover:bg-[var(--surface-soft)]">
           <div className="flex size-9 items-center justify-center rounded-lg bg-[var(--primary)] text-white">
             <Dumbbell className="size-5" />
           </div>
           <div>
-            <p className="text-sm font-bold text-[var(--foreground)]">GYM SaaS</p>
+            <p className="text-sm font-bold text-[var(--foreground)]">{APP_BRAND_NAME}</p>
             <p className="text-[0.65rem] font-medium uppercase tracking-widest text-[var(--muted-foreground)]">
               Réception
             </p>
@@ -178,7 +187,11 @@ export function AppSidebar() {
           )}
         </div>
 
-        <div className="mt-2 border-t border-[var(--border)] pt-2">
+        <div className="mt-2 space-y-2 border-t border-[var(--border)] px-2 pt-2 lg:hidden">
+          <ThemeToggle compact />
+          <LogoutButton />
+        </div>
+        <div className="mt-2 hidden border-t border-[var(--border)] px-2 pt-2 lg:block">
           <LogoutButton />
         </div>
       </nav>

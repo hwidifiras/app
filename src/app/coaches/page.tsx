@@ -4,6 +4,9 @@ import { CoachManager } from "@/components/coaches/coach-manager";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function CoachesPage() {
   let hasCoachDataError = false;
   let initialCoaches: Array<{

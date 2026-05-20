@@ -177,12 +177,12 @@ export function GroupSchedulesManager({
             <tbody className="divide-y divide-[var(--border)]">
               {schedules.map((row) => (
                 <tr key={row.id} className="hover:bg-[var(--surface-soft)] transition-colors">
-                  <td className="px-3 py-2 font-medium text-[var(--foreground)]">{dayLabels[row.dayOfWeek as DayOfWeekValue] ?? row.dayOfWeek}</td>
-                  <td className="px-3 py-2">{row.startTime}</td>
-                  <td className="px-3 py-2">{row.durationMinutes} min</td>
-                  <td className="px-3 py-2 hidden sm:table-cell text-[var(--muted-foreground)]">{new Date(row.effectiveFrom).toLocaleDateString("fr-FR")}</td>
-                  <td className="px-3 py-2 hidden sm:table-cell text-[var(--muted-foreground)]">{row.effectiveTo ? new Date(row.effectiveTo).toLocaleDateString("fr-FR") : "—"}</td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-2 font-medium text-[var(--foreground)]" data-label="Jour">{dayLabels[row.dayOfWeek as DayOfWeekValue] ?? row.dayOfWeek}</td>
+                  <td className="px-3 py-2" data-label="Heure">{row.startTime}</td>
+                  <td className="px-3 py-2" data-label="Durée">{row.durationMinutes} min</td>
+                  <td className="px-3 py-2 hidden sm:table-cell text-[var(--muted-foreground)]" data-label="Valide du">{new Date(row.effectiveFrom).toLocaleDateString("fr-FR")}</td>
+                  <td className="px-3 py-2 hidden sm:table-cell text-[var(--muted-foreground)]" data-label="Valide jusqu'au">{row.effectiveTo ? new Date(row.effectiveTo).toLocaleDateString("fr-FR") : "—"}</td>
+                  <td className="px-3 py-2" data-label="Actions">
                     <button
                       type="button"
                       onClick={() => { void onDeleteSchedule(row.id); }}

@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { GroupAddForm } from "@/components/groups/group-add-form";
 import { PageHeader } from "@/components/ui/page-header";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function NewGroupPage() {
   let hasError = false;
   let sportsOptions: Array<{ id: string; name: string; description: string | null; isActive: boolean; createdAt: string; updatedAt: string }> = [];

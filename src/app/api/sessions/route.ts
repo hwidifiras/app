@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { utcDateOnlyForTimeZone } from "@/lib/dates";
 import { generateSessionsSchema } from "@/lib/schemas/session";
+import { requireAuth } from "@/lib/request-user";
 
 export const runtime = "nodejs";
 
@@ -71,6 +72,12 @@ function toSessionDto(session: {
 }
 
 export async function GET(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const groupId = searchParams.get("groupId")?.trim();
   const from = searchParams.get("from")?.trim();
@@ -103,6 +110,12 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   let body: unknown = {};
 
   try {

@@ -5,12 +5,30 @@ import Link from "next/link";
 import { GroupDto } from "@/types/group";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import {
+  DataTable,
+  DataTableBody,
+  DataTableEmpty,
+  DataTableHead,
+  DataTableRow,
+  MobileRowToggle,
+  TableActionsCell,
+  Td,
+  Th,
+} from "@/components/ui/responsive-table";
 
 export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }) {
   const [groups, setGroups] = useState<GroupDto[]>(initialGroups);
   const [searchTerm, setSearchTerm] = useState("");
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [expandedGroupIds, setExpandedGroupIds] = useState<string[]>([]);
   const [message, setMessage] = useState<string | null>(null);
+
+  function toggleExpand(groupId: string) {
+    setExpandedGroupIds((current) =>
+      current.includes(groupId) ? current.filter((id) => id !== groupId) : [...current, groupId],
+    );
+  }
 
   const filteredGroups = groups.filter((group) => {
     const query = searchTerm.trim().toLowerCase();
@@ -72,17 +90,17 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
   return (
     <div>
       <div className="mb-4 grid gap-3 sm:flex sm:flex-wrap sm:items-end">
-        <div className="sm:flex-1 sm:min-w-[12rem]">
-          <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Recherche</label>
+        <div className="sm:min-w-48 sm:flex-1">
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Recherche</label>
           <input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Nom, sport, coach, salle..."
-            className="field text-xs w-full"
+            className="field w-full text-xs"
           />
         </div>
         <div className="sm:ml-auto">
-          <Link href="/groups/new" className="btn btn-primary inline-flex w-full justify-center sm:w-auto">
+          <Link href="/groups/new" className="btn btn-primary btn-block-mobile inline-flex justify-center">
             + Créer un groupe
           </Link>
         </div>
@@ -90,71 +108,66 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
 
       <FeedbackMessage message={message} className="mb-3" />
 
-      <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
-        <table className="w-full text-sm">
-          <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
-            <tr>
-              <th className="px-4 py-3 text-left font-semibold">Nom</th>
-              <th className="px-4 py-3 text-left font-semibold">Sport</th>
-              <th className="px-4 py-3 text-left font-semibold hidden sm:table-cell">Coach</th>
-              <th className="px-4 py-3 text-left font-semibold hidden md:table-cell">Créneau</th>
-              <th className="px-4 py-3 text-left font-semibold">Statut</th>
-              <th className="px-4 py-3 text-right font-semibold">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[var(--border)]">
-            {filteredGroups.map((group) => (
-              <tr key={group.id} className="hover:bg-[var(--surface-soft)] transition-colors">
-                <td className="px-4 py-3 font-medium text-[var(--foreground)]">
+      <DataTable>
+        <DataTableHead>
+          <tr>
+            <Th>Nom</Th>
+            <Th>Sport</Th>
+            <Th className="hidden sm:table-cell">Coach</Th>
+            <Th className="hidden md:table-cell">Créneau</Th>
+            <Th>Statut</Th>
+            <Th className="hidden text-right sm:table-cell">Actions</Th>
+            <Th className="px-2 text-center sm:hidden"> </Th>
+          </tr>
+        </DataTableHead>
+        <DataTableBody>
+          {filteredGroups.map((group) => {
+            const isExpanded = expandedGroupIds.includes(group.id);
+            return (
+              <DataTableRow key={group.id} expanded={isExpanded}>
+                <Td label="Nom" primary className="font-medium text-foreground">
                   {group.name}
-                  <p className="text-xs text-[var(--muted-foreground)]">Salle {group.room} • Cap. {group.capacity}</p>
-                </td>
-                <td className="px-4 py-3">{group.sportName}</td>
-                <td className="px-4 py-3 hidden sm:table-cell">{group.coachName}</td>
-                <td className="px-4 py-3 hidden md:table-cell text-[var(--muted-foreground)]">
+                  <p className="text-xs text-muted-foreground">
+                    Salle {group.room} • Cap. {group.capacity}
+                  </p>
+                </Td>
+                <Td label="Sport" mobileDetail>
+                  {group.sportName}
+                </Td>
+                <Td label="Coach" mobileDetail className="hidden sm:table-cell">
+                  {group.coachName}
+                </Td>
+                <Td label="Créneau" mobileDetail className="hidden text-muted-foreground md:table-cell">
                   {formatSchedules(group.schedules)}
-                </td>
-                <td className="px-4 py-3">
+                </Td>
+                <Td label="Statut" mobileDetail>
                   <StatusBadge variant={group.isActive ? "success" : "muted"}>
                     {group.isActive ? "Actif" : "Inactif"}
                   </StatusBadge>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <Link
-                      href={`/groups/${group.id}/schedules`}
-                      className="btn btn-ghost text-xs px-2 py-1 min-h-0"
-                    >
-                      Planifier
-                    </Link>
-                    <Link
-                      href={`/groups/${group.id}/edit`}
-                      className="btn btn-ghost text-xs px-2 py-1 min-h-0"
-                    >
-                      Modifier
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => deleteGroup(group.id)}
-                      disabled={actionLoadingId === group.id}
-                      className="btn btn-danger text-xs px-2 py-1 min-h-0"
-                    >
-                      {actionLoadingId === group.id ? "..." : "Supprimer"}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {filteredGroups.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-[var(--muted-foreground)]">
-                  Aucun groupe trouvé.
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+                </Td>
+                <TableActionsCell className="mobile-detail-cell">
+                  <Link href={`/groups/${group.id}/schedules`} className="btn btn-ghost btn-sm">
+                    Planifier
+                  </Link>
+                  <Link href={`/groups/${group.id}/edit`} className="btn btn-ghost btn-sm">
+                    Modifier
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => deleteGroup(group.id)}
+                    disabled={actionLoadingId === group.id}
+                    className="btn btn-danger btn-sm"
+                  >
+                    {actionLoadingId === group.id ? "..." : "Supprimer"}
+                  </button>
+                </TableActionsCell>
+                <MobileRowToggle expanded={isExpanded} onToggle={() => toggleExpand(group.id)} />
+              </DataTableRow>
+            );
+          })}
+          {filteredGroups.length === 0 ? <DataTableEmpty colSpan={7} message="Aucun groupe trouvé." /> : null}
+        </DataTableBody>
+      </DataTable>
     </div>
   );
 }

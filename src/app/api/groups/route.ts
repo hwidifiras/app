@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { createGroupSchema, updateGroupSchema } from "@/lib/schemas/group";
+import { requireAuth } from "@/lib/request-user";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 type DayOfWeekValue =
   | "MONDAY"
@@ -36,10 +38,12 @@ function toGroupDto(group: {
     effectiveTo: Date | null;
     createdAt: Date;
   }[];
+  _count?: { members: number };
 }) {
   return {
     id: group.id,
     name: group.name,
+    activeMembers: group._count?.members ?? 0,
     groupType: group.groupType,
     sportId: group.sportId,
     sportName: group.sport.name,
@@ -63,6 +67,12 @@ function toGroupDto(group: {
 }
 
 export async function GET(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q")?.trim();
 
@@ -82,6 +92,7 @@ export async function GET(request: Request) {
       sport: { select: { name: true } },
       coach: { select: { firstName: true, lastName: true } },
       schedules: { orderBy: { createdAt: "asc" } },
+      _count: { select: { members: { where: { status: "ACTIVE" } } } },
     },
     orderBy: { createdAt: "desc" },
     take: 50,
@@ -91,6 +102,12 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {
@@ -141,6 +158,12 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {
@@ -213,6 +236,12 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {

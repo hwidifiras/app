@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -16,7 +17,7 @@ type PlanRow = {
   sessionsPerWeek: number | null;
   validityDays: number;
   isActive: boolean;
-  createdAt: string;
+  createdAt: string | Date;
   sport: { id: string; name: string } | null;
   _count: { subscriptions: number };
 };
@@ -24,7 +25,14 @@ type PlanRow = {
 export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
   const router = useRouter();
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [expandedPlanIds, setExpandedPlanIds] = useState<string[]>([]);
   const [message, setMessage] = useState<string | null>(null);
+
+  function toggleExpand(planId: string) {
+    setExpandedPlanIds((current) =>
+      current.includes(planId) ? current.filter((id) => id !== planId) : [...current, planId],
+    );
+  }
 
   async function deletePlan(planId: string) {
     const confirmed = window.confirm("Confirmer la suppression de ce plan ?");
@@ -55,7 +63,7 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
   return (
     <div>
       <FeedbackMessage message={message} className="mb-3" />
-      <div className="overflow-x-auto">
+      <div className="data-table overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-(--surface-soft) text-xs uppercase tracking-wider text-muted-foreground">
             <tr>
@@ -73,22 +81,25 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
           </thead>
           <tbody className="divide-y divide-border">
             {plans.map((plan) => (
-              <tr key={plan.id} className="hover:bg-(--surface-soft)">
-                <td className="px-4 py-3 font-medium">{plan.name}</td>
-                <td className="px-4 py-3 text-muted-foreground">{plan.description ?? "—"}</td>
-                <td className="px-4 py-3 text-right">
+              <tr
+                key={plan.id}
+                className={`mobile-collapsible-row hover:bg-(--surface-soft) ${expandedPlanIds.includes(plan.id) ? "is-expanded" : ""}`}
+              >
+                <td className="data-table-primary px-4 py-3 font-medium" data-label="Nom">{plan.name}</td>
+                <td className="px-4 py-3 text-muted-foreground mobile-detail-cell" data-label="Description">{plan.description ?? "—"}</td>
+                <td className="px-4 py-3 text-right" data-label="Prix">
                   {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(plan.price / 100)}
                 </td>
-                <td className="px-4 py-3 text-center">{plan.totalSessions}</td>
-                <td className="px-4 py-3 text-center">{plan.sessionsPerWeek ?? "—"}</td>
-                <td className="px-4 py-3 text-center">{plan.validityDays}j</td>
-                <td className="px-4 py-3 text-center">{plan.sport?.name ?? "—"}</td>
-                <td className="px-4 py-3 text-center">
+                <td className="px-4 py-3 text-center mobile-detail-cell" data-label="Séances">{plan.totalSessions}</td>
+                <td className="px-4 py-3 text-center mobile-detail-cell" data-label="Sem.">{plan.sessionsPerWeek ?? "—"}</td>
+                <td className="px-4 py-3 text-center mobile-detail-cell" data-label="Validité">{plan.validityDays}j</td>
+                <td className="px-4 py-3 text-center mobile-detail-cell" data-label="Sport">{plan.sport?.name ?? "—"}</td>
+                <td className="px-4 py-3 text-center" data-label="Statut">
                   <StatusBadge variant={plan.isActive ? "success" : "muted"}>{plan.isActive ? "Actif" : "Inactif"}</StatusBadge>
                 </td>
-                <td className="px-4 py-3 text-center">{plan._count.subscriptions}</td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end gap-2">
+                <td className="px-4 py-3 text-center mobile-detail-cell" data-label="Souscriptions">{plan._count.subscriptions}</td>
+                <td className="px-4 py-3 text-right card-actions-cell">
+                  <div className="flex items-center justify-end gap-2 card-actions-stack">
                     <Link href={`/subscription-plans/${plan.id}/edit`} className="btn btn-ghost text-xs px-2 py-1 min-h-0">
                       Modifier
                     </Link>
@@ -101,6 +112,15 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
                       {loadingId === plan.id ? "..." : "Supprimer"}
                     </button>
                   </div>
+                  <button
+                    type="button"
+                    className="mobile-card-toggle sm:hidden"
+                    onClick={() => toggleExpand(plan.id)}
+                    aria-expanded={expandedPlanIds.includes(plan.id)}
+                  >
+                    Détails
+                    <ChevronDown className={`size-3 transition-transform ${expandedPlanIds.includes(plan.id) ? "rotate-180" : ""}`} />
+                  </button>
                 </td>
               </tr>
             ))}

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { bulkCreateGroupMembersSchema, bulkDeleteGroupMembersSchema } from "@/lib/schemas/group-member";
+import { requireAuth } from "@/lib/request-user";
 
 export const runtime = "nodejs";
 
@@ -69,6 +70,12 @@ async function checkScheduleConflict(groupId: string, memberId: string) {
 }
 
 export async function POST(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {
@@ -94,7 +101,7 @@ export async function POST(request: Request) {
 
   const group = await prisma.group.findUnique({
     where: { id: payload.groupId },
-    select: { id: true, isActive: true, capacity: true, groupType: true },
+    select: { id: true, isActive: true, capacity: true, groupType: true, sportId: true },
   });
 
   if (!group) {
@@ -139,6 +146,9 @@ export async function POST(request: Request) {
   let skippedCapacityCount = 0;
   let skippedScheduleConflictCount = 0;
   let skippedTypeMismatchCount = 0;
+  let skippedNoSubscriptionCount = 0;
+  let skippedUnpaidSubscriptionCount = 0;
+  let skippedSportMismatchCount = 0;
 
   for (const memberId of uniqueMemberIds) {
     const member = membersMap.get(memberId);
@@ -154,6 +164,39 @@ export async function POST(request: Request) {
 
     if (!isMemberAllowed(group.groupType, member.memberType)) {
       skippedTypeMismatchCount += 1;
+      continue;
+    }
+
+    const now = new Date();
+    const activeSub = await prisma.memberSubscription.findFirst({
+      where: {
+        memberId,
+        status: "ACTIVE",
+        startDate: { lte: now },
+        OR: [{ endDate: null }, { endDate: { gte: now } }],
+        remainingSessions: { gt: 0 },
+      },
+      select: {
+        amount: true,
+        payments: { select: { amount: true } },
+        plan: { select: { sportId: true } },
+      },
+      orderBy: { endDate: "asc" },
+    });
+
+    if (!activeSub) {
+      skippedNoSubscriptionCount += 1;
+      continue;
+    }
+
+    const totalPaid = activeSub.payments.reduce((sum, payment) => sum + payment.amount, 0);
+    if (totalPaid < activeSub.amount) {
+      skippedUnpaidSubscriptionCount += 1;
+      continue;
+    }
+
+    if (activeSub.plan.sportId && activeSub.plan.sportId !== group.sportId) {
+      skippedSportMismatchCount += 1;
       continue;
     }
 
@@ -214,11 +257,20 @@ export async function POST(request: Request) {
       skippedCapacityCount,
       skippedScheduleConflictCount,
       skippedTypeMismatchCount,
+      skippedNoSubscriptionCount,
+      skippedUnpaidSubscriptionCount,
+      skippedSportMismatchCount,
     },
   });
 }
 
 export async function DELETE(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {

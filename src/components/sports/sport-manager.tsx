@@ -22,14 +22,18 @@ export function SportManager({ initialSports }: SportManagerProps) {
   const [editIsActive, setEditIsActive] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [message, setMessage] = useState<string | null>(null);
-  const [blockedSport, setBlockedSport] = useState<null | { name: string; groups: Array<{ id: string; name: string }> }>(null);
+  const [blockedSport, setBlockedSport] = useState<null | {
+    name: string;
+    groups: Array<{ id: string; name: string }>;
+    plans: Array<{ id: string; name: string }>;
+    subscriptions: Array<{ id: string; label: string }>;
+  }>(null);
 
   async function reloadSports(query?: string) {
     const params = new URLSearchParams();
     if (query && query.trim().length > 0) {
       params.set("q", query.trim());
     }
-
     const endpoint = params.toString() ? `/api/sports?${params.toString()}` : "/api/sports";
     const response = await fetch(endpoint, { cache: "no-store" });
     const result = await response.json();
@@ -63,7 +67,7 @@ export function SportManager({ initialSports }: SportManagerProps) {
     setMessage("Sport créé avec succès");
     setName("");
     setDescription("");
-    await reloadSports();
+    await reloadSports(searchTerm);
     setLoading(false);
   }
 
@@ -131,9 +135,19 @@ export function SportManager({ initialSports }: SportManagerProps) {
     const result = await response.json();
 
     if (!response.ok) {
-      if (response.status === 409 && result.details?.groups?.length) {
+      if (response.status === 409 && result.details) {
         const sportName = sports.find((item) => item.id === sportId)?.name ?? "Sport";
-        setBlockedSport({ name: sportName, groups: result.details.groups });
+        const details = result.details as {
+          groups?: Array<{ id: string; name: string }>;
+          plans?: Array<{ id: string; name: string }>;
+          subscriptions?: Array<{ id: string; label: string }>;
+        };
+        setBlockedSport({
+          name: sportName,
+          groups: details.groups ?? [],
+          plans: details.plans ?? [],
+          subscriptions: details.subscriptions ?? [],
+        });
       }
       setMessage(result.error ?? "Erreur lors de la suppression du sport");
       setActionLoadingId(null);
@@ -289,13 +303,40 @@ export function SportManager({ initialSports }: SportManagerProps) {
           <div className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-lg">
             <h3 className="text-base font-semibold text-[var(--foreground)]">Suppression impossible</h3>
             <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-              Le sport <span className="font-medium text-[var(--foreground)]">{blockedSport.name}</span> est utilise par les groupes suivants :
+              La discipline <span className="font-medium text-[var(--foreground)]">{blockedSport.name}</span> est
+              encore utilisée. Supprimez ou réaffectez les éléments liés, ou désactivez-la (Modifier → décocher
+              &quot;actif&quot;).
             </p>
-            <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-[var(--foreground)]">
-              {blockedSport.groups.map((group) => (
-                <li key={group.id}>{group.name}</li>
-              ))}
-            </ul>
+            {blockedSport.groups.length > 0 && (
+              <>
+                <p className="mt-3 text-xs font-semibold uppercase text-[var(--muted-foreground)]">Cours</p>
+                <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
+                  {blockedSport.groups.map((group) => (
+                    <li key={group.id}>{group.name}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {blockedSport.plans.length > 0 && (
+              <>
+                <p className="mt-3 text-xs font-semibold uppercase text-[var(--muted-foreground)]">Formules</p>
+                <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
+                  {blockedSport.plans.map((plan) => (
+                    <li key={plan.id}>{plan.name}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {blockedSport.subscriptions.length > 0 && (
+              <>
+                <p className="mt-3 text-xs font-semibold uppercase text-[var(--muted-foreground)]">Abonnements</p>
+                <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
+                  {blockedSport.subscriptions.map((sub) => (
+                    <li key={sub.id}>{sub.label}</li>
+                  ))}
+                </ul>
+              </>
+            )}
             <div className="mt-4 flex justify-end">
               <button
                 type="button"

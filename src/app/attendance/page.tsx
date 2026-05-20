@@ -4,6 +4,9 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { AttendanceStatus } from "@prisma/client";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function statusVariant(status: AttendanceStatus) {
   switch (status) {
     case "PRESENT": return "success";
@@ -83,6 +86,11 @@ export default async function AttendancePage() {
         overline="Suivi"
         title="Présences"
         description={`${rows.length} pointage(s) enregistré(s).`}
+        actions={
+          <Link href="/attendance/groups" className="btn btn-ghost text-sm">
+            Présences par groupe
+          </Link>
+        }
       />
 
       <section className="panel p-5">
@@ -101,19 +109,19 @@ export default async function AttendancePage() {
             <tbody className="divide-y divide-[var(--border)]">
               {rows.map((r) => (
                 <tr key={r.id} className="hover:bg-[var(--surface-soft)] transition-colors">
-                  <td className="px-4 py-3 font-medium text-[var(--foreground)]">{r.memberName}</td>
-                  <td className="px-4 py-3">{r.groupName}</td>
-                  <td className="px-4 py-3 hidden sm:table-cell">
+                  <td className="px-4 py-3 font-medium text-[var(--foreground)]" data-label="Membre">{r.memberName}</td>
+                  <td className="px-4 py-3" data-label="Groupe">{r.groupName}</td>
+                  <td className="px-4 py-3 hidden sm:table-cell" data-label="Séance">
                     {new Date(r.sessionDate).toLocaleDateString("fr-FR")}
                     <span className="text-[var(--muted-foreground)] ml-1">({r.startTime})</span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" data-label="Statut">
                     <StatusBadge variant={statusVariant(r.status)}>{statusLabel(r.status)}</StatusBadge>
                   </td>
-                  <td className="px-4 py-3 hidden md:table-cell text-[var(--muted-foreground)]">
+                  <td className="px-4 py-3 hidden md:table-cell text-[var(--muted-foreground)]" data-label="Pointage">
                     {r.checkedBy ?? "Système"} — {new Date(r.checkedAt).toLocaleDateString("fr-FR")}
                   </td>
-                  <td className="px-4 py-3 hidden lg:table-cell text-[var(--muted-foreground)]">
+                  <td className="px-4 py-3 hidden lg:table-cell text-[var(--muted-foreground)]" data-label="Motif">
                     {r.overrideReason ?? "—"}
                   </td>
                 </tr>

@@ -3,11 +3,11 @@ import { cn } from "@/lib/utils";
 type StatusBadgeVariant = "success" | "muted" | "danger" | "warning" | "info";
 
 const variantClasses: Record<StatusBadgeVariant, string> = {
-  success: "text-[var(--success)] bg-[#e6f7ef]",
-  muted: "text-[#5f7390] bg-[var(--surface-soft)]",
-  danger: "text-[var(--danger)] bg-[#fdeaea]",
-  warning: "text-[#b45309] bg-[#fef3c7]",
-  info: "text-[var(--primary)] bg-[#e8f0fe]",
+  success: "text-[var(--success)] bg-[var(--success-surface)]",
+  muted: "text-[var(--muted-foreground)] bg-[var(--muted-surface)]",
+  danger: "text-[var(--danger)] bg-[var(--danger-surface)]",
+  warning: "text-[var(--warning)] bg-[var(--warning-surface)]",
+  info: "text-[var(--info)] bg-[var(--info-surface)]",
 };
 
 type StatusBadgeProps = {

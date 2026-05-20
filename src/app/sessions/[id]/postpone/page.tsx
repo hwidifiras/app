@@ -6,6 +6,9 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { PostponeForm } from "@/components/sessions/postpone-form";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function PostponeSessionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 

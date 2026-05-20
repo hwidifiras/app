@@ -9,6 +9,8 @@ export type SessionCardData = {
   endTime: string;
   room: string;
   status: string;
+  postponedTo: string | null;
+  postponementDetails: string | null;
   group: {
     id: string;
     name: string;
@@ -29,6 +31,23 @@ export function SessionCard({
   postponeHref: string;
 }) {
   const label = "Pointage disponible";
+  const postponementInfo = (() => {
+    if (!session.postponementDetails) return null;
+    try {
+      const parsed = JSON.parse(session.postponementDetails) as {
+        original?: { date?: string; startTime?: string; endTime?: string };
+        postponedAt?: string;
+      };
+      if (!parsed.original?.date || !parsed.original?.startTime) return null;
+      return {
+        originalDate: parsed.original.date,
+        originalStart: parsed.original.startTime,
+        postponedAt: parsed.postponedAt,
+      };
+    } catch {
+      return null;
+    }
+  })();
 
   const present = session.attendances.filter((a) => a.status === "PRESENT").length;
   const absent = session.attendances.filter((a) => a.status === "ABSENT").length;
@@ -57,26 +76,13 @@ export function SessionCard({
       tabIndex={0}
       onClick={onSelect}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onSelect(); }}
-      className={`relative w-full rounded-xl border border-[var(--success)] bg-[var(--success)]/[0.02] transition-all ${
+      className={`relative w-full overflow-hidden rounded-xl border border-[var(--success)] bg-[var(--success)]/[0.02] transition-all ${
         isSelected
           ? "ring-2 ring-[var(--success)] shadow-lg shadow-[var(--success)]/10"
           : ""
       } cursor-pointer hover:shadow-lg`}
     >
-      {/* Top accent bar */}
-      <div className="absolute left-0 top-0 h-1.5 w-full rounded-t-xl bg-[var(--success)]" />
-
-      {/* OPEN pulsing indicator */}
-      {!isSelected && (
-        <div className="absolute -top-1.5 -right-1.5">
-          <span className="relative flex size-3">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--success)] opacity-40" />
-            <span className="relative inline-flex size-3 rounded-full bg-[var(--success)]" />
-          </span>
-        </div>
-      )}
-
-      <div className="p-4 pt-5">
+      <div className="p-4">
         {/* Header: Group name + Status badge */}
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
@@ -84,8 +90,15 @@ export function SessionCard({
               {session.group.name}
             </h3>
           </div>
-          <span className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[0.65rem] font-semibold ${badge.className}`}>
-            {badge.icon}
+          <span className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[0.65rem] font-semibold ${badge.className}`}>
+            {!isSelected ? (
+              <span className="relative flex size-2 shrink-0" aria-hidden>
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--success)] opacity-40" />
+                <span className="relative inline-flex size-2 rounded-full bg-[var(--success)]" />
+              </span>
+            ) : (
+              badge.icon
+            )}
             {badge.text}
           </span>
         </div>
@@ -126,6 +139,12 @@ export function SessionCard({
             {session.coach ? `${session.coach.firstName} ${session.coach.lastName}` : "Pas de coach"}
           </span>
         </div>
+
+        {session.status === "RESCHEDULED" && postponementInfo ? (
+          <div className="mt-2 text-[0.65rem] text-[var(--warning)]">
+            Reportee depuis {new Date(postponementInfo.originalDate).toLocaleDateString("fr-FR")} a {postponementInfo.originalStart}
+          </div>
+        ) : null}
 
         {/* Attendance progress bar */}
         {total > 0 && (

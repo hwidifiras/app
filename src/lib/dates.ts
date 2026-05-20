@@ -32,3 +32,14 @@ export function utcDateOnlyForTimeZone(date: Date, timeZone: string = getAppTime
 
   return new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
 }
+
+export function getWeekRangeUtc(date: Date, timeZone: string = getAppTimeZone()): { start: Date; end: Date } {
+  const day = utcDateOnlyForTimeZone(date, timeZone);
+  const weekday = day.getUTCDay();
+  const diffToMonday = (weekday + 6) % 7;
+  const start = new Date(day);
+  start.setUTCDate(start.getUTCDate() - diffToMonday);
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 7);
+  return { start, end };
+}

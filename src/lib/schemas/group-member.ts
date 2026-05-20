@@ -6,6 +6,7 @@ export const createGroupMemberSchema = z
   .object({
     groupId: z.string().trim().min(1, "groupId requis"),
     memberId: z.string().trim().min(1, "memberId requis"),
+    planId: z.string().trim().min(1, "planId requis").optional(),
     startDate: isoDateSchema,
     endDate: isoDateSchema.nullable().optional(),
   })

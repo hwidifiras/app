@@ -5,6 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { GroupEditForm } from "@/components/groups/group-edit-form";
 import { PageHeader } from "@/components/ui/page-header";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function EditGroupPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
