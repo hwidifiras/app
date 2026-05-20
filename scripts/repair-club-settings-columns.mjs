@@ -11,6 +11,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const alters = [
   `ALTER TABLE "ClubSettings" ADD COLUMN "clubName" TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE "ClubSettings" ADD COLUMN "clubLogoUrl" TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE "ClubSettings" ADD COLUMN "clubAddress" TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE "ClubSettings" ADD COLUMN "clubPhone" TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE "ClubSettings" ADD COLUMN "allowCheckInWithoutSubscription" BOOLEAN NOT NULL DEFAULT true`,

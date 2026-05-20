@@ -121,6 +121,7 @@ model PasswordResetToken {
 model ClubSettings {
   id                              String   @id @default("default")
   clubName                        String   @default("")
+  clubLogoUrl                     String   @default("")
   clubAddress                     String   @default("")
   clubPhone                       String   @default("")
   allowCheckInWithPartialPayment  Boolean  @default(true)

@@ -22,7 +22,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 
-import { APP_BRAND_NAME } from "@/lib/app-name";
+import { ClubBrandMark } from "@/components/layout/club-brand-mark";
 import { cn } from "@/lib/utils";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
@@ -128,18 +128,10 @@ export function AppSidebar() {
   const inSettings = settingsSection.items.some((i) => isLinkActive(pathname, i.href));
 
   return (
-    <aside className="hidden border-b border-[var(--border)] bg-[var(--surface)]/95 backdrop-blur lg:sticky lg:block lg:top-0 lg:h-screen lg:overflow-y-auto lg:border-r lg:border-b-0">
+    <aside className="sidebar-scroll hidden border-b border-[var(--border)] bg-[var(--surface)]/95 backdrop-blur lg:sticky lg:block lg:top-0 lg:h-screen lg:overflow-y-auto lg:overscroll-y-contain lg:border-r lg:border-b-0">
       <Link href="/" className="block border-b border-[var(--border)] px-4 py-4 lg:px-5">
         <div className="flex items-center gap-3 rounded-xl transition hover:bg-[var(--surface-soft)]">
-          <div className="flex size-9 items-center justify-center rounded-lg bg-[var(--primary)] text-white">
-            <Dumbbell className="size-5" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-[var(--foreground)]">{APP_BRAND_NAME}</p>
-            <p className="text-[0.65rem] font-medium uppercase tracking-widest text-[var(--muted-foreground)]">
-              Réception
-            </p>
-          </div>
+          <ClubBrandMark size="md" />
         </div>
       </Link>
 

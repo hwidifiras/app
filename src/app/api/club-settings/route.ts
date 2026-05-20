@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getClubSettings } from "@/lib/club-settings";
+import { getClubSettings, writeClubLogoUrl } from "@/lib/club-settings";
 import { prisma } from "@/lib/prisma";
 import { updateClubSettingsSchema } from "@/lib/schemas/club-settings";
 import { requireAdmin, requireAuth } from "@/lib/request-user";
@@ -10,6 +10,7 @@ export const runtime = "nodejs";
 function serializeSettings(settings: Awaited<ReturnType<typeof getClubSettings>>) {
   return {
     clubName: settings.clubName,
+    clubLogoUrl: settings.clubLogoUrl ?? "",
     clubAddress: settings.clubAddress,
     clubPhone: settings.clubPhone,
     allowCheckInWithPartialPayment: settings.allowCheckInWithPartialPayment,
@@ -66,6 +67,10 @@ export async function PATCH(request: Request) {
 
   const before = await getClubSettings();
 
+  if (data.clubLogoUrl !== undefined) {
+    await writeClubLogoUrl(data.clubLogoUrl);
+  }
+
   const updated = await prisma.clubSettings.update({
     where: { id: "default" },
     data: {
@@ -100,5 +105,6 @@ export async function PATCH(request: Request) {
     },
   });
 
-  return NextResponse.json({ data: serializeSettings(updated) });
+  const settings = await getClubSettings();
+  return NextResponse.json({ data: serializeSettings(settings) });
 }

@@ -42,6 +42,7 @@ export default async function SettingsClubPage() {
         <ClubSettingsForm
           initial={{
             clubName: settings.clubName,
+            clubLogoUrl: settings.clubLogoUrl ?? "",
             clubAddress: settings.clubAddress,
             clubPhone: settings.clubPhone,
             allowCheckInWithPartialPayment: settings.allowCheckInWithPartialPayment,

@@ -8,6 +8,7 @@ import { FormActions, FormField, FormGrid, FormSection } from "@/components/ui/f
 
 export type ClubSettingsFormData = {
   clubName: string;
+  clubLogoUrl: string;
   clubAddress: string;
   clubPhone: string;
   allowCheckInWithPartialPayment: boolean;
@@ -80,6 +81,8 @@ function eurosInputToCents(value: string): number {
 export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
   const router = useRouter();
   const [clubName, setClubName] = useState(initial.clubName);
+  const [clubLogoUrl, setClubLogoUrl] = useState(initial.clubLogoUrl ?? "");
+  const [logoUploading, setLogoUploading] = useState(false);
   const [clubAddress, setClubAddress] = useState(initial.clubAddress);
   const [clubPhone, setClubPhone] = useState(initial.clubPhone);
   const [allowPartialPayment, setAllowPartialPayment] = useState(initial.allowCheckInWithPartialPayment);
@@ -115,6 +118,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         clubName,
+        clubLogoUrl,
         clubAddress,
         clubPhone,
         allowCheckInWithPartialPayment: allowPartialPayment,
@@ -133,6 +137,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
     }
 
     setClubName(json.data.clubName);
+    setClubLogoUrl(json.data.clubLogoUrl ?? "");
     setClubAddress(json.data.clubAddress);
     setClubPhone(json.data.clubPhone);
     setAllowPartialPayment(json.data.allowCheckInWithPartialPayment);
@@ -140,6 +145,52 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
     setMaxStaffDiscountPercent(String(json.data.maxStaffDiscountPercent));
     setDebtThresholdEuros(centsToEurosInput(json.data.debtAlertThresholdCents));
     setMessage("Règles du club enregistrées");
+    router.refresh();
+  }
+
+  async function uploadLogo(file: File) {
+    setLogoUploading(true);
+    setMessage(null);
+    const body = new FormData();
+    body.append("logo", file);
+    const res = await fetch("/api/club-settings/logo", { method: "POST", body });
+    let json: { data?: { clubLogoUrl?: string }; error?: string } = {};
+    try {
+      json = await res.json();
+    } catch {
+      setLogoUploading(false);
+      setMessage("Erreur serveur lors du téléversement du logo");
+      return;
+    }
+    setLogoUploading(false);
+    if (!res.ok || !json.data) {
+      setMessage(json?.error ?? "Échec du téléversement du logo");
+      return;
+    }
+    setClubLogoUrl(json.data.clubLogoUrl ?? "");
+    setMessage("Logo mis à jour");
+    router.refresh();
+  }
+
+  async function removeLogo() {
+    setLogoUploading(true);
+    setMessage(null);
+    const res = await fetch("/api/club-settings/logo", { method: "DELETE" });
+    let json: { error?: string } = {};
+    try {
+      json = await res.json();
+    } catch {
+      setLogoUploading(false);
+      setMessage("Erreur serveur lors de la suppression du logo");
+      return;
+    }
+    setLogoUploading(false);
+    if (!res.ok) {
+      setMessage(json?.error ?? "Échec de la suppression du logo");
+      return;
+    }
+    setClubLogoUrl("");
+    setMessage("Logo supprimé");
     router.refresh();
   }
 
@@ -152,15 +203,71 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
     <form onSubmit={submit} className="space-y-5">
       <FeedbackMessage message={message} />
 
-      <FormSection title="Identité du club" description="Affichée dans l'interface et les communications.">
+      <FormSection
+        title="Identité du club"
+        description="Nom et logo affichés dans la barre mobile et la barre latérale."
+      >
         <FormGrid cols={1}>
-          <FormField label="Nom du club" htmlFor="clubName">
+          <FormField label="Nom du club" htmlFor="clubName" hint="Si vide, le nom produit (GymDay) est affiché.">
             <input
               id="clubName"
               className="field"
               value={clubName}
               onChange={(e) => setClubName(e.target.value)}
               placeholder="Ex. Club Karaté Tunis"
+            />
+          </FormField>
+          <FormField
+            label="Logo du club"
+            htmlFor="clubLogoFile"
+            hint="PNG, JPEG ou WebP — max 1 Mo. Ou indiquez une URL ci-dessous."
+          >
+            <div className="flex flex-wrap items-start gap-4">
+              <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-[var(--surface-soft)]">
+                {clubLogoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={clubLogoUrl} alt="" className="size-full object-contain p-1" />
+                ) : (
+                  <span className="text-xs text-muted-foreground">Aucun</span>
+                )}
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-2">
+                <input
+                  id="clubLogoFile"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="field max-w-md text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white"
+                  disabled={logoUploading}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void uploadLogo(file);
+                    e.target.value = "";
+                  }}
+                />
+                {clubLogoUrl ? (
+                  <button
+                    type="button"
+                    className="btn btn-secondary w-fit text-xs"
+                    disabled={logoUploading}
+                    onClick={() => void removeLogo()}
+                  >
+                    Supprimer le logo
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </FormField>
+          <FormField
+            label="URL du logo (optionnel)"
+            htmlFor="clubLogoUrl"
+            hint="Lien externe ou chemin après import (ex. /branding/club-logo.png)."
+          >
+            <input
+              id="clubLogoUrl"
+              className="field"
+              value={clubLogoUrl}
+              onChange={(e) => setClubLogoUrl(e.target.value)}
+              placeholder="https://… ou /branding/club-logo.png"
             />
           </FormField>
           <FormField label="Adresse" htmlFor="clubAddress">

@@ -17,6 +17,9 @@
 /prisma/dev.db
 /prisma/dev.db-journal
 
+# uploaded club logos (keep directory via .gitkeep)
+/public/branding/club-logo.*
+
 # next.js
 /.next/
 /out/

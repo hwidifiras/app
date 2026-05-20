@@ -22,11 +22,7 @@ export function ThemeToggle({ className, compact }: { className?: string; compac
           Apparence
         </p>
       ) : null}
-      <div
-        className="grid grid-cols-3 gap-1 rounded-xl border border-border bg-[var(--surface-soft)] p-1"
-        role="group"
-        aria-label="Thème d'affichage"
-      >
+      <div className="grid grid-cols-3 gap-1" role="group" aria-label="Thème d'affichage">
         {options.map(({ mode, label, icon: Icon }) => {
           const active = theme === mode;
           return (

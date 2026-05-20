@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { ClubBrandingProvider } from "@/components/layout/club-branding-provider";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { getAppName } from "@/lib/app-name";
+import { resolveClubBranding } from "@/lib/club-branding";
+import { getClubSettings } from "@/lib/club-settings";
 import { THEME_INIT_SCRIPT } from "@/lib/theme-init-script";
 import "./globals.css";
 
@@ -24,11 +27,14 @@ export const metadata: Metadata = {
   description: "Interface réception moderne pour la gestion du club",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const settings = await getClubSettings();
+  const branding = resolveClubBranding(settings);
+
   return (
     <html
       lang="fr"
@@ -40,7 +46,9 @@ export default function RootLayout({
       </head>
       <body className="min-h-full bg-background text-foreground">
         <ThemeProvider>
-          <AppShell>{children}</AppShell>
+          <ClubBrandingProvider branding={branding}>
+            <AppShell>{children}</AppShell>
+          </ClubBrandingProvider>
         </ThemeProvider>
       </body>
     </html>

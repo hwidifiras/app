@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useState, useCallback, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { Banknote, Clock, Home, Menu, PlusCircle, Search, X, Dumbbell } from "lucide-react";
+import { Banknote, Clock, Home, Menu, PlusCircle, Search, X } from "lucide-react";
 
-import { APP_BRAND_NAME } from "@/lib/app-name";
+import { ClubBrandMark } from "@/components/layout/club-brand-mark";
 import { cn } from "@/lib/utils";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
@@ -61,14 +61,8 @@ export function MobileNav() {
     <>
       {/* Burger button */}
       <div className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)]/95 px-3 py-2.5 shadow-sm backdrop-blur lg:hidden">
-        <Link href="/" className="flex items-center gap-2.5 rounded-lg px-1 py-1 transition hover:bg-[var(--surface-soft)]">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-[var(--primary)] text-white">
-            <Dumbbell className="size-4" />
-          </div>
-          <div className="leading-tight">
-            <span className="block text-sm font-bold text-[var(--foreground)]">{APP_BRAND_NAME}</span>
-            <span className="block text-[0.65rem] font-medium text-[var(--muted-foreground)]">Réception</span>
-          </div>
+        <Link href="/" className="flex min-w-0 max-w-[55%] items-center gap-2.5 rounded-lg px-1 py-1 transition hover:bg-[var(--surface-soft)]">
+          <ClubBrandMark size="sm" />
         </Link>
         <div className="flex items-center gap-2">
           <SetupGuide variant="header" />
@@ -97,7 +91,7 @@ export function MobileNav() {
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <nav className="flex h-full flex-col gap-1 overflow-y-auto px-3 pb-24 pt-4">
+        <nav className="sidebar-scroll flex h-full flex-col gap-1 overflow-y-auto overscroll-y-contain px-3 pb-24 pt-4">
           {/* Spacer for top bar height offset */}
           <div className="shrink-0" />
 
