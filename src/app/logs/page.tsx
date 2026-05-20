@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
+import { enrichAuditLogContexts } from "@/lib/audit-log-enricher";
 import {
   auditLogMatchesQuery,
   formatAuditDateTime,
@@ -44,7 +45,10 @@ export default async function LogsPage({
     : presented;
 
   const logs = filtered.slice(0, 200).map((p) => p.log);
-  const presentationById = new Map(filtered.map((p) => [p.log.id, p.presentation]));
+  const presentationById = await enrichAuditLogContexts(
+    logs,
+    new Map(filtered.map((p) => [p.log.id, p.presentation])),
+  );
 
   const userIds = Array.from(
     new Set(logs.map((log) => log.userId).filter((id): id is string => !!id)),

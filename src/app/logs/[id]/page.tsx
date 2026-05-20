@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
+import { enrichAuditLogPresentation } from "@/lib/audit-log-enricher";
 import {
   formatAuditDateTime,
   formatAuditUserName,
@@ -19,10 +20,7 @@ export default async function LogDetailPage({ params }: { params: Promise<{ id: 
   const log = await prisma.auditLog.findUnique({ where: { id } });
   if (!log) notFound();
 
-  const presentation = presentAuditLog(log);
-  if (!presentation.hasDetailPage) {
-    notFound();
-  }
+  const presentation = await enrichAuditLogPresentation(log, presentAuditLog(log));
 
   const user = log.userId
     ? await prisma.user.findUnique({
@@ -74,21 +72,39 @@ export default async function LogDetailPage({ params }: { params: Promise<{ id: 
         </dl>
       </section>
 
-      {presentation.detailSections.map((section) => (
-        <section key={section.title} className="panel mb-4 p-4 sm:p-5">
-          <h2 className="mb-3 text-base font-semibold text-[var(--foreground)]">{section.title}</h2>
-          <ul className="divide-y divide-[var(--border)]">
-            {section.rows.map((row) => (
-              <li key={row.label} className="flex flex-col gap-0.5 py-2.5 sm:flex-row sm:gap-4">
-                <span className="shrink-0 text-sm font-medium text-[var(--muted-foreground)] sm:w-48">
-                  {row.label}
-                </span>
-                <span className="text-sm text-[var(--foreground)]">{row.value}</span>
-              </li>
-            ))}
-          </ul>
+      {presentation.detailSections.length === 0 ? (
+        <section className="panel p-4 text-sm text-[var(--muted-foreground)] sm:p-5">
+          Aucun détail supplémentaire enregistré pour cette action.
         </section>
-      ))}
+      ) : (
+        presentation.detailSections.map((section) => (
+          <section key={section.title} className="panel mb-4 p-4 sm:p-5">
+            <h2 className="mb-3 text-base font-semibold text-[var(--foreground)]">{section.title}</h2>
+            <ul className="divide-y divide-[var(--border)]">
+              {section.rows.map((row) => (
+                <li key={row.label} className="py-2.5">
+                  <span className="text-sm font-medium text-[var(--muted-foreground)]">{row.label}</span>
+                  {row.value ? (
+                    <p className="mt-0.5 text-sm text-[var(--foreground)]">{row.value}</p>
+                  ) : null}
+                  {row.list && row.list.length > 0 ? (
+                    <ul className="mt-2 space-y-1.5">
+                      {row.list.map((item, i) => (
+                        <li
+                          key={`${row.label}-${i}`}
+                          className="rounded-lg bg-[var(--surface-soft)] px-3 py-2 text-sm text-[var(--foreground)]"
+                        >
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
+      )}
     </main>
   );
 }

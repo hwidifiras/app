@@ -8,9 +8,16 @@ export type AuditLogRow = {
   createdAt: Date;
 };
 
+export type AuditDetailRow = {
+  label: string;
+  value?: string;
+  /** Puces pour listes (élèves, permissions, etc.) */
+  list?: string[];
+};
+
 export type AuditDetailSection = {
   title: string;
-  rows: Array<{ label: string; value: string }>;
+  rows: AuditDetailRow[];
 };
 
 export type AuditPresentation = {
@@ -96,7 +103,7 @@ function buildClubSettingsSections(details: Record<string, unknown>): AuditDetai
   const after = details.after as Record<string, unknown> | undefined;
   if (!before || !after) return [];
 
-  const rows: Array<{ label: string; value: string }> = [];
+  const rows: AuditDetailRow[] = [];
   const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
 
   for (const key of keys) {
@@ -115,36 +122,54 @@ function buildClubSettingsSections(details: Record<string, unknown>): AuditDetai
 }
 
 function buildEnrollmentSections(details: Record<string, unknown>): AuditDetailSection[] {
-  const rows: Array<{ label: string; value: string }> = [];
-  const memberIds = details.memberIds;
-  const subscriptionIds = details.subscriptionIds;
+  const rows: AuditDetailRow[] = [];
+  const inlineLines = details.lines;
 
-  if (Array.isArray(memberIds)) {
-    rows.push({ label: "Élèves concernés", value: `${memberIds.length} inscription(s)` });
-  } else if (typeof memberIds === "string") {
-    try {
-      const parsed = JSON.parse(memberIds) as unknown[];
-      if (Array.isArray(parsed)) {
-        rows.push({ label: "Élèves concernés", value: `${parsed.length} inscription(s)` });
+  if (Array.isArray(inlineLines) && inlineLines.length > 0) {
+    const list: string[] = [];
+    for (const line of inlineLines) {
+      if (!line || typeof line !== "object") continue;
+      const l = line as Record<string, unknown>;
+      const name = typeof l.memberName === "string" ? l.memberName : "Élève";
+      const group = typeof l.groupName === "string" ? l.groupName : "";
+      const plan = typeof l.planName === "string" ? l.planName : "";
+      const amount = formatEurosFromCents(l.finalAmountCents);
+      list.push(`${name} — ${group}${plan ? ` · ${plan}` : ""}${amount ? ` · ${amount}` : ""}`);
+    }
+    if (list.length) rows.push({ label: "Inscriptions", list });
+  } else {
+    const memberIds = details.memberIds;
+    if (Array.isArray(memberIds)) {
+      rows.push({ label: "Élèves concernés", value: `${memberIds.length} inscription(s)` });
+    } else if (typeof memberIds === "string") {
+      try {
+        const parsed = JSON.parse(memberIds) as unknown[];
+        if (Array.isArray(parsed)) {
+          rows.push({ label: "Élèves concernés", value: `${parsed.length} inscription(s)` });
+        }
+      } catch {
+        /* ignore */
       }
-    } catch {
-      /* ignore */
+    }
+    if (Array.isArray(details.subscriptionIds)) {
+      rows.push({ label: "Abonnements", value: `${details.subscriptionIds.length} créé(s)` });
     }
   }
 
-  if (Array.isArray(subscriptionIds)) {
-    rows.push({ label: "Abonnements", value: `${subscriptionIds.length} créé(s)` });
-  }
-
-  if (details.offerId && typeof details.offerId === "string") {
+  if (typeof details.offerName === "string") {
+    rows.push({ label: "Offre appliquée", value: details.offerName });
+  } else if (details.offerId && typeof details.offerId === "string") {
     rows.push({ label: "Offre appliquée", value: "Oui" });
   }
+
+  const total = formatEurosFromCents(details.totalFinalCents);
+  if (total) rows.push({ label: "Total (devis)", value: total });
 
   return rows.length ? [{ title: "Résumé de l'inscription", rows }] : [];
 }
 
 function buildGenericSections(details: Record<string, unknown>): AuditDetailSection[] {
-  const rows: Array<{ label: string; value: string }> = [];
+  const rows: AuditDetailRow[] = [];
 
   for (const [key, value] of Object.entries(details)) {
     if (key === "before" || key === "after") continue;
@@ -214,7 +239,7 @@ export function presentAuditLog(log: AuditLogRow): AuditPresentation {
     detailSections = buildGenericSections(details);
   }
 
-  const hasDetailPage = detailSections.some((s) => s.rows.length > 0);
+  const hasDetailPage = log.action in ACTION_LABELS;
 
   const searchText = [summary, context, log.action, log.entityType, log.entityId].filter(Boolean).join(" ");
 

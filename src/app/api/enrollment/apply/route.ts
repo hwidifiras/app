@@ -231,7 +231,21 @@ export async function POST(request: Request) {
           entityType: "Enrollment",
           entityId: offerApplicationId ?? memberIds[0] ?? "batch",
           userId: actor.id,
-          details: JSON.stringify({ memberIds, subscriptionIds, offerId: parsed.data.offerId }),
+          details: JSON.stringify({
+            memberIds,
+            subscriptionIds,
+            offerId: parsed.data.offerId ?? null,
+            offerName: quote.offerName,
+            totalFinalCents: quote.totalFinalCents,
+            lines: quote.lines.map((l) => ({
+              memberName: l.memberName,
+              groupName: l.groupName,
+              planName: l.planName,
+              sportName: l.sportName,
+              finalAmountCents: l.finalAmountCents,
+              discountCents: l.discountCents,
+            })),
+          }),
         },
       });
 
