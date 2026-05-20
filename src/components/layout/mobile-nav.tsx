@@ -3,29 +3,26 @@
 import Link from "next/link";
 import { useState, useCallback, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { Banknote, Clock, Home, Menu, PlusCircle, Search, X } from "lucide-react";
+import { Banknote, ChevronDown, Clock, Home, Menu, PlusCircle, Search, X } from "lucide-react";
 
 import { ClubBrandMark } from "@/components/layout/club-brand-mark";
+import { UserAccountMenu } from "@/components/layout/user-account-menu";
 import { cn } from "@/lib/utils";
-import { LogoutButton } from "@/components/auth/logout-button";
-import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { SetupGuide } from "@/components/onboarding/setup-guide";
 import {
   navSections,
-  settingsSection,
+  clubConfigSection,
   NavLink,
 } from "./app-sidebar";
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [configOpen, setConfigOpen] = useState(false);
   const pathname = usePathname();
-  const inSettings = settingsSection.items.some((item) =>
-    item.href === "/settings"
-      ? pathname === "/settings" || pathname.startsWith("/settings/")
-      : pathname === item.href || pathname.startsWith(`${item.href}/`),
+  const inClubConfig = clubConfigSection.items.some(
+    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
   );
-  const showSettings = settingsOpen || inSettings;
+  const showClubConfig = configOpen || inClubConfig;
 
   const close = useCallback(() => setOpen(false), []);
 
@@ -66,6 +63,7 @@ export function MobileNav() {
         </Link>
         <div className="flex items-center gap-2">
           <SetupGuide variant="header" />
+          <UserAccountMenu onNavigate={close} />
           <button
             onClick={() => setOpen((v) => !v)}
             className="flex size-10 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)] shadow-sm transition-colors hover:bg-[var(--surface)]"
@@ -106,36 +104,31 @@ export function MobileNav() {
             </div>
           ))}
 
-          {/* Settings toggle */}
+          {/* Configuration club */}
           <div className="mt-2 border-t border-[var(--border)] pt-2">
             <button
-              onClick={() => setSettingsOpen((v) => !v)}
-              aria-expanded={showSettings}
+              onClick={() => setConfigOpen((v) => !v)}
+              aria-expanded={showClubConfig}
               className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-[0.82rem] font-medium text-[var(--muted-foreground)] transition-all hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]"
             >
               <span className="text-[0.6rem] font-bold uppercase tracking-[0.16em] opacity-60">
-                Paramètres
+                {clubConfigSection.title}
               </span>
-              <X
+              <ChevronDown
                 className={cn(
-                  "size-4 shrink-0 rotate-45 transition-transform",
-                  showSettings ? "rotate-0" : "",
+                  "size-4 shrink-0 transition-transform",
+                  showClubConfig ? "rotate-180" : "",
                 )}
               />
             </button>
 
-            {showSettings && (
+            {showClubConfig && (
               <div className="space-y-0.5">
-                {settingsSection.items.map((item) => (
+                {clubConfigSection.items.map((item) => (
                   <NavLink key={item.href} item={item} pathname={pathname} onClick={close} />
                 ))}
               </div>
             )}
-          </div>
-
-          <div className="mt-2 space-y-2 border-t border-[var(--border)] pt-2">
-            <ThemeToggle compact />
-            <LogoutButton onDone={close} />
           </div>
         </nav>
       </div>

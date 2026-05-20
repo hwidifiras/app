@@ -18,14 +18,11 @@ import {
   UserPlus,
   Banknote,
   ChevronDown,
-  CircleUser,
   SlidersHorizontal,
 } from "lucide-react";
 
 import { ClubBrandMark } from "@/components/layout/club-brand-mark";
 import { cn } from "@/lib/utils";
-import { LogoutButton } from "@/components/auth/logout-button";
-import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 export type NavItem = {
   href: string;
@@ -69,9 +66,9 @@ export const cashSection: NavSection = {
   ],
 };
 
-/* ── Section 4: Configuration (basse fréquence, masquable) ── */
-export const settingsSection: NavSection = {
-  title: "Paramètres",
+/* ── Section 4: Configuration club (basse fréquence, masquable) ── */
+export const clubConfigSection: NavSection = {
+  title: "Configuration",
   items: [
     { href: "/settings/club", label: "Règles du club", icon: SlidersHorizontal },
     { href: "/sports", label: "Disciplines", icon: Dumbbell },
@@ -79,11 +76,11 @@ export const settingsSection: NavSection = {
     { href: "/groups", label: "Cours & créneaux", icon: CalendarDays },
     { href: "/subscription-plans", label: "Formules & tarifs", icon: ClipboardCheck },
     { href: "/offers", label: "Offres", icon: CreditCard },
-    { href: "/settings/users", label: "Utilisateurs", icon: Users },
-    { href: "/settings/account", label: "Mon compte", icon: CircleUser },
-    { href: "/logs", label: "Journal actions", icon: Activity },
   ],
 };
+
+/** @deprecated Use clubConfigSection */
+export const settingsSection = clubConfigSection;
 
 export const navSections: NavSection[] = [dailySection, membersSection, cashSection];
 
@@ -123,9 +120,9 @@ export function NavLink({
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [configOpen, setConfigOpen] = useState(false);
 
-  const inSettings = settingsSection.items.some((i) => isLinkActive(pathname, i.href));
+  const inClubConfig = clubConfigSection.items.some((i) => isLinkActive(pathname, i.href));
 
   return (
     <aside className="sidebar-scroll hidden border-b border-[var(--border)] bg-[var(--surface)]/95 backdrop-blur lg:sticky lg:block lg:top-0 lg:h-screen lg:overflow-y-auto lg:overscroll-y-contain lg:border-r lg:border-b-0">
@@ -147,44 +144,36 @@ export function AppSidebar() {
           </div>
         ))}
 
-        {/* ── Paramètres (pliable) ── */}
+        {/* ── Configuration club (pliable) ── */}
         <div className="mb-1 mt-2 border-t border-[var(--border)] pt-2 lg:mt-3 lg:pt-3">
           <button
-            onClick={() => setSettingsOpen((v) => !v)}
+            onClick={() => setConfigOpen((v) => !v)}
             className={cn(
               "flex w-full items-center justify-between rounded-lg px-3 py-2 text-[0.82rem] font-medium transition-all lg:mb-1",
-              inSettings || settingsOpen
+              inClubConfig || configOpen
                 ? "text-[var(--primary)]"
                 : "text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]",
             )}
           >
             <span className="hidden text-[0.6rem] font-bold uppercase tracking-[0.16em] opacity-60 lg:block">
-              Paramètres
+              {clubConfigSection.title}
             </span>
-            <span className="lg:hidden">Paramètres</span>
+            <span className="lg:hidden">{clubConfigSection.title}</span>
             <ChevronDown
               className={cn(
                 "size-4 shrink-0 transition-transform",
-                settingsOpen || inSettings ? "rotate-180" : "",
+                configOpen || inClubConfig ? "rotate-180" : "",
               )}
             />
           </button>
 
-          {(settingsOpen || inSettings) && (
+          {(configOpen || inClubConfig) && (
             <div className="lg:space-y-0.5">
-              {settingsSection.items.map((item) => (
+              {clubConfigSection.items.map((item) => (
                 <NavLink key={item.href} item={item} pathname={pathname} />
               ))}
             </div>
           )}
-        </div>
-
-        <div className="mt-2 space-y-2 border-t border-[var(--border)] px-2 pt-2 lg:hidden">
-          <ThemeToggle compact />
-          <LogoutButton />
-        </div>
-        <div className="mt-2 hidden border-t border-[var(--border)] px-2 pt-2 lg:block">
-          <LogoutButton />
         </div>
       </nav>
     </aside>

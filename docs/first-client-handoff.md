@@ -41,7 +41,17 @@ If migrations fail on an existing DB: `npm run prisma:repair:dev` then retry.
 npm run handoff:check
 ```
 
-Runs: Prisma generate hint, tests (28 scenarios), production build.
+Runs: Prisma generate hint, tests (29 scenarios), production build.
+
+### Performance & Lighthouse (mobile + desktop)
+
+```bash
+npm run perf:check:local
+```
+
+Or with server already running: `npm run build && npm run start` then `npm run lighthouse`.
+
+Audits `/login` on mobile and desktop; reports in `reports/lighthouse/`. See `docs/performance-lighthouse.md`.
 
 ## 5. Manual QA — phones & browsers
 

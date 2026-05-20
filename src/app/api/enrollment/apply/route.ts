@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/request-user";
 import { enrollmentApplySchema } from "@/lib/schemas/enrollment";
-import { parseOfferRules } from "@/lib/schemas/offer";
+import { familyBundleRulesSchema } from "@/lib/schemas/offer";
 import {
   buildEnrollmentQuote,
   checkScheduleConflictForMember,
@@ -204,7 +204,7 @@ export async function POST(request: Request) {
       if (parsed.data.offerId) {
         const offer = await tx.offer.findUnique({ where: { id: parsed.data.offerId } });
         if (offer?.kind === "FAMILY_BUNDLE" && offer.isActive) {
-          const rules = parseOfferRules(offer.kind, JSON.parse(offer.rules));
+          const rules = familyBundleRulesSchema.parse(JSON.parse(offer.rules));
           if (rules.requiresHousehold) {
             await ensureSharedHouseholdForMembers(tx, memberIds);
           }

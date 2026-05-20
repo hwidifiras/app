@@ -26,6 +26,9 @@
     "prisma:repair:dev": "node scripts/with-dev-env.mjs scripts/repair-club-settings-columns.mjs",
     "prisma:studio": "prisma studio",
     "handoff:check": "node scripts/handoff-check.mjs",
+    "lighthouse": "node scripts/lighthouse-audit.mjs",
+    "perf:check": "node scripts/perf-check.mjs",
+    "perf:check:local": "node scripts/perf-check.mjs --with-server",
     "postinstall": "prisma generate"
   },
   "prisma": {
@@ -55,6 +58,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "lighthouse": "^12.8.2",
     "prisma": "^6.19.3",
     "tailwindcss": "^4",
     "typescript": "^5",

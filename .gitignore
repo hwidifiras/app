@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+/reports/
 /prisma/test.db
 /prisma/test.db-journal
 /prisma/dev.db

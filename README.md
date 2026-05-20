@@ -19,14 +19,17 @@ If migrations fail on an existing DB: `npm run prisma:repair:dev`.
 | Command | Purpose |
 |---------|---------|
 | `npm run dev` | Dev server (runs migrations via `predev`) |
-| `npm test` | API & business rules (28 scenarios) |
+| `npm test` | API & business rules (29 scenarios) |
 | `npm run build` | Production build |
 | `npm run handoff:check` | Tests + build before client handoff |
+| `npm run lighthouse` | Lighthouse mobile + desktop (server must be running) |
+| `npm run perf:check:local` | Tests + build + Lighthouse one-shot |
 | `npm run admin:create:dev` | Create admin user (dev DB) |
 
 ## Documentation
 
 - **[First client handoff](docs/first-client-handoff.md)** — deploy, config, manual QA (Safari/Chrome)
+- [Performance & Lighthouse](docs/performance-lighthouse.md) — mobile + desktop audits
 - [Dev mode](docs/dev-mode.md)
 - [VPS deployment](docs/vps-deployment.md)
 - [Deployment tonight](docs/deployment-tonight.md)
