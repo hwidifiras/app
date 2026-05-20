@@ -12,6 +12,10 @@
 
 # testing
 /coverage
+/prisma/test.db
+/prisma/test.db-journal
+/prisma/dev.db
+/prisma/dev.db-journal
 
 # next.js
 /.next/
@@ -32,6 +36,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.production.example
+!.env.development.example
+!.env.example
 
 # vercel
 .vercel
