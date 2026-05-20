@@ -22,167 +22,245 @@ function utcDateOnlyForTimeZone(date: Date, timeZone: string): Date {
 }
 
 async function main() {
-  console.log("🌱 Seeding test data for check-in validation...");
+  console.log("Seeding dojo v0 demo data...");
 
-  const adminEmail = "admin@gym.local";
-  const adminName = "Admin";
-  const adminPassword = "admin1234";
-
-  const passwordHash = await bcrypt.hash(adminPassword, 10);
-  const admin = await prisma.user.upsert({
-    where: { email: adminEmail },
+  await prisma.clubSettings.upsert({
+    where: { id: "default" },
     create: {
-      email: adminEmail,
-      name: adminName,
+      id: "default",
+      allowCheckInWithPartialPayment: true,
+      allowPublicRegister: false,
+      maxStaffDiscountPercent: 30,
+    },
+    update: {},
+  });
+
+  const passwordHash = await bcrypt.hash("admin1234", 10);
+  await prisma.user.upsert({
+    where: { email: "admin@gym.local" },
+    create: {
+      email: "admin@gym.local",
+      name: "Admin",
       role: "ADMIN",
       passwordHash,
       isActive: true,
     },
-    update: {
-      name: adminName,
-      role: "ADMIN",
-      passwordHash,
-      isActive: true,
-    },
-    select: { id: true, email: true },
+    update: { passwordHash, role: "ADMIN", isActive: true },
   });
-  console.log("✅ Admin user ready:", admin.email);
-  console.log("   Email:", adminEmail);
-  console.log("   Password:", adminPassword);
 
-  // 1. Create a member
-  const member = await prisma.member.create({
-    data: {
-      firstName: "Karim",
-      lastName: "Test",
-      phone: "06-12-34-56-78",
-      email: "karim.test@example.com",
-      status: "ACTIVE",
-    },
+  const bjj = await prisma.sport.upsert({
+    where: { name: "Jiu-Jitsu" },
+    create: { name: "Jiu-Jitsu", description: "BJJ", isActive: true },
+    update: {},
   });
-  console.log("✅ Member created:", member.id);
 
-  // 2. Create a sport
-  const sport = await prisma.sport.create({
-    data: {
-      name: "Fitness Test",
-      description: "Sport de test pour validation",
-      isActive: true,
-    },
+  const karate = await prisma.sport.upsert({
+    where: { name: "Karate" },
+    create: { name: "Karate", description: "Karate", isActive: true },
+    update: {},
   });
-  console.log("✅ Sport created:", sport.id);
 
-  // 3. Create a coach
-  const coach = await prisma.coach.create({
-    data: {
+  const coach = await prisma.coach.upsert({
+    where: { phone: "06-87-65-43-21" },
+    create: {
       firstName: "Ahmed",
       lastName: "Coach",
       phone: "06-87-65-43-21",
-      email: "ahmed.coach@example.com",
-      sportId: sport.id,
+      sportId: bjj.id,
       isActive: true,
     },
+    update: {},
   });
-  console.log("✅ Coach created:", coach.id);
 
-  // 4. Create a group
-  const group = await prisma.group.create({
-    data: {
-      name: "Groupe Soir Test",
-      sportId: sport.id,
+  const group = await prisma.group.upsert({
+    where: { id: "seed-group-bjj" },
+    create: {
+      id: "seed-group-bjj",
+      name: "BJJ Soir",
+      sportId: bjj.id,
       coachId: coach.id,
       capacity: 20,
-      room: "Salle A",
+      room: "Dojo A",
       isActive: true,
     },
+    update: {},
   });
-  console.log("✅ Group created:", group.id);
 
-  // 5. Add member to group
-  await prisma.groupMember.create({
-    data: {
-      groupId: group.id,
-      memberId: member.id,
-      startDate: new Date(),
-      status: "ACTIVE",
-    },
-  });
-  console.log("✅ GroupMember created");
-
-  // Use current day of week so the session shows up in /attendance/today
-  const now = new Date();
-  const todayDayOfWeek = dayOfWeekValues[now.getDay()];
-  const startTime = "18:00";
-  const durationMinutes = 90;
-
-  // 6. Create group schedule for TODAY's day of week
-  await prisma.groupSchedule.create({
-    data: {
-      groupId: group.id,
-      dayOfWeek: todayDayOfWeek,
-      startTime,
-      durationMinutes,
-    },
-  });
-  console.log("✅ GroupSchedule created for", todayDayOfWeek, startTime);
-
-  // 7. Create session for TODAY
-  const tz = process.env.APP_TIMEZONE?.trim() || "Africa/Tunis";
-  const today = utcDateOnlyForTimeZone(new Date(), tz);
-
-  const session = await prisma.session.create({
-    data: {
-      groupId: group.id,
-      coachId: coach.id,
-      sessionDate: today,
-      startTime,
-      endTime: "19:30",
-      room: "Salle A",
-      status: "PLANNED",
-    },
-  });
-  console.log("✅ Session created for today:", session.id, "date:", today.toISOString().split("T")[0]);
-
-  // 8. Create subscription plan (session-based)
-  const plan = await prisma.subscriptionPlan.create({
-    data: {
-      name: "Plan Test 12 séances",
-      description: "12 séances par mois, 3 par semaine max",
-      price: 50000, // 500 EUR in cents
+  const planBjj = await prisma.subscriptionPlan.upsert({
+    where: { name: "BJJ 12 séances / mois" },
+    create: {
+      name: "BJJ 12 séances / mois",
+      price: 50000,
       totalSessions: 12,
       sessionsPerWeek: 3,
       validityDays: 30,
+      sportId: bjj.id,
       isActive: true,
     },
+    update: { sportId: bjj.id },
   });
-  console.log("✅ SubscriptionPlan created:", plan.id);
 
-  // 9. Create member subscription (ACTIVE with remaining sessions)
-  const subscription = await prisma.memberSubscription.create({
-    data: {
-      memberId: member.id,
-      planId: plan.id,
-      startDate: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000), // started 7 days ago
-      endDate: new Date(today.getTime() + 23 * 24 * 60 * 60 * 1000),  // ends in 23 days
-      amount: 50000,
+  const planKarate = await prisma.subscriptionPlan.upsert({
+    where: { name: "Karate 8 séances" },
+    create: {
+      name: "Karate 8 séances",
+      price: 40000,
+      totalSessions: 8,
+      validityDays: 30,
+      sportId: karate.id,
+      isActive: true,
+    },
+    update: { sportId: karate.id },
+  });
+
+  const member1 = await prisma.member.upsert({
+    where: { phone: "06-11-11-11-11" },
+    create: {
+      firstName: "Karim",
+      lastName: "Test",
+      phone: "06-11-11-11-11",
+      status: "ACTIVE",
+    },
+    update: {},
+  });
+
+  const member2 = await prisma.member.upsert({
+    where: { phone: "06-22-22-22-22" },
+    create: {
+      firstName: "Sami",
+      lastName: "Test",
+      phone: "06-22-22-22-22",
+      memberType: "KID",
+      status: "ACTIVE",
+    },
+    update: {},
+  });
+
+  const household = await prisma.household.create({
+    data: { label: "Famille Test" },
+  });
+
+  for (const row of [
+    { householdId: household.id, memberId: member1.id, relationship: "PARENT" as const },
+    { householdId: household.id, memberId: member2.id, relationship: "CHILD" as const },
+  ]) {
+    await prisma.householdMember.upsert({
+      where: { memberId: row.memberId },
+      create: row,
+      update: row,
+    });
+  }
+
+  const tz = process.env.APP_TIMEZONE?.trim() || "Africa/Tunis";
+  const today = utcDateOnlyForTimeZone(new Date(), tz);
+  const todayDay = dayOfWeekValues[new Date().getDay()];
+
+  await prisma.groupSchedule.upsert({
+    where: { id: "seed-schedule-bjj" },
+    create: {
+      id: "seed-schedule-bjj",
+      groupId: group.id,
+      dayOfWeek: todayDay,
+      startTime: "18:00",
+      durationMinutes: 90,
+    },
+    update: {},
+  });
+
+  await prisma.session.upsert({
+    where: {
+      groupId_sessionDate_startTime: {
+        groupId: group.id,
+        sessionDate: today,
+        startTime: "18:00",
+      },
+    },
+    create: {
+      groupId: group.id,
+      coachId: coach.id,
+      sessionDate: today,
+      startTime: "18:00",
+      endTime: "19:30",
+      room: "Dojo A",
+      status: "PLANNED",
+    },
+    update: {},
+  });
+
+  await prisma.memberSubscription.upsert({
+    where: { id: "seed-sub-karim-bjj" },
+    create: {
+      id: "seed-sub-karim-bjj",
+      memberId: member1.id,
+      planId: planBjj.id,
+      sportId: bjj.id,
+      startDate: new Date(today.getTime() - 7 * 86400000),
+      endDate: new Date(today.getTime() + 23 * 86400000),
+      amount: planBjj.price,
       remainingSessions: 10,
       status: "ACTIVE",
     },
+    update: { sportId: bjj.id },
   });
-  console.log("✅ MemberSubscription created:", subscription.id, "remaining:", subscription.remainingSessions);
 
-  console.log("\n🎉 Seed complete! Go to http://localhost:3000/attendance/today to test check-in.");
-  console.log("   Member:", `${member.firstName} ${member.lastName}`);
-  console.log("   Group:", group.name);
-  console.log("   Session:", `${today.toISOString().split("T")[0]} ${session.startTime}-${session.endTime}`);
-  console.log("   Subscription:", `${plan.name} — ${subscription.remainingSessions} séances restantes`);
+  await prisma.groupMember.upsert({
+    where: { groupId_memberId: { groupId: group.id, memberId: member1.id } },
+    create: {
+      groupId: group.id,
+      memberId: member1.id,
+      startDate: new Date(),
+      status: "ACTIVE",
+    },
+    update: { status: "ACTIVE" },
+  });
+
+  await prisma.payment.upsert({
+    where: { id: "seed-pay-karim" },
+    create: {
+      id: "seed-pay-karim",
+      memberSubscriptionId: "seed-sub-karim-bjj",
+      amount: 50000,
+      paymentMethod: "CASH",
+    },
+    update: {},
+  });
+
+  await prisma.offer.upsert({
+    where: { id: "seed-offer-family" },
+    create: {
+      id: "seed-offer-family",
+      name: "Forfait fratrie / famille",
+      kind: "FAMILY_BUNDLE",
+      rules: JSON.stringify({
+        minMembers: 2,
+        requiresHousehold: true,
+        bundlePriceCents: 80000,
+      }),
+      isActive: true,
+    },
+    update: {},
+  });
+
+  await prisma.offer.upsert({
+    where: { id: "seed-offer-second" },
+    create: {
+      id: "seed-offer-second",
+      name: "2e discipline -15%",
+      kind: "SECOND_DISCIPLINE",
+      rules: JSON.stringify({ percentOff: 15 }),
+      isActive: true,
+    },
+    update: {},
+  });
+
+  console.log("Done. Login: admin@gym.local / admin1234");
+  console.log("Enrollment: /enrollment | Check-in: /attendance/today");
+  console.log(`Plans: ${planBjj.name}, ${planKarate.name}`);
 }
 
 main()
   .catch((e) => {
-    console.error("❌ Seed error:", e);
+    console.error(e);
     process.exit(1);
   })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .finally(() => prisma.$disconnect());
