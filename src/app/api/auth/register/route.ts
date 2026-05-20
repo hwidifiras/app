@@ -5,8 +5,11 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
 import { hashPassword } from "@/lib/password";
-
 export const runtime = "nodejs";
+
+function isPublicRegisterEnabled(): boolean {
+  return process.env.ALLOW_PUBLIC_REGISTER === "true";
+}
 
 const registerSchema = z.object({
   email: z.string().trim().email(),
@@ -15,6 +18,10 @@ const registerSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  if (!isPublicRegisterEnabled()) {
+    return NextResponse.json({ error: "Inscription publique désactivée" }, { status: 403 });
+  }
+
   let body: unknown;
 
   try {

@@ -38,6 +38,7 @@ export async function POST(request: Request) {
       role: true,
       isActive: true,
       passwordHash: true,
+      permissions: { select: { key: true } },
     },
   });
 
@@ -55,6 +56,7 @@ export async function POST(request: Request) {
     email: user.email,
     name: user.name,
     role: user.role,
+    permissions: user.permissions.map((permission) => permission.key),
   });
 
   const cookieStore = await cookies();
@@ -72,6 +74,7 @@ export async function POST(request: Request) {
       email: user.email,
       name: user.name,
       role: user.role,
+      permissions: user.permissions.map((permission) => permission.key),
     },
   });
 }

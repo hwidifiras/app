@@ -9,6 +9,7 @@ export type AuthTokenPayload = {
   email: string;
   name: string;
   role: AuthRole;
+  permissions?: string[];
 };
 
 function getAuthSecret(): Uint8Array {
@@ -58,6 +59,9 @@ export async function verifyAuthToken(token: string): Promise<AuthTokenPayload |
       email: payload.email,
       name: payload.name,
       role,
+      permissions: Array.isArray(payload.permissions)
+        ? payload.permissions.filter((p): p is string => typeof p === "string")
+        : [],
     };
   } catch {
     return null;

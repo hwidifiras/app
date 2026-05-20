@@ -1,29 +1,43 @@
-import type { AuthRole } from "@/lib/auth";
+import { cookies } from "next/headers";
+
+import { AUTH_COOKIE_NAME, verifyAuthToken, type AuthRole } from "@/lib/auth";
 
 export type RequestUser = {
   id: string;
   role: AuthRole;
   email: string;
   name: string;
+  permissions: string[];
 };
 
-export function getRequestUser(request: Request): RequestUser | null {
-  const id = request.headers.get("x-user-id")?.trim();
-  const role = request.headers.get("x-user-role")?.trim();
-  const email = request.headers.get("x-user-email")?.trim();
-  const name = request.headers.get("x-user-name")?.trim();
+export async function getAuthUser(request: Request): Promise<RequestUser | null> {
+  void request;
+  const cookieStore = await cookies();
+  const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
+  if (!token) return null;
 
-  if (!id || !role || !email || !name) return null;
-  if (role !== "ADMIN" && role !== "STAFF") return null;
+  const payload = await verifyAuthToken(token);
+  if (!payload) return null;
 
-  return { id, role, email, name };
+  return {
+    id: payload.userId,
+    role: payload.role,
+    email: payload.email,
+    name: payload.name,
+    permissions: payload.permissions ?? [],
+  };
 }
 
-export function requireAdmin(request: Request): RequestUser {
-  const user = getRequestUser(request);
+export async function requireAuth(request: Request): Promise<RequestUser> {
+  const user = await getAuthUser(request);
   if (!user) {
     throw new Error("UNAUTHENTICATED");
   }
+  return user;
+}
+
+export async function requireAdmin(request: Request): Promise<RequestUser> {
+  const user = await requireAuth(request);
   if (user.role !== "ADMIN") {
     throw new Error("FORBIDDEN");
   }

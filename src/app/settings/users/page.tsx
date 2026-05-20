@@ -2,12 +2,16 @@ import { headers } from "next/headers";
 
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { UserCreateForm } from "@/components/settings/user-create-form";
+import { UsersListClient } from "@/components/settings/users-list-client";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function SettingsUsersPage() {
   const h = await headers();
   const role = h.get("x-user-role");
+  const currentUserId = h.get("x-user-id") ?? "";
 
   if (role !== "ADMIN") {
     return (
@@ -26,16 +30,29 @@ export default async function SettingsUsersPage() {
 
   const users = await prisma.user.findMany({
     orderBy: [{ role: "asc" }, { createdAt: "desc" }],
-    select: { id: true, name: true, email: true, role: true, isActive: true, createdAt: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      isActive: true,
+      createdAt: true,
+      permissions: { select: { key: true } },
+    },
     take: 200,
   });
+
+  const rows = users.map((u) => ({
+    ...u,
+    createdAt: u.createdAt.toISOString(),
+  }));
 
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
         overline="Paramètres"
         title="Utilisateurs"
-        description="Créez les comptes du staff (ex: 2 comptes pour le client)."
+        description="Créez et gérez les comptes du staff : nom, email, activation et réinitialisation du mot de passe."
       />
 
       <section className="panel panel-soft p-5 md:p-6">
@@ -47,43 +64,8 @@ export default async function SettingsUsersPage() {
 
       <section className="panel mt-6 p-5 md:p-6">
         <h2 className="text-sm font-semibold text-[var(--foreground)]">Liste ({users.length})</h2>
-
-        <div className="mt-4 overflow-x-auto rounded-xl border border-[var(--border)]">
-          <table className="w-full text-sm">
-            <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
-              <tr>
-                <th className="px-4 py-3 text-left font-semibold">Nom</th>
-                <th className="px-4 py-3 text-left font-semibold">Email</th>
-                <th className="px-4 py-3 text-left font-semibold">Rôle</th>
-                <th className="px-4 py-3 text-left font-semibold hidden sm:table-cell">Statut</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {users.map((u) => (
-                <tr key={u.id} className="hover:bg-[var(--surface-soft)] transition-colors">
-                  <td className="px-4 py-3 font-medium text-[var(--foreground)]">{u.name}</td>
-                  <td className="px-4 py-3 text-[var(--muted-foreground)]">{u.email}</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge variant={u.role === "ADMIN" ? "info" : "muted"}>
-                      {u.role === "ADMIN" ? "Admin" : "Staff"}
-                    </StatusBadge>
-                  </td>
-                  <td className="px-4 py-3 hidden sm:table-cell">
-                    <StatusBadge variant={u.isActive ? "success" : "warning"}>
-                      {u.isActive ? "Actif" : "Désactivé"}
-                    </StatusBadge>
-                  </td>
-                </tr>
-              ))}
-              {users.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-4 py-5 text-center text-[var(--muted-foreground)]">
-                    Aucun utilisateur.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="mt-4">
+          <UsersListClient users={rows} currentUserId={currentUserId} />
         </div>
       </section>
     </main>

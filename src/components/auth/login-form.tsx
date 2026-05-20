@@ -10,6 +10,7 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const registrationSuccess = searchParams.get("registered") === "1";
+  const resetSuccess = searchParams.get("reset") === "1";
 
   const nextPath = useMemo(() => {
     const raw = searchParams.get("next");
@@ -20,7 +21,11 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(
-    registrationSuccess ? "Compte créé. Connectez-vous avec votre email et votre mot de passe." : null,
+    registrationSuccess
+      ? "Compte créé. Connectez-vous avec votre email et votre mot de passe."
+      : resetSuccess
+        ? "Mot de passe réinitialisé. Connectez-vous avec votre nouveau mot de passe."
+        : null,
   );
 
   async function onSubmit(e: React.FormEvent) {
@@ -85,12 +90,12 @@ export function LoginForm() {
         {loading ? "Connexion..." : "Se connecter"}
       </button>
 
+      <Link href="/forgot-password" className="block text-center text-xs text-[var(--muted-foreground)] underline">
+        Mot de passe oublié ?
+      </Link>
+
       <p className="text-xs text-[var(--muted-foreground)]">
-        Si vous n&apos;avez pas encore de compte, vous pouvez en créer un{" "}
-        <Link href="/register" className="font-medium text-[var(--foreground)] underline underline-offset-4">
-          ici
-        </Link>
-        .
+        Pas encore de compte ? Demandez à un administrateur de vous créer un accès dans Paramètres → Utilisateurs.
       </p>
     </form>
   );
