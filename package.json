@@ -24,7 +24,9 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:dev": "node scripts/with-dev-env.mjs scripts/run-prisma-migrate.mjs",
     "prisma:repair:dev": "node scripts/with-dev-env.mjs scripts/repair-club-settings-columns.mjs",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "handoff:check": "node scripts/handoff-check.mjs",
+    "postinstall": "prisma generate"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

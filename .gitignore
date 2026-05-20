@@ -16,6 +16,7 @@
 /prisma/test.db-journal
 /prisma/dev.db
 /prisma/dev.db-journal
+/prisma/prisma/
 
 # uploaded club logos (keep directory via .gitkeep)
 /public/branding/club-logo.*

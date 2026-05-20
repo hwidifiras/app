@@ -974,6 +974,7 @@ describe("admin permissions and password reset", () => {
     const adminRes = await patchClubSettings(
       jsonRequest("PATCH", {
         clubName: "Club Test",
+        clubLogoUrl: "/branding/club-logo-test.png",
         allowCheckInWithPartialPayment: false,
         allowCheckInWithoutSubscription: false,
         maxStaffDiscountPercent: 25,
@@ -986,6 +987,7 @@ describe("admin permissions and password reset", () => {
     expect(adminRes.status).toBe(200);
     expect((adminBody.data as { maxStaffDiscountPercent: number }).maxStaffDiscountPercent).toBe(25);
     expect(settings.clubName).toBe("Club Test");
+    expect(settings.clubLogoUrl).toBe("/branding/club-logo-test.png");
     expect(settings.allowCheckInWithPartialPayment).toBe(false);
     expect(settings.allowCheckInWithoutSubscription).toBe(false);
     expect(settings.maxStaffDiscountPercent).toBe(25);
@@ -1001,6 +1003,7 @@ describe("admin permissions and password reset", () => {
       where: { id: "default" },
       data: {
         clubName: "",
+        clubLogoUrl: "",
         allowCheckInWithPartialPayment: true,
         allowCheckInWithoutSubscription: true,
         maxStaffDiscountPercent: 30,

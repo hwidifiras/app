@@ -50,7 +50,7 @@ export function CheckInDrawer({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 sm:items-stretch sm:justify-end">
       <div
-        className="flex h-[min(92dvh,100%)] w-full max-h-[92dvh] flex-col rounded-t-2xl bg-[var(--surface)] shadow-xl sm:h-full sm:max-h-none sm:max-w-lg sm:rounded-none"
+        className="drawer-sheet flex w-full flex-col rounded-t-2xl bg-[var(--surface)] shadow-xl sm:h-full sm:max-h-none sm:max-w-lg sm:rounded-none"
         role="dialog"
         aria-modal="true"
       >

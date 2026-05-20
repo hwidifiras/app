@@ -838,6 +838,19 @@ a {
   }
 }
 
+/* Mobile bottom sheet — vh fallback, dvh when supported (Safari 15.4+) */
+.drawer-sheet {
+  height: min(92vh, 100%);
+  max-height: 92vh;
+}
+
+@supports (height: 100dvh) {
+  .drawer-sheet {
+    height: min(92dvh, 100%);
+    max-height: 92dvh;
+  }
+}
+
 /* Sidebar & drawer scrollbars */
 .sidebar-scroll {
   scrollbar-gutter: stable;

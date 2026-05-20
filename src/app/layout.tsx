@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { AppShell } from "@/components/layout/app-shell";
@@ -25,6 +25,21 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: appName,
   description: "Interface réception moderne pour la gestion du club",
+  appleWebApp: {
+    capable: true,
+    title: appName,
+    statusBarStyle: "default",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f6f9ff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0d1628" },
+  ],
 };
 
 export default async function RootLayout({
