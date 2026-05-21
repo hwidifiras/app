@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/request-user";
 import { getAppTimeZone, utcDateOnlyForTimeZone } from "@/lib/dates";
 import { postponeSessionSchema } from "@/lib/schemas/session";
+import { buildSessionSlotConflictMessage, findSessionSlotConflict } from "@/lib/session-slot-conflict";
 
 export const runtime = "nodejs";
 
@@ -81,6 +82,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       startTime: true,
       endTime: true,
       postponementDetails: true,
+      group: { select: { name: true } },
     },
   });
 
@@ -99,18 +101,20 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const duration = minutesDiff(existing.startTime, existing.endTime);
   const newEndTime = addMinutesToTime(newStartTime, duration);
 
-  const conflict = await prisma.session.findFirst({
-    where: {
-      id: { not: id },
-      groupId: existing.groupId,
-      sessionDate: newSessionDate,
-      startTime: newStartTime,
-    },
-    select: { id: true },
+  const conflict = await findSessionSlotConflict({
+    groupId: existing.groupId,
+    sessionDate: newSessionDate,
+    startTime: newStartTime,
+    excludeIds: [id],
   });
 
   if (conflict) {
-    return NextResponse.json({ error: "Une séance existe déjà sur ce créneau" }, { status: 409 });
+    return NextResponse.json(
+      {
+        error: buildSessionSlotConflictMessage(existing.group.name, newSessionDate, newStartTime),
+      },
+      { status: 409 },
+    );
   }
 
   let originalInfo = {

@@ -3,6 +3,7 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { FormActions } from "@/components/ui/form-layout";
 
 type Plan = {
   id: string;
@@ -298,22 +299,18 @@ export function AddMemberToGroupForm({
 
       <FeedbackMessage message={message} />
 
-      <div className="flex items-center gap-3 pt-3">
+      <FormActions sticky>
+        <button type="button" onClick={() => router.back()} className="btn btn-ghost btn-block-mobile">
+          Annuler
+        </button>
         <button
           type="submit"
           disabled={loading || !canSubmit}
-          className="btn btn-primary"
+          className="btn btn-primary btn-block-mobile"
         >
           {loading ? "Affectation en cours..." : "Ajouter au groupe"}
         </button>
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="btn btn-ghost"
-        >
-          Annuler
-        </button>
-      </div>
+      </FormActions>
     </form>
   );
 }

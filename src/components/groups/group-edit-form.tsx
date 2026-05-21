@@ -218,18 +218,18 @@ export function GroupEditForm({
 
       {/* Member table matching /members style */}
       <div className="rounded-xl border border-[var(--border)] p-4">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
             Membres du groupe ({selectedMemberIds.length})
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
             <input
               value={membersSearch}
               onChange={(e) => setMembersSearch(e.target.value)}
               placeholder="Rechercher..."
-              className="field text-xs w-48"
+              className="field w-full text-xs sm:w-48"
             />
-            <button type="button" className="btn btn-ghost text-xs px-2 py-1 min-h-0" onClick={toggleSelectAll}>
+            <button type="button" className="btn btn-ghost btn-block-mobile text-xs" onClick={toggleSelectAll}>
               {filteredMembers.length > 0 && filteredMembers.every((m) => selectedMemberIds.includes(m.id))
                 ? "Tout désélectionner"
                 : "Tout sélectionner"}
@@ -237,7 +237,7 @@ export function GroupEditForm({
           </div>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+        <div className="data-table overflow-x-auto rounded-xl border border-[var(--border)]">
           <table className="w-full text-sm">
             <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
               <tr>
@@ -264,17 +264,17 @@ export function GroupEditForm({
                       onClick={(e) => e.stopPropagation()}
                     />
                   </td>
-                  <td className="px-3 py-2 font-medium text-[var(--foreground)]" data-label="Nom">
+                  <td className="data-table-primary px-3 py-2 font-medium text-[var(--foreground)]" data-label="Nom">
                     {member.firstName} {member.lastName}
                   </td>
                   <td className="px-3 py-2" data-label="Téléphone">{member.phone}</td>
-                  <td className="px-3 py-2 hidden sm:table-cell text-[var(--muted-foreground)]" data-label="Email">{member.email ?? "-"}</td>
+                  <td className="px-3 py-2 mobile-detail-cell text-[var(--muted-foreground)]" data-label="Email">{member.email ?? "-"}</td>
                   <td className="px-3 py-2" data-label="Statut">
                     <span className={`chip ${member.status === "ACTIVE" ? "chip-active" : "chip-muted"}`}>
                       {member.status === "ACTIVE" ? "ACTIF" : "RÉSILIÉ"}
                     </span>
                   </td>
-                  <td className="px-3 py-2 hidden md:table-cell text-[var(--muted-foreground)]" data-label="Inscrit le">
+                  <td className="px-3 py-2 mobile-detail-cell text-[var(--muted-foreground)]" data-label="Inscrit le">
                     {new Date(member.createdAt).toLocaleDateString("fr-FR")}
                   </td>
                 </tr>
@@ -294,11 +294,11 @@ export function GroupEditForm({
         </p>
       </div>
 
-      <div className="flex items-center gap-3">
-        <button type="submit" disabled={loading} className="btn btn-primary">
+      <div className="form-actions">
+        <button type="submit" disabled={loading} className="btn btn-primary btn-block-mobile">
           {loading ? "Enregistrement..." : "Enregistrer les modifications"}
         </button>
-        <button type="button" onClick={() => router.push("/groups")} className="btn btn-ghost">
+        <button type="button" onClick={() => router.push("/groups")} className="btn btn-ghost btn-block-mobile">
           Annuler
         </button>
       </div>

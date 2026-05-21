@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { FormActions } from "@/components/ui/form-layout";
 
 type SportOption = { id: string; name: string };
 
@@ -153,14 +154,14 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
 
       <FeedbackMessage message={message} />
 
-      <div className="flex items-center gap-3 pt-1">
-        <button type="submit" disabled={loading} className="btn btn-primary">
-          {loading ? "Enregistrement..." : mode === "create" ? "Créer plan" : "Enregistrer les modifications"}
-        </button>
-        <button type="button" onClick={() => router.push("/subscription-plans")} className="btn btn-ghost">
+      <FormActions sticky>
+        <button type="button" onClick={() => router.push("/subscription-plans")} className="btn btn-ghost btn-block-mobile">
           Annuler
         </button>
-      </div>
+        <button type="submit" disabled={loading} className="btn btn-primary btn-block-mobile">
+          {loading ? "Enregistrement..." : mode === "create" ? "Créer plan" : "Enregistrer les modifications"}
+        </button>
+      </FormActions>
     </form>
   );
 }

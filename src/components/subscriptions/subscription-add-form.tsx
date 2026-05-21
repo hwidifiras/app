@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { FormActions } from "@/components/ui/form-layout";
 
 type MemberOption = { id: string; firstName: string; lastName: string; phone: string };
 type PlanOption = { id: string; name: string; price: number; totalSessions: number; validityDays: number };
@@ -251,14 +252,14 @@ export function SubscriptionAddForm({ membersOptions, plansOptions }: Subscripti
 
       <FeedbackMessage message={message} />
 
-      <div className="flex items-center gap-3 pt-1">
-        <button type="submit" disabled={loading} className="btn btn-primary">
-          {loading ? "Enregistrement..." : "Renouveler l'abonnement"}
-        </button>
-        <button type="button" onClick={() => router.push("/subscriptions")} className="btn btn-ghost">
+      <FormActions sticky>
+        <button type="button" onClick={() => router.push("/subscriptions")} className="btn btn-ghost btn-block-mobile">
           Annuler
         </button>
-      </div>
+        <button type="submit" disabled={loading} className="btn btn-primary btn-block-mobile">
+          {loading ? "Enregistrement..." : "Renouveler l'abonnement"}
+        </button>
+      </FormActions>
     </form>
   );
 }

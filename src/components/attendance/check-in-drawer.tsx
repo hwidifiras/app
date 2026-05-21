@@ -261,14 +261,14 @@ export function CheckInDrawer({
 
       {modalMember && (
         <div
-          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-0 md:items-center md:p-4"
+          className="mobile-modal-overlay fixed inset-0 z-[60] flex justify-center bg-black/50"
           onClick={() => {
             setModalMember(null);
             setReason("");
           }}
         >
           <div
-            className="w-full max-w-sm rounded-t-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-lg pb-[max(1.25rem,env(safe-area-inset-bottom))] md:rounded-xl"
+            className="mobile-modal-panel border border-[var(--border)] bg-[var(--surface)] p-5 shadow-lg md:max-w-sm md:rounded-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-base font-semibold text-[var(--foreground)]">Passage exceptionnel</h3>
@@ -282,7 +282,7 @@ export function CheckInDrawer({
               placeholder="Motif du passage exceptionnel..."
               className="field mt-3 min-h-[80px]"
             />
-            <div className="mt-4 grid grid-cols-2 gap-2">
+            <div className="form-actions mt-4 border-t-0 pt-0">
               <button
                 type="button"
                 onClick={() => {

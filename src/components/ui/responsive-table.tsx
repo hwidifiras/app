@@ -104,7 +104,7 @@ export function Td({
 export function TableActionsCell({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <td className={cn("card-actions-cell px-4 py-3 text-right", className)} data-label="Actions">
-      <div className="card-actions-stack flex items-center justify-end gap-2">{children}</div>
+      <div className="card-actions-stack">{children}</div>
     </td>
   );
 }
@@ -119,7 +119,7 @@ export function MobileRowToggle({
   className?: string;
 }) {
   return (
-    <td className={cn("mobile-toggle-cell px-4 py-3 text-center sm:hidden", className)}>
+    <td className={cn("mobile-toggle-cell px-4 py-3 text-center md:hidden", className)}>
       <button type="button" className="mobile-card-toggle" onClick={onToggle} aria-expanded={expanded}>
         {expanded ? "Voir moins" : "Voir plus"}
         <ChevronDown className={cn("size-3 transition-transform", expanded && "rotate-180")} />

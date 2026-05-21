@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { FormActions } from "@/components/ui/form-layout";
+import { weekStartIsoForDate } from "@/lib/dates";
+import { parseApiResponse } from "@/lib/parse-api-response";
 
 const reasonOptions = [
   { value: "MAUVAIS_METEO", label: "Mauvais météo" },
@@ -55,7 +58,7 @@ export function PostponeForm({ sessionId, initialDateTime }: PostponeFormProps) 
       body: JSON.stringify(payload),
     });
 
-    const result = await response.json();
+    const result = await parseApiResponse<{ data?: { sessionDate: string }; error?: string }>(response);
 
     if (!response.ok) {
       setMessage(result.error ?? "Erreur lors du report");
@@ -65,7 +68,18 @@ export function PostponeForm({ sessionId, initialDateTime }: PostponeFormProps) 
 
     setMessage("Séance reportée avec succès");
     setLoading(false);
-    setTimeout(() => router.push("/attendance/today"), 600);
+
+    const targetWeek = result.data?.sessionDate
+      ? weekStartIsoForDate(new Date(result.data.sessionDate))
+      : null;
+
+    setTimeout(() => {
+      if (targetWeek) {
+        router.push(`/sessions?week=${targetWeek}`);
+      } else {
+        router.push("/attendance/today");
+      }
+    }, 600);
   }
 
   return (
@@ -108,14 +122,14 @@ export function PostponeForm({ sessionId, initialDateTime }: PostponeFormProps) 
 
       <FeedbackMessage message={message} />
 
-      <div className="flex items-center justify-end gap-2">
-        <button type="button" onClick={() => router.push("/attendance/today")} className="btn btn-ghost">
+      <FormActions sticky>
+        <button type="button" onClick={() => router.push("/attendance/today")} className="btn btn-ghost btn-block-mobile">
           Retour au pointage
         </button>
-        <button type="submit" disabled={loading || !dateTime} className="btn btn-primary">
+        <button type="submit" disabled={loading || !dateTime} className="btn btn-primary btn-block-mobile">
           {loading ? "Enregistrement..." : "Reporter la séance"}
         </button>
-      </div>
+      </FormActions>
     </form>
   );
 }

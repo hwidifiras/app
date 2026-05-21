@@ -246,7 +246,7 @@ export function EnrollmentWizard() {
   );
 
   return (
-    <form onSubmit={applyEnrollment} className="space-y-6">
+    <form onSubmit={applyEnrollment} className="space-y-6 pb-4 lg:pb-0">
       {message && <FeedbackMessage variant="error" message={message} />}
 
       <div className="enrollment-stepper grid grid-cols-3 gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-2 shadow-sm">
@@ -554,8 +554,8 @@ function LineEditor({
         ))}
       </select>
       {canRemove && (
-        <button type="button" className="btn btn-ghost w-full text-red-600 sm:w-auto" onClick={onRemove}>
-          Supprimer
+        <button type="button" className="btn btn-ghost btn-block-mobile min-h-11 text-red-600 sm:w-auto" onClick={onRemove}>
+          Supprimer cette ligne
         </button>
       )}
     </div>

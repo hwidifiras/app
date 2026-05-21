@@ -198,14 +198,14 @@ export function SportManager({ initialSports }: SportManagerProps) {
         <section className="panel p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-xl font-semibold text-[var(--foreground)]">Sports enregistrés</h2>
-            <form onSubmit={onSearchSubmit} className="flex w-full gap-2 sm:w-auto">
+            <form onSubmit={onSearchSubmit} className="flex w-full flex-col gap-2 sm:flex-row sm:w-auto">
               <input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Rechercher nom/description"
                 className="field text-xs sm:w-56"
               />
-              <button type="submit" className="btn btn-ghost whitespace-nowrap">
+              <button type="submit" className="btn btn-ghost btn-block-mobile whitespace-nowrap">
                 Rechercher
               </button>
             </form>
@@ -237,12 +237,12 @@ export function SportManager({ initialSports }: SportManagerProps) {
                       />
                       Sport actif
                     </label>
-                    <div className="flex gap-2">
+                    <div className="list-card-actions">
                       <button
                         type="button"
                         onClick={() => saveEdit(sport.id)}
                         disabled={actionLoadingId === sport.id}
-                        className="btn btn-primary"
+                        className="btn btn-primary btn-block-mobile"
                       >
                         Enregistrer
                       </button>
@@ -250,7 +250,7 @@ export function SportManager({ initialSports }: SportManagerProps) {
                         type="button"
                         onClick={cancelEdit}
                         disabled={actionLoadingId === sport.id}
-                        className="btn btn-ghost"
+                        className="btn btn-ghost btn-block-mobile"
                       >
                         Annuler
                       </button>
@@ -267,12 +267,12 @@ export function SportManager({ initialSports }: SportManagerProps) {
                         {sport.isActive ? "Actif" : "Inactif"}
                       </StatusBadge>
                     </div>
-                    <div className="mt-3 flex gap-2">
+                    <div className="list-card-actions mt-3">
                       <button
                         type="button"
                         onClick={() => startEdit(sport)}
                         disabled={actionLoadingId === sport.id}
-                        className="btn btn-ghost"
+                        className="btn btn-ghost btn-block-mobile"
                       >
                         Modifier
                       </button>
@@ -280,7 +280,7 @@ export function SportManager({ initialSports }: SportManagerProps) {
                         type="button"
                         onClick={() => deleteSport(sport.id)}
                         disabled={actionLoadingId === sport.id}
-                        className="btn btn-danger"
+                        className="btn btn-danger btn-block-mobile"
                       >
                         Supprimer
                       </button>
@@ -299,8 +299,8 @@ export function SportManager({ initialSports }: SportManagerProps) {
       </div>
 
       {blockedSport ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-lg">
+        <div className="mobile-modal-overlay fixed inset-0 z-50 flex justify-center bg-black/40">
+          <div className="mobile-modal-panel border border-[var(--border)] bg-[var(--card)] p-5 shadow-lg md:rounded-xl">
             <h3 className="text-base font-semibold text-[var(--foreground)]">Suppression impossible</h3>
             <p className="mt-2 text-sm text-[var(--muted-foreground)]">
               La discipline <span className="font-medium text-[var(--foreground)]">{blockedSport.name}</span> est
@@ -341,7 +341,7 @@ export function SportManager({ initialSports }: SportManagerProps) {
               <button
                 type="button"
                 onClick={() => setBlockedSport(null)}
-                className="btn btn-primary"
+                className="btn btn-primary btn-block-mobile"
               >
                 Compris
               </button>

@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 
 type DayOfWeekValue =
@@ -56,7 +56,6 @@ export function GroupSchedulesManager({
   groupId: string;
   initialSchedules: ScheduleRow[];
 }) {
-  const router = useRouter();
   const [schedules, setSchedules] = useState<ScheduleRow[]>(initialSchedules);
   const [daySelections, setDaySelections] = useState<DaySelection[]>(
     dayOrder.map((day) => ({
@@ -70,6 +69,13 @@ export function GroupSchedulesManager({
   const [effectiveTo, setEffectiveTo] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [expandedScheduleIds, setExpandedScheduleIds] = useState<string[]>([]);
+
+  function toggleExpand(scheduleId: string) {
+    setExpandedScheduleIds((current) =>
+      current.includes(scheduleId) ? current.filter((id) => id !== scheduleId) : [...current, scheduleId],
+    );
+  }
 
   function toggleDay(day: DayOfWeekValue) {
     setDaySelections((prev) =>
@@ -162,37 +168,62 @@ export function GroupSchedulesManager({
           </p>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+        <div className="data-table overflow-x-auto rounded-xl border border-[var(--border)]">
           <table className="w-full text-sm">
             <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
               <tr>
                 <th className="px-3 py-2 text-left font-semibold">Jour</th>
                 <th className="px-3 py-2 text-left font-semibold">Heure</th>
-                <th className="px-3 py-2 text-left font-semibold">Durée</th>
-                <th className="px-3 py-2 text-left font-semibold hidden sm:table-cell">Valide du</th>
-                <th className="px-3 py-2 text-left font-semibold hidden sm:table-cell">Valide jusqu&apos;au</th>
-                <th className="px-3 py-2 text-left font-semibold">Actions</th>
+                <th className="px-3 py-2 text-left font-semibold hidden md:table-cell">Durée</th>
+                <th className="px-3 py-2 text-left font-semibold hidden md:table-cell">Valide du</th>
+                <th className="px-3 py-2 text-left font-semibold hidden md:table-cell">Valide jusqu&apos;au</th>
+                <th className="px-3 py-2 text-right font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
-              {schedules.map((row) => (
-                <tr key={row.id} className="hover:bg-[var(--surface-soft)] transition-colors">
-                  <td className="px-3 py-2 font-medium text-[var(--foreground)]" data-label="Jour">{dayLabels[row.dayOfWeek as DayOfWeekValue] ?? row.dayOfWeek}</td>
-                  <td className="px-3 py-2" data-label="Heure">{row.startTime}</td>
-                  <td className="px-3 py-2" data-label="Durée">{row.durationMinutes} min</td>
-                  <td className="px-3 py-2 hidden sm:table-cell text-[var(--muted-foreground)]" data-label="Valide du">{new Date(row.effectiveFrom).toLocaleDateString("fr-FR")}</td>
-                  <td className="px-3 py-2 hidden sm:table-cell text-[var(--muted-foreground)]" data-label="Valide jusqu'au">{row.effectiveTo ? new Date(row.effectiveTo).toLocaleDateString("fr-FR") : "—"}</td>
-                  <td className="px-3 py-2" data-label="Actions">
-                    <button
-                      type="button"
-                      onClick={() => { void onDeleteSchedule(row.id); }}
-                      className="btn btn-danger text-xs px-2 py-1 min-h-0"
-                    >
-                      Supprimer
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {schedules.map((row) => {
+                const expanded = expandedScheduleIds.includes(row.id);
+                return (
+                  <tr
+                    key={row.id}
+                    className={`mobile-collapsible-row hover:bg-[var(--surface-soft)] transition-colors ${expanded ? "is-expanded" : ""}`}
+                  >
+                    <td className="data-table-primary px-3 py-2 font-medium text-[var(--foreground)]" data-label="Jour">
+                      {dayLabels[row.dayOfWeek as DayOfWeekValue] ?? row.dayOfWeek}
+                    </td>
+                    <td className="px-3 py-2" data-label="Heure">{row.startTime}</td>
+                    <td className="px-3 py-2 mobile-detail-cell" data-label="Durée">
+                      {row.durationMinutes} min
+                    </td>
+                    <td className="px-3 py-2 mobile-detail-cell text-[var(--muted-foreground)]" data-label="Valide du">
+                      {new Date(row.effectiveFrom).toLocaleDateString("fr-FR")}
+                    </td>
+                    <td className="px-3 py-2 mobile-detail-cell text-[var(--muted-foreground)]" data-label="Valide jusqu'au">
+                      {row.effectiveTo ? new Date(row.effectiveTo).toLocaleDateString("fr-FR") : "—"}
+                    </td>
+                    <td className="card-actions-cell px-3 py-2 text-right" data-label="Actions">
+                      <div className="card-actions-stack">
+                        <button
+                          type="button"
+                          onClick={() => { void onDeleteSchedule(row.id); }}
+                          className="btn btn-danger md:min-h-0 md:px-2 md:py-1 md:text-xs"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        className="mobile-card-toggle md:hidden"
+                        onClick={() => toggleExpand(row.id)}
+                        aria-expanded={expanded}
+                      >
+                        Détails
+                        <ChevronDown className={`size-3 transition-transform ${expanded ? "rotate-180" : ""}`} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
               {schedules.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-3 py-5 text-center text-[var(--muted-foreground)]">
@@ -279,8 +310,8 @@ export function GroupSchedulesManager({
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button type="submit" disabled={loading} className="btn btn-primary">
+          <div className="form-actions">
+            <button type="submit" disabled={loading} className="btn btn-primary btn-block-mobile">
               {loading ? "Enregistrement..." : "Enregistrer et générer les séances"}
             </button>
           </div>

@@ -99,22 +99,22 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
                 </td>
                 <td className="px-4 py-3 text-center mobile-detail-cell" data-label="Souscriptions">{plan._count.subscriptions}</td>
                 <td className="px-4 py-3 text-right card-actions-cell">
-                  <div className="flex items-center justify-end gap-2 card-actions-stack">
-                    <Link href={`/subscription-plans/${plan.id}/edit`} className="btn btn-ghost text-xs px-2 py-1 min-h-0">
+                  <div className="card-actions-stack">
+                    <Link href={`/subscription-plans/${plan.id}/edit`} className="btn btn-ghost md:min-h-0 md:px-2 md:py-1 md:text-xs">
                       Modifier
                     </Link>
                     <button
                       type="button"
                       onClick={() => deletePlan(plan.id)}
                       disabled={loadingId === plan.id}
-                      className="btn btn-danger text-xs px-2 py-1 min-h-0"
+                      className="btn btn-danger md:min-h-0 md:px-2 md:py-1 md:text-xs"
                     >
                       {loadingId === plan.id ? "..." : "Supprimer"}
                     </button>
                   </div>
                   <button
                     type="button"
-                    className="mobile-card-toggle sm:hidden"
+                    className="mobile-card-toggle md:hidden"
                     onClick={() => toggleExpand(plan.id)}
                     aria-expanded={expandedPlanIds.includes(plan.id)}
                   >

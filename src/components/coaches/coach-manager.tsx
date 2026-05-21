@@ -242,14 +242,14 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
         <section className="panel p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-xl font-semibold text-[var(--foreground)]">Coachs enregistrés</h2>
-            <form onSubmit={onSearchSubmit} className="flex w-full gap-2 sm:w-auto">
+            <form onSubmit={onSearchSubmit} className="flex w-full flex-col gap-2 sm:flex-row sm:w-auto">
               <input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Rechercher nom/téléphone"
                 className="field text-xs sm:w-56"
               />
-              <button type="submit" className="btn btn-ghost whitespace-nowrap">
+              <button type="submit" className="btn btn-ghost btn-block-mobile whitespace-nowrap">
                 Rechercher
               </button>
             </form>
@@ -306,12 +306,12 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                       />
                       Coach actif
                     </label>
-                    <div className="flex gap-2">
+                    <div className="list-card-actions mt-3">
                       <button
                         type="button"
                         onClick={() => saveEdit(coach.id)}
                         disabled={actionLoadingId === coach.id}
-                        className="btn btn-primary"
+                        className="btn btn-primary btn-block-mobile"
                       >
                         Enregistrer
                       </button>
@@ -319,7 +319,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                         type="button"
                         onClick={cancelEdit}
                         disabled={actionLoadingId === coach.id}
-                        className="btn btn-ghost"
+                        className="btn btn-ghost btn-block-mobile"
                       >
                         Annuler
                       </button>
@@ -340,12 +340,12 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                         {coach.isActive ? "Actif" : "Inactif"}
                       </StatusBadge>
                     </div>
-                    <div className="mt-3 flex gap-2">
+                    <div className="list-card-actions mt-3">
                       <button
                         type="button"
                         onClick={() => startEdit(coach)}
                         disabled={actionLoadingId === coach.id}
-                        className="btn btn-ghost"
+                        className="btn btn-ghost btn-block-mobile"
                       >
                         Modifier
                       </button>
@@ -353,7 +353,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                         type="button"
                         onClick={() => deleteCoach(coach.id)}
                         disabled={actionLoadingId === coach.id}
-                        className="btn btn-danger"
+                        className="btn btn-danger btn-block-mobile"
                       >
                         Supprimer
                       </button>
@@ -372,8 +372,8 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
       </div>
 
       {blockedCoach ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-lg">
+        <div className="mobile-modal-overlay fixed inset-0 z-50 flex justify-center bg-black/40">
+          <div className="mobile-modal-panel border border-[var(--border)] bg-[var(--card)] p-5 shadow-lg md:rounded-xl">
             <h3 className="text-base font-semibold text-[var(--foreground)]">Suppression impossible</h3>
             <p className="mt-2 text-sm text-[var(--muted-foreground)]">
               Le coach <span className="font-medium text-[var(--foreground)]">{blockedCoach.name}</span> est assigne aux groupes suivants :
@@ -387,7 +387,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
               <button
                 type="button"
                 onClick={() => setBlockedCoach(null)}
-                className="btn btn-primary"
+                className="btn btn-primary btn-block-mobile"
               >
                 Compris
               </button>

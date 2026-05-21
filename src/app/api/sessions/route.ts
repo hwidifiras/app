@@ -93,7 +93,8 @@ export async function GET(request: Request) {
         ? {
             sessionDate: {
               ...(fromDate ? { gte: fromDate } : {}),
-              ...(toDate ? { lte: toDate } : {}),
+              // `to` is exclusive (start of day after the week) — see getWeekRangeFromStartIso
+              ...(toDate ? { lt: toDate } : {}),
             },
           }
         : {}),
@@ -103,7 +104,7 @@ export async function GET(request: Request) {
       coach: { select: { firstName: true, lastName: true } },
     },
     orderBy: [{ sessionDate: "asc" }, { startTime: "asc" }],
-    take: 200,
+    take: 300,
   });
 
   return NextResponse.json({ data: sessions.map(toSessionDto) });

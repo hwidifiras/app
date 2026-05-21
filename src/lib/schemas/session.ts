@@ -6,7 +6,7 @@ export const generateSessionsSchema = z.object({
 
 export const updateSessionSchema = z.object({
   sessionDate: z.string().datetime({ message: "date invalide" }).optional(),
-  coachId: z.string().min(1, "coachId requis").optional(),
+  coachId: z.union([z.string().min(1, "coachId requis"), z.null()]).optional(),
   room: z.string().min(1, "salle requise").optional(),
   startTime: z.string().regex(/^\d{2}:\d{2}$/, "format HH:MM requis").optional(),
   endTime: z.string().regex(/^\d{2}:\d{2}$/, "format HH:MM requis").optional(),

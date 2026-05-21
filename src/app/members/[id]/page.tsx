@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { MemberDangerActions } from "@/components/members/member-danger-actions";
 import { MemberEditCard } from "@/components/members/member-edit-card";
 import { HouseholdCard } from "@/components/members/household-card";
 
@@ -267,6 +268,12 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
             </ul>
           )}
         </section>
+
+        <MemberDangerActions
+          memberId={member.id}
+          memberName={`${member.firstName} ${member.lastName}`}
+          status={member.status}
+        />
 
         {/* Présences récentes */}
         <section className="panel p-5 md:col-span-3">

@@ -98,7 +98,7 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
           <Th>Statut</Th>
           <Th className="hidden sm:table-cell text-center">Séances</Th>
           <Th className="hidden text-right md:table-cell">Actions</Th>
-          <Th className="px-2 text-center sm:hidden"> </Th>
+          <Th className="px-2 text-center md:hidden"> </Th>
         </tr>
       </DataTableHead>
       <DataTableBody>
@@ -136,13 +136,13 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
                   {sub.remainingSessions} / {sub.totalSessions}
                 </span>
               </Td>
-              <Td label="Montant" mobileDetail className="sm:hidden">
+              <Td label="Montant" mobileDetail className="md:hidden">
                 {formatCurrency(sub.amount)}
               </Td>
-              <Td label="Payé" mobileDetail className="sm:hidden">
+              <Td label="Payé" mobileDetail className="md:hidden">
                 <span className={paidOk ? "text-[var(--success)]" : "text-amber-700"}>{formatCurrency(sub.totalPaid)}</span>
               </Td>
-              <Td label="Séances" mobileDetail className="sm:hidden">
+              <Td label="Séances" mobileDetail className="md:hidden">
                 {sub.remainingSessions} / {sub.totalSessions}
               </Td>
               <TableActionsCell className="mobile-detail-cell">

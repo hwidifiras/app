@@ -5,6 +5,14 @@ import { useMemo, useState } from "react";
 import { SessionDto, SessionStatusDto } from "@/types/session";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import {
+  addWeeksToStartIso,
+  formatUtcDateOnlyIso,
+  getWeekRangeFromStartIso,
+  weekEndIsoFromStartIso,
+  weekStartIsoForDate,
+} from "@/lib/dates";
+import { parseApiResponse } from "@/lib/parse-api-response";
 
 type SessionsPlannerProps = {
   initialSessions: SessionDto[];
@@ -19,21 +27,6 @@ const sessionStatusLabels: Record<SessionStatusDto, string> = {
   CANCELLED: "Annulée",
   COMPLETED: "Terminée",
 };
-
-function startOfWeek(date: Date) {
-  const copy = new Date(date);
-  copy.setHours(0, 0, 0, 0);
-  const day = copy.getDay();
-  const mondayDelta = day === 0 ? -6 : 1 - day;
-  copy.setDate(copy.getDate() + mondayDelta);
-  return copy;
-}
-
-function toDateOnlyIso(date: Date) {
-  const copy = new Date(date);
-  copy.setHours(0, 0, 0, 0);
-  return `${copy.getFullYear()}-${String(copy.getMonth() + 1).padStart(2, "0")}-${String(copy.getDate()).padStart(2, "0")}`;
-}
 
 function formatDateFr(dateIso: string) {
   return new Date(dateIso).toLocaleDateString("fr-FR", {
@@ -68,24 +61,17 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
   const [editLoading, setEditLoading] = useState(false);
   const [editMessage, setEditMessage] = useState<string | null>(null);
 
-  const weekEnd = useMemo(() => {
-    const start = new Date(`${weekStart}T00:00:00`);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 6);
-    return toDateOnlyIso(end);
-  }, [weekStart]);
+  const weekEnd = useMemo(() => weekEndIsoFromStartIso(weekStart), [weekStart]);
 
   async function reloadSessions(nextWeekStart: string, nextGroupId: string) {
     setLoading(true);
     setMessage(null);
 
-    const from = new Date(`${nextWeekStart}T00:00:00`);
-    const to = new Date(from);
-    to.setDate(to.getDate() + 6);
+    const { start, end } = getWeekRangeFromStartIso(nextWeekStart);
 
     const params = new URLSearchParams({
-      from: from.toISOString(),
-      to: to.toISOString(),
+      from: start.toISOString(),
+      to: end.toISOString(),
     });
 
     if (nextGroupId) {
@@ -93,7 +79,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
     }
 
     const response = await fetch(`/api/sessions?${params.toString()}`, { cache: "no-store" });
-    const result = await response.json();
+    const result = await parseApiResponse<{ data?: SessionDto[]; error?: string }>(response);
 
     if (!response.ok) {
       setMessage(result.error ?? "Erreur lors du chargement du planning");
@@ -106,15 +92,13 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
   }
 
   async function goToWeek(offsetWeeks: number) {
-    const start = new Date(`${weekStart}T00:00:00`);
-    start.setDate(start.getDate() + offsetWeeks * 7);
-    const nextWeekStart = toDateOnlyIso(startOfWeek(start));
+    const nextWeekStart = addWeeksToStartIso(weekStart, offsetWeeks);
     setWeekStart(nextWeekStart);
     await reloadSessions(nextWeekStart, groupId);
   }
 
   async function resetCurrentWeek() {
-    const currentMonday = toDateOnlyIso(startOfWeek(new Date()));
+    const currentMonday = weekStartIsoForDate(new Date());
     setWeekStart(currentMonday);
     await reloadSessions(currentMonday, groupId);
   }
@@ -127,7 +111,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
   function openEdit(session: SessionDto) {
     setEditingSession(session);
     setEditForm({
-      sessionDate: toDateOnlyIso(new Date(session.sessionDate)),
+      sessionDate: formatUtcDateOnlyIso(new Date(session.sessionDate)),
       coachId: session.coachId ?? "",
       room: session.room,
       startTime: session.startTime,
@@ -151,16 +135,44 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
     setEditLoading(true);
     setEditMessage(null);
 
+    const originalDateIso = formatUtcDateOnlyIso(new Date(editingSession.sessionDate));
     const body: Record<string, unknown> = { editMode };
-    if (editMode === "exception" && editForm.sessionDate) {
-      body.sessionDate = new Date(`${editForm.sessionDate}T00:00:00`).toISOString();
+
+    if (editMode === "permanent") {
+      body.startTime = editForm.startTime;
+      body.endTime = editForm.endTime;
+      body.room = editForm.room;
+      body.status = editForm.status;
+      body.coachId = editForm.coachId ? editForm.coachId : null;
+      if (editForm.sessionDate && editForm.sessionDate !== originalDateIso) {
+        body.sessionDate = new Date(`${editForm.sessionDate}T12:00:00`).toISOString();
+      }
+      if (editForm.status === "CANCELLED" && editForm.exceptionReason.trim()) {
+        body.exceptionReason = editForm.exceptionReason.trim();
+      }
+    } else {
+      if (editForm.sessionDate && editForm.sessionDate !== originalDateIso) {
+        body.sessionDate = new Date(`${editForm.sessionDate}T12:00:00`).toISOString();
+      }
+      if (editForm.coachId !== (editingSession.coachId ?? "")) {
+        body.coachId = editForm.coachId ? editForm.coachId : null;
+      }
+      if (editForm.room !== editingSession.room) {
+        body.room = editForm.room;
+      }
+      if (editForm.startTime !== editingSession.startTime) {
+        body.startTime = editForm.startTime;
+      }
+      if (editForm.endTime !== editingSession.endTime) {
+        body.endTime = editForm.endTime;
+      }
+      if (editForm.status !== editingSession.status) {
+        body.status = editForm.status;
+      }
+      if (editForm.exceptionReason !== (editingSession.exceptionReason ?? "")) {
+        body.exceptionReason = editForm.exceptionReason;
+      }
     }
-    if (editForm.coachId) body.coachId = editForm.coachId;
-    if (editForm.room) body.room = editForm.room;
-    if (editForm.startTime) body.startTime = editForm.startTime;
-    if (editForm.endTime) body.endTime = editForm.endTime;
-    if (editForm.status) body.status = editForm.status;
-    if (editForm.exceptionReason) body.exceptionReason = editForm.exceptionReason;
 
     const response = await fetch(`/api/sessions/${editingSession.id}`, {
       method: "PATCH",
@@ -168,7 +180,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
       body: JSON.stringify(body),
     });
 
-    const result = await response.json();
+    const result = await parseApiResponse<{ data?: SessionDto; error?: string }>(response);
 
     if (!response.ok) {
       setEditMessage(result.error ?? "Erreur lors de la modification");
@@ -176,14 +188,33 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
       return;
     }
 
-    setSessions((current) =>
-      current.map((s) =>
-        s.id === editingSession.id
-          ? { ...s, ...result.data, sessionDate: result.data?.sessionDate ?? s.sessionDate }
-          : s
-      )
+    const updated = result.data;
+
+    if (editMode === "permanent") {
+      const targetWeek = updated?.sessionDate
+        ? weekStartIsoForDate(new Date(updated.sessionDate))
+        : weekStart;
+      if (targetWeek !== weekStart) {
+        setWeekStart(targetWeek);
+      }
+      await reloadSessions(targetWeek, groupId);
+    } else if (updated?.sessionDate) {
+      const targetWeek = weekStartIsoForDate(new Date(updated.sessionDate));
+      if (targetWeek !== weekStart) {
+        setWeekStart(targetWeek);
+        await reloadSessions(targetWeek, groupId);
+      } else {
+        setSessions((current) =>
+          current.map((s) => (s.id === editingSession.id ? { ...s, ...updated } : s)),
+        );
+      }
+    }
+
+    setEditMessage(
+      editMode === "permanent"
+        ? "Créneau mis à jour pour cette séance et les suivantes"
+        : "Séance modifiée avec succès",
     );
-    setEditMessage("Séance modifiée avec succès");
     setEditLoading(false);
     setTimeout(() => closeEdit(), 600);
   }
@@ -198,7 +229,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
     });
 
     if (!response.ok) {
-      const result = await response.json();
+      const result = await parseApiResponse<{ error?: string }>(response);
       setMessage(result.error ?? "Erreur lors de la suppression");
       setLoading(false);
       return;
@@ -214,7 +245,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
 
     return sessions.filter((item) => {
       const sessionDate = new Date(item.sessionDate);
-      const day = String(sessionDate.getDay());
+      const day = String(sessionDate.getUTCDay());
 
       if (dayFilter !== "ALL" && day !== dayFilter) {
         return false;
@@ -240,7 +271,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
     const map = new Map<string, SessionDto[]>();
 
     for (const item of filteredSessions) {
-      const key = toDateOnlyIso(new Date(item.sessionDate));
+      const key = formatUtcDateOnlyIso(new Date(item.sessionDate));
       const current = map.get(key) ?? [];
       current.push(item);
       map.set(key, current);
@@ -255,13 +286,15 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-[var(--foreground)]">Vue semaine filtrable</h2>
-            <p className="text-sm text-[var(--muted-foreground)]">Semaine du {new Date(`${weekStart}T00:00:00`).toLocaleDateString("fr-FR")} au {new Date(`${weekEnd}T00:00:00`).toLocaleDateString("fr-FR")}</p>
+            <p className="text-sm text-[var(--muted-foreground)]">
+              Semaine du {formatDateFr(`${weekStart}T12:00:00.000Z`)} au {formatDateFr(`${weekEnd}T12:00:00.000Z`)}
+            </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => { void goToWeek(-1); }} className="btn btn-ghost">Semaine -1</button>
-            <button type="button" onClick={() => { void resetCurrentWeek(); }} className="btn btn-ghost">Semaine actuelle</button>
-            <button type="button" onClick={() => { void goToWeek(1); }} className="btn btn-ghost">Semaine +1</button>
+          <div className="grid w-full gap-2 sm:flex sm:w-auto sm:flex-wrap">
+            <button type="button" onClick={() => { void goToWeek(-1); }} className="btn btn-ghost btn-block-mobile">Semaine -1</button>
+            <button type="button" onClick={() => { void resetCurrentWeek(); }} className="btn btn-ghost btn-block-mobile">Semaine actuelle</button>
+            <button type="button" onClick={() => { void goToWeek(1); }} className="btn btn-ghost btn-block-mobile">Semaine +1</button>
           </div>
         </div>
 
@@ -321,8 +354,8 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
               <ul className="mt-3 space-y-2">
                 {daySessions.map((item) => (
                   <li key={item.id} className="rounded-lg border border-[var(--border)] p-3">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-[var(--foreground)]">{item.groupName}</p>
                         <p className="text-xs text-[var(--muted-foreground)]">{item.startTime} - {item.endTime} • Salle {item.room}</p>
                         <p className="text-xs text-[var(--muted-foreground)]">Coach: {item.coachName ?? "-"}</p>
@@ -330,24 +363,26 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
                           <p className="text-xs text-[var(--danger)]">Motif: {item.exceptionReason}</p>
                         ) : null}
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
                         <StatusBadge variant={item.status === "CANCELLED" ? "danger" : item.status === "COMPLETED" ? "success" : item.status === "RESCHEDULED" ? "warning" : "info"}>
                           {sessionStatusLabels[item.status]}
                         </StatusBadge>
-                        <button
-                          type="button"
-                          onClick={() => openEdit(item)}
-                          className="btn btn-ghost text-xs px-2 py-1 min-h-0"
-                        >
-                          Modifier
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { void deleteSession(item.id); }}
-                          className="btn btn-danger text-xs px-2 py-1 min-h-0"
-                        >
-                          Supprimer
-                        </button>
+                        <div className="list-card-actions">
+                          <button
+                            type="button"
+                            onClick={() => openEdit(item)}
+                            className="btn btn-ghost btn-block-mobile md:min-h-0 md:px-2 md:py-1 md:text-xs"
+                          >
+                            Modifier
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { void deleteSession(item.id); }}
+                            className="btn btn-danger btn-block-mobile md:min-h-0 md:px-2 md:py-1 md:text-xs"
+                          >
+                            Supprimer
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </li>
@@ -366,8 +401,8 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
 
       {/* Modal d'édition de séance */}
       {editingSession ? (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-12">
-          <div className="w-full max-w-lg rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-xl">
+        <div className="mobile-modal-overlay fixed inset-0 z-50 flex justify-center bg-black/40">
+          <div className="mobile-modal-panel border border-[var(--border)] bg-[var(--card)] p-5 shadow-xl md:max-w-lg md:rounded-xl">
             <h3 className="text-lg font-semibold text-[var(--foreground)]">
               Modifier la séance
             </h3>
@@ -382,14 +417,17 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
                   type="date"
                   value={editForm.sessionDate}
                   onChange={(e) => setEditForm((f) => ({ ...f, sessionDate: e.target.value }))}
-                  disabled={editMode === "permanent"}
                   className="field text-sm"
                 />
                 {editMode === "permanent" ? (
                   <p className="mt-1 text-[0.65rem] text-[var(--muted-foreground)]">
-                    Le changement de date est reserve a une exception.
+                    Le jour et l&apos;heure choisis s&apos;appliquent à cette séance et à chaque semaine suivante (même jour de la semaine).
                   </p>
-                ) : null}
+                ) : (
+                  <p className="mt-1 text-[0.65rem] text-[var(--muted-foreground)]">
+                    Exception : tous les champs ne modifient que cette séance.
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Coach</label>
@@ -461,11 +499,11 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
 
             <div className="mt-5 border-t border-[var(--border)] pt-4">
               <p className="text-xs font-medium text-[var(--muted-foreground)] mb-2">Type de modification</p>
-              <div className="flex gap-2 mb-4">
+              <div className="mb-4 grid gap-2 sm:flex sm:gap-2">
                 <button
                   type="button"
                   onClick={() => setEditMode("exception")}
-                  className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                  className={`rounded-lg border px-3 py-2.5 text-sm transition-colors sm:flex-1 ${
                     editMode === "exception"
                       ? "border-[var(--primary)] bg-[var(--primary)]/5 text-[var(--foreground)]"
                       : "border-[var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)]"
@@ -477,7 +515,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
                 <button
                   type="button"
                   onClick={() => setEditMode("permanent")}
-                  className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                  className={`rounded-lg border px-3 py-2.5 text-sm transition-colors sm:flex-1 ${
                     editMode === "permanent"
                       ? "border-[var(--primary)] bg-[var(--primary)]/5 text-[var(--foreground)]"
                       : "border-[var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)]"
@@ -488,13 +526,13 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
                 </button>
               </div>
 
-              <div className="flex items-center justify-end gap-2">
-                <button type="button" onClick={closeEdit} className="btn btn-ghost">Annuler</button>
+              <div className="form-actions border-t-0 pt-0">
+                <button type="button" onClick={closeEdit} className="btn btn-ghost btn-block-mobile">Annuler</button>
                 <button
                   type="button"
                   onClick={() => { void saveEdit(); }}
                   disabled={editLoading || (editForm.status === "CANCELLED" && !editForm.exceptionReason.trim())}
-                  className="btn btn-primary"
+                  className="btn btn-primary btn-block-mobile"
                 >
                   {editLoading ? "Enregistrement..." : "Enregistrer"}
                 </button>

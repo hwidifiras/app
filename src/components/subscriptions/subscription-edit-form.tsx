@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { FormActions } from "@/components/ui/form-layout";
 
 type PlanOption = { id: string; name: string; price: number; totalSessions: number; validityDays: number };
 type StatusValue = "DRAFT" | "ACTIVE" | "EXPIRED" | "CANCELLED";
@@ -135,17 +136,17 @@ export function SubscriptionEditForm({ subscription, plansOptions }: Subscriptio
 
       <FeedbackMessage message={message} />
 
-      <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={loading} className="btn btn-primary">
-          {loading ? "Enregistrement..." : "Enregistrer"}
-        </button>
-        <button type="button" onClick={() => setStatus("CANCELLED")} className="btn btn-danger">
-          Marquer résilié
-        </button>
-        <button type="button" onClick={() => router.push("/subscriptions")} className="btn btn-ghost">
+      <FormActions sticky>
+        <button type="button" onClick={() => router.push("/subscriptions")} className="btn btn-ghost btn-block-mobile">
           Annuler
         </button>
-      </div>
+        <button type="button" onClick={() => setStatus("CANCELLED")} className="btn btn-danger btn-block-mobile">
+          Marquer résilié
+        </button>
+        <button type="submit" disabled={loading} className="btn btn-primary btn-block-mobile">
+          {loading ? "Enregistrement..." : "Enregistrer"}
+        </button>
+      </FormActions>
     </form>
   );
 }

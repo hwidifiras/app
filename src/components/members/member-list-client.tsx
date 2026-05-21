@@ -132,53 +132,6 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
     setMembers(result.data ?? []);
   };
 
-  async function archiveMember(memberId: string) {
-    const confirmed = window.confirm("Confirmer la résiliation de ce membre ?");
-    if (!confirmed) return;
-
-    setActionLoadingId(memberId);
-    setMessage(null);
-
-    const response = await fetch("/api/members", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ memberId }),
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      setMessage(result.error ?? "Erreur lors de la résiliation");
-      setActionLoadingId(null);
-      return;
-    }
-
-    setMessage("Membre résilié avec succès");
-    await reloadMembers();
-    setActionLoadingId(null);
-  }
-
-  async function deleteMember(memberId: string) {
-    const confirmed = window.confirm("Confirmer la suppression définitive de ce membre ? Cette action est irréversible.");
-    if (!confirmed) return;
-
-    setActionLoadingId(memberId);
-    setMessage(null);
-
-    const response = await fetch(`/api/members/${memberId}`, { method: "DELETE" });
-    const result = await response.json();
-
-    if (!response.ok) {
-      setMessage(result.error ?? "Erreur lors de la suppression");
-      setActionLoadingId(null);
-      return;
-    }
-
-    setMessage("Membre supprimé avec succès");
-    await reloadMembers();
-    setActionLoadingId(null);
-  }
-
   function toggleMemberSelection(memberId: string) {
     setSelectedMemberIds((current) =>
       current.includes(memberId) ? current.filter((id) => id !== memberId) : [...current, memberId],
@@ -251,8 +204,13 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
             />
           </td>
         ) : null}
-        <td className="data-table-primary px-4 py-3 font-medium text-foreground" data-label="Nom">
-          {member.firstName} {member.lastName}
+        <td className="data-table-primary px-4 py-3 font-medium" data-label="Nom">
+          <Link
+            href={`/members/${member.id}`}
+            className="text-foreground hover:text-[var(--primary)] hover:underline"
+          >
+            {member.firstName} {member.lastName}
+          </Link>
         </td>
         <td className="px-4 py-3 mobile-detail-cell" data-label="Téléphone">{member.phone}</td>
         <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell mobile-detail-cell" data-label="Email">{member.email ?? "-"}</td>
@@ -281,31 +239,12 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
           <StatusBadge variant={member.status === "ACTIVE" ? "success" : "muted"}>{member.status === "ACTIVE" ? "Actif" : "Résilié"}</StatusBadge>
         </td>
         <td className="hidden px-4 py-3 text-muted-foreground md:table-cell mobile-detail-cell" data-label="Inscrit le">{new Date(member.createdAt).toLocaleDateString("fr-FR")}</td>
-        <td className="px-4 py-3 text-right card-actions-cell mobile-detail-cell" data-label="Actions">
-          <div className="flex items-center justify-end gap-2 card-actions-stack">
-            <Link href={`/members/${member.id}`} className="btn btn-ghost min-h-0 px-2 py-1 text-xs">
-              Détails
-            </Link>
-            <button
-              type="button"
-              onClick={() => archiveMember(member.id)}
-              disabled={actionLoadingId === member.id || member.status === "ARCHIVED"}
-              className="btn btn-danger min-h-0 px-2 py-1 text-xs"
-            >
-              {actionLoadingId === member.id ? "..." : "Résilier"}
-            </button>
-            <button
-              type="button"
-              onClick={() => deleteMember(member.id)}
-              disabled={actionLoadingId === member.id}
-              className="btn btn-danger min-h-0 px-2 py-1 text-xs"
-              title="Suppression définitive"
-            >
-              {actionLoadingId === member.id ? "..." : "Supprimer"}
-            </button>
-          </div>
+        <td className="hidden px-4 py-3 text-right md:table-cell" data-label="Actions">
+          <Link href={`/members/${member.id}`} className="btn btn-ghost min-h-0 px-2 py-1 text-xs">
+            Détails
+          </Link>
         </td>
-        <td className="px-4 py-3 text-center sm:hidden mobile-toggle-cell">
+        <td className="px-4 py-3 text-center md:hidden mobile-toggle-cell">
           <button
             type="button"
             className="mobile-card-toggle"
@@ -432,8 +371,8 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
                   <th className="hidden px-4 py-3 text-left font-semibold sm:table-cell">Paiement</th>
                   <th className="hidden px-4 py-3 text-left font-semibold sm:table-cell">Statut</th>
                   <th className="hidden px-4 py-3 text-left font-semibold md:table-cell">Inscrit le</th>
-                  <th className="hidden px-4 py-3 text-right font-semibold sm:table-cell">Actions</th>
-                  <th className="px-4 py-3 text-center sm:hidden font-semibold"> </th>
+                  <th className="hidden px-4 py-3 text-right font-semibold md:table-cell">Actions</th>
+                  <th className="px-4 py-3 text-center md:hidden font-semibold"> </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

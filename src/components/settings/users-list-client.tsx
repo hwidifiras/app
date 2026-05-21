@@ -150,16 +150,16 @@ export function UsersListClient({
                   Compte actif
                   {isSelf ? <span className="text-xs text-[var(--muted-foreground)]">(vous)</span> : null}
                 </label>
-                <div className="flex flex-wrap gap-2">
+                <div className="list-card-actions mt-3">
                   <button
                     type="button"
-                    className="btn btn-primary btn-sm"
+                    className="btn btn-primary btn-block-mobile"
                     disabled={loadingId === u.id}
                     onClick={() => saveEdit(u.id)}
                   >
                     {loadingId === u.id ? "…" : "Enregistrer"}
                   </button>
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingId(null)}>
+                  <button type="button" className="btn btn-ghost btn-block-mobile" onClick={() => setEditingId(null)}>
                     Annuler
                   </button>
                 </div>
@@ -181,14 +181,14 @@ export function UsersListClient({
                   </div>
                 </div>
                 <p className="mt-2 text-xs text-[var(--muted-foreground)]">{rightsLabel}</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => startEdit(u)}>
+                <div className="list-card-actions mt-3">
+                  <button type="button" className="btn btn-ghost btn-block-mobile" onClick={() => startEdit(u)}>
                     <Pencil className="size-3.5" />
                     Modifier
                   </button>
                   <button
                     type="button"
-                    className="btn btn-ghost btn-sm"
+                    className="btn btn-ghost btn-block-mobile"
                     disabled={loadingId === u.id || !u.isActive}
                     onClick={() => sendReset(u.id)}
                   >

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { FormActions } from "@/components/ui/form-layout";
 
 const METHODS = [
   { value: "CASH", label: "Espèces" },
@@ -177,12 +178,11 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
         />
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center justify-between pt-2">
+      <FormActions sticky>
         <button
           type="button"
           onClick={() => router.push("/payments")}
-          className="btn btn-ghost inline-flex items-center gap-1.5"
+          className="btn btn-ghost btn-block-mobile inline-flex items-center justify-center gap-1.5"
         >
           <ArrowLeft className="size-4" />
           Annuler
@@ -190,7 +190,7 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
         <button
           type="submit"
           disabled={loading || amountNum <= 0 || wouldExceed}
-          className="btn btn-primary inline-flex items-center gap-1.5"
+          className="btn btn-primary btn-block-mobile inline-flex items-center justify-center gap-1.5"
         >
           {loading ? (
             <span className="inline-block size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -199,7 +199,7 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
           )}
           Enregistrer la modification
         </button>
-      </div>
+      </FormActions>
     </form>
   );
 }

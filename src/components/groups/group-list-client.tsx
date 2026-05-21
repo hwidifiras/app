@@ -117,7 +117,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
             <Th className="hidden md:table-cell">Créneau</Th>
             <Th>Statut</Th>
             <Th className="hidden text-right sm:table-cell">Actions</Th>
-            <Th className="px-2 text-center sm:hidden"> </Th>
+            <Th className="px-2 text-center md:hidden"> </Th>
           </tr>
         </DataTableHead>
         <DataTableBody>

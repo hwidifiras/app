@@ -1,33 +1,24 @@
 import Link from "next/link";
 
 import { SessionsPlanner } from "@/components/sessions/sessions-planner";
+import { getWeekRangeFromStartIso, getWeekRangeUtc, weekStartIsoForDate } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-function startOfWeek(date: Date) {
-  const copy = new Date(date);
-  copy.setHours(0, 0, 0, 0);
-  const day = copy.getDay();
-  const mondayDelta = day === 0 ? -6 : 1 - day;
-  copy.setDate(copy.getDate() + mondayDelta);
-  return copy;
-}
-
-function toDateOnlyIso(date: Date) {
-  const copy = new Date(date);
-  copy.setHours(0, 0, 0, 0);
-  return `${copy.getFullYear()}-${String(copy.getMonth() + 1).padStart(2, "0")}-${String(copy.getDate()).padStart(2, "0")}`;
-}
-
-export default async function SessionsPage() {
+export default async function SessionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ week?: string }>;
+}) {
   let hasSessionsDataError = false;
 
-  const monday = startOfWeek(new Date());
-  const sunday = new Date(monday);
-  sunday.setDate(sunday.getDate() + 6);
+  const { week: weekParam } = await searchParams;
+  const initialWeekStart =
+    weekParam && /^\d{4}-\d{2}-\d{2}$/.test(weekParam) ? weekParam : weekStartIsoForDate(new Date());
+  const { start: weekStart, end: weekEndExclusive } = getWeekRangeFromStartIso(initialWeekStart);
 
   let initialSessions: Array<{
     id: string;
@@ -57,8 +48,8 @@ export default async function SessionsPage() {
       prisma.session.findMany({
         where: {
           sessionDate: {
-            gte: monday,
-            lte: sunday,
+            gte: weekStart,
+            lt: weekEndExclusive,
           },
         },
         include: {
@@ -138,7 +129,7 @@ export default async function SessionsPage() {
         initialSessions={initialSessions}
         groupsOptions={groupsOptions}
         coachesOptions={coachesOptions}
-        initialWeekStart={toDateOnlyIso(monday)}
+        initialWeekStart={initialWeekStart}
       />
     </main>
   );

@@ -92,7 +92,7 @@ export function UserAccountMenu({
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label="Menu compte"
-        className="flex min-h-10 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] px-2 py-1.5 text-left transition hover:bg-[var(--surface)]"
+        className="flex min-h-11 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] px-2 py-1.5 text-left transition hover:bg-[var(--surface)]"
       >
         <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)]/15 text-xs font-bold text-[var(--primary)]">
           {account ? initials(account.name) : "…"}
@@ -156,7 +156,7 @@ export function UserAccountMenu({
               role="menuitem"
               onClick={logout}
               disabled={loggingOut}
-              className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-[var(--muted-foreground)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]"
+              className="flex min-h-11 w-full items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-[var(--muted-foreground)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]"
             >
               <LogOut className="size-4 shrink-0 opacity-60" />
               {loggingOut ? "Déconnexion…" : "Déconnexion"}

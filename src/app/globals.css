@@ -240,9 +240,64 @@ a {
   width: 100%;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 768px) {
   .btn-block-mobile {
     width: auto;
+  }
+}
+
+.list-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .list-card-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: auto;
+  }
+
+  .list-card-actions .btn {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 767px) {
+  .list-card-actions .btn {
+    width: 100%;
+    min-height: 2.75rem;
+  }
+}
+
+.mobile-modal-overlay {
+  align-items: flex-end;
+  padding: 0;
+}
+
+@media (min-width: 768px) {
+  .mobile-modal-overlay {
+    align-items: center;
+    padding: 1rem;
+  }
+}
+
+.mobile-modal-panel {
+  width: 100%;
+  max-height: min(88dvh, calc(100dvh - env(safe-area-inset-top, 0px)));
+  overflow-y: auto;
+  border-radius: 1rem 1rem 0 0;
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  .mobile-modal-panel {
+    max-width: 28rem;
+    max-height: min(85vh, calc(100vh - 2rem));
+    border-radius: 0.75rem;
+    padding-bottom: 1.25rem;
   }
 }
 
@@ -252,7 +307,7 @@ a {
   gap: 0.55rem;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 768px) {
   .form-actions {
     flex-direction: row;
     align-items: center;
@@ -267,7 +322,7 @@ a {
   width: 100%;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 768px) {
   .page-actions {
     flex-direction: row;
     align-items: center;
@@ -281,7 +336,7 @@ a {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-@media (min-width: 640px) {
+@media (min-width: 768px) {
   .card-grid {
     gap: 0.85rem;
   }
@@ -437,7 +492,8 @@ a {
   background: var(--surface-soft);
 }
 
-@media (max-width: 640px) {
+/* Below md (768px): card-style tables, full-width actions, larger touch targets */
+@media (max-width: 767px) {
   body {
     background:
       radial-gradient(circle at 10% -10%, #d9eaff 0%, transparent 38%),
@@ -556,15 +612,26 @@ a {
     align-items: center;
   }
 
-  .data-table > table > tbody > tr > td[data-label="Actions"] .btn,
-  [class*="overflow-x-auto"] > table > tbody > tr > td[data-label="Actions"] .btn {
-    display: inline-flex;
-    max-width: 100%;
-    min-height: 1.85rem;
-    padding: 0.28rem 0.58rem;
+  .data-table > table > tbody > tr > td[data-label="Actions"]:not(.card-actions-cell) .btn,
+  [class*="overflow-x-auto"] > table > tbody > tr > td[data-label="Actions"]:not(.card-actions-cell) .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: none;
+    min-height: 2.75rem;
+    padding: 0.5rem 0.85rem;
     border-radius: 0.62rem;
-    font-size: 0.72rem;
-    line-height: 1;
+    font-size: 0.82rem;
+    line-height: 1.2;
+    white-space: normal;
+  }
+
+  .data-table > table > tbody > tr > td[data-label="Actions"]:not(.card-actions-cell),
+  [class*="overflow-x-auto"] > table > tbody > tr > td[data-label="Actions"]:not(.card-actions-cell) {
+    display: flex !important;
+    flex-direction: column;
+    gap: 0.5rem;
   }
 
   .data-table > table > tbody > tr > td.card-actions-cell,
@@ -590,14 +657,11 @@ a {
   .data-table > table > tbody > tr > td.card-actions-cell .card-actions-stack,
   [class*="overflow-x-auto"] > table > tbody > tr > td.card-actions-cell .card-actions-stack {
     width: 100%;
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(0, 1fr);
-    justify-content: stretch;
-    align-items: stretch;
-    flex-wrap: nowrap;
-    gap: 0.3rem;
-    overflow: visible;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    gap: 0.5rem;
     padding: 0;
   }
 
@@ -612,14 +676,18 @@ a {
 
   .data-table > table > tbody > tr > td.card-actions-cell .btn,
   [class*="overflow-x-auto"] > table > tbody > tr > td.card-actions-cell .btn {
-    min-height: 1.82rem;
-    padding: 0.3rem 0.62rem;
-    font-size: 0.72rem;
-    line-height: 1;
-    white-space: nowrap;
-    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: 0.5rem 0.85rem;
+    font-size: 0.82rem;
+    line-height: 1.2;
+    white-space: normal;
     width: 100%;
-    min-width: 0;
+    max-width: none;
+    flex: none;
+    min-width: unset;
   }
 
   .data-table > table > tbody > tr.mobile-collapsible-row > td.mobile-detail-cell,
@@ -661,19 +729,41 @@ a {
   .mobile-card-toggle {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.32rem;
+    min-height: 2.75rem;
+    min-width: 6rem;
     border: 0;
     background: transparent;
     color: var(--muted-foreground);
-    font-size: 0.72rem;
+    font-size: 0.78rem;
     font-weight: 700;
     letter-spacing: 0.02em;
-    padding: 0.12rem 0.3rem;
+    padding: 0.5rem 0.75rem;
     cursor: pointer;
   }
 
   .mobile-collapsible-row.is-expanded > td.mobile-toggle-cell {
     padding-top: 0.4rem !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .data-table > table > tbody > tr > td.card-actions-cell .card-actions-stack,
+  [class*="overflow-x-auto"] > table > tbody > tr > td.card-actions-cell .card-actions-stack {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.5rem;
+    width: auto;
+  }
+
+  .data-table > table > tbody > tr > td.card-actions-cell .btn,
+  [class*="overflow-x-auto"] > table > tbody > tr > td.card-actions-cell .btn {
+    width: auto;
+    flex: none;
   }
 }
 
@@ -840,7 +930,7 @@ a {
   background: color-mix(in srgb, var(--primary) 10%, var(--surface) 90%);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 767px) {
   .dark .data-table > table > tbody > tr,
   .dark [class*="overflow-x-auto"] > table > tbody > tr {
     background: linear-gradient(165deg, var(--surface) 0%, var(--surface-soft) 100%);
@@ -864,12 +954,12 @@ a {
 /* Pointage drawer: grow with content, cap on tall lists */
 .drawer-sheet-adaptive {
   height: auto;
-  max-height: min(92vh, 100%);
+  max-height: min(calc(92dvh - env(safe-area-inset-top, 0px)), 100%);
 }
 
-@supports (height: 100dvh) {
+@supports not (height: 100dvh) {
   .drawer-sheet-adaptive {
-    max-height: min(92dvh, 100%);
+    max-height: min(92vh, 100%);
   }
 }
 

@@ -7,6 +7,7 @@ import { utcDateOnlyForTimeZone } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardDebtsTable } from "@/components/dashboard/dashboard-debts-table";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -263,34 +264,7 @@ export default async function Home() {
             {debts.length === 0 ? (
               <p className="text-sm text-[var(--muted-foreground)]">Aucune dette en cours.</p>
             ) : (
-              <div className="data-table overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
-                    <tr>
-                      <th className="px-4 py-3 text-left font-semibold">Membre</th>
-                      <th className="px-4 py-3 text-left font-semibold">Telephone</th>
-                      <th className="px-4 py-3 text-right font-semibold">Montant</th>
-                      <th className="px-4 py-3 text-right font-semibold hidden sm:table-cell">Dossiers</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--border)]">
-                    {debts.map((item) => (
-                      <tr key={item.memberId} className="hover:bg-[var(--surface-soft)] transition-colors">
-                        <td className="data-table-primary px-4 py-3 font-medium text-[var(--foreground)]" data-label="Membre">
-                          {item.memberName}
-                        </td>
-                        <td className="px-4 py-3" data-label="Telephone">{item.phone}</td>
-                        <td className="px-4 py-3 text-right font-semibold text-[var(--danger)]" data-label="Montant">
-                          {formatCurrency(item.totalDebt)}
-                        </td>
-                        <td className="px-4 py-3 text-right hidden sm:table-cell" data-label="Dossiers">
-                          {item.subscriptions}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DashboardDebtsTable debts={debts} />
             )}
           </CardContent>
         </Card>

@@ -355,8 +355,8 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
       </p>
       <p className="text-xs text-muted-foreground">Dernière modification : {updatedLabel}</p>
 
-      <FormActions>
-        <button type="submit" className="btn btn-primary" disabled={saving}>
+      <FormActions sticky>
+        <button type="submit" className="btn btn-primary btn-block-mobile" disabled={saving}>
           {saving ? "Enregistrement..." : "Enregistrer les règles"}
         </button>
       </FormActions>
