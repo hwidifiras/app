@@ -6,6 +6,7 @@ import {
   updateSubscriptionPlanSchema,
 } from "@/lib/schemas/subscription-plan";
 import { requireAuth } from "@/lib/request-user";
+import { totalSessionsFromWeekly } from "@/lib/subscription-plan-utils";
 
 export const runtime = "nodejs";
 
@@ -142,7 +143,10 @@ export async function PATCH(request: Request) {
               ? null
               : payload.description,
         price: payload.price,
-        totalSessions: payload.totalSessions,
+        totalSessions:
+          payload.sessionsPerWeek !== undefined
+            ? totalSessionsFromWeekly(payload.sessionsPerWeek)
+            : undefined,
         sessionsPerWeek: payload.sessionsPerWeek,
         validityDays: payload.validityDays,
         isActive: payload.isActive,
