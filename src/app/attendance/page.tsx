@@ -87,14 +87,14 @@ export default async function AttendancePage() {
         title="Présences"
         description={`${rows.length} pointage(s) enregistré(s).`}
         actions={
-          <Link href="/attendance/groups" className="btn btn-ghost text-sm">
+          <Link href="/attendance/groups" className="btn btn-ghost btn-block-mobile min-h-11 text-sm sm:w-auto">
             Présences par groupe
           </Link>
         }
       />
 
       <section className="panel p-5">
-        <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+        <div className="data-table overflow-x-auto rounded-xl border border-[var(--border)]">
           <table className="w-full text-sm">
             <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
               <tr>
@@ -109,7 +109,7 @@ export default async function AttendancePage() {
             <tbody className="divide-y divide-[var(--border)]">
               {rows.map((r) => (
                 <tr key={r.id} className="hover:bg-[var(--surface-soft)] transition-colors">
-                  <td className="px-4 py-3 font-medium text-[var(--foreground)]" data-label="Membre">{r.memberName}</td>
+                  <td className="data-table-primary px-4 py-3 font-medium text-[var(--foreground)]" data-label="Membre">{r.memberName}</td>
                   <td className="px-4 py-3" data-label="Groupe">{r.groupName}</td>
                   <td className="px-4 py-3 hidden sm:table-cell" data-label="Séance">
                     {new Date(r.sessionDate).toLocaleDateString("fr-FR")}

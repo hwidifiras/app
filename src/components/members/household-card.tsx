@@ -136,7 +136,7 @@ export function HouseholdCard({ memberId }: { memberId: string }) {
           <p className="mb-2 text-sm text-[var(--muted-foreground)]">
             Liez les frères/sœurs ou parent-enfant pour les offres famille.
           </p>
-          <button type="button" className="btn-primary text-sm" onClick={createHousehold}>
+          <button type="button" className="btn btn-primary btn-block-mobile min-h-11 text-sm sm:w-auto" onClick={createHousehold}>
             Créer un foyer pour cet élève
           </button>
         </div>
@@ -203,9 +203,9 @@ export function HouseholdCard({ memberId }: { memberId: string }) {
                 <span className="text-[var(--muted-foreground)]">({selectedMember.phone})</span>
               </p>
             ) : null}
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
               <select
-                className="field max-w-[10rem] py-2 text-sm"
+                className="field w-full max-w-none py-2 text-sm sm:max-w-[10rem]"
                 value={relationship}
                 onChange={(e) => setRelationship(e.target.value)}
               >
@@ -217,7 +217,7 @@ export function HouseholdCard({ memberId }: { memberId: string }) {
               </select>
               <button
                 type="button"
-                className="btn-secondary text-sm"
+                className="btn btn-secondary btn-block-mobile min-h-11 text-sm sm:w-auto"
                 disabled={!selectedMember}
                 onClick={addMember}
               >

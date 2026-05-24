@@ -336,14 +336,14 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
             <div className="text-xs text-muted-foreground">
               {filteredMembers.length} membre(s) trouvé(s) · page {currentPageSafe}/{pageCount}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               {selectedMemberIds.length > 0 ? (
                 <>
                   <span className="text-xs font-medium text-muted-foreground">{selectedMemberIds.length} sélectionné(s)</span>
-                  <button type="button" onClick={bulkDeleteSelectedMembers} disabled={actionLoadingId === "bulk-delete"} className="btn btn-danger px-3 py-2 text-xs">
+                  <button type="button" onClick={bulkDeleteSelectedMembers} disabled={actionLoadingId === "bulk-delete"} className="btn btn-danger btn-block-mobile min-h-11 px-3 py-2 text-xs sm:w-auto">
                     {actionLoadingId === "bulk-delete" ? "Suppression..." : "Supprimer la sélection"}
                   </button>
-                  <button type="button" onClick={() => setSelectedMemberIds([])} className="btn btn-ghost px-3 py-2 text-xs">
+                  <button type="button" onClick={() => setSelectedMemberIds([])} className="btn btn-ghost btn-block-mobile min-h-11 px-3 py-2 text-xs sm:w-auto">
                     Effacer
                   </button>
                 </>
@@ -435,7 +435,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
                 <h3 className="text-sm font-semibold text-foreground">{groupLabel(groupId)}</h3>
                 <span className="text-xs text-muted-foreground">{rows.length} membre(s)</span>
               </div>
-              <div className="mt-3 overflow-x-auto rounded-xl border-border">
+              <div className="data-table mt-3 overflow-x-auto rounded-xl border-border">
                 <table className="w-full text-sm">
                   <thead className="bg-(--surface-soft) text-xs uppercase tracking-wider text-muted-foreground">
                     <tr>

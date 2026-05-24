@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { FormActions } from "@/components/ui/form-layout";
 import { PERMISSION_LABELS, PERMISSIONS, type PermissionKey } from "@/lib/permission-definitions";
 
 export function UserCreateForm() {
@@ -100,7 +101,7 @@ export function UserCreateForm() {
             <select
               value={accessMode}
               onChange={(e) => setAccessMode(e.target.value as "FULL" | "LIMITED")}
-              className="field md:max-w-48"
+              className="field w-full md:max-w-48"
             >
               <option value="LIMITED">Limité</option>
               <option value="FULL">Accès complet staff</option>
@@ -127,11 +128,11 @@ export function UserCreateForm() {
         </div>
       )}
 
-      <div className="md:col-span-2 flex justify-end">
-        <button className="btn btn-primary" disabled={loading} type="submit">
+      <FormActions sticky className="md:col-span-2">
+        <button className="btn btn-primary btn-block-mobile min-h-11" disabled={loading} type="submit">
           {loading ? "Création..." : "Créer l'utilisateur"}
         </button>
-      </div>
+      </FormActions>
     </form>
   );
 }

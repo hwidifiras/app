@@ -21,7 +21,7 @@ export function PageHeader({ overline, title, description, actions }: PageHeader
           <p className="mt-0.5 max-w-2xl text-sm leading-5 text-[var(--muted-foreground)]">{description}</p>
         ) : null}
       </div>
-      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2 md:justify-end">{actions}</div> : null}
+      {actions ? <div className="page-actions shrink-0 md:justify-end">{actions}</div> : null}
     </div>
   );
 }

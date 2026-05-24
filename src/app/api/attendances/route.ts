@@ -4,7 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { createAttendanceSchema, updateAttendanceSchema } from "@/lib/schemas/attendance";
 import { getClubSettings } from "@/lib/club-settings";
 import { requireAuth } from "@/lib/request-user";
-import { getWeekRangeUtc } from "@/lib/dates";
+import {
+  countWeeklySlotUsage,
+  RECOVERY_OVERRIDE_PREFIX,
+  validateRecoveryCheckIn,
+} from "@/lib/attendance-rules";
 import {
   canCheckInWithPayment,
   resolveActiveSubscription,
@@ -92,11 +96,18 @@ export async function POST(request: Request) {
     );
   }
 
-  const { sessionId, memberId, status, overrideReason, checkedBy } = parsed.data;
+  const { sessionId, memberId, status, overrideReason, checkedBy, overrideKind } = parsed.data;
+  const isRecoveryOverride = status === "OVERRIDE" && overrideKind === "RECOVERY";
+  const normalizedOverrideReason = isRecoveryOverride
+    ? `${RECOVERY_OVERRIDE_PREFIX}${overrideReason?.trim() ? ` — ${overrideReason.trim()}` : ""}`
+    : overrideReason?.trim() || null;
+
   try {
-    const sessionExists = await prisma.session.findUnique({ 
+    const sessionExists = await prisma.session.findUnique({
       where: { id: sessionId },
-      include: { group: { select: { id: true, sportId: true } } }
+      include: {
+        group: { select: { id: true, sportId: true, groupType: true } },
+      },
     });
     if (!sessionExists) {
       return NextResponse.json({ error: "Séance introuvable" }, { status: 404 });
@@ -115,7 +126,44 @@ export async function POST(request: Request) {
     const activeSub = await resolveActiveSubscription(memberId, sportId);
     const isSubActive = !!activeSub;
 
-    if (status === "PRESENT" || status === "ABSENT") {
+    if (isRecoveryOverride) {
+      if (!isSubActive || !activeSub) {
+        return NextResponse.json(
+          {
+            error: "Abonnement actif requis pour une récupération de séance",
+            code: "RECOVERY_REQUIRES_SUBSCRIPTION",
+          },
+          { status: 403 },
+        );
+      }
+
+      const payCheck = await canCheckInWithPayment(activeSub);
+      if (!payCheck.allowed) {
+        return NextResponse.json(
+          {
+            error: payCheck.reason ?? "Abonnement non payé — récupération impossible",
+            code: "SUBSCRIPTION_UNPAID",
+          },
+          { status: 403 },
+        );
+      }
+
+      const recoveryCheck = await validateRecoveryCheckIn({
+        memberId,
+        targetSessionId: sessionExists.id,
+        targetGroupId: sessionExists.group.id,
+        targetSportId: sessionExists.group.sportId,
+        targetGroupType: sessionExists.group.groupType,
+        targetSessionDate: sessionExists.sessionDate,
+      });
+
+      if (!recoveryCheck.ok) {
+        return NextResponse.json(
+          { error: recoveryCheck.error, code: recoveryCheck.code },
+          { status: 403 },
+        );
+      }
+    } else if (status === "PRESENT" || status === "ABSENT") {
       const assignment = await prisma.groupMember.findFirst({
         where: { groupId: sessionExists.group.id, memberId, status: "ACTIVE" }
       });
@@ -152,16 +200,7 @@ export async function POST(request: Request) {
       }
 
       if (activeSub.plan.sessionsPerWeek) {
-        const { start, end } = getWeekRangeUtc(sessionExists.sessionDate);
-        const weeklyCount = await prisma.attendance.count({
-          where: {
-            memberSubscriptionId: activeSub.id,
-            status: "PRESENT",
-            session: {
-              sessionDate: { gte: start, lt: end },
-            },
-          },
-        });
+        const weeklyCount = await countWeeklySlotUsage(activeSub.id, sessionExists.sessionDate);
 
         if (weeklyCount >= activeSub.plan.sessionsPerWeek) {
           return NextResponse.json(
@@ -176,7 +215,7 @@ export async function POST(request: Request) {
       }
     }
 
-    if (status === "OVERRIDE") {
+    if (status === "OVERRIDE" && !isRecoveryOverride) {
       if (!overrideReason || overrideReason.trim().length === 0) {
         return NextResponse.json(
           { error: "Motif obligatoire pour un passage exceptionnel" },
@@ -218,20 +257,22 @@ export async function POST(request: Request) {
       let activeSubscriptionId: string | null = null;
       let remainingSessionsBefore: number | null = null;
 
-      if (status === "PRESENT" && isSubActive && activeSub) {
-        activeSubscriptionId = activeSub.id;
-        remainingSessionsBefore = activeSub.remainingSessions;
+      if (status === "PRESENT" || status === "ABSENT") {
+        if (isSubActive && activeSub) {
+          activeSubscriptionId = activeSub.id;
+          remainingSessionsBefore = activeSub.remainingSessions;
 
-        const updated = await tx.memberSubscription.updateMany({
-          where: {
-            id: activeSub.id,
-            remainingSessions: { gt: 0 },
-          },
-          data: { remainingSessions: { decrement: 1 } },
-        });
+          const updated = await tx.memberSubscription.updateMany({
+            where: {
+              id: activeSub.id,
+              remainingSessions: { gt: 0 },
+            },
+            data: { remainingSessions: { decrement: 1 } },
+          });
 
-        if (updated.count === 0) {
-          throw new Error("NO_SESSIONS_LEFT");
+          if (updated.count === 0) {
+            throw new Error("NO_SESSIONS_LEFT");
+          }
         }
       }
 
@@ -240,9 +281,12 @@ export async function POST(request: Request) {
           sessionId,
           memberId,
           status,
-          overrideReason: overrideReason?.trim() || null,
+          overrideReason: normalizedOverrideReason,
           checkedBy: actor.name,
-          memberSubscriptionId: activeSubscriptionId,
+          memberSubscriptionId:
+            isRecoveryOverride && activeSub
+              ? activeSub.id
+              : activeSubscriptionId,
         },
         include: {
           session: {
@@ -271,8 +315,9 @@ export async function POST(request: Request) {
             memberId,
             status,
             sportId,
-            overrideReason: overrideReason || null,
+            overrideReason: normalizedOverrideReason,
             subscriptionActive: isSubActive,
+            overrideKind: isRecoveryOverride ? "RECOVERY" : overrideKind ?? "STANDARD",
             remainingSessionsBefore,
           }),
         },

@@ -201,6 +201,31 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "planId invalide" }, { status: 400 });
   }
 
+  const linkedSubscriptions = await prisma.memberSubscription.findMany({
+    where: { planId },
+    select: {
+      id: true,
+      member: { select: { firstName: true, lastName: true } },
+    },
+    take: 20,
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (linkedSubscriptions.length > 0) {
+    return NextResponse.json(
+      {
+        error: `Cette formule est encore utilisée (${linkedSubscriptions.length} abonnement(s)). Désactivez-la ou supprimez les abonnements liés d'abord.`,
+        details: {
+          subscriptions: linkedSubscriptions.map((s) => ({
+            id: s.id,
+            label: `${s.member.firstName} ${s.member.lastName}`,
+          })),
+        },
+      },
+      { status: 409 },
+    );
+  }
+
   try {
     await prisma.subscriptionPlan.delete({
       where: { id: planId },
@@ -208,16 +233,26 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ data: { id: planId } });
   } catch (error) {
-    const isNotFound =
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      (error as { code?: string }).code === "P2025";
+    const code =
+      typeof error === "object" && error !== null && "code" in error
+        ? (error as { code?: string }).code
+        : undefined;
 
-    if (isNotFound) {
+    if (code === "P2025") {
       return NextResponse.json({ error: "Plan introuvable" }, { status: 404 });
     }
 
+    if (code === "P2003") {
+      return NextResponse.json(
+        {
+          error:
+            "Impossible de supprimer : cette formule est encore référencée par des abonnements.",
+        },
+        { status: 409 },
+      );
+    }
+
+    console.error("[DELETE /api/subscription-plans]", error);
     return NextResponse.json({ error: "Erreur serveur lors de la suppression" }, { status: 500 });
   }
 }

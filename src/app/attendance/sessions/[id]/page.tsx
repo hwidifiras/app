@@ -172,7 +172,7 @@ export default async function SessionAttendanceDetailPage({
           {session.attendances.length > 0 && (
             <div>
               <h2 className="mb-2 text-sm font-semibold text-[var(--foreground)]">Historique des pointages</h2>
-              <div className="overflow-x-auto">
+              <div className="data-table overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
                     <tr>
@@ -185,7 +185,7 @@ export default async function SessionAttendanceDetailPage({
                   <tbody className="divide-y divide-[var(--border)]">
                     {session.attendances.map((a) => (
                       <tr key={a.id} className="hover:bg-[var(--surface-soft)]">
-                        <td className="px-3 py-2" data-label="Élève">
+                        <td className="data-table-primary px-3 py-2" data-label="Élève">
                           <Link href={`/members/${a.member.id}`} className="text-[var(--primary)] hover:underline">
                             {a.member.firstName} {a.member.lastName}
                           </Link>

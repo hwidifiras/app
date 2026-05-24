@@ -146,7 +146,7 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
                 {sub.remainingSessions} / {sub.totalSessions}
               </Td>
               <TableActionsCell className="mobile-detail-cell">
-                <Link href={`/subscriptions/${sub.id}/edit`} className="btn btn-ghost btn-sm">
+                <Link href={`/subscriptions/${sub.id}/edit`} className="btn btn-ghost btn-block-mobile min-h-11 sm:w-auto">
                   Modifier
                 </Link>
               </TableActionsCell>

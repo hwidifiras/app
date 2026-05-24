@@ -32,12 +32,10 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
   const [price, setPrice] = useState(
     initialValues ? (initialValues.price / 100).toFixed(2) : "",
   );
-  const [totalSessions, setTotalSessions] = useState(
-    initialValues?.totalSessions?.toString() ?? "12",
-  );
   const [sessionsPerWeek, setSessionsPerWeek] = useState(
     initialValues?.sessionsPerWeek?.toString() ?? "3",
   );
+  const computedTotalSessions = (parseInt(sessionsPerWeek, 10) || 0) * 4;
   const [validityDays, setValidityDays] = useState(
     initialValues?.validityDays?.toString() ?? "30",
   );
@@ -63,8 +61,7 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
       name: name.trim(),
       description: description.trim() || null,
       price: Math.round(parseFloat(price || "0") * 100),
-      totalSessions: parseInt(totalSessions, 10),
-      sessionsPerWeek: sessionsPerWeek ? parseInt(sessionsPerWeek, 10) : undefined,
+      sessionsPerWeek: parseInt(sessionsPerWeek, 10),
       validityDays: parseInt(validityDays, 10),
       sportId: sportId || undefined,
       isActive,
@@ -109,18 +106,17 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
         <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Accès illimité, 1 coach..." className="field" />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="mb-1 block text-xs font-medium text-muted-foreground">Prix (€) *</label>
           <input type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" className="field" required />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Séances totales *</label>
-          <input type="number" min="1" value={totalSessions} onChange={(e) => setTotalSessions(e.target.value)} className="field" required />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Par semaine</label>
-          <input type="number" min="1" max="7" value={sessionsPerWeek} onChange={(e) => setSessionsPerWeek(e.target.value)} className="field" />
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Séances par semaine *</label>
+          <input type="number" min="1" max="7" value={sessionsPerWeek} onChange={(e) => setSessionsPerWeek(e.target.value)} className="field" required />
+          <p className="mt-1 text-xs text-muted-foreground">
+            Soit {computedTotalSessions || 0} séances / mois (×4 semaines), calculé automatiquement.
+          </p>
         </div>
       </div>
 

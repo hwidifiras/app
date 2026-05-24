@@ -21,6 +21,7 @@ export function CheckInPanel({ data }: { data: TodayData }) {
     mid: string,
     status: string,
     overrideReason?: string,
+    overrideKind?: "STANDARD" | "RECOVERY",
   ): Promise<boolean> {
     setLoadingId(mid);
 
@@ -45,7 +46,14 @@ export function CheckInPanel({ data }: { data: TodayData }) {
       res = await fetch("/api/attendances", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, memberId: mid, status, overrideReason, checkedBy: "Réception" }),
+        body: JSON.stringify({
+          sessionId,
+          memberId: mid,
+          status,
+          overrideReason,
+          overrideKind,
+          checkedBy: "Réception",
+        }),
       });
     }
 
@@ -109,7 +117,7 @@ export function CheckInPanel({ data }: { data: TodayData }) {
         <CheckInDrawer
           session={effectiveSession}
           activeSubscriptionMemberIds={data.activeSubscriptionMemberIds}
-          onCheckIn={(mid, status, reason) => submitCheckIn(selectedId, mid, status, reason)}
+          onCheckIn={(mid, status, reason, kind) => submitCheckIn(selectedId, mid, status, reason, kind)}
           onClose={() => setSelectedId(null)}
           loadingId={loadingId}
           message={message}

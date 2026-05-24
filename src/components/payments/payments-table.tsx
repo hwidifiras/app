@@ -199,7 +199,7 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
                   {!group.isComplete ? (
                     <button
                       type="button"
-                      className="btn btn-primary btn-sm mt-2.5 flex w-full items-center justify-center gap-1"
+                      className="btn btn-primary btn-block-mobile mt-2.5 min-h-11 flex items-center justify-center gap-1"
                       onClick={() => goToAddPayment(group.subscriptionId)}
                     >
                       <Plus className="size-3.5" />

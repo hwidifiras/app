@@ -79,18 +79,18 @@ export default async function LogsPage({
       />
 
       <section className="panel p-4 sm:p-5">
-        <form className="mb-4 flex flex-wrap items-center gap-2">
+        <form className="page-actions mb-4">
           <input
             name="q"
             defaultValue={query ?? ""}
             placeholder="Rechercher par nom, action, montant…"
             className="field w-full text-sm sm:w-80"
           />
-          <button type="submit" className="btn btn-primary">
+          <button type="submit" className="btn btn-primary btn-block-mobile min-h-11 sm:w-auto">
             Rechercher
           </button>
           {query ? (
-            <Link href="/logs" className="btn btn-ghost">
+            <Link href="/logs" className="btn btn-ghost btn-block-mobile min-h-11 sm:w-auto">
               Effacer
             </Link>
           ) : null}

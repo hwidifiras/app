@@ -141,14 +141,14 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
 
         {/* Groupes actifs */}
         <section className="panel p-5 md:col-span-2">
-          <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="mb-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-lg font-semibold text-[var(--foreground)]">
               Groupes actifs ({activeGroups.length})
             </h2>
             {member.status === "ACTIVE" && (
               <Link
                 href={`/members/${member.id}/add-to-group`}
-                className="btn btn-primary text-xs"
+                className="btn btn-primary btn-block-mobile text-xs sm:w-auto"
               >
                 + Ajouter
               </Link>
@@ -283,7 +283,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
           {member.attendances.length === 0 ? (
             <p className="mt-3 text-sm text-[var(--muted-foreground)]">Aucune présence enregistrée.</p>
           ) : (
-            <div className="mt-3 overflow-x-auto">
+            <div className="mt-3 data-table overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
                   <tr>
@@ -296,7 +296,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                 <tbody className="divide-y divide-[var(--border)]">
                   {member.attendances.map((a) => (
                     <tr key={a.id} className="hover:bg-[var(--surface-soft)]">
-                      <td className="px-3 py-2" data-label="Date">
+                      <td className="data-table-primary px-3 py-2" data-label="Date">
                         {formatDate(a.session.sessionDate)} {a.session.startTime}
                       </td>
                       <td className="px-3 py-2" data-label="Groupe">{a.session.group?.name ?? "—"}</td>

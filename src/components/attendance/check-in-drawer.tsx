@@ -21,12 +21,27 @@ export function CheckInDrawer({
     memberId: string,
     status: string,
     overrideReason?: string,
+    overrideKind?: "STANDARD" | "RECOVERY",
   ) => void | boolean | Promise<void | boolean>;
   onClose: () => void;
   loadingId: string | null;
   message: string | null;
 }) {
   const [modalMember, setModalMember] = useState<{ memberId: string; name: string; status: string } | null>(null);
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [recoveryCandidates, setRecoveryCandidates] = useState<
+    Array<{
+      memberId: string;
+      firstName: string;
+      lastName: string;
+      phone: string;
+      absentGroupName: string;
+      absentDate: string;
+    }>
+  >([]);
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
+  const [recoveryMember, setRecoveryMember] = useState<(typeof recoveryCandidates)[number] | null>(null);
+  const [recoveryNote, setRecoveryNote] = useState("");
   const [reason, setReason] = useState("");
   const [markingAll, setMarkingAll] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -63,6 +78,30 @@ export function CheckInDrawer({
       window.removeEventListener("keydown", onKey);
     };
   }, [onClose, modalMember]);
+
+  async function openRecoveryPanel() {
+    setRecoveryOpen(true);
+    setRecoveryLoading(true);
+    setRecoveryMember(null);
+    setRecoveryNote("");
+
+    try {
+      const res = await fetch(`/api/attendances/recovery-candidates?sessionId=${session.id}`);
+      const json = await res.json();
+      setRecoveryCandidates(Array.isArray(json.data) ? json.data : []);
+    } catch {
+      setRecoveryCandidates([]);
+    } finally {
+      setRecoveryLoading(false);
+    }
+  }
+
+  function statusLabel(status: string, overrideReason?: string | null) {
+    if (status === "PRESENT") return "Présent";
+    if (status === "ABSENT") return "Absent";
+    if (overrideReason?.startsWith("Récupération")) return "Récupération";
+    return "Exception";
+  }
 
   async function handleClick(mid: string, status: string) {
     if (!hasSub(mid) && status !== "OVERRIDE") {
@@ -144,7 +183,7 @@ export function CheckInDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="btn btn-ghost shrink-0 rounded-full p-2"
+            className="btn btn-ghost min-h-11 min-w-11 shrink-0 rounded-full p-2"
             aria-label="Fermer"
           >
             <XIcon className="size-5" />
@@ -170,6 +209,20 @@ export function CheckInDrawer({
             <p className="rounded-lg bg-[var(--warning)]/10 px-3 py-2 text-xs text-[var(--warning)]">{message}</p>
           </div>
         )}
+
+        <div className="shrink-0 border-t border-[var(--border)] px-4 py-3">
+          <button
+            type="button"
+            onClick={openRecoveryPanel}
+            disabled={loadingId !== null || markingAll}
+            className="btn btn-secondary btn-block-mobile min-h-11 text-sm"
+          >
+            Récupération de séance (autre cours)
+          </button>
+          <p className="mt-1 text-[0.65rem] text-[var(--muted-foreground)]">
+            Pour un élève absent cette semaine sur un cours équivalent (même sport, même type).
+          </p>
+        </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))]">
           <div className="divide-y divide-[var(--border)]">
@@ -217,7 +270,7 @@ export function CheckInDrawer({
                               att.status === "PRESENT" ? "success" : att.status === "ABSENT" ? "danger" : "warning"
                             }
                           >
-                            {att.status === "PRESENT" ? "Présent" : att.status === "ABSENT" ? "Absent" : "Exception"}
+                            {statusLabel(att.status, att.overrideReason)}
                           </StatusBadge>
                         )}
                       </div>
@@ -304,6 +357,93 @@ export function CheckInDrawer({
                 className="btn btn-primary btn-block-mobile min-h-11"
               >
                 Valider passage
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {recoveryOpen && (
+        <div
+          className="mobile-modal-overlay fixed inset-0 z-[60] flex justify-center bg-black/50"
+          onClick={() => {
+            setRecoveryOpen(false);
+            setRecoveryMember(null);
+            setRecoveryNote("");
+          }}
+        >
+          <div
+            className="mobile-modal-panel border border-[var(--border)] bg-[var(--surface)] p-5 shadow-lg md:max-w-md md:rounded-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-semibold text-[var(--foreground)]">Récupération de séance</h3>
+            <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+              Élève absent cette semaine sur un cours équivalent — présence sur ce créneau sans consommer une séance
+              supplémentaire.
+            </p>
+
+            {recoveryLoading ? (
+              <p className="mt-4 text-sm text-[var(--muted-foreground)]">Recherche des absences récupérables…</p>
+            ) : recoveryCandidates.length === 0 ? (
+              <p className="mt-4 text-sm text-[var(--muted-foreground)]">Aucun élève éligible pour ce cours.</p>
+            ) : (
+              <ul className="mt-4 max-h-56 space-y-2 overflow-y-auto">
+                {recoveryCandidates.map((candidate) => (
+                  <li key={candidate.memberId}>
+                    <button
+                      type="button"
+                      onClick={() => setRecoveryMember(candidate)}
+                      className={`w-full rounded-xl border px-3 py-2 text-left text-sm transition ${
+                        recoveryMember?.memberId === candidate.memberId
+                          ? "border-[var(--primary)] bg-[var(--primary)]/5"
+                          : "border-[var(--border)] hover:bg-[var(--surface-soft)]"
+                      }`}
+                    >
+                      <span className="font-medium text-[var(--foreground)]">
+                        {candidate.firstName} {candidate.lastName}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-[var(--muted-foreground)]">
+                        Absent — {candidate.absentGroupName}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {recoveryMember ? (
+              <textarea
+                value={recoveryNote}
+                onChange={(e) => setRecoveryNote(e.target.value)}
+                placeholder="Note optionnelle (ex. créneau proposé par le coach)"
+                className="field mt-3 min-h-[70px]"
+              />
+            ) : null}
+
+            <div className="form-actions mt-4 border-t-0 pt-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setRecoveryOpen(false);
+                  setRecoveryMember(null);
+                  setRecoveryNote("");
+                }}
+                className="btn btn-ghost btn-block-mobile min-h-11"
+              >
+                Fermer
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!recoveryMember) return;
+                  onCheckIn(recoveryMember.memberId, "OVERRIDE", recoveryNote.trim(), "RECOVERY");
+                  setRecoveryOpen(false);
+                  setRecoveryMember(null);
+                  setRecoveryNote("");
+                }}
+                disabled={!recoveryMember}
+                className="btn btn-primary btn-block-mobile min-h-11"
+              >
+                Valider la récupération
               </button>
             </div>
           </div>

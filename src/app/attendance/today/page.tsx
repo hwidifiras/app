@@ -32,7 +32,7 @@ export default async function AttendanceTodayPage() {
       }>;
     };
     coach: { firstName: string; lastName: string } | null;
-    attendances: Array<{ id: string; memberId: string; status: string }>;
+    attendances: Array<{ id: string; memberId: string; status: string; overrideReason?: string | null }>;
   }>;
   let activeSubscriptionMemberIds: string[] = [];
   let hasError = false;
@@ -56,7 +56,7 @@ export default async function AttendanceTodayPage() {
           },
         },
         coach: { select: { firstName: true, lastName: true } },
-        attendances: { select: { id: true, memberId: true, status: true } },
+        attendances: { select: { id: true, memberId: true, status: true, overrideReason: true } },
       },
       orderBy: { startTime: "asc" },
     });
@@ -100,7 +100,7 @@ export default async function AttendanceTodayPage() {
       if (subIds.length > 0) {
         const weeklyRows = await prisma.attendance.findMany({
           where: {
-            status: "PRESENT",
+            status: { in: ["PRESENT", "ABSENT"] },
             memberSubscriptionId: { in: subIds },
             session: {
               sessionDate: { gte: weekStart, lt: weekEnd },

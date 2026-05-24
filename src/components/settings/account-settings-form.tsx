@@ -203,9 +203,11 @@ export function AccountSettingsForm() {
           <FormField label="Nom affiché">
             <input className="field" value={name} onChange={(e) => setName(e.target.value)} required minLength={2} />
           </FormField>
-          <button type="submit" className="btn btn-primary btn-sm" disabled={savingName}>
-            {savingName ? "Enregistrement…" : "Enregistrer le nom"}
-          </button>
+          <FormActions sticky>
+            <button type="submit" className="btn btn-primary btn-block-mobile min-h-11" disabled={savingName}>
+              {savingName ? "Enregistrement…" : "Enregistrer le nom"}
+            </button>
+          </FormActions>
         </form>
 
         <div className="mt-5 border-t border-[var(--border)] pt-4">
@@ -262,16 +264,16 @@ export function AccountSettingsForm() {
                 </p>
               )}
 
-              <div className="flex flex-wrap gap-2">
+              <div className="page-actions">
                 <button
                   type="submit"
-                  className="btn btn-primary btn-sm"
+                  className="btn btn-primary btn-block-mobile min-h-11"
                   disabled={savingEmail || !emailUnlocked || newEmail.trim().toLowerCase() === account.email}
                 >
                   <Mail className="size-4" />
                   {savingEmail ? "Enregistrement…" : "Enregistrer l'email"}
                 </button>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={closeEmailEdit}>
+                <button type="button" className="btn btn-ghost btn-block-mobile min-h-11" onClick={closeEmailEdit}>
                   Annuler
                 </button>
               </div>
@@ -326,7 +328,7 @@ export function AccountSettingsForm() {
                 />
               </FormField>
             </FormGrid>
-            <FormActions className="mt-0 border-t-0 pt-0">
+            <FormActions sticky className="mt-0 border-t-0 pt-0">
               <button type="button" className="btn btn-ghost btn-block-mobile" onClick={closePasswordEdit}>
                 Annuler
               </button>

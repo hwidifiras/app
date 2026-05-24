@@ -4,6 +4,7 @@ import { FormEvent, useMemo, useState } from "react";
 
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { FormActions } from "@/components/ui/form-layout";
 
 type MemberEditCardProps = {
   member: {
@@ -201,13 +202,13 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
 
           <FeedbackMessage message={message} />
 
-          <div className="flex flex-wrap items-center gap-2">
-            <button type="submit" className="btn btn-primary" disabled={loading}>
+          <FormActions sticky>
+            <button type="submit" className="btn btn-primary btn-block-mobile min-h-11" disabled={loading}>
               {loading ? "Enregistrement..." : "Enregistrer"}
             </button>
             <button
               type="button"
-              className="btn btn-ghost"
+              className="btn btn-ghost btn-block-mobile min-h-11"
               onClick={() => {
                 resetForm();
                 setIsEditing(false);
@@ -216,7 +217,7 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
             >
               Annuler
             </button>
-          </div>
+          </FormActions>
         </form>
       ) : (
         <dl className="mt-4 space-y-3 text-sm">

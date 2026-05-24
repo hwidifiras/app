@@ -70,8 +70,8 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
               <th className="px-4 py-3 text-left font-semibold">Nom</th>
               <th className="px-4 py-3 text-left font-semibold">Description</th>
               <th className="px-4 py-3 text-right font-semibold">Prix</th>
-              <th className="px-4 py-3 text-center font-semibold">Séances</th>
-              <th className="px-4 py-3 text-center font-semibold">Sem.</th>
+              <th className="px-4 py-3 text-center font-semibold">/ semaine</th>
+              <th className="px-4 py-3 text-center font-semibold">/ mois (×4)</th>
               <th className="px-4 py-3 text-center font-semibold">Validité</th>
               <th className="px-4 py-3 text-center font-semibold">Sport</th>
               <th className="px-4 py-3 text-center font-semibold">Statut</th>
@@ -90,8 +90,8 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
                 <td className="px-4 py-3 text-right" data-label="Prix">
                   {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(plan.price / 100)}
                 </td>
-                <td className="px-4 py-3 text-center mobile-detail-cell" data-label="Séances">{plan.totalSessions}</td>
-                <td className="px-4 py-3 text-center mobile-detail-cell" data-label="Sem.">{plan.sessionsPerWeek ?? "—"}</td>
+                <td className="px-4 py-3 text-center mobile-detail-cell" data-label="/ semaine">{plan.sessionsPerWeek ?? "—"}</td>
+                <td className="px-4 py-3 text-center mobile-detail-cell" data-label="/ mois">{plan.totalSessions}</td>
                 <td className="px-4 py-3 text-center mobile-detail-cell" data-label="Validité">{plan.validityDays}j</td>
                 <td className="px-4 py-3 text-center mobile-detail-cell" data-label="Sport">{plan.sport?.name ?? "—"}</td>
                 <td className="px-4 py-3 text-center" data-label="Statut">

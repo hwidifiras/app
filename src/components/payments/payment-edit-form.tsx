@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Trash2 } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions } from "@/components/ui/form-layout";
@@ -44,6 +44,7 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
   const [method, setMethod] = useState(payment.paymentMethod ?? "CASH");
   const [notes, setNotes] = useState(payment.notes ?? "");
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const subscription = payment.memberSubscription;
@@ -90,6 +91,35 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
     setMessage("Paiement modifié avec succès.");
     setTimeout(() => router.push("/payments"), 800);
   }
+
+  async function handleDelete() {
+    const confirmed = window.confirm(
+      `Supprimer ce paiement de ${formatCurrency(payment.amount)} ? Le solde dû de l'abonnement sera recalculé.`,
+    );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    setMessage(null);
+
+    const res = await fetch("/api/payments", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentId: payment.id }),
+    });
+
+    const json = await res.json();
+    setDeleting(false);
+
+    if (!res.ok) {
+      setMessage(json.error ?? "Erreur lors de la suppression du paiement.");
+      return;
+    }
+
+    router.push("/payments");
+    router.refresh();
+  }
+
+  const busy = loading || deleting;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
@@ -189,7 +219,7 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
         </button>
         <button
           type="submit"
-          disabled={loading || amountNum <= 0 || wouldExceed}
+          disabled={busy || amountNum <= 0 || wouldExceed}
           className="btn btn-primary btn-block-mobile inline-flex items-center justify-center gap-1.5"
         >
           {loading ? (
@@ -200,6 +230,26 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
           Enregistrer la modification
         </button>
       </FormActions>
+
+      <section className="rounded-lg border border-[var(--danger)]/25 bg-[var(--surface-soft)] p-4">
+        <h2 className="text-sm font-semibold text-[var(--foreground)]">Zone sensible</h2>
+        <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+          La suppression retire ce paiement de l&apos;historique et augmente le solde restant dû.
+        </p>
+        <button
+          type="button"
+          onClick={handleDelete}
+          disabled={busy}
+          className="btn btn-ghost btn-block-mobile mt-3 min-h-11 inline-flex items-center justify-center gap-1.5 border border-[var(--danger)]/40 text-[var(--danger)] hover:bg-[var(--danger)]/10 sm:w-auto"
+        >
+          {deleting ? (
+            <span className="inline-block size-4 animate-spin rounded-full border-2 border-[var(--danger)] border-t-transparent" />
+          ) : (
+            <Trash2 className="size-4" />
+          )}
+          Supprimer ce paiement
+        </button>
+      </section>
     </form>
   );
 }

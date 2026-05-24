@@ -147,7 +147,7 @@ export default async function AttendanceByGroupPage({
       />
 
       <section className="panel p-5">
-        <form className="mb-4 grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
+        <form className="page-actions mb-4 grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
           <select name="groupId" defaultValue={groupId ?? ""} className="field text-sm">
             <option value="">Tous les groupes</option>
             {groups.map((group) => (
@@ -158,7 +158,7 @@ export default async function AttendanceByGroupPage({
           </select>
           <input name="from" type="date" defaultValue={formatDateInput(fromDate)} className="field text-sm" />
           <input name="to" type="date" defaultValue={formatDateInput(toDate)} className="field text-sm" />
-          <button type="submit" className="btn btn-primary">
+          <button type="submit" className="btn btn-primary btn-block-mobile min-h-11 sm:w-auto">
             Filtrer
           </button>
         </form>
@@ -177,7 +177,7 @@ export default async function AttendanceByGroupPage({
                   <span>{group.groupName}</span>
                   <span className="text-xs text-[var(--muted-foreground)]">{group.rows.length} séance(s)</span>
                 </summary>
-                <div className="overflow-x-auto border-t border-[var(--border)]">
+                <div className="data-table overflow-x-auto border-t border-[var(--border)]">
                   <table className="w-full text-sm">
                     <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
                       <tr>
@@ -196,7 +196,7 @@ export default async function AttendanceByGroupPage({
                     <tbody className="divide-y divide-[var(--border)]">
                       {group.rows.map((row) => (
                         <tr key={row.id} className="hover:bg-[var(--surface-soft)] transition-colors">
-                          <td className="px-4 py-3 whitespace-nowrap" data-label="Date">
+                          <td className="data-table-primary px-4 py-3 whitespace-nowrap" data-label="Date">
                             {formatDate(row.date)}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap" data-label="Horaire">

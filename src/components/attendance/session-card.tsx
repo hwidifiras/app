@@ -17,7 +17,7 @@ export type SessionCardData = {
     members: Array<{ id: string; memberId: string; member: { id: string; firstName: string; lastName: string } }>;
   };
   coach: { firstName: string; lastName: string } | null;
-  attendances: Array<{ id: string; memberId: string; status: string }>;
+  attendances: Array<{ id: string; memberId: string; status: string; overrideReason?: string | null }>;
 };
 export function SessionCard({
   session,

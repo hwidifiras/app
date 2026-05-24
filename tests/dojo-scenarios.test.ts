@@ -27,6 +27,7 @@ import {
 } from "@/lib/membership-rules";
 import { enrollmentQuoteSchema } from "@/lib/schemas/enrollment";
 import { createSubscriptionPlanSchema } from "@/lib/schemas/subscription-plan";
+import { validateSessionSlot } from "@/lib/session-slot-conflict";
 
 async function resetData() {
   await prisma.$transaction([
@@ -249,7 +250,7 @@ async function createActiveSubscription(
 
 async function createSessionForGroup(
   groupId: string,
-  overrides: Partial<{ sessionDate: Date; startTime: string; endTime: string; room: string }> = {},
+  overrides: Partial<{ sessionDate: Date; startTime: string; endTime: string; room: string; coachId: string | null }> = {},
 ) {
   return prisma.session.create({
     data: {
@@ -258,6 +259,7 @@ async function createSessionForGroup(
       startTime: overrides.startTime ?? "18:00",
       endTime: overrides.endTime ?? "19:30",
       room: overrides.room ?? "Dojo A",
+      coachId: overrides.coachId,
       status: "PLANNED",
     },
   });
@@ -273,11 +275,27 @@ describe("schema guardrails", () => {
     const parsed = createSubscriptionPlanSchema.safeParse({
       name: "Mensuel",
       price: 3500,
-      totalSessions: 12,
+      sessionsPerWeek: 3,
       validityDays: 30,
     });
 
     expect(parsed.success).toBe(false);
+  });
+
+  it("derives monthly sessions from weekly frequency", () => {
+    const parsed = createSubscriptionPlanSchema.safeParse({
+      name: "Mensuel",
+      price: 3500,
+      sessionsPerWeek: 3,
+      validityDays: 30,
+      sportId: "sport-id",
+    });
+
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.totalSessions).toBe(12);
+      expect(parsed.data.sessionsPerWeek).toBe(3);
+    }
   });
 
   it("requires parent name and phone when enrolling a new child", async () => {
@@ -723,6 +741,73 @@ describe("additional enrollment and offer boundaries", () => {
   });
 });
 
+describe("session double booking", () => {
+  it("blocks coach overlap across groups but allows touching slots", async () => {
+    const fx = await dojoFixture();
+    const sessionDate = new Date("2026-05-18T18:00:00.000Z");
+
+    await createSessionForGroup(fx.adultBjj.id, {
+      sessionDate,
+      startTime: "18:00",
+      endTime: "19:30",
+      coachId: fx.coach.id,
+      room: "Dojo A",
+    });
+
+    const overlapError = await validateSessionSlot({
+      groupId: fx.adultKarate.id,
+      groupName: fx.adultKarate.name,
+      sessionDate,
+      startTime: "19:00",
+      endTime: "20:00",
+      coachId: fx.coach.id,
+      room: "Dojo D",
+      excludeIds: [],
+    });
+
+    expect(overlapError).toMatch(/coach/i);
+
+    const touchingError = await validateSessionSlot({
+      groupId: fx.adultKarate.id,
+      groupName: fx.adultKarate.name,
+      sessionDate,
+      startTime: "19:30",
+      endTime: "20:30",
+      coachId: fx.coach.id,
+      room: "Dojo D",
+      excludeIds: [],
+    });
+
+    expect(touchingError).toBeNull();
+  });
+
+  it("blocks room overlap across groups", async () => {
+    const fx = await dojoFixture();
+    const sessionDate = new Date("2026-05-18T18:00:00.000Z");
+
+    await createSessionForGroup(fx.adultBjj.id, {
+      sessionDate,
+      startTime: "18:00",
+      endTime: "19:30",
+      coachId: fx.coach.id,
+      room: "Dojo A",
+    });
+
+    const roomError = await validateSessionSlot({
+      groupId: fx.adultKarate.id,
+      groupName: fx.adultKarate.name,
+      sessionDate,
+      startTime: "18:30",
+      endTime: "19:30",
+      coachId: null,
+      room: "Dojo A",
+      excludeIds: [],
+    });
+
+    expect(roomError).toMatch(/salle/i);
+  });
+});
+
 describe("api route scenarios", () => {
   it("rejects overpayment and accepts exact remaining payment", async () => {
     await signIn();
@@ -797,7 +882,7 @@ describe("api route scenarios", () => {
     expect(deletedBody.data).toEqual({ id: unused.id });
   });
 
-  it("decrements sessions for PRESENT, rejects duplicate attendance, and leaves ABSENT unchanged", async () => {
+  it("decrements sessions for PRESENT and ABSENT, rejects duplicate attendance", async () => {
     await signIn();
     const fx = await dojoFixture();
     const sub = await createActiveSubscription(fx, { remainingSessions: 3 });
@@ -839,7 +924,56 @@ describe("api route scenarios", () => {
     expect(present.status).toBe(201);
     expect(duplicate.status).toBe(409);
     expect(absent.status).toBe(201);
-    expect(refreshed.remainingSessions).toBe(2);
+    expect(refreshed.remainingSessions).toBe(1);
+  });
+
+  it("allows recovery check-in on another equivalent group after an absence", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const sub = await createActiveSubscription(fx, { remainingSessions: 4 });
+    await prisma.payment.create({
+      data: { memberSubscriptionId: sub.id, amount: sub.amount },
+    });
+
+    const absentSession = await createSessionForGroup(fx.adultBjj.id, {
+      sessionDate: new Date("2026-05-18T18:00:00.000Z"),
+    });
+    const recoverySession = await createSessionForGroup(fx.adultBjjOverlap.id, {
+      sessionDate: new Date("2026-05-20T18:00:00.000Z"),
+      startTime: "18:30",
+      endTime: "19:30",
+      room: "Dojo B",
+    });
+
+    await prisma.groupMember.create({
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date() },
+    });
+
+    const absent = await createAttendance(
+      jsonRequest("POST", {
+        sessionId: absentSession.id,
+        memberId: fx.adult.id,
+        status: "ABSENT",
+      }),
+    );
+    expect(absent.status).toBe(201);
+
+    const afterAbsent = await prisma.memberSubscription.findUniqueOrThrow({ where: { id: sub.id } });
+    expect(afterAbsent.remainingSessions).toBe(3);
+
+    const recovery = await createAttendance(
+      jsonRequest("POST", {
+        sessionId: recoverySession.id,
+        memberId: fx.adult.id,
+        status: "OVERRIDE",
+        overrideKind: "RECOVERY",
+        overrideReason: "Créneau proposé",
+      }),
+    );
+    expect(recovery.status).toBe(201);
+
+    const afterRecovery = await prisma.memberSubscription.findUniqueOrThrow({ where: { id: sub.id } });
+    expect(afterRecovery.remainingSessions).toBe(3);
   });
 
   it("rejects normal check-in with no remaining sessions", async () => {

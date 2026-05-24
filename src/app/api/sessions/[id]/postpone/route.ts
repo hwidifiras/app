@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/request-user";
 import { getAppTimeZone, utcDateOnlyForTimeZone } from "@/lib/dates";
 import { postponeSessionSchema } from "@/lib/schemas/session";
-import { buildSessionSlotConflictMessage, findSessionSlotConflict } from "@/lib/session-slot-conflict";
+import { validateSessionSlot } from "@/lib/session-slot-conflict";
 
 export const runtime = "nodejs";
 
@@ -81,6 +81,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       sessionDate: true,
       startTime: true,
       endTime: true,
+      coachId: true,
+      room: true,
       postponementDetails: true,
       group: { select: { name: true } },
     },
@@ -101,20 +103,19 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const duration = minutesDiff(existing.startTime, existing.endTime);
   const newEndTime = addMinutesToTime(newStartTime, duration);
 
-  const conflict = await findSessionSlotConflict({
+  const conflictError = await validateSessionSlot({
     groupId: existing.groupId,
+    groupName: existing.group.name,
     sessionDate: newSessionDate,
     startTime: newStartTime,
+    endTime: newEndTime,
+    coachId: existing.coachId,
+    room: existing.room,
     excludeIds: [id],
   });
 
-  if (conflict) {
-    return NextResponse.json(
-      {
-        error: buildSessionSlotConflictMessage(existing.group.name, newSessionDate, newStartTime),
-      },
-      { status: 409 },
-    );
+  if (conflictError) {
+    return NextResponse.json({ error: conflictError }, { status: 409 });
   }
 
   let originalInfo = {

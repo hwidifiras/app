@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { FormActions } from "@/components/ui/form-layout";
 import type { OfferLike } from "@/lib/offer-display";
 import {
   formatOfferRulesSummary,
@@ -140,9 +141,11 @@ export function OffersManager() {
               </p>
             </>
           )}
-          <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? "Création…" : "Créer l'offre"}
-          </button>
+          <FormActions sticky>
+            <button type="submit" className="btn btn-primary btn-block-mobile min-h-11" disabled={loading}>
+              {loading ? "Création…" : "Créer l'offre"}
+            </button>
+          </FormActions>
         </form>
       </section>
       <section className="panel p-5">

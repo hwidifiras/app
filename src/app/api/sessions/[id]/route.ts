@@ -11,9 +11,8 @@ import {
 import { updateSessionSchema } from "@/lib/schemas/session";
 import { requireAuth } from "@/lib/request-user";
 import {
-  buildSessionSlotConflictMessage,
-  findSessionSlotConflict,
   formatSessionSlotLabel,
+  validateSessionSlot,
 } from "@/lib/session-slot-conflict";
 
 export const runtime = "nodejs";
@@ -162,6 +161,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       scheduleId: true,
       sessionDate: true,
       startTime: true,
+      endTime: true,
+      coachId: true,
+      room: true,
       status: true,
       group: { select: { name: true } },
     },
@@ -193,24 +195,28 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const targetDate = nextSessionDate ?? existingDateOnly;
   const targetStartTime = payload.startTime ?? existing.startTime;
+  const targetEndTime = payload.endTime ?? existing.endTime;
+  const targetCoachId = payload.coachId !== undefined ? payload.coachId : existing.coachId;
+  const targetRoom = payload.room !== undefined ? payload.room : existing.room;
   const dateChanged = nextSessionDate !== undefined && nextSessionDate.getTime() !== existingDateOnly.getTime();
   const timeChanged = payload.startTime !== undefined && payload.startTime !== existing.startTime;
+  const coachChanged = payload.coachId !== undefined && payload.coachId !== existing.coachId;
+  const roomChanged = payload.room !== undefined && payload.room !== existing.room;
 
-  if (dateChanged || timeChanged) {
-    const conflict = await findSessionSlotConflict({
+  if (dateChanged || timeChanged || coachChanged || roomChanged) {
+    const conflictError = await validateSessionSlot({
       groupId: existing.groupId,
+      groupName: existing.group.name,
       sessionDate: targetDate,
       startTime: targetStartTime,
+      endTime: targetEndTime,
+      coachId: targetCoachId,
+      room: targetRoom,
       excludeIds: [id],
     });
 
-    if (conflict) {
-      return NextResponse.json(
-        {
-          error: buildSessionSlotConflictMessage(existing.group.name, targetDate, targetStartTime),
-        },
-        { status: 409 },
-      );
+    if (conflictError) {
+      return NextResponse.json({ error: conflictError }, { status: 409 });
     }
   }
 
@@ -288,17 +294,21 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       }
 
       for (const planned of plannedUpdates) {
-        const conflict = await findSessionSlotConflict({
+        const conflictError = await validateSessionSlot({
           groupId: existing.groupId,
+          groupName: existing.group.name,
           sessionDate: planned.sessionDate,
           startTime: planned.startTime,
+          endTime: planned.endTime,
+          coachId: payload.coachId !== undefined ? payload.coachId : existing.coachId,
+          room: payload.room !== undefined ? payload.room : existing.room,
           excludeIds: affectedIds,
         });
 
-        if (conflict) {
+        if (conflictError) {
           return NextResponse.json(
             {
-              error: `Conflit le ${formatSessionSlotLabel(planned.sessionDate, planned.startTime)} : une autre séance du groupe « ${existing.group.name} » occupe déjà ce créneau.`,
+              error: `Conflit le ${formatSessionSlotLabel(planned.sessionDate, planned.startTime)} : ${conflictError}`,
             },
             { status: 409 },
           );

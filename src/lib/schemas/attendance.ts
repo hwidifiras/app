@@ -1,11 +1,13 @@
 import { z } from "zod";
 
 const attendanceStatusEnum = z.enum(["PRESENT", "ABSENT", "OVERRIDE"]);
+const overrideKindEnum = z.enum(["STANDARD", "RECOVERY"]);
 
 export const createAttendanceSchema = z.object({
   sessionId: z.string().trim().min(1, "Séance requise"),
   memberId: z.string().trim().min(1, "Membre requis"),
   status: attendanceStatusEnum,
+  overrideKind: overrideKindEnum.optional(),
   overrideReason: z.string().trim().max(500).optional().or(z.literal("")),
   checkedBy: z.string().trim().max(100).optional().or(z.literal("")),
 });
