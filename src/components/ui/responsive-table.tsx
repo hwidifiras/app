@@ -25,7 +25,7 @@ export function DataTableHead({ children, className }: { children: React.ReactNo
   return (
     <thead
       className={cn(
-        "bg-[linear-gradient(180deg,rgba(244,248,255,0.94)_0%,rgba(236,244,255,0.92)_100%)] text-xs uppercase tracking-[0.08em] text-muted-foreground",
+        "bg-[var(--surface-soft)] text-xs uppercase tracking-[0.08em] text-muted-foreground",
         className,
       )}
     >
@@ -52,7 +52,7 @@ export function DataTableRow({
   return (
     <tr
       className={cn(
-        "transition-colors duration-150 hover:bg-[rgba(234,241,252,0.72)]",
+        "transition-colors duration-150 hover:bg-[var(--surface-soft)]",
         expanded !== undefined && "mobile-collapsible-row",
         expanded && "is-expanded",
         onClick && "cursor-pointer",

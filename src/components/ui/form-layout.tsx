@@ -12,7 +12,7 @@ export function FormSection({
   className?: string;
 }) {
   return (
-    <section className={cn("rounded-xl border border-border/80 bg-[var(--surface)]/90 p-3.5 md:p-4", className)}>
+    <section className={cn("rounded-xl border border-border/80 bg-[var(--surface)] p-3.5 md:p-4", className)}>
       {title ? <h3 className="text-sm font-semibold text-foreground">{title}</h3> : null}
       {description ? <p className="mt-0.5 text-xs text-muted-foreground">{description}</p> : null}
       <div className={cn(title || description ? "mt-3" : undefined)}>{children}</div>
@@ -81,7 +81,7 @@ export function FormActions({
       className={cn(
         "form-actions mt-4 border-t border-border/70 pt-4",
         sticky &&
-          "sticky bottom-[calc(3.65rem+env(safe-area-inset-bottom,0px))] z-10 -mx-3.5 border-t border-border bg-[linear-gradient(180deg,transparent_0%,var(--surface)_24%)] px-3.5 pb-3 pt-3 md:bottom-0 md:-mx-4 md:px-4 md:pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+          "sticky bottom-[calc(3.65rem+env(safe-area-inset-bottom,0px))] z-20 -mx-3.5 border-t border-border bg-[var(--background)] px-3.5 pb-3 pt-3 shadow-[0_-10px_28px_-8px_rgba(16,36,63,0.14)] md:bottom-0 md:-mx-4 md:px-4 md:pb-[max(0.75rem,env(safe-area-inset-bottom))]",
         className,
       )}
     >

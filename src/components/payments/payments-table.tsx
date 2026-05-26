@@ -4,11 +4,8 @@ import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 
+import { buildSubscriptionBillingView, formatMoney } from "@/lib/subscription-billing";
 import { cn } from "@/lib/utils";
-
-function formatCurrency(cents: number) {
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
-}
 
 type PaymentGroup = {
   subscriptionId: string;
@@ -16,6 +13,9 @@ type PaymentGroup = {
   planName: string;
   totalDue: number;
   totalPaid: number;
+  listPriceCents: number | null;
+  discountCents: number;
+  offerName: string | null;
   isComplete: boolean;
   payments: Array<{
     id: string;
@@ -39,18 +39,20 @@ function SubscriptionProgressBar({
   paid,
   due,
   complete,
+  hasOffer,
 }: {
   paid: number;
   due: number;
   complete: boolean;
+  hasOffer: boolean;
 }) {
   const pct = progressPercent(paid, due);
   return (
-    <div className="h-1.5 w-full overflow-hidden rounded-full bg-(--surface-soft)" role="presentation">
+    <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-soft)]" role="presentation">
       <div
         className={cn(
           "h-full rounded-full transition-all duration-300",
-          complete ? "bg-[var(--success)]" : "bg-amber-500",
+          complete ? "bg-[var(--success)]" : hasOffer ? "bg-sky-500" : "bg-amber-500",
         )}
         style={{ width: `${pct}%` }}
       />
@@ -58,31 +60,72 @@ function SubscriptionProgressBar({
   );
 }
 
-function StatusChip({ complete, remaining }: { complete: boolean; remaining: number }) {
-  if (complete) {
-    return (
-      <span className="inline-flex shrink-0 items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[0.65rem] font-semibold text-emerald-700">
-        Payé
-      </span>
-    );
-  }
+function StatusChip({
+  statusLabel,
+  statusTone,
+}: {
+  statusLabel: string;
+  statusTone: "success" | "warning" | "muted";
+}) {
+  const classes =
+    statusTone === "success"
+      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
+      : statusTone === "warning"
+        ? "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+        : "bg-[var(--surface-soft)] text-[var(--muted-foreground)]";
+
   return (
-    <span className="inline-flex shrink-0 items-center rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-semibold text-amber-800">
-      Reste {formatCurrency(remaining)}
+    <span className={cn("inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[0.65rem] font-semibold", classes)}>
+      {statusLabel}
     </span>
+  );
+}
+
+function OfferRemark({ remark }: { remark: string | null }) {
+  if (!remark) return null;
+  return (
+    <p className="mt-1 text-[0.65rem] leading-snug text-emerald-800 dark:text-emerald-200">{remark}</p>
   );
 }
 
 function PaymentInstallmentStatus({ status }: { status: string }) {
   if (status === "Paiement complet") {
-    return (
-      <span className="text-[0.65rem] font-medium text-emerald-700">{status}</span>
-    );
+    return <span className="text-[0.65rem] font-medium text-emerald-700">{status}</span>;
   }
   if (status.startsWith("Avance")) {
     return <span className="text-[0.65rem] font-medium text-sky-700">{status}</span>;
   }
   return <span className="text-[0.65rem] font-medium text-amber-700">{status}</span>;
+}
+
+function AmountSummary({ group }: { group: PaymentGroup }) {
+  const billing = buildSubscriptionBillingView({
+    amount: group.totalDue,
+    totalPaid: group.totalPaid,
+    listPriceCents: group.listPriceCents,
+    discountCents: group.discountCents,
+    offerName: group.offerName,
+  });
+
+  return (
+    <span className="shrink-0 text-right">
+      <span
+        className={cn(
+          "block text-sm font-bold tabular-nums",
+          billing.isComplete ? "text-emerald-700 dark:text-emerald-300" : "text-[var(--foreground)]",
+        )}
+      >
+        {formatMoney(billing.totalPaid)}
+      </span>
+      <span className="block text-[0.65rem] tabular-nums text-[var(--muted-foreground)]">
+        / {formatMoney(billing.amountDue)}
+        {billing.hasOfferDiscount && billing.listPriceCents > billing.amountDue ? (
+          <span className="ml-1 line-through opacity-70">{formatMoney(billing.listPriceCents)}</span>
+        ) : null}
+      </span>
+      <OfferRemark remark={billing.offerRemark} />
+    </span>
+  );
 }
 
 export function PaymentsTable({ groups }: PaymentsTableProps) {
@@ -111,11 +154,16 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
 
   return (
     <>
-      {/* Mobile: hierarchical subscription bars */}
       <ul className="space-y-2.5 md:hidden">
         {groups.map((group) => {
+          const billing = buildSubscriptionBillingView({
+            amount: group.totalDue,
+            totalPaid: group.totalPaid,
+            listPriceCents: group.listPriceCents,
+            discountCents: group.discountCents,
+            offerName: group.offerName,
+          });
           const isOpen = expandedId === group.subscriptionId;
-          const remaining = Math.max(0, group.totalDue - group.totalPaid);
           const installmentCount = group.payments.length;
 
           return (
@@ -123,7 +171,7 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
               key={group.subscriptionId}
               className={cn(
                 "overflow-hidden rounded-xl border bg-[var(--surface)] shadow-sm transition-shadow",
-                group.isComplete ? "border-emerald-200/80" : "border-amber-200/80",
+                billing.isComplete ? "border-emerald-200/80" : "border-amber-200/80",
               )}
             >
               <button
@@ -143,20 +191,18 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
                       </span>
                       <span className="block truncate text-xs text-[var(--muted-foreground)]">{group.planName}</span>
                     </span>
-                    <span className="shrink-0 text-right">
-                      <span className="block text-sm font-bold text-[var(--foreground)]">
-                        {formatCurrency(group.totalPaid)}
-                      </span>
-                      <span className="block text-[0.65rem] text-[var(--muted-foreground)]">
-                        / {formatCurrency(group.totalDue)}
-                      </span>
-                    </span>
+                    <AmountSummary group={group} />
                   </span>
                   <span className="mt-2 block">
-                    <SubscriptionProgressBar paid={group.totalPaid} due={group.totalDue} complete={group.isComplete} />
+                    <SubscriptionProgressBar
+                      paid={billing.totalPaid}
+                      due={billing.amountDue}
+                      complete={billing.isComplete}
+                      hasOffer={billing.hasOfferDiscount}
+                    />
                   </span>
                   <span className="mt-2 flex flex-wrap items-center gap-2">
-                    <StatusChip complete={group.isComplete} remaining={remaining} />
+                    <StatusChip statusLabel={billing.statusLabel} statusTone={billing.statusTone} />
                     <span className="text-[0.65rem] text-[var(--muted-foreground)]">
                       {installmentCount} versement{installmentCount > 1 ? "s" : ""}
                     </span>
@@ -165,13 +211,13 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
               </button>
 
               {isOpen ? (
-                <div className="border-t border-[var(--border)] bg-[var(--surface-soft)]/50 px-3 pb-3 pt-2">
+                <div className="border-t border-[var(--border)] bg-[var(--surface-soft)] px-3 pb-3 pt-2">
                   <ul className="space-y-1.5 border-l-2 border-[var(--primary)]/25 pl-3">
                     {group.payments.map((p, index) => (
                       <li key={p.id}>
                         <button
                           type="button"
-                          className="flex w-full items-center justify-between gap-2 rounded-lg bg-[var(--surface)] px-2.5 py-2 text-left shadow-sm ring-1 ring-[var(--border)]/80 active:bg-[var(--surface-soft)]"
+                          className="flex w-full items-center justify-between gap-2 rounded-lg bg-[var(--surface)] px-2.5 py-2 text-left shadow-sm ring-1 ring-[var(--border)] active:bg-[var(--surface-soft)]"
                           onClick={() => goToEditPayment(p.id)}
                         >
                           <span className="min-w-0">
@@ -185,7 +231,7 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
                             <PaymentInstallmentStatus status={p.status} />
                           </span>
                           <span className="shrink-0 text-sm font-bold text-[var(--foreground)]">
-                            {formatCurrency(p.amount)}
+                            {formatMoney(p.amount)}
                           </span>
                         </button>
                         {p.paymentMethod ? (
@@ -196,10 +242,10 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
                       </li>
                     ))}
                   </ul>
-                  {!group.isComplete ? (
+                  {!billing.isComplete ? (
                     <button
                       type="button"
-                      className="btn btn-primary btn-block-mobile mt-2.5 min-h-11 flex items-center justify-center gap-1"
+                      className="btn btn-primary btn-block-mobile mt-2.5 flex min-h-11 items-center justify-center gap-1"
                       onClick={() => goToAddPayment(group.subscriptionId)}
                     >
                       <Plus className="size-3.5" />
@@ -213,7 +259,6 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
         })}
       </ul>
 
-      {/* Desktop: table */}
       <div className="data-table hidden overflow-x-auto md:block">
         <table className="w-full text-sm">
           <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
@@ -224,14 +269,20 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
               <th className="px-4 py-3 text-left font-semibold">Montant</th>
               <th className="hidden px-4 py-3 text-left font-semibold sm:table-cell">Date</th>
               <th className="hidden px-4 py-3 text-left font-semibold md:table-cell">Méthode</th>
-              <th className="px-4 py-3 text-left font-semibold">Statut versement</th>
+              <th className="px-4 py-3 text-left font-semibold">Statut</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border)]">
             {groups.map((group) => {
+              const billing = buildSubscriptionBillingView({
+                amount: group.totalDue,
+                totalPaid: group.totalPaid,
+                listPriceCents: group.listPriceCents,
+                discountCents: group.discountCents,
+                offerName: group.offerName,
+              });
               const isOpen = expandedId === group.subscriptionId;
               const hasMultiple = group.payments.length > 1;
-              const remaining = Math.max(0, group.totalDue - group.totalPaid);
 
               return (
                 <Fragment key={group.subscriptionId}>
@@ -266,22 +317,29 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
                     <td className="px-4 py-3 font-semibold text-[var(--foreground)]">{group.memberName}</td>
                     <td className="px-4 py-3 font-medium text-[var(--foreground)]">{group.planName}</td>
                     <td className="px-4 py-3 font-semibold text-[var(--foreground)]">
-                      <div className="mb-1.5 max-w-[10rem]">
+                      <div className="mb-1.5 max-w-[12rem]">
                         <SubscriptionProgressBar
-                          paid={group.totalPaid}
-                          due={group.totalDue}
-                          complete={group.isComplete}
+                          paid={billing.totalPaid}
+                          due={billing.amountDue}
+                          complete={billing.isComplete}
+                          hasOffer={billing.hasOfferDiscount}
                         />
                       </div>
-                      {formatCurrency(group.totalPaid)}
-                      <span className="font-normal text-[var(--muted-foreground)]"> / {formatCurrency(group.totalDue)}</span>
+                      <span className={billing.isComplete ? "text-emerald-700" : undefined}>
+                        {formatMoney(billing.totalPaid)}
+                      </span>
+                      <span className="font-normal text-[var(--muted-foreground)]">
+                        {" "}
+                        / {formatMoney(billing.amountDue)}
+                      </span>
+                      <OfferRemark remark={billing.offerRemark} />
                     </td>
                     <td className="hidden px-4 py-3 sm:table-cell">—</td>
                     <td className="hidden px-4 py-3 md:table-cell">—</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <StatusChip complete={group.isComplete} remaining={remaining} />
-                        {!group.isComplete ? <Plus className="size-3.5 text-[var(--primary)]" /> : null}
+                        <StatusChip statusLabel={billing.statusLabel} statusTone={billing.statusTone} />
+                        {!billing.isComplete ? <Plus className="size-3.5 text-[var(--primary)]" /> : null}
                       </div>
                     </td>
                   </tr>
@@ -290,14 +348,14 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
                     ? group.payments.map((p) => (
                         <tr
                           key={p.id}
-                          className="cursor-pointer bg-[var(--surface-soft)]/40 transition-colors hover:bg-[var(--surface-soft)]"
+                          className="cursor-pointer bg-[var(--surface-soft)] transition-colors hover:bg-[var(--surface-soft)]"
                           onClick={() => goToEditPayment(p.id)}
                         >
                           <td className="px-4 py-2" />
                           <td className="px-4 py-2 pl-8 text-xs text-[var(--muted-foreground)]" colSpan={2}>
                             ↳ Versement · {new Date(p.paymentDate).toLocaleDateString("fr-FR")}
                           </td>
-                          <td className="px-4 py-2 font-medium text-[var(--foreground)]">{formatCurrency(p.amount)}</td>
+                          <td className="px-4 py-2 font-medium text-[var(--foreground)]">{formatMoney(p.amount)}</td>
                           <td className="hidden px-4 py-2 sm:table-cell">
                             {new Date(p.paymentDate).toLocaleDateString("fr-FR")}
                           </td>

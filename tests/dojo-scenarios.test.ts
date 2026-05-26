@@ -13,6 +13,7 @@ import { POST as createAttendance } from "@/app/api/attendances/route";
 import { POST as createPayment } from "@/app/api/payments/route";
 import { DELETE as deleteSport } from "@/app/api/sports/route";
 import { DELETE as deleteSubscriptionPlan } from "@/app/api/subscription-plans/route";
+import { POST as applyEnrollment } from "@/app/api/enrollment/apply/route";
 import {
   PATCH as patchMemberSubscription,
   POST as createMemberSubscription,
@@ -499,6 +500,67 @@ describe("subscriptions, payments and offers", () => {
     expect(quote.blocked).toBe(false);
     expect(quote.totalFinalCents).toBe(18000);
     expect(quote.totalDiscountCents).toBe(6000);
+    expect(quote.lines.every((l) => !l.reusesExistingSubscription)).toBe(true);
+  });
+
+  it("persists family bundle pricing when enrolling existing members who already had active subscriptions", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const household = await prisma.household.create({ data: { label: "Famille" } });
+    await prisma.householdMember.create({
+      data: { householdId: household.id, memberId: fx.adult.id, relationship: "PARENT" },
+    });
+    await prisma.householdMember.create({
+      data: { householdId: household.id, memberId: fx.kid.id, relationship: "CHILD" },
+    });
+    await prisma.subscriptionPlan.update({
+      where: { id: fx.bjjPlan.id },
+      data: { price: 3500 },
+    });
+    await createActiveSubscription(fx, { memberId: fx.adult.id, amount: 3500 });
+    await createActiveSubscription(fx, { memberId: fx.kid.id, amount: 3500 });
+
+    const offer = await prisma.offer.create({
+      data: {
+        name: "Mère et fille",
+        kind: "FAMILY_BUNDLE",
+        rules: JSON.stringify({ minMembers: 2, requiresHousehold: true, bundlePriceCents: 5000 }),
+      },
+    });
+
+    const response = await applyEnrollment(
+      jsonRequest("POST", {
+        offerId: offer.id,
+        lines: [
+          {
+            memberId: fx.adult.id,
+            groupId: fx.adultBjj.id,
+            planId: fx.bjjPlan.id,
+            paymentCents: 2500,
+          },
+          {
+            memberId: fx.kid.id,
+            groupId: fx.kidBjj.id,
+            planId: fx.bjjPlan.id,
+            paymentCents: 2500,
+          },
+        ],
+      }),
+    );
+
+    expect(response.status).toBe(201);
+
+    const subs = await prisma.memberSubscription.findMany({
+      where: { memberId: { in: [fx.adult.id, fx.kid.id] }, status: "ACTIVE" },
+    });
+    expect(subs).toHaveLength(2);
+    for (const sub of subs) {
+      expect(sub.amount).toBe(2500);
+      expect(sub.listPriceCents).toBe(3500);
+      expect(sub.discountCents).toBe(1000);
+      expect(sub.offerName).toBe("Mère et fille");
+      expect(sub.offerApplicationId).toBeTruthy();
+    }
   });
 
   it("applies family bundle for two new members in the same quote", async () => {

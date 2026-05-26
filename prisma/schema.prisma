@@ -301,13 +301,18 @@ model MemberSubscription {
   sport             Sport              @relation(fields: [sportId], references: [id], onDelete: Restrict)
   startDate         DateTime
   endDate           DateTime?
-  amount            Int
-  remainingSessions Int
-  status            SubscriptionStatus @default(DRAFT)
-  payments          Payment[]
-  attendances       Attendance[]
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  amount               Int
+  listPriceCents       Int?
+  discountCents        Int                @default(0)
+  offerApplicationId   String?
+  offerApplication     OfferApplication?  @relation(fields: [offerApplicationId], references: [id], onDelete: SetNull)
+  offerName            String?
+  remainingSessions    Int
+  status               SubscriptionStatus @default(DRAFT)
+  payments             Payment[]
+  attendances          Attendance[]
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
 
   @@index([memberId, sportId, status])
 }
@@ -338,14 +343,15 @@ model Offer {
 }
 
 model OfferApplication {
-  id              String   @id @default(cuid())
+  id              String               @id @default(cuid())
   offerId         String
-  offer           Offer    @relation(fields: [offerId], references: [id], onDelete: Restrict)
+  offer           Offer                @relation(fields: [offerId], references: [id], onDelete: Restrict)
   memberIds       String
   subscriptionIds String
   quoteSnapshot   String
   createdById     String?
-  createdAt       DateTime @default(now())
+  createdAt       DateTime             @default(now())
+  subscriptions   MemberSubscription[]
 }
 
 model Attendance {

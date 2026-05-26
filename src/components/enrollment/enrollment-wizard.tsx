@@ -13,6 +13,7 @@ import {
   getOfferEnrollmentHint,
   getOfferKindLabel,
 } from "@/lib/offer-display";
+import { formatPaymentPrefill } from "@/lib/subscription-billing";
 import type { OfferKind } from "@prisma/client";
 
 type MemberOption = { id: string; firstName: string; lastName: string; phone: string };
@@ -192,6 +193,17 @@ export function EnrollmentWizard() {
       return;
     }
     setQuote(data.data);
+    const quoteData = data.data as QuoteData;
+    setLines((prev) =>
+      prev.map((row, index) => {
+        const quoteLine = quoteData.lines[index];
+        if (!quoteLine || quoteLine.blocked) return row;
+        return {
+          ...row,
+          paymentCents: formatPaymentPrefill(quoteLine.finalAmountCents),
+        };
+      }),
+    );
     setStep(3);
   }
 
@@ -375,10 +387,21 @@ export function EnrollmentWizard() {
                 <p>
                   {formatEur(l.finalAmountCents)}
                   {l.discountCents > 0 && (
-                    <span className="text-green-700"> (−{formatEur(l.discountCents)})</span>
+                    <span className="text-green-700">
+                      {" "}
+                      (−{formatEur(l.discountCents)} · catalogue {formatEur(l.listPriceCents)})
+                    </span>
                   )}
                 </p>
-                {l.reusesExistingSubscription && (
+                {l.discountCents > 0 && quote.offerName && (
+                  <ReceptionInfoCard variant="success" className="mt-2">
+                    <p className="font-semibold">Offre « {quote.offerName} »</p>
+                    <p>
+                      Nouvel abonnement à {formatEur(l.finalAmountCents)} — le paiement ci-dessous est prérempli.
+                    </p>
+                  </ReceptionInfoCard>
+                )}
+                {l.reusesExistingSubscription && l.discountCents === 0 && (
                   <ReceptionInfoCard variant="warning" className="mt-2">
                     <p className="font-semibold">Même abonnement réutilisé</p>
                     <p>Pas de nouvelles séances — ajout d&apos;un cours ou paiement du solde uniquement.</p>

@@ -16,6 +16,9 @@ export default async function SubscriptionsPage() {
     memberPhone: string;
     planName: string;
     amount: number;
+    listPriceCents: number | null;
+    discountCents: number;
+    offerName: string | null;
     startDate: string;
     endDate: string | null;
     status: SubscriptionStatus;
@@ -42,6 +45,9 @@ export default async function SubscriptionsPage() {
       memberPhone: s.member.phone,
       planName: s.plan.name,
       amount: s.amount,
+      listPriceCents: s.listPriceCents,
+      discountCents: s.discountCents,
+      offerName: s.offerName,
       startDate: s.startDate.toISOString(),
       endDate: s.endDate?.toISOString() ?? null,
       status: s.status,

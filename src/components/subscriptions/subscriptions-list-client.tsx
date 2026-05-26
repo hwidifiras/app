@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { StatusBadge } from "@/components/ui/status-badge";
+import { buildSubscriptionBillingView, formatMoney } from "@/lib/subscription-billing";
 import {
   DataTable,
   DataTableBody,
@@ -22,6 +23,9 @@ export type SubscriptionRow = {
   memberPhone: string;
   planName: string;
   amount: number;
+  listPriceCents: number | null;
+  discountCents: number;
+  offerName: string | null;
   startDate: string;
   endDate: string | null;
   status: SubscriptionStatus;
@@ -104,7 +108,13 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
       <DataTableBody>
         {subscriptions.map((sub) => {
           const isExpanded = expandedIds.includes(sub.id);
-          const paidOk = sub.totalPaid >= sub.amount;
+          const billing = buildSubscriptionBillingView({
+            amount: sub.amount,
+            totalPaid: sub.totalPaid,
+            listPriceCents: sub.listPriceCents,
+            discountCents: sub.discountCents,
+            offerName: sub.offerName,
+          });
           return (
             <DataTableRow key={sub.id} expanded={isExpanded}>
               <Td label="Membre" primary className="font-medium">
@@ -113,9 +123,17 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
               </Td>
               <Td label="Plan" mobileDetail>
                 {sub.planName}
+                {billing.offerRemark ? (
+                  <p className="mt-0.5 text-[0.65rem] leading-snug text-emerald-700">{billing.offerRemark}</p>
+                ) : null}
               </Td>
               <Td label="Montant" className="hidden sm:table-cell">
-                {formatCurrency(sub.amount)}
+                {formatMoney(sub.amount)}
+                {billing.hasOfferDiscount && billing.listPriceCents > sub.amount ? (
+                  <span className="ml-1 text-xs text-muted-foreground line-through">
+                    {formatMoney(billing.listPriceCents)}
+                  </span>
+                ) : null}
               </Td>
               <Td label="Début" mobileDetail className="hidden md:table-cell">
                 {formatDate(sub.startDate)}
@@ -124,9 +142,16 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
                 {formatDate(sub.endDate)}
               </Td>
               <Td label="Payé" mobileDetail className="hidden lg:table-cell">
-                <span className={paidOk ? "font-semibold text-[var(--success)]" : "font-semibold text-amber-700"}>
-                  {formatCurrency(sub.totalPaid)}
+                <span
+                  className={
+                    billing.isComplete
+                      ? "font-semibold text-[var(--success)]"
+                      : "font-semibold text-amber-700"
+                  }
+                >
+                  {formatMoney(billing.totalPaid)}
                 </span>
+                <span className="text-xs text-muted-foreground"> / {formatMoney(billing.amountDue)}</span>
               </Td>
               <Td label="Statut">
                 <StatusBadge variant={statusVariant(sub.status)}>{statusLabel(sub.status)}</StatusBadge>
@@ -137,10 +162,16 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
                 </span>
               </Td>
               <Td label="Montant" mobileDetail className="md:hidden">
-                {formatCurrency(sub.amount)}
+                {formatMoney(sub.amount)}
+                {billing.offerRemark ? (
+                  <p className="mt-0.5 text-[0.65rem] text-emerald-700">{billing.offerRemark}</p>
+                ) : null}
               </Td>
               <Td label="Payé" mobileDetail className="md:hidden">
-                <span className={paidOk ? "text-[var(--success)]" : "text-amber-700"}>{formatCurrency(sub.totalPaid)}</span>
+                <span className={billing.isComplete ? "text-[var(--success)]" : "text-amber-700"}>
+                  {formatMoney(billing.totalPaid)}
+                </span>
+                <span className="text-xs text-muted-foreground"> / {formatMoney(billing.amountDue)}</span>
               </Td>
               <Td label="Séances" mobileDetail className="md:hidden">
                 {sub.remainingSessions} / {sub.totalSessions}

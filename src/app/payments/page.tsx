@@ -14,6 +14,9 @@ type PaymentRow = {
   id: string;
   subscriptionId: string;
   totalDue: number;
+  listPriceCents: number | null;
+  discountCents: number;
+  offerName: string | null;
   memberName: string;
   planName: string;
   amount: number;
@@ -27,6 +30,9 @@ type PaymentGroup = {
   planName: string;
   totalDue: number;
   totalPaid: number;
+  listPriceCents: number | null;
+  discountCents: number;
+  offerName: string | null;
   isComplete: boolean;
   payments: Array<{
     id: string;
@@ -50,6 +56,9 @@ export default async function PaymentsPage() {
           select: {
             id: true,
             amount: true,
+            listPriceCents: true,
+            discountCents: true,
+            offerName: true,
             member: { select: { firstName: true, lastName: true } },
             plan: { select: { name: true } },
           },
@@ -61,6 +70,9 @@ export default async function PaymentsPage() {
       id: p.id,
       subscriptionId: p.memberSubscription.id,
       totalDue: p.memberSubscription.amount,
+      listPriceCents: p.memberSubscription.listPriceCents,
+      discountCents: p.memberSubscription.discountCents,
+      offerName: p.memberSubscription.offerName,
       memberName: p.memberSubscription.member
         ? `${p.memberSubscription.member.firstName} ${p.memberSubscription.member.lastName}`
         : "—",
@@ -126,6 +138,9 @@ export default async function PaymentsPage() {
         planName: sorted[0].planName,
         totalDue,
         totalPaid,
+        listPriceCents: sorted[0].listPriceCents,
+        discountCents: sorted[0].discountCents,
+        offerName: sorted[0].offerName,
         isComplete,
         payments: paymentsWithStatus,
       };

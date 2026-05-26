@@ -502,7 +502,7 @@ export async function buildEnrollmentQuote(
 
     const discount = discounts[i] ?? 0;
     const finalAmount = Math.max(0, r.listPrice - discount);
-    const reuses = !!r.existingSubId;
+    const reuses = !!r.existingSubId && discount === 0;
 
     quoteLines.push({
       lineIndex: i,

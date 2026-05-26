@@ -15,6 +15,10 @@ import {
 
 export const runtime = "nodejs";
 
+function formatPaymentPrefill(cents: number) {
+  return (cents / 100).toFixed(2).replace(".", ",");
+}
+
 export async function POST(request: Request) {
   let actor;
   try {
@@ -123,7 +127,9 @@ export async function POST(request: Request) {
           if (!conflict.ok) throw new Error(`LINE_SCHEDULE_${i}`);
         }
 
-        if (!quoteLine.reusesExistingSubscription) {
+        const mustCreateFreshSub = !quoteLine.reusesExistingSubscription;
+
+        if (mustCreateFreshSub) {
           await expireActiveSubscriptionForSport(tx, memberId, plan.sportId);
 
           const endDate = computeEndDate(startDate, plan.validityDays);
@@ -135,6 +141,9 @@ export async function POST(request: Request) {
               startDate,
               endDate,
               amount: quoteLine.finalAmountCents,
+              listPriceCents: quoteLine.listPriceCents,
+              discountCents: quoteLine.discountCents,
+              offerName: quote.offerName,
               remainingSessions: plan.totalSessions,
               status: "ACTIVE",
             },
@@ -223,6 +232,13 @@ export async function POST(request: Request) {
           },
         });
         offerApplicationId = app.id;
+
+        if (subscriptionIds.length > 0) {
+          await tx.memberSubscription.updateMany({
+            where: { id: { in: subscriptionIds } },
+            data: { offerApplicationId: app.id },
+          });
+        }
       }
 
       await tx.auditLog.create({
@@ -242,6 +258,7 @@ export async function POST(request: Request) {
               groupName: l.groupName,
               planName: l.planName,
               sportName: l.sportName,
+              listPriceCents: l.listPriceCents,
               finalAmountCents: l.finalAmountCents,
               discountCents: l.discountCents,
             })),
