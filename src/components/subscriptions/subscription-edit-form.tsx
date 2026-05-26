@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions } from "@/components/ui/form-layout";
+import { ReceptionInfoCard } from "@/components/ui/reception-info-card";
 
 type PlanOption = { id: string; name: string; price: number; totalSessions: number; validityDays: number };
 type StatusValue = "DRAFT" | "ACTIVE" | "EXPIRED" | "CANCELLED";
@@ -35,8 +36,14 @@ export function SubscriptionEditForm({ subscription, plansOptions }: Subscriptio
   const [amount, setAmount] = useState((subscription.amount / 100).toString());
   const [remainingSessions, setRemainingSessions] = useState(subscription.remainingSessions.toString());
   const [status, setStatus] = useState<StatusValue>(subscription.status);
+  const [adjustmentReason, setAdjustmentReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  const amountNum = Math.round(parseFloat(amount || "0") * 100);
+  const sessionsNum = Math.max(0, Math.round(Number(remainingSessions || 0)));
+  const needsAdjustmentReason =
+    amountNum !== subscription.amount || sessionsNum !== subscription.remainingSessions;
 
   function handlePlanChange(nextPlanId: string) {
     setPlanId(nextPlanId);
@@ -56,6 +63,12 @@ export function SubscriptionEditForm({ subscription, plansOptions }: Subscriptio
     setLoading(true);
     setMessage(null);
 
+    if (needsAdjustmentReason && adjustmentReason.trim().length < 3) {
+      setMessage("Indiquez un motif pour ajuster le montant ou les séances.");
+      setLoading(false);
+      return;
+    }
+
     const response = await fetch("/api/member-subscriptions", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -65,9 +78,10 @@ export function SubscriptionEditForm({ subscription, plansOptions }: Subscriptio
           planId,
           startDate: new Date(startDate).toISOString(),
           endDate: endDate ? new Date(endDate).toISOString() : null,
-          amount: Math.round(parseFloat(amount || "0") * 100),
-          remainingSessions: Math.max(0, Math.round(Number(remainingSessions || 0))),
+          amount: amountNum,
+          remainingSessions: sessionsNum,
           status,
+          ...(needsAdjustmentReason ? { adjustmentReason: adjustmentReason.trim() } : {}),
         },
       }),
     });
@@ -86,7 +100,11 @@ export function SubscriptionEditForm({ subscription, plansOptions }: Subscriptio
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-5">
+    <form onSubmit={onSubmit} className="space-y-5 pb-4 lg:pb-0">
+      <ReceptionInfoCard variant="warning" title="Correction admin">
+        Toute modification du montant ou des séances exige un motif traçable dans le journal.
+      </ReceptionInfoCard>
+
       <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
         <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Membre</p>
         <p className="mt-1 text-sm font-semibold text-[var(--foreground)]">{subscription.memberName}</p>
@@ -133,6 +151,19 @@ export function SubscriptionEditForm({ subscription, plansOptions }: Subscriptio
           </select>
         </div>
       </div>
+
+      {needsAdjustmentReason && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Motif de correction *</label>
+          <textarea
+            value={adjustmentReason}
+            onChange={(e) => setAdjustmentReason(e.target.value)}
+            className="field min-h-[80px]"
+            placeholder="Ex. report séances convenu avec le responsable"
+            required
+          />
+        </div>
+      )}
 
       <FeedbackMessage message={message} />
 

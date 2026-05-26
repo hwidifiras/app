@@ -6,10 +6,9 @@ export const createMemberSubscriptionSchema = z.object({
   memberId: z.string().trim().min(1, "Membre requis"),
   planId: z.string().trim().min(1, "Plan requis"),
   startDate: z.string().datetime("Date de début invalide"),
-  endDate: z.string().datetime().nullable().optional(),
-  amount: z.number().int().min(0).optional(),
-  remainingSessions: z.number().int().min(0).optional(),
-  status: subscriptionStatusEnum.optional(),
+  carryOverRemainingSessions: z.boolean().optional(),
+  paymentCents: z.number().int().min(0).optional(),
+  paymentMethod: z.string().trim().max(40).optional(),
 });
 
 export type CreateMemberSubscriptionInput = z.infer<typeof createMemberSubscriptionSchema>;
@@ -22,6 +21,7 @@ export const updateMemberSubscriptionSchema = z
     amount: z.number().int().min(0).optional(),
     remainingSessions: z.number().int().min(0).optional(),
     status: subscriptionStatusEnum.optional(),
+    adjustmentReason: z.string().trim().min(3).max(500).optional(),
   })
   .refine(
     (payload) =>

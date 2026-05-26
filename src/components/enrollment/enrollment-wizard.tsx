@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions } from "@/components/ui/form-layout";
+import { ReceptionInfoCard } from "@/components/ui/reception-info-card";
 import type { OfferLike } from "@/lib/offer-display";
 import {
   formatOfferRulesSummary,
@@ -249,6 +250,11 @@ export function EnrollmentWizard() {
     <form onSubmit={applyEnrollment} className="space-y-6 pb-4 lg:pb-0">
       {message && <FeedbackMessage variant="error" message={message} />}
 
+      <ReceptionInfoCard title="À retenir" variant="info">
+        <p>Le paiement règle la dette de la formule — il n&apos;ajoute pas de séances en plus.</p>
+        <p>Pour 2 mois, choisissez une formule 2 mois ou faites un renouvellement.</p>
+      </ReceptionInfoCard>
+
       <div className="enrollment-stepper grid grid-cols-3 gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-2 shadow-sm">
         {["Élèves", "Offre", "Devis"].map((label, index) => {
           const itemStep = index + 1;
@@ -372,17 +378,29 @@ export function EnrollmentWizard() {
                     <span className="text-green-700"> (−{formatEur(l.discountCents)})</span>
                   )}
                 </p>
+                {l.reusesExistingSubscription && (
+                  <ReceptionInfoCard variant="warning" className="mt-2">
+                    <p className="font-semibold">Même abonnement réutilisé</p>
+                    <p>Pas de nouvelles séances — ajout d&apos;un cours ou paiement du solde uniquement.</p>
+                  </ReceptionInfoCard>
+                )}
                 {l.warnings.length > 0 && (
                   <p className="mt-1 text-xs text-red-600">{l.warnings.join(" • ")}</p>
                 )}
                 {l.blocked && (
                   <p className="mt-1 text-xs font-medium text-red-600">Cette ligne est bloquée.</p>
                 )}
-                <label className="mt-2 block">
-                  {l.reusesExistingSubscription ? "Paiement complémentaire (€)" : "Paiement initial (€)"}
+                <label className="mt-2 block text-sm">
+                  <span className="font-medium">
+                    {l.reusesExistingSubscription ? "Paiement complémentaire (€)" : "Paiement initial (€)"}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-[var(--muted-foreground)]">
+                    Max {formatEur(l.finalAmountCents)} pour cette période
+                  </span>
                   <input
                     type="text"
-                  className="field mt-1"
+                    inputMode="decimal"
+                    className="field mt-1"
                     value={lines[l.lineIndex]?.paymentCents ?? ""}
                     onChange={(e) =>
                       setLines((prev) =>

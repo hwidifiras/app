@@ -13,6 +13,7 @@ export type ClubSettingsFormData = {
   clubPhone: string;
   allowCheckInWithPartialPayment: boolean;
   allowCheckInWithoutSubscription: boolean;
+  absentConsumesSession: boolean;
   maxStaffDiscountPercent: number;
   debtAlertThresholdCents: number;
   updatedAt: string;
@@ -89,6 +90,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
   const [allowWithoutSubscription, setAllowWithoutSubscription] = useState(
     initial.allowCheckInWithoutSubscription,
   );
+  const [absentConsumesSession, setAbsentConsumesSession] = useState(initial.absentConsumesSession);
   const [maxStaffDiscountPercent, setMaxStaffDiscountPercent] = useState(
     String(initial.maxStaffDiscountPercent),
   );
@@ -123,6 +125,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
         clubPhone,
         allowCheckInWithPartialPayment: allowPartialPayment,
         allowCheckInWithoutSubscription: allowWithoutSubscription,
+        absentConsumesSession,
         maxStaffDiscountPercent: discount,
         debtAlertThresholdCents,
       }),
@@ -142,6 +145,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
     setClubPhone(json.data.clubPhone);
     setAllowPartialPayment(json.data.allowCheckInWithPartialPayment);
     setAllowWithoutSubscription(json.data.allowCheckInWithoutSubscription);
+    setAbsentConsumesSession(json.data.absentConsumesSession);
     setMaxStaffDiscountPercent(String(json.data.maxStaffDiscountPercent));
     setDebtThresholdEuros(centsToEurosInput(json.data.debtAlertThresholdCents));
     setMessage("Règles du club enregistrées");
@@ -309,6 +313,13 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
             description="Autorise un passage exceptionnel avec motif si aucun abonnement actif. Sinon, refusé même en exception."
             checked={allowWithoutSubscription}
             onChange={setAllowWithoutSubscription}
+          />
+          <ToggleRow
+            id="absentConsumesSession"
+            label="Une absence consomme une séance"
+            description="Si activé, un pointage ABSENT décrémente le quota comme une présence."
+            checked={absentConsumesSession}
+            onChange={setAbsentConsumesSession}
           />
         </div>
       </FormSection>

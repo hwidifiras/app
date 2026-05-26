@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions } from "@/components/ui/form-layout";
+import { ReceptionInfoCard } from "@/components/ui/reception-info-card";
 
 type SportOption = { id: string; name: string };
 
@@ -94,8 +95,39 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
     router.refresh();
   }
 
+  function applyTemplate(months: 1 | 2 | 3) {
+    const weeksPerMonth = 4;
+    const spw = parseInt(sessionsPerWeek, 10) || 3;
+    setName(months === 1 ? "Formule 1 mois" : months === 2 ? "Formule 2 mois" : "Formule 3 mois");
+    setValidityDays(String(months * 30));
+    setSessionsPerWeek(String(spw));
+    if (price) {
+      const base = parseFloat(price.replace(",", ".")) || 0;
+      if (base > 0) setPrice((base * months).toFixed(2));
+    }
+  }
+
   return (
-    <form onSubmit={onSubmit} className="space-y-5">
+    <form onSubmit={onSubmit} className="space-y-5 pb-4 lg:pb-0">
+      <ReceptionInfoCard title="Formules" variant="info">
+        Une formule fixe le prix, le quota de séances ({computedTotalSessions || 0} avec {sessionsPerWeek || 0}/sem.) et la validité.
+        Pour 2 mois, préférez une formule 2 mois plutôt qu&apos;un double paiement.
+      </ReceptionInfoCard>
+
+      {mode === "create" && (
+        <div className="flex flex-wrap gap-2">
+          {([1, 2, 3] as const).map((months) => (
+            <button
+              key={months}
+              type="button"
+              className="btn btn-secondary min-h-10 flex-1 text-xs sm:flex-none sm:text-sm"
+              onClick={() => applyTemplate(months)}
+            >
+              Modèle {months} mois
+            </button>
+          ))}
+        </div>
+      )}
       <div>
         <label className="mb-1 block text-xs font-medium text-muted-foreground">Nom du plan *</label>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Mensuel Standard" className="field" required />
@@ -115,7 +147,7 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
           <label className="mb-1 block text-xs font-medium text-muted-foreground">Séances par semaine *</label>
           <input type="number" min="1" max="7" value={sessionsPerWeek} onChange={(e) => setSessionsPerWeek(e.target.value)} className="field" required />
           <p className="mt-1 text-xs text-muted-foreground">
-            Soit {computedTotalSessions || 0} séances / mois (×4 semaines), calculé automatiquement.
+            Quota pack : {computedTotalSessions || 0} séances (×4 semaines).
           </p>
         </div>
       </div>
@@ -126,9 +158,9 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
           <input type="number" min="1" value={validityDays} onChange={(e) => setValidityDays(e.target.value)} className="field" required />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Sport (Optionnel)</label>
-          <select value={sportId} onChange={(e) => setSportId(e.target.value)} className="field">
-            <option value="">Tous les sports</option>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Discipline *</label>
+          <select value={sportId} onChange={(e) => setSportId(e.target.value)} className="field" required>
+            <option value="">Choisir une discipline</option>
             {sports.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}

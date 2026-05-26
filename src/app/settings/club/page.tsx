@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 
 import { SetupGuideAdminPanel } from "@/components/onboarding/setup-guide-admin-panel";
 import { ClubSettingsForm } from "@/components/settings/club-settings-form";
+import { ReceptionRulesCard } from "@/components/settings/reception-rules-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { getClubSettings } from "@/lib/club-settings";
 import { getSetupGuideProgress } from "@/lib/setup-guide";
@@ -38,6 +39,10 @@ export default async function SettingsClubPage() {
         description="Identité du club, pointage, dettes et remises staff."
       />
 
+      <section className="mb-4">
+        <ReceptionRulesCard />
+      </section>
+
       <section className="panel p-4 sm:p-5 md:p-6">
         <ClubSettingsForm
           initial={{
@@ -47,6 +52,7 @@ export default async function SettingsClubPage() {
             clubPhone: settings.clubPhone,
             allowCheckInWithPartialPayment: settings.allowCheckInWithPartialPayment,
             allowCheckInWithoutSubscription: settings.allowCheckInWithoutSubscription,
+            absentConsumesSession: settings.absentConsumesSession,
             maxStaffDiscountPercent: settings.maxStaffDiscountPercent,
             debtAlertThresholdCents: settings.debtAlertThresholdCents,
             updatedAt: settings.updatedAt.toISOString(),

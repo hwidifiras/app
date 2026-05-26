@@ -8,6 +8,7 @@ export type ClubSettingsData = {
   clubPhone: string;
   allowCheckInWithPartialPayment: boolean;
   allowCheckInWithoutSubscription: boolean;
+  absentConsumesSession: boolean;
   allowPublicRegister: boolean;
   maxStaffDiscountPercent: number;
   debtAlertThresholdCents: number;
@@ -21,7 +22,8 @@ const DEFAULTS = {
   clubAddress: "",
   clubPhone: "",
   allowCheckInWithPartialPayment: true,
-  allowCheckInWithoutSubscription: true,
+  allowCheckInWithoutSubscription: false,
+  absentConsumesSession: true,
   allowPublicRegister: false,
   maxStaffDiscountPercent: 30,
   debtAlertThresholdCents: 0,
@@ -42,6 +44,10 @@ function normalizeClubSettings(row: Record<string, unknown>): ClubSettingsData {
       typeof row.allowCheckInWithoutSubscription === "boolean"
         ? row.allowCheckInWithoutSubscription
         : DEFAULTS.allowCheckInWithoutSubscription,
+    absentConsumesSession:
+      typeof row.absentConsumesSession === "boolean"
+        ? row.absentConsumesSession
+        : DEFAULTS.absentConsumesSession,
     allowPublicRegister:
       typeof row.allowPublicRegister === "boolean" ? row.allowPublicRegister : DEFAULTS.allowPublicRegister,
     maxStaffDiscountPercent:

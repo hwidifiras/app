@@ -12,7 +12,11 @@ import { prisma } from "@/lib/prisma";
 import { POST as createAttendance } from "@/app/api/attendances/route";
 import { POST as createPayment } from "@/app/api/payments/route";
 import { DELETE as deleteSport } from "@/app/api/sports/route";
-import { POST as createMemberSubscription } from "@/app/api/member-subscriptions/route";
+import { DELETE as deleteSubscriptionPlan } from "@/app/api/subscription-plans/route";
+import {
+  PATCH as patchMemberSubscription,
+  POST as createMemberSubscription,
+} from "@/app/api/member-subscriptions/route";
 import { PATCH as patchClubSettings } from "@/app/api/club-settings/route";
 import { POST as createUser } from "@/app/api/users/route";
 import { POST as requestPasswordReset } from "@/app/api/auth/forgot-password/route";
@@ -56,7 +60,8 @@ async function resetData() {
     data: {
       id: "default",
       allowCheckInWithPartialPayment: true,
-      allowCheckInWithoutSubscription: true,
+      allowCheckInWithoutSubscription: false,
+      absentConsumesSession: true,
       allowPublicRegister: false,
       maxStaffDiscountPercent: 30,
       debtAlertThresholdCents: 0,
@@ -853,8 +858,6 @@ describe("api route scenarios", () => {
         memberId: fx.adult.id,
         planId: fx.bjjPlan.id,
         startDate: new Date().toISOString(),
-        amount: 1,
-        remainingSessions: 1,
       }),
     );
     const body = await responseJson(response);
@@ -869,6 +872,52 @@ describe("api route scenarios", () => {
     expect(data.remainingSessions).toBe(fx.bjjPlan.totalSessions);
   });
 
+  it("carries over remaining sessions when renewing with carryOverRemainingSessions", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    await createActiveSubscription(fx, { remainingSessions: 4 });
+
+    const response = await createMemberSubscription(
+      jsonRequest("POST", {
+        memberId: fx.adult.id,
+        planId: fx.bjjPlan.id,
+        startDate: new Date().toISOString(),
+        carryOverRemainingSessions: true,
+      }),
+    );
+    const body = await responseJson(response);
+    const data = body.data as { remainingSessions: number };
+
+    expect(response.status).toBe(201);
+    expect(data.remainingSessions).toBe(fx.bjjPlan.totalSessions + 4);
+  });
+
+  it("requires adjustmentReason when admin changes amount or remaining sessions", async () => {
+    await signIn("ADMIN");
+    const fx = await dojoFixture();
+    const sub = await createActiveSubscription(fx);
+
+    const missingReason = await patchMemberSubscription(
+      jsonRequest("PATCH", {
+        subscriptionId: sub.id,
+        payload: { remainingSessions: 5 },
+      }),
+    );
+    expect(missingReason.status).toBe(400);
+
+    const withReason = await patchMemberSubscription(
+      jsonRequest("PATCH", {
+        subscriptionId: sub.id,
+        payload: { remainingSessions: 5, adjustmentReason: "Correction compteur réception" },
+      }),
+    );
+    const body = await responseJson(withReason);
+    const data = body.data as { remainingSessions: number };
+
+    expect(withReason.status).toBe(200);
+    expect(data.remainingSessions).toBe(5);
+  });
+
   it("rejects deleting a linked sport and deletes an unused sport", async () => {
     await signIn();
     const fx = await dojoFixture();
@@ -878,6 +927,32 @@ describe("api route scenarios", () => {
     const deletedBody = await responseJson(deleted);
 
     expect(linked.status).toBe(409);
+    expect(deleted.status).toBe(200);
+    expect(deletedBody.data).toEqual({ id: unused.id });
+  });
+
+  it("rejects deleting a linked subscription plan and deletes an unused plan", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    await createActiveSubscription(fx);
+
+    const linked = await deleteSubscriptionPlan(jsonRequest("DELETE", { planId: fx.bjjPlan.id }));
+    const linkedBody = await responseJson(linked);
+
+    const unused = await prisma.subscriptionPlan.create({
+      data: {
+        name: `Unused plan ${Date.now()}`,
+        price: 10000,
+        totalSessions: 8,
+        validityDays: 30,
+        sportId: fx.bjj.id,
+      },
+    });
+    const deleted = await deleteSubscriptionPlan(jsonRequest("DELETE", { planId: unused.id }));
+    const deletedBody = await responseJson(deleted);
+
+    expect(linked.status).toBe(409);
+    expect(String(linkedBody.error)).toMatch(/encore utilisée/i);
     expect(deleted.status).toBe(200);
     expect(deletedBody.data).toEqual({ id: unused.id });
   });
@@ -925,6 +1000,35 @@ describe("api route scenarios", () => {
     expect(duplicate.status).toBe(409);
     expect(absent.status).toBe(201);
     expect(refreshed.remainingSessions).toBe(1);
+  });
+
+  it("does not decrement sessions for ABSENT when absentConsumesSession is disabled", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    await prisma.clubSettings.update({
+      where: { id: "default" },
+      data: { absentConsumesSession: false },
+    });
+    const sub = await createActiveSubscription(fx, { remainingSessions: 3 });
+    await prisma.payment.create({
+      data: { memberSubscriptionId: sub.id, amount: sub.amount },
+    });
+    await prisma.groupMember.create({
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date() },
+    });
+    const session = await createSessionForGroup(fx.adultBjj.id);
+
+    const absent = await createAttendance(
+      jsonRequest("POST", {
+        sessionId: session.id,
+        memberId: fx.adult.id,
+        status: "ABSENT",
+      }),
+    );
+    const refreshed = await prisma.memberSubscription.findUniqueOrThrow({ where: { id: sub.id } });
+
+    expect(absent.status).toBe(201);
+    expect(refreshed.remainingSessions).toBe(3);
   });
 
   it("allows recovery check-in on another equivalent group after an absence", async () => {
@@ -1043,6 +1147,13 @@ describe("api route scenarios", () => {
   it("requires override reason and blocks the fourth override in 30 days", async () => {
     await signIn();
     const fx = await dojoFixture();
+    const sub = await createActiveSubscription(fx, { remainingSessions: 10 });
+    await prisma.payment.create({
+      data: { memberSubscriptionId: sub.id, amount: sub.amount },
+    });
+    await prisma.groupMember.create({
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date() },
+    });
     const session = await createSessionForGroup(fx.adultBjj.id);
 
     const missingReason = await createAttendance(
@@ -1109,6 +1220,20 @@ describe("admin permissions and password reset", () => {
     expect(response.status).toBe(201);
     expect(data.permissions.sort()).toEqual(["members.manage", "payments.manage"]);
     expect(rows.map((row) => row.key).sort()).toEqual(["members.manage", "payments.manage"]);
+  });
+
+  it("returns ok without sending when forgot-password email is unknown", async () => {
+    const response = await requestPasswordReset(
+      jsonRequest("POST", { email: "nobody@test.local" }),
+    );
+    const body = await responseJson(response);
+    const auditCount = await prisma.auditLog.count({
+      where: { action: "PASSWORD_RESET_REQUESTED" },
+    });
+
+    expect(response.status).toBe(200);
+    expect(body.data).toEqual({ ok: true });
+    expect(auditCount).toBe(0);
   });
 
   it("creates a reset token, changes the password, and prevents token reuse", async () => {
@@ -1180,7 +1305,8 @@ describe("admin permissions and password reset", () => {
         clubName: "",
         clubLogoUrl: "",
         allowCheckInWithPartialPayment: true,
-        allowCheckInWithoutSubscription: true,
+        allowCheckInWithoutSubscription: false,
+        absentConsumesSession: true,
         maxStaffDiscountPercent: 30,
         debtAlertThresholdCents: 0,
       },

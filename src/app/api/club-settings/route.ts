@@ -15,6 +15,7 @@ function serializeSettings(settings: Awaited<ReturnType<typeof getClubSettings>>
     clubPhone: settings.clubPhone,
     allowCheckInWithPartialPayment: settings.allowCheckInWithPartialPayment,
     allowCheckInWithoutSubscription: settings.allowCheckInWithoutSubscription,
+    absentConsumesSession: settings.absentConsumesSession,
     maxStaffDiscountPercent: settings.maxStaffDiscountPercent,
     debtAlertThresholdCents: settings.debtAlertThresholdCents,
     updatedAt: settings.updatedAt.toISOString(),
@@ -83,6 +84,7 @@ export async function PATCH(request: Request) {
       ...(data.allowCheckInWithoutSubscription !== undefined
         ? { allowCheckInWithoutSubscription: data.allowCheckInWithoutSubscription }
         : {}),
+      ...(data.absentConsumesSession !== undefined ? { absentConsumesSession: data.absentConsumesSession } : {}),
       ...(data.maxStaffDiscountPercent !== undefined
         ? { maxStaffDiscountPercent: data.maxStaffDiscountPercent }
         : {}),

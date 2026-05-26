@@ -6,6 +6,7 @@ import { ArrowLeft, CreditCard, Wallet, Banknote, CheckCircle2 } from "lucide-re
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormField, FormGrid, FormSection } from "@/components/ui/form-layout";
+import { ReceptionInfoCard, SubscriptionBillingSummary } from "@/components/ui/reception-info-card";
 
 const METHODS = [
   { value: "CASH", label: "Espèces", icon: <Banknote className="size-4" /> },
@@ -84,6 +85,10 @@ export function PaymentAddForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       {message && <FeedbackMessage message={message} />}
 
+      <ReceptionInfoCard title="Rappel" variant="info">
+        Encaisser règle le solde dû. Cela ne crée pas de séances supplémentaires.
+      </ReceptionInfoCard>
+
       <FormSection title="Abonnement" description="Sélectionnez l'abonnement à régler.">
         <FormField label="Abonnement *" htmlFor="subscription">
           <select
@@ -105,6 +110,14 @@ export function PaymentAddForm({
             <p className="mt-1 text-xs text-[var(--warning)]">
               Aucun abonnement actif trouvé. Créez d&apos;abord un abonnement.
             </p>
+          )}
+          {selected && (
+            <div className="mt-3">
+              <SubscriptionBillingSummary
+                amountDueCents={selected.amount}
+                totalPaidCents={selected.totalPaid}
+              />
+            </div>
           )}
         </FormField>
       </FormSection>

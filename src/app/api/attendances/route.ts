@@ -97,6 +97,9 @@ export async function POST(request: Request) {
   }
 
   const { sessionId, memberId, status, overrideReason, checkedBy, overrideKind } = parsed.data;
+  const clubSettings = await getClubSettings();
+  const shouldDecrementSession =
+    status === "PRESENT" || (status === "ABSENT" && clubSettings.absentConsumesSession);
   const isRecoveryOverride = status === "OVERRIDE" && overrideKind === "RECOVERY";
   const normalizedOverrideReason = isRecoveryOverride
     ? `${RECOVERY_OVERRIDE_PREFIX}${overrideReason?.trim() ? ` — ${overrideReason.trim()}` : ""}`
@@ -257,7 +260,7 @@ export async function POST(request: Request) {
       let activeSubscriptionId: string | null = null;
       let remainingSessionsBefore: number | null = null;
 
-      if (status === "PRESENT" || status === "ABSENT") {
+      if (shouldDecrementSession) {
         if (isSubActive && activeSub) {
           activeSubscriptionId = activeSub.id;
           remainingSessionsBefore = activeSub.remainingSessions;

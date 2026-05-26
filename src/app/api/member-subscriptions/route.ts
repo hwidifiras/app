@@ -8,10 +8,9 @@ import {
 } from "@/lib/schemas/member-subscription";
 import { requireAuth, requireAdmin } from "@/lib/request-user";
 import {
-  computeEndDate,
-  expireActiveSubscriptionForSport,
   expireStaleSubscriptions,
 } from "@/lib/membership-rules";
+import { createSubscriptionFromPlan } from "@/lib/subscription-service";
 
 export const runtime = "nodejs";
 
@@ -88,7 +87,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const { memberId, planId, startDate } = parsed.data;
+  const { memberId, planId, startDate, carryOverRemainingSessions, paymentCents, paymentMethod } =
+    parsed.data;
   const start = new Date(startDate);
 
   try {
@@ -120,30 +120,31 @@ export async function POST(request: Request) {
       }
     }
 
-    const endDate = computeEndDate(start, plan.validityDays);
-    const amount = plan.price;
-    const remainingSessions = plan.totalSessions;
+    const payCents = paymentCents ?? 0;
+    if (payCents > plan.price) {
+      return NextResponse.json({ error: "Dépassement du montant dû pour cette formule" }, { status: 409 });
+    }
 
     const subscription = await prisma.$transaction(async (tx) => {
-      await expireActiveSubscriptionForSport(tx, memberId, plan.sportId);
-
-      const created = await tx.memberSubscription.create({
-        data: {
+      const created = await createSubscriptionFromPlan(
+        tx,
+        {
           memberId,
-          planId,
-          sportId: plan.sportId,
+          plan,
           startDate: start,
-          endDate,
-          amount,
-          remainingSessions,
-          status: "ACTIVE",
         },
-        include: {
-          member: { select: { id: true, firstName: true, lastName: true } },
-          plan: { select: { id: true, name: true } },
-          sport: { select: { id: true, name: true } },
-        },
-      });
+        { carryOverRemainingSessions: carryOverRemainingSessions === true },
+      );
+
+      if (payCents > 0) {
+        await tx.payment.create({
+          data: {
+            memberSubscriptionId: created.id,
+            amount: payCents,
+            paymentMethod: paymentMethod?.trim() || "CASH",
+          },
+        });
+      }
 
       await tx.auditLog.create({
         data: {
@@ -155,7 +156,10 @@ export async function POST(request: Request) {
             memberId,
             planId,
             sportId: plan.sportId,
-            amount,
+            amount: created.amount,
+            remainingSessions: created.remainingSessions,
+            carryOverRemainingSessions: carryOverRemainingSessions === true,
+            paymentCents: payCents,
             startDate: start.toISOString(),
           }),
         },
@@ -164,7 +168,17 @@ export async function POST(request: Request) {
       return created;
     });
 
-    return NextResponse.json({ data: subscription }, { status: 201 });
+    const withRelations = await prisma.memberSubscription.findUniqueOrThrow({
+      where: { id: subscription.id },
+      include: {
+        member: { select: { id: true, firstName: true, lastName: true } },
+        plan: { select: { id: true, name: true } },
+        sport: { select: { id: true, name: true } },
+        payments: { select: { id: true, amount: true, paymentDate: true } },
+      },
+    });
+
+    return NextResponse.json({ data: withRelations }, { status: 201 });
   } catch (error) {
     console.error("[POST /api/member-subscriptions] error:", error);
     return NextResponse.json({ error: "Erreur serveur lors de la création de l'abonnement" }, { status: 500 });
@@ -220,6 +234,37 @@ export async function PATCH(request: Request) {
   }
 
   try {
+    const existing = await prisma.memberSubscription.findUnique({
+      where: { id: subscriptionId },
+      select: {
+        id: true,
+        amount: true,
+        remainingSessions: true,
+      },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Abonnement introuvable" }, { status: 404 });
+    }
+
+    const sensitiveChange =
+      (payload.amount !== undefined && payload.amount !== existing.amount) ||
+      (payload.remainingSessions !== undefined && payload.remainingSessions !== existing.remainingSessions);
+
+    if (sensitiveChange && actor.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Seul un administrateur peut modifier le montant ou les séances" },
+        { status: 403 },
+      );
+    }
+
+    if (sensitiveChange && !payload.adjustmentReason?.trim()) {
+      return NextResponse.json(
+        { error: "Motif obligatoire pour ajuster le montant ou les séances restantes" },
+        { status: 400 },
+      );
+    }
+
     if (payload.planId) {
       const planExists = await prisma.subscriptionPlan.findUnique({ where: { id: payload.planId } });
       if (!planExists) {

@@ -32,6 +32,7 @@ If migrations fail on an existing DB: `npm run prisma:repair:dev`.
 - [Performance & Lighthouse](docs/performance-lighthouse.md) — mobile + desktop audits
 - [Dev mode](docs/dev-mode.md)
 - [VPS deployment](docs/vps-deployment.md)
+- [Scenario audit (code ↔ tests ↔ rules)](docs/scenario-audit.md)
 - [Deployment tonight](docs/deployment-tonight.md)
 - [Database architecture](docs/DATABASE-ARCHITECTURE.md)
 
