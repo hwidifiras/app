@@ -43,7 +43,7 @@ export async function sendPasswordResetEmail(
   });
 
   if (error) {
-    console.error("Resend send failed:", error);
+    console.error("Resend send failed:", { from, to, error });
     return { delivered: false, reason: "EMAIL_SEND_FAILED" };
   }
 

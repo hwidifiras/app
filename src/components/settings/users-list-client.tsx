@@ -88,7 +88,11 @@ export function UsersListClient({
     setMessage(
       json.data?.emailConfigured
         ? "Lien de réinitialisation envoyé par email"
-        : "Email non configuré — utilisez le lien de test ci-dessous (dev)",
+        : json.data?.emailError === "EMAIL_SEND_FAILED"
+          ? "Resend a refusé l'envoi — vérifiez les logs serveur (docker compose logs dojo-app)"
+          : json.data?.emailError === "EMAIL_NOT_CONFIGURED"
+            ? "Email non configuré — vérifiez RESEND_API_KEY et PASSWORD_RESET_FROM sur le serveur"
+            : "Email non configuré — utilisez le lien de test ci-dessous (dev)",
     );
   }
 

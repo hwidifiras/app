@@ -30,12 +30,20 @@ export function ForgotPasswordForm() {
       return;
     }
 
-    setMessage(
-      json?.data?.emailConfigured
-        ? "Si ce compte existe, un email de réinitialisation a été envoyé."
-        : "Si ce compte existe, un lien a été généré (email non envoyé — voir ci-dessous).",
-    );
-    setResetUrl(json?.data?.emailConfigured ? null : (json?.data?.resetUrl ?? null));
+    if (json?.data?.emailConfigured === false) {
+      setMessage(
+        json?.data?.emailError === "EMAIL_SEND_FAILED"
+          ? "L'email n'a pas pu être envoyé. Réessayez plus tard ou contactez l'administrateur."
+          : json?.data?.emailError === "EMAIL_NOT_CONFIGURED"
+            ? "L'envoi d'email n'est pas configuré sur le serveur."
+            : "L'email n'a pas pu être envoyé.",
+      );
+      setResetUrl(json?.data?.resetUrl ?? null);
+      return;
+    }
+
+    setMessage("Si ce compte existe, un email de réinitialisation a été envoyé.");
+    setResetUrl(null);
   }
 
   return (

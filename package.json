@@ -19,6 +19,7 @@
     "admin:create": "node scripts/create-admin.mjs",
     "admin:create:dev": "node scripts/with-dev-env.mjs scripts/create-admin.mjs",
     "email:test": "npx tsx scripts/test-resend.ts",
+    "email:test:prod": "node scripts/test-resend-production.mjs",
     "permissions:backfill": "node scripts/backfill-user-permissions.mjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

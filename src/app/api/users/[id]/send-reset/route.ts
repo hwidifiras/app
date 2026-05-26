@@ -59,6 +59,7 @@ export async function POST(request: Request, context: RouteContext) {
       ok: true,
       emailConfigured: delivery.delivered,
       resetUrl: process.env.NODE_ENV === "production" ? undefined : resetUrl,
+      emailError: delivery.delivered ? undefined : delivery.reason,
     },
   });
 }
