@@ -2,7 +2,7 @@
 
 This document maps **real reception scenarios** to **exact code paths**, **HTTP responses**, and **automated test coverage**.
 
-Run tests: `npm test` (38 scenarios in `tests/dojo-scenarios.test.ts`).
+Run tests: `npm test` (39 scenarios in `tests/dojo-scenarios.test.ts`).
 
 Business rules reference: `docs/03-REGLES-METIER.md` (repo root).
 

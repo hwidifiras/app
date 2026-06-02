@@ -41,7 +41,7 @@ If migrations fail on an existing DB: `npm run prisma:repair:dev` then retry.
 npm run handoff:check
 ```
 
-Runs: Prisma generate hint, tests (29 scenarios), production build.
+Runs: Prisma generate hint, tests (39 scenarios), production build.
 
 ### Performance & Lighthouse (mobile + desktop)
 

@@ -240,7 +240,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
                   id="clubLogoFile"
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
-                  className="field max-w-md text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white"
+                  className="sr-only"
                   disabled={logoUploading}
                   onChange={(e) => {
                     const file = e.target.files?.[0];
@@ -248,10 +248,18 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
                     e.target.value = "";
                   }}
                 />
+                <label
+                  htmlFor="clubLogoFile"
+                  className={`btn btn-primary btn-block-mobile inline-flex min-h-11 cursor-pointer items-center justify-center text-sm sm:w-fit ${
+                    logoUploading ? "pointer-events-none opacity-60" : ""
+                  }`}
+                >
+                  {logoUploading ? "Import..." : "Choisir un fichier"}
+                </label>
                 {clubLogoUrl ? (
                   <button
                     type="button"
-                    className="btn btn-secondary w-fit text-xs"
+                    className="btn btn-secondary btn-block-mobile min-h-11 text-sm sm:w-fit"
                     disabled={logoUploading}
                     onClick={() => void removeLogo()}
                   >
