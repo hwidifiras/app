@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { DesktopTopNav } from "@/components/layout/desktop-top-nav";
 import { MobileNav } from "@/components/layout/mobile-nav";
-import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -20,9 +19,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (isAuthRoute) {
     return (
       <div className="relative min-h-screen">
-        <div className="fixed right-3 top-3 z-50 w-[min(100%,14rem)] sm:right-4 sm:top-4">
-          <ThemeToggle compact />
-        </div>
         {children}
       </div>
     );
