@@ -2,7 +2,13 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
-import { createOfferSchema, parseOfferRules } from "@/lib/schemas/offer";
+import {
+  buildCreateOfferRules,
+  offerToRulesRecord,
+  serializeOfferRules,
+  structuredFieldsFromParsedRules,
+} from "@/lib/offer-rules";
+import { createOfferSchema } from "@/lib/schemas/offer";
 import { validateStaffOfferDiscount } from "@/lib/membership-rules";
 
 export const runtime = "nodejs";
@@ -17,12 +23,16 @@ export async function GET(request: Request) {
   const offers = await prisma.offer.findMany({
     where: { isActive: true },
     orderBy: { createdAt: "desc" },
+    include: {
+      sport: { select: { id: true, name: true } },
+    },
   });
 
   return NextResponse.json({
-    data: offers.map((o) => ({
-      ...o,
-      rules: JSON.parse(o.rules) as Record<string, unknown>,
+    data: offers.map((offer) => ({
+      ...offer,
+      sportName: offer.sport?.name ?? null,
+      rules: offerToRulesRecord(offer),
     })),
   });
 }
@@ -50,18 +60,30 @@ export async function POST(request: Request) {
     );
   }
 
+  let resolvedRules;
   try {
-    parseOfferRules(parsed.data.kind, parsed.data.rules);
+    resolvedRules = buildCreateOfferRules(parsed.data);
   } catch {
     return NextResponse.json({ error: "Règles d'offre invalides" }, { status: 400 });
   }
 
   if (parsed.data.kind === "PERCENT_OFF" || parsed.data.kind === "SECOND_DISCIPLINE") {
-    const percent =
-      (parsed.data.rules as { percentOff?: number }).percentOff ?? 0;
+    const percent = (resolvedRules as { percentOff: number }).percentOff;
     const check = await validateStaffOfferDiscount(actor.role, percent);
     if (!check.ok) {
       return NextResponse.json({ error: check.error }, { status: 403 });
+    }
+  }
+
+  const structured = structuredFieldsFromParsedRules(parsed.data.kind, resolvedRules);
+
+  if (structured.sportId) {
+    const sport = await prisma.sport.findFirst({
+      where: { id: structured.sportId, isActive: true },
+      select: { id: true },
+    });
+    if (!sport) {
+      return NextResponse.json({ error: "Discipline introuvable ou inactive" }, { status: 400 });
     }
   }
 
@@ -72,7 +94,8 @@ export async function POST(request: Request) {
         description: parsed.data.description?.trim() || null,
         kind: parsed.data.kind,
         isActive: parsed.data.isActive ?? true,
-        rules: JSON.stringify(parsed.data.rules),
+        rules: serializeOfferRules(resolvedRules),
+        ...structured,
         createdById: actor.id,
       },
     });
@@ -89,7 +112,18 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       {
-        data: { ...offer, rules: parsed.data.rules },
+        data: {
+          ...offer,
+          sportName: structured.sportId
+            ? (
+                await prisma.sport.findUnique({
+                  where: { id: structured.sportId },
+                  select: { name: true },
+                })
+              )?.name ?? null
+            : null,
+          rules: resolvedRules,
+        },
       },
       { status: 201 },
     );

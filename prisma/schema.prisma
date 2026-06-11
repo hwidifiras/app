@@ -185,6 +185,7 @@ model Sport {
   groups            Group[]
   subscriptionPlans SubscriptionPlan[]
   memberSubscriptions MemberSubscription[]
+  offers            Offer[]
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
 }
@@ -330,16 +331,25 @@ model Payment {
 }
 
 model Offer {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  kind        OfferKind
-  isActive    Boolean  @default(true)
-  rules       String
-  createdById String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  applications OfferApplication[]
+  id                String   @id @default(cuid())
+  name              String
+  description       String?
+  kind              OfferKind
+  isActive          Boolean  @default(true)
+  /// JSON snapshot kept in sync on write; structured columns are the source of truth.
+  rules             String
+  percentOff        Int?
+  amountOffCents    Int?
+  bundlePriceCents  Int?
+  minMembers        Int?
+  requiresHousehold Boolean?
+  maxMembers        Int?
+  sportId           String?
+  sport             Sport?   @relation(fields: [sportId], references: [id], onDelete: SetNull)
+  createdById       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  applications      OfferApplication[]
 }
 
 model OfferApplication {

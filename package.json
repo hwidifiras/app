@@ -21,6 +21,8 @@
     "email:test": "npx tsx scripts/test-resend.ts",
     "email:test:prod": "node scripts/test-resend-production.mjs",
     "permissions:backfill": "node scripts/backfill-user-permissions.mjs",
+    "offers:backfill": "npx tsx scripts/backfill-offer-rules.ts",
+    "offers:backfill:dev": "node scripts/with-dev-env.mjs scripts/run-offers-backfill.mjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:dev": "node scripts/with-dev-env.mjs scripts/run-prisma-migrate.mjs",

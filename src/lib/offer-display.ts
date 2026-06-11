@@ -1,12 +1,13 @@
 import type { OfferKind } from "@prisma/client";
 
+import { offerToRulesRecord, type OfferRuleSource } from "@/lib/offer-rules";
 import { parseOfferRules } from "@/lib/schemas/offer";
 
-export type OfferLike = {
+export type OfferLike = OfferRuleSource & {
   id: string;
   name: string;
-  kind: OfferKind;
   isActive: boolean;
+  sportName?: string | null;
   rules: Record<string, unknown> | string;
 };
 
@@ -18,6 +19,14 @@ const KIND_LABELS: Record<OfferKind, string> = {
 };
 
 function parseRules(offer: OfferLike): Record<string, unknown> {
+  if (
+    typeof offer.percentOff === "number" ||
+    typeof offer.amountOffCents === "number" ||
+    typeof offer.bundlePriceCents === "number"
+  ) {
+    return offerToRulesRecord(offer);
+  }
+
   if (typeof offer.rules === "string") {
     try {
       return JSON.parse(offer.rules) as Record<string, unknown>;
@@ -38,10 +47,16 @@ export function formatOfferRulesSummary(offer: OfferLike): string {
     const parsed = parseOfferRules(offer.kind, rules);
     switch (offer.kind) {
       case "FAMILY_BUNDLE": {
-        const r = parsed as { minMembers: number; requiresHousehold: boolean; bundlePriceCents: number };
+        const r = parsed as {
+          minMembers: number;
+          requiresHousehold: boolean;
+          bundlePriceCents: number;
+          sportId?: string;
+        };
         const price = (r.bundlePriceCents / 100).toFixed(2).replace(".", ",") + " €";
         const foyer = r.requiresHousehold ? "foyer requis" : "sans foyer";
-        return `${r.minMembers} pers. min. · forfait ${price} · ${foyer}`;
+        const sportLabel = offer.sportName ? ` · ${offer.sportName}` : "";
+        return `${r.minMembers} pers. min. · forfait ${price} · ${foyer}${sportLabel}`;
       }
       case "SECOND_DISCIPLINE":
         return `${(parsed as { percentOff: number }).percentOff} % sur la 2e discipline`;
@@ -69,12 +84,19 @@ export function getOfferEnrollmentHint(offer: OfferLike, lineCount: number): str
   const rules = parseRules(offer);
   try {
     if (offer.kind === "FAMILY_BUNDLE") {
-      const r = parseOfferRules(offer.kind, rules) as { minMembers: number; requiresHousehold: boolean };
+      const r = parseOfferRules(offer.kind, rules) as {
+        minMembers: number;
+        requiresHousehold: boolean;
+        sportId?: string;
+      };
       if (lineCount < r.minMembers) {
         return `Nécessite au moins ${r.minMembers} inscription(s) dans ce devis.`;
       }
       if (r.requiresHousehold) {
         return "Les élèves existants doivent être dans le même foyer (Paramètres fiche élève). Nouveaux élèves : même devis OK.";
+      }
+      if (offer.sportName) {
+        return `Forfait limité à la discipline ${offer.sportName}.`;
       }
     }
     if (offer.kind === "SECOND_DISCIPLINE") {

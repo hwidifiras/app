@@ -28,13 +28,64 @@ export const fixedOffRulesSchema = z.object({
   maxMembers: z.number().int().min(1).max(10).optional(),
 });
 
-export const createOfferSchema = z.object({
-  name: z.string().trim().min(2).max(120),
-  description: z.string().trim().max(500).optional().or(z.literal("")),
-  kind: offerKindEnum,
-  rules: z.record(z.string(), z.unknown()),
-  isActive: z.boolean().optional(),
-});
+export const createOfferSchema = z
+  .object({
+    name: z.string().trim().min(2).max(120),
+    description: z.string().trim().max(500).optional().or(z.literal("")),
+    kind: offerKindEnum,
+    isActive: z.boolean().optional(),
+    percentOff: z.number().int().min(1).max(100).optional(),
+    amountOffCents: z.number().int().min(1).optional(),
+    bundlePriceCents: z.number().int().min(0).optional(),
+    minMembers: z.number().int().min(2).max(10).optional(),
+    requiresHousehold: z.boolean().optional(),
+    maxMembers: z.number().int().min(1).max(10).optional(),
+    sportId: z.string().trim().optional(),
+    rules: z.record(z.string(), z.unknown()).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.rules && Object.keys(data.rules).length > 0) {
+      try {
+        parseOfferRules(data.kind, data.rules);
+      } catch {
+        ctx.addIssue({ code: "custom", message: "Règles d'offre invalides", path: ["rules"] });
+      }
+      return;
+    }
+
+    switch (data.kind) {
+      case "FAMILY_BUNDLE":
+        if (data.bundlePriceCents == null) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Prix du forfait requis",
+            path: ["bundlePriceCents"],
+          });
+        }
+        break;
+      case "SECOND_DISCIPLINE":
+      case "PERCENT_OFF":
+        if (data.percentOff == null) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Pourcentage de réduction requis",
+            path: ["percentOff"],
+          });
+        }
+        break;
+      case "FIXED_OFF":
+        if (data.amountOffCents == null) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Montant de réduction requis",
+            path: ["amountOffCents"],
+          });
+        }
+        break;
+      default:
+        break;
+    }
+  });
 
 export type CreateOfferInput = z.infer<typeof createOfferSchema>;
 
