@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { createMemberSchema, updateMemberSchema } from "@/lib/schemas/member";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { expireStaleSubscriptions } from "@/lib/membership-rules";
+import { resolveMemberPhone } from "@/lib/member-phone";
 
 export const runtime = "nodejs";
 
@@ -184,11 +185,19 @@ export async function POST(request: Request) {
       if (group._count.members >= group.capacity) throw new Error("GROUP_CAPACITY_REACHED");
       if (paymentCents > plan.price) throw new Error("PAYMENT_EXCEEDS_DUE");
 
+      const memberPhone = resolveMemberPhone({
+        memberType: parsed.data.memberType,
+        phone: parsed.data.phone,
+        parentPhone: parentPhoneValue,
+        firstName: parsed.data.firstName,
+        lastName: parsed.data.lastName,
+      });
+
       const created = await tx.member.create({
         data: {
           firstName: parsed.data.firstName,
           lastName: parsed.data.lastName,
-          phone: parsed.data.phone,
+          phone: memberPhone,
           email: emailValue,
           memberType: parsed.data.memberType,
           birthDate: birthDateValue,
