@@ -33,6 +33,13 @@
 .DS_Store
 *.pem
 
+# SSH keys (never commit private keys)
+key-gen-git
+key-gen-git.pub
+id_ed25519*
+id_rsa*
+*.ppk
+
 # debug
 npm-debug.log*
 yarn-debug.log*
