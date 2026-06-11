@@ -9,9 +9,10 @@ import {
   checkScheduleConflictForMember,
   computeEndDate,
   ensureSharedHouseholdForMembers,
-  expireActiveSubscriptionForSport,
   isMemberAllowedInGroup,
 } from "@/lib/membership-rules";
+import { emptyEnrollmentUndoSnapshot } from "@/lib/enrollment-undo";
+import { resolveMemberPhone } from "@/lib/member-phone";
 
 export const runtime = "nodejs";
 
@@ -61,6 +62,7 @@ export async function POST(request: Request) {
     const result = await prisma.$transaction(async (tx) => {
       const subscriptionIds: string[] = [];
       const memberIds: string[] = [];
+      const undoSnapshot = emptyEnrollmentUndoSnapshot();
 
       for (let i = 0; i < parsed.data.lines.length; i++) {
         const line = parsed.data.lines[i];
@@ -72,11 +74,18 @@ export async function POST(request: Request) {
         let memberId = line.memberId;
 
         if (!memberId && line.newMember) {
+          const memberPhone = resolveMemberPhone({
+            memberType: line.newMember.memberType,
+            phone: line.newMember.phone,
+            parentPhone: line.newMember.parentPhone,
+            firstName: line.newMember.firstName,
+            lastName: line.newMember.lastName,
+          });
           const created = await tx.member.create({
             data: {
               firstName: line.newMember.firstName,
               lastName: line.newMember.lastName,
-              phone: line.newMember.phone,
+              phone: memberPhone,
               email: line.newMember.email?.trim() || null,
               memberType: line.newMember.memberType,
               birthDate: line.newMember.birthDate
@@ -89,6 +98,7 @@ export async function POST(request: Request) {
             },
           });
           memberId = created.id;
+          undoSnapshot.createdMemberIds.push(created.id);
         }
 
         if (!memberId) throw new Error(`LINE_MEMBER_${i}`);
@@ -130,7 +140,17 @@ export async function POST(request: Request) {
         const mustCreateFreshSub = !quoteLine.reusesExistingSubscription;
 
         if (mustCreateFreshSub) {
-          await expireActiveSubscriptionForSport(tx, memberId, plan.sportId);
+          const expiredActive = await tx.memberSubscription.findMany({
+            where: { memberId, sportId: plan.sportId, status: "ACTIVE" },
+            select: { id: true },
+          });
+          if (expiredActive.length > 0) {
+            await tx.memberSubscription.updateMany({
+              where: { id: { in: expiredActive.map((row) => row.id) } },
+              data: { status: "EXPIRED" },
+            });
+            undoSnapshot.expiredSubscriptionIds.push(...expiredActive.map((row) => row.id));
+          }
 
           const endDate = computeEndDate(startDate, plan.validityDays);
           const sub = await tx.memberSubscription.create({
@@ -149,13 +169,14 @@ export async function POST(request: Request) {
             },
           });
           subscriptionIds.push(sub.id);
+          undoSnapshot.createdSubscriptionIds.push(sub.id);
 
           const payCents = line.paymentCents ?? 0;
           if (payCents > 0) {
             if (payCents > quoteLine.finalAmountCents) {
               throw new Error(`LINE_OVERPAY_${i}`);
             }
-            await tx.payment.create({
+            const payment = await tx.payment.create({
               data: {
                 memberSubscriptionId: sub.id,
                 amount: payCents,
@@ -163,6 +184,7 @@ export async function POST(request: Request) {
                 notes: line.paymentNotes?.trim() || null,
               },
             });
+            undoSnapshot.createdPaymentIds.push(payment.id);
           }
         } else {
           const existing = await tx.memberSubscription.findFirst({
@@ -182,7 +204,7 @@ export async function POST(request: Request) {
             if (totalPaid + payCents > existing.amount) {
               throw new Error(`LINE_OVERPAY_${i}`);
             }
-            await tx.payment.create({
+            const payment = await tx.payment.create({
               data: {
                 memberSubscriptionId: existing.id,
                 amount: payCents,
@@ -190,16 +212,23 @@ export async function POST(request: Request) {
                 notes: line.paymentNotes?.trim() || null,
               },
             });
+            undoSnapshot.createdPaymentIds.push(payment.id);
           }
         }
 
         if (existingAssign) {
+          undoSnapshot.reactivatedGroupMembers.push({
+            id: existingAssign.id,
+            previousStatus: existingAssign.status,
+            previousStartDate: existingAssign.startDate.toISOString(),
+            previousEndDate: existingAssign.endDate?.toISOString() ?? null,
+          });
           await tx.groupMember.update({
             where: { id: existingAssign.id },
             data: { status: "ACTIVE", startDate, endDate: null },
           });
         } else {
-          await tx.groupMember.create({
+          const groupMember = await tx.groupMember.create({
             data: {
               groupId: line.groupId,
               memberId,
@@ -207,6 +236,7 @@ export async function POST(request: Request) {
               status: "ACTIVE",
             },
           });
+          undoSnapshot.createdGroupMemberIds.push(groupMember.id);
         }
       }
 
@@ -232,6 +262,7 @@ export async function POST(request: Request) {
           },
         });
         offerApplicationId = app.id;
+        undoSnapshot.offerApplicationId = app.id;
 
         if (subscriptionIds.length > 0) {
           await tx.memberSubscription.updateMany({
@@ -266,7 +297,7 @@ export async function POST(request: Request) {
         },
       });
 
-      return { memberIds, subscriptionIds, offerApplicationId, quote };
+      return { memberIds, subscriptionIds, offerApplicationId, quote, undoSnapshot };
     });
 
     return NextResponse.json({ data: result }, { status: 201 });

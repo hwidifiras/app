@@ -1,12 +1,14 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions } from "@/components/ui/form-layout";
 import { ReceptionInfoCard } from "@/components/ui/reception-info-card";
+import { UndoButton } from "@/components/ui/undo-button";
+import { useActionHistory } from "@/hooks/use-action-history";
+import type { EnrollmentUndoSnapshot } from "@/lib/enrollment-undo";
 import type { OfferLike } from "@/lib/offer-display";
 import {
   formatOfferRulesSummary,
@@ -95,11 +97,18 @@ function newLine(): LineState {
   };
 }
 
-export function EnrollmentWizard() {
-  const router = useRouter();
-  const [step, setStep] = useState(1);
+export function EnrollmentWizard({
+  initialMemberId = "",
+  initialOfferId = "",
+  initialStep = 1,
+}: {
+  initialMemberId?: string;
+  initialOfferId?: string;
+  initialStep?: number;
+}) {
+  const [step, setStep] = useState(initialStep >= 2 && initialStep <= 3 ? initialStep : 1);
   const [lines, setLines] = useState<LineState[]>([newLine()]);
-  const [offerId, setOfferId] = useState("");
+  const [offerId, setOfferId] = useState(initialOfferId);
   const [members, setMembers] = useState<MemberOption[]>([]);
   const [groups, setGroups] = useState<GroupOption[]>([]);
   const [plans, setPlans] = useState<PlanOption[]>([]);
@@ -107,6 +116,8 @@ export function EnrollmentWizard() {
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [appliedMemberIds, setAppliedMemberIds] = useState<string[]>([]);
+  const { push, undoLast, loading: undoLoading, canUndo } = useActionHistory({ enableKeyboard: true });
 
   useEffect(() => {
     Promise.all([
@@ -138,6 +149,32 @@ export function EnrollmentWizard() {
       setOffers(o.data ?? []);
     });
   }, []);
+
+  useEffect(() => {
+    if (!initialMemberId) return;
+
+    setLines((current) => {
+      const first = current[0] ?? newLine();
+      if (first.memberId === initialMemberId && first.mode === "existing") {
+        return current;
+      }
+
+      return [
+        {
+          ...first,
+          mode: "existing",
+          memberId: initialMemberId,
+        },
+        ...current.slice(1),
+      ];
+    });
+  }, [initialMemberId]);
+
+  useEffect(() => {
+    if (initialOfferId) {
+      setOfferId(initialOfferId);
+    }
+  }, [initialOfferId]);
 
   const buildPayload = useCallback(() => {
     return {
@@ -210,19 +247,58 @@ export function EnrollmentWizard() {
   async function applyEnrollment(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setMessage(null);
     const res = await fetch("/api/enrollment/apply", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(buildPayload()),
     });
-    const data = await res.json();
+    const data = await res.json() as {
+      data?: {
+        memberIds: string[];
+        undoSnapshot: EnrollmentUndoSnapshot;
+      };
+      error?: string;
+    };
     setLoading(false);
     if (!res.ok) {
       setMessage(data.error ?? "Erreur inscription");
       return;
     }
-    router.push(`/members/${data.data.memberIds[0]}`);
-    router.refresh();
+
+    const undoSnapshot = data.data?.undoSnapshot;
+    const memberIds = data.data?.memberIds ?? [];
+    if (!undoSnapshot) {
+      setMessage("Inscription confirmée.");
+      setAppliedMemberIds(memberIds);
+      return;
+    }
+
+    push({
+      scope: "enrollment",
+      label: "Inscription",
+      undo: async () => {
+        const revertRes = await fetch("/api/enrollment/revert", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ undoSnapshot }),
+        });
+        const revertData = (await revertRes.json()) as { error?: string };
+        if (!revertRes.ok) {
+          setMessage(revertData.error ?? "Impossible d'annuler l'inscription.");
+          return false;
+        }
+
+        setAppliedMemberIds([]);
+        setQuote(null);
+        setStep(2);
+        setMessage("Inscription annulée.");
+        return true;
+      },
+    });
+
+    setAppliedMemberIds(memberIds);
+    setMessage("Inscription confirmée.");
   }
 
   function plansForGroup(groupId: string) {
@@ -258,9 +334,42 @@ export function EnrollmentWizard() {
           (l.memberType !== "KID" || (l.parentName && l.parentPhone)))),
   );
 
+  const successMessage = useMemo(
+    () =>
+      message === "Inscription confirmée." || message === "Inscription annulée." ? message : null,
+    [message],
+  );
+
   return (
     <form onSubmit={applyEnrollment} className="space-y-6 pb-4 lg:pb-0">
-      {message && <FeedbackMessage variant="error" message={message} />}
+      {message ? (
+        <FeedbackMessage
+          message={message}
+          variant={
+            successMessage
+              ? "success"
+              : message.startsWith("Impossible") || message.includes("Erreur")
+                ? "error"
+                : undefined
+          }
+        />
+      ) : null}
+
+      {successMessage === "Inscription confirmée." && canUndo ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <UndoButton
+            onClick={() => undoLast()}
+            disabled={undoLoading || loading}
+            label="Annuler cette inscription"
+            title="Annuler la dernière inscription (Ctrl+Z)"
+          />
+          {appliedMemberIds[0] ? (
+            <Link href={`/members/${appliedMemberIds[0]}`} className="text-sm font-medium text-[var(--primary)] hover:underline">
+              Ouvrir le dossier membre
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
 
       <ReceptionInfoCard title="À retenir" variant="info">
         <p>Le paiement règle la dette de la formule — il n&apos;ajoute pas de séances en plus.</p>

@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Check, Users, X, XIcon } from "lucide-react";
+
+import { UndoButton } from "@/components/ui/undo-button";
 import type { SessionCardData } from "./session-card";
 
 const MARK_ALL_MAX = 8;
@@ -10,13 +12,20 @@ const MARK_ALL_MAX = 8;
 export function CheckInDrawer({
   session,
   activeSubscriptionMemberIds,
+  partialPaymentMemberIds,
+  partialPaymentDebtsCents,
   onCheckIn,
   onClose,
   loadingId,
   message,
+  canUndo = false,
+  undoLoading = false,
+  onUndo,
 }: {
   session: SessionCardData;
   activeSubscriptionMemberIds: string[];
+  partialPaymentMemberIds: string[];
+  partialPaymentDebtsCents: Record<string, number>;
   onCheckIn: (
     memberId: string,
     status: string,
@@ -26,6 +35,9 @@ export function CheckInDrawer({
   onClose: () => void;
   loadingId: string | null;
   message: string | null;
+  canUndo?: boolean;
+  undoLoading?: boolean;
+  onUndo?: () => void | Promise<void>;
 }) {
   const [modalMember, setModalMember] = useState<{ memberId: string; name: string; status: string } | null>(null);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
@@ -48,6 +60,16 @@ export function CheckInDrawer({
 
   function hasSub(mid: string) {
     return activeSubscriptionMemberIds.includes(`${session.id}_${mid}`);
+  }
+
+  function hasPartialDebt(mid: string) {
+    return partialPaymentMemberIds.includes(`${session.id}_${mid}`);
+  }
+
+  function remainingDebtLabel(mid: string) {
+    const cents = partialPaymentDebtsCents[`${session.id}_${mid}`];
+    if (!cents || cents <= 0) return null;
+    return `Solde ${(cents / 100).toFixed(2)} €`;
   }
 
   function getAtt(mid: string) {
@@ -180,14 +202,23 @@ export function CheckInDrawer({
               </span>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
+          <div className="flex shrink-0 items-center gap-1">
+            {canUndo && onUndo ? (
+              <UndoButton
+                onClick={onUndo}
+                disabled={undoLoading || loadingId !== null}
+                title="Annuler le dernier pointage"
+              />
+            ) : null}
+            <button
+              type="button"
+              onClick={onClose}
             className="btn btn-ghost min-h-11 min-w-11 shrink-0 rounded-full p-2"
             aria-label="Fermer"
           >
             <XIcon className="size-5" />
           </button>
+          </div>
         </div>
 
         {total <= MARK_ALL_MAX && unmarkedWithSub.length > 0 && (
@@ -217,7 +248,7 @@ export function CheckInDrawer({
             disabled={loadingId !== null || markingAll}
             className="btn btn-secondary btn-block-mobile min-h-11 text-sm"
           >
-            Récupération de séance (autre cours)
+            Rattrapage absence (même semaine)
           </button>
           <p className="mt-1 text-[0.65rem] text-[var(--muted-foreground)]">
             Pour un élève absent cette semaine sur un cours équivalent (même sport, même type).
@@ -263,6 +294,11 @@ export function CheckInDrawer({
                       <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
                         {!activeSub && (
                           <span className="text-[0.7rem] font-medium text-[var(--warning)]">Accès restreint</span>
+                        )}
+                        {activeSub && hasPartialDebt(mid) && (
+                          <span className="text-[0.7rem] font-medium text-[var(--warning)]">
+                            {remainingDebtLabel(mid) ?? "Paiement partiel"}
+                          </span>
                         )}
                         {att && (
                           <StatusBadge
@@ -375,10 +411,9 @@ export function CheckInDrawer({
             className="mobile-modal-panel border border-[var(--border)] bg-[var(--surface)] p-5 shadow-lg md:max-w-md md:rounded-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-base font-semibold text-[var(--foreground)]">Récupération de séance</h3>
+            <h3 className="text-base font-semibold text-[var(--foreground)]">Rattrapage d&apos;absence</h3>
             <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-              Élève absent cette semaine sur un cours équivalent — présence sur ce créneau sans consommer une séance
-              supplémentaire.
+              Pour un élève absent cette semaine sur un cours équivalent (même discipline), sans consommer une séance supplémentaire.
             </p>
 
             {recoveryLoading ? (
