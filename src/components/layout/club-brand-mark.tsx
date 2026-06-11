@@ -7,12 +7,13 @@ import { useClubBranding } from "@/components/layout/club-branding-provider";
 
 type ClubBrandMarkProps = {
   size?: "sm" | "md";
+  compact?: boolean;
   className?: string;
 };
 
 const iconSizes = { sm: "size-8", md: "size-9" } as const;
 
-export function ClubBrandMark({ size = "md", className }: ClubBrandMarkProps) {
+export function ClubBrandMark({ size = "md", compact = false, className }: ClubBrandMarkProps) {
   const { displayName, appName, logoUrl } = useClubBranding();
   const hasCustomName = displayName !== appName;
   const iconBox = cn(
@@ -37,12 +38,14 @@ export function ClubBrandMark({ size = "md", className }: ClubBrandMarkProps) {
           <Dumbbell className={size === "sm" ? "size-4" : "size-5"} />
         </div>
       )}
-      <div className="min-w-0 leading-tight">
-        <span className="block truncate text-sm font-bold text-[var(--foreground)]">{displayName}</span>
-        <span className="block truncate text-[0.65rem] font-medium text-[var(--muted-foreground)]">
-          {hasCustomName ? appName : "Réception"}
-        </span>
-      </div>
+      {!compact ? (
+        <div className="min-w-0 leading-tight">
+          <span className="block truncate text-sm font-bold text-[var(--foreground)]">{displayName}</span>
+          <span className="block truncate text-[0.65rem] font-medium text-[var(--muted-foreground)]">
+            {hasCustomName ? appName : "Réception"}
+          </span>
+        </div>
+      ) : null}
     </>
   );
 }

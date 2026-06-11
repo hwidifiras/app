@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Clock, Pencil, Trash2 } from "lucide-react";
+import { formatGroupRoomLabel } from "@/lib/group-room";
 import { GroupDto } from "@/types/group";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
@@ -37,7 +39,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
       group.name.toLowerCase().includes(query) ||
       group.sportName.toLowerCase().includes(query) ||
       group.coachName.toLowerCase().includes(query) ||
-      group.room.toLowerCase().includes(query)
+      (group.room ?? "").toLowerCase().includes(query)
     );
   });
 
@@ -128,7 +130,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
                 <Td label="Nom" primary className="font-medium text-foreground">
                   {group.name}
                   <p className="text-xs text-muted-foreground">
-                    Salle {group.room} • Cap. {group.capacity}
+                    Salle {formatGroupRoomLabel(group.room)} • Cap. {group.capacity}
                   </p>
                 </Td>
                 <Td label="Sport" mobileDetail>
@@ -146,20 +148,34 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
                   </StatusBadge>
                 </Td>
                 <TableActionsCell className="mobile-detail-cell">
-                  <Link href={`/groups/${group.id}/schedules`} className="btn btn-ghost btn-sm">
-                    Planifier
-                  </Link>
-                  <Link href={`/groups/${group.id}/edit`} className="btn btn-ghost btn-sm">
-                    Modifier
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => deleteGroup(group.id)}
-                    disabled={actionLoadingId === group.id}
-                    className="btn btn-danger btn-sm"
-                  >
-                    {actionLoadingId === group.id ? "..." : "Supprimer"}
-                  </button>
+                  <div className="flex flex-nowrap items-center justify-end gap-1">
+                    <Link
+                      href={`/groups/${group.id}/schedules`}
+                      className="btn btn-ghost btn-sm inline-flex size-9 items-center justify-center p-0"
+                      title="Planifier"
+                      aria-label="Planifier"
+                    >
+                      <Clock className="size-4" />
+                    </Link>
+                    <Link
+                      href={`/groups/${group.id}/edit`}
+                      className="btn btn-ghost btn-sm inline-flex size-9 items-center justify-center p-0"
+                      title="Modifier"
+                      aria-label="Modifier"
+                    >
+                      <Pencil className="size-4" />
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => deleteGroup(group.id)}
+                      disabled={actionLoadingId === group.id}
+                      className="btn btn-danger btn-sm inline-flex size-9 items-center justify-center p-0"
+                      title="Supprimer"
+                      aria-label="Supprimer"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </div>
                 </TableActionsCell>
                 <MobileRowToggle expanded={isExpanded} onToggle={() => toggleExpand(group.id)} />
               </DataTableRow>

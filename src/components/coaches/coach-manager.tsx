@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { Pencil, Trash2 } from "lucide-react";
 
 import { CoachDto } from "@/types/coach";
 import { SportDto } from "@/types/sport";
@@ -255,9 +256,9 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
             </form>
           </div>
 
-          <ul className="mt-4 space-y-3">
+          <ul className="mt-4 space-y-2">
             {coaches.map((coach) => (
-              <li key={coach.id} className="rounded-xl border border-[var(--border)] p-3">
+              <li key={coach.id} className="rounded-xl border border-[var(--border)] px-3 py-2.5">
                 {editingId === coach.id ? (
                   <div className="space-y-2">
                     <input
@@ -326,39 +327,51 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                     </div>
                   </div>
                 ) : (
-                  <>
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-medium text-[var(--foreground)]">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-soft)] text-xs font-bold text-[var(--primary)]">
+                        {coach.firstName[0]}
+                        {coach.lastName[0]}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-[var(--foreground)]">
                           {coach.firstName} {coach.lastName}
                         </p>
-                        <p className="text-xs text-[var(--muted-foreground)]">{coach.phone}</p>
-                        <p className="text-xs text-[var(--muted-foreground)]">{coach.email ?? "-"}</p>
-                        <p className="text-xs text-[var(--muted-foreground)]">Spécialité: {coach.sportName ?? "-"}</p>
                       </div>
-                      <StatusBadge variant={coach.isActive ? "success" : "muted"}>
-                        {coach.isActive ? "Actif" : "Inactif"}
-                      </StatusBadge>
                     </div>
-                    <div className="list-card-actions mt-3">
+                    <div className="grid flex-1 grid-cols-2 gap-x-3 gap-y-1 text-xs text-[var(--muted-foreground)] sm:grid-cols-4">
+                      <span className="truncate" data-label="Téléphone">{coach.phone}</span>
+                      <span className="truncate" data-label="Email">{coach.email ?? "—"}</span>
+                      <span className="truncate" data-label="Spécialité">{coach.sportName ?? "—"}</span>
+                      <span data-label="Statut">
+                        <StatusBadge variant={coach.isActive ? "success" : "muted"}>
+                          {coach.isActive ? "Actif" : "Inactif"}
+                        </StatusBadge>
+                      </span>
+                    </div>
+                    <div className="flex shrink-0 items-center justify-end gap-1">
                       <button
                         type="button"
                         onClick={() => startEdit(coach)}
                         disabled={actionLoadingId === coach.id}
-                        className="btn btn-ghost btn-block-mobile"
+                        className="btn btn-ghost btn-sm inline-flex size-9 items-center justify-center p-0"
+                        title="Modifier"
+                        aria-label="Modifier"
                       >
-                        Modifier
+                        <Pencil className="size-4" />
                       </button>
                       <button
                         type="button"
                         onClick={() => deleteCoach(coach.id)}
                         disabled={actionLoadingId === coach.id}
-                        className="btn btn-danger btn-block-mobile"
+                        className="btn btn-danger btn-sm inline-flex size-9 items-center justify-center p-0"
+                        title="Supprimer"
+                        aria-label="Supprimer"
                       >
-                        Supprimer
+                        <Trash2 className="size-4" />
                       </button>
                     </div>
-                  </>
+                  </div>
                 )}
               </li>
             ))}
