@@ -5,10 +5,17 @@ import { createAttendanceSchema, updateAttendanceSchema } from "@/lib/schemas/at
 import { getClubSettings } from "@/lib/club-settings";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import {
-  countWeeklySlotUsage,
+  countOverrides,
   RECOVERY_OVERRIDE_PREFIX,
   validateRecoveryCheckIn,
 } from "@/lib/attendance-rules";
+import {
+  applySessionBalanceDelta,
+} from "@/lib/attendance-session-adjustment";
+import {
+  computeAttendanceConsumptionUnits,
+  resolveCheckInConsumption,
+} from "@/lib/weekly-session-consumption";
 import {
   canCheckInWithPayment,
   resolveActiveSubscription,
@@ -98,8 +105,6 @@ export async function POST(request: Request) {
 
   const { sessionId, memberId, status, overrideReason, checkedBy, overrideKind } = parsed.data;
   const clubSettings = await getClubSettings();
-  const shouldDecrementSession =
-    status === "PRESENT" || (status === "ABSENT" && clubSettings.absentConsumesSession);
   const isRecoveryOverride = status === "OVERRIDE" && overrideKind === "RECOVERY";
   const normalizedOverrideReason = isRecoveryOverride
     ? `${RECOVERY_OVERRIDE_PREFIX}${overrideReason?.trim() ? ` — ${overrideReason.trim()}` : ""}`
@@ -128,6 +133,7 @@ export async function POST(request: Request) {
     const sportId = sessionExists.group.sportId;
     const activeSub = await resolveActiveSubscription(memberId, sportId);
     const isSubActive = !!activeSub;
+    let consumptionUnits = 0;
 
     if (isRecoveryOverride) {
       if (!isSubActive || !activeSub) {
@@ -202,10 +208,21 @@ export async function POST(request: Request) {
         );
       }
 
-      if (activeSub.plan.sessionsPerWeek) {
-        const weeklyCount = await countWeeklySlotUsage(activeSub.id, sessionExists.sessionDate);
+      let checkInConsumption = null as Awaited<ReturnType<typeof resolveCheckInConsumption>> | null;
 
-        if (weeklyCount >= activeSub.plan.sessionsPerWeek) {
+      if (activeSub) {
+        checkInConsumption = await resolveCheckInConsumption({
+          status,
+          sessionId: sessionExists.id,
+          groupId: sessionExists.group.id,
+          sessionDate: sessionExists.sessionDate,
+          memberId,
+          memberSubscriptionId: activeSub.id,
+          planSessionsPerWeek: activeSub.plan.sessionsPerWeek,
+          absentConsumesSession: clubSettings.absentConsumesSession,
+        });
+
+        if (activeSub.plan.sessionsPerWeek && checkInConsumption.blockPresent) {
           return NextResponse.json(
             {
               error: "Quota hebdomadaire atteint — passage exceptionnel requis",
@@ -215,6 +232,8 @@ export async function POST(request: Request) {
             { status: 403 },
           );
         }
+
+        consumptionUnits = checkInConsumption.units;
       }
     }
 
@@ -260,7 +279,7 @@ export async function POST(request: Request) {
       let activeSubscriptionId: string | null = null;
       let remainingSessionsBefore: number | null = null;
 
-      if (shouldDecrementSession) {
+      if (consumptionUnits > 0) {
         if (isSubActive && activeSub) {
           activeSubscriptionId = activeSub.id;
           remainingSessionsBefore = activeSub.remainingSessions;
@@ -270,7 +289,7 @@ export async function POST(request: Request) {
               id: activeSub.id,
               remainingSessions: { gt: 0 },
             },
-            data: { remainingSessions: { decrement: 1 } },
+            data: { remainingSessions: { decrement: consumptionUnits } },
           });
 
           if (updated.count === 0) {
@@ -289,7 +308,9 @@ export async function POST(request: Request) {
           memberSubscriptionId:
             isRecoveryOverride && activeSub
               ? activeSub.id
-              : activeSubscriptionId,
+              : consumptionUnits > 0 && isSubActive && activeSub
+                ? activeSub.id
+                : null,
         },
         include: {
           session: {
@@ -405,16 +426,37 @@ export async function PATCH(request: Request) {
   const payload = updatePayload.data;
 
   try {
+    const clubSettings = await getClubSettings();
     const existing = await prisma.attendance.findUnique({
       where: { id: attendanceId },
-      select: { memberId: true, status: true },
+      select: {
+        memberId: true,
+        status: true,
+        memberSubscriptionId: true,
+        session: {
+          select: {
+            id: true,
+            sessionDate: true,
+            groupId: true,
+            group: { select: { sportId: true } },
+          },
+        },
+        memberSubscription: { select: { plan: { select: { sessionsPerWeek: true } } } },
+      },
     });
 
     if (!existing) {
       return NextResponse.json({ error: "Présence introuvable" }, { status: 404 });
     }
 
-    if (payload.status === "OVERRIDE") {
+    const activeSub = await resolveActiveSubscription(existing.memberId, existing.session.group.sportId);
+    const planSessionsPerWeek =
+      existing.memberSubscription?.plan.sessionsPerWeek ?? activeSub?.plan.sessionsPerWeek ?? null;
+    const subscriptionIdForConsumption = existing.memberSubscriptionId ?? activeSub?.id ?? null;
+
+    const nextStatus = payload.status ?? existing.status;
+
+    if (nextStatus === "OVERRIDE" && nextStatus !== existing.status) {
       const overrideCount = await countOverrides(existing.memberId);
       if (overrideCount >= 3) {
         return NextResponse.json(
@@ -428,34 +470,80 @@ export async function PATCH(request: Request) {
       }
     }
 
-    const updated = await prisma.attendance.update({
-      where: { id: attendanceId },
-      data: {
-        status: payload.status,
-        overrideReason:
-          payload.overrideReason === undefined
-            ? undefined
-            : payload.overrideReason === "" || payload.overrideReason === null
-              ? null
-              : payload.overrideReason,
-        checkedBy:
-          payload.checkedBy === undefined
-            ? undefined
-            : payload.checkedBy === "" || payload.checkedBy === null
-              ? null
-              : payload.checkedBy,
-      },
-      include: {
-        session: {
-          select: {
-            id: true,
-            sessionDate: true,
-            startTime: true,
-            group: { select: { id: true, name: true } },
-          },
+    let delta = 0;
+    let newConsumptionUnits = 0;
+
+    if (payload.status !== undefined) {
+      const consumptionBase = {
+        sessionId: existing.session.id,
+        groupId: existing.session.groupId,
+        sessionDate: existing.session.sessionDate,
+        memberId: existing.memberId,
+        memberSubscriptionId: subscriptionIdForConsumption,
+        planSessionsPerWeek,
+        absentConsumesSession: clubSettings.absentConsumesSession,
+      };
+
+      const oldUnits = await computeAttendanceConsumptionUnits({
+        ...consumptionBase,
+        status: existing.status,
+      });
+      newConsumptionUnits = await computeAttendanceConsumptionUnits({
+        ...consumptionBase,
+        status: nextStatus,
+        omitSessionId: existing.session.id,
+      });
+      delta = oldUnits - newConsumptionUnits;
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      let memberSubscriptionId = existing.memberSubscriptionId;
+
+      if (delta !== 0) {
+        const adjustment = await applySessionBalanceDelta(tx, {
+          delta,
+          memberSubscriptionId,
+          memberId: existing.memberId,
+          sportId: existing.session.group.sportId,
+        });
+        memberSubscriptionId = adjustment.memberSubscriptionId;
+      }
+
+      return tx.attendance.update({
+        where: { id: attendanceId },
+        data: {
+          status: payload.status,
+          memberSubscriptionId:
+            payload.status !== undefined && newConsumptionUnits > 0
+              ? memberSubscriptionId ?? subscriptionIdForConsumption
+              : payload.status !== undefined
+                ? null
+                : undefined,
+          overrideReason:
+            payload.overrideReason === undefined
+              ? undefined
+              : payload.overrideReason === "" || payload.overrideReason === null
+                ? null
+                : payload.overrideReason,
+          checkedBy:
+            payload.checkedBy === undefined
+              ? undefined
+              : payload.checkedBy === "" || payload.checkedBy === null
+                ? null
+                : payload.checkedBy,
         },
-        member: { select: { id: true, firstName: true, lastName: true } },
-      },
+        include: {
+          session: {
+            select: {
+              id: true,
+              sessionDate: true,
+              startTime: true,
+              group: { select: { id: true, name: true } },
+            },
+          },
+          member: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
     });
 
     await prisma.auditLog.create({
@@ -466,14 +554,27 @@ export async function PATCH(request: Request) {
         userId: actor?.id ?? null,
         details: JSON.stringify({
           oldStatus: existing.status,
-          newStatus: payload.status,
+          newStatus: payload.status ?? existing.status,
           overrideReason: payload.overrideReason || null,
+          sessionBalanceDelta: delta,
         }),
       },
     });
 
     return NextResponse.json({ data: updated });
   } catch (error) {
+    if (error instanceof Error && error.message === "NO_SESSIONS_LEFT") {
+      return NextResponse.json(
+        { error: "Plus de séances disponibles sur cet abonnement", code: "NO_SESSIONS_LEFT" },
+        { status: 403 },
+      );
+    }
+    if (error instanceof Error && error.message === "NO_ACTIVE_SUBSCRIPTION") {
+      return NextResponse.json(
+        { error: "Abonnement actif requis pour ce statut", code: "SUBSCRIPTION_INACTIVE" },
+        { status: 403 },
+      );
+    }
     const isNotFound =
       typeof error === "object" &&
       error !== null &&
@@ -514,8 +615,56 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    await prisma.attendance.delete({
+    const clubSettings = await getClubSettings();
+    const existing = await prisma.attendance.findUnique({
       where: { id: attendanceId },
+      select: {
+        memberId: true,
+        status: true,
+        memberSubscriptionId: true,
+        session: {
+          select: {
+            id: true,
+            sessionDate: true,
+            groupId: true,
+            group: { select: { sportId: true } },
+          },
+        },
+        memberSubscription: { select: { plan: { select: { sessionsPerWeek: true } } } },
+      },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Présence introuvable" }, { status: 404 });
+    }
+
+    const activeSub = await resolveActiveSubscription(existing.memberId, existing.session.group.sportId);
+    const planSessionsPerWeek =
+      existing.memberSubscription?.plan.sessionsPerWeek ?? activeSub?.plan.sessionsPerWeek ?? null;
+    const subscriptionIdForConsumption = existing.memberSubscriptionId ?? activeSub?.id ?? null;
+
+    const creditDelta = await computeAttendanceConsumptionUnits({
+      status: existing.status,
+      sessionId: existing.session.id,
+      groupId: existing.session.groupId,
+      sessionDate: existing.session.sessionDate,
+      memberId: existing.memberId,
+      memberSubscriptionId: subscriptionIdForConsumption,
+      planSessionsPerWeek,
+      absentConsumesSession: clubSettings.absentConsumesSession,
+    });
+
+    await prisma.$transaction(async (tx) => {
+      if (creditDelta > 0) {
+        await applySessionBalanceDelta(tx, {
+          delta: creditDelta,
+          memberSubscriptionId: existing.memberSubscriptionId,
+          memberId: existing.memberId,
+          sportId: existing.session.group.sportId,
+        });
+      }
+
+      await tx.attendance.delete({ where: { id: attendanceId } });
     });
 
     await prisma.auditLog.create({
@@ -524,7 +673,11 @@ export async function DELETE(request: Request) {
         entityType: "Attendance",
         entityId: attendanceId,
         userId: actor?.id ?? null,
-        details: JSON.stringify({ deletedAt: new Date().toISOString() }),
+        details: JSON.stringify({
+          deletedAt: new Date().toISOString(),
+          previousStatus: existing.status,
+          sessionBalanceDelta: creditDelta,
+        }),
       },
     });
 

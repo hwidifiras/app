@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { CheckInPanel } from "@/components/attendance/check-in-panel";
-import { getWeekRangeUtc, utcDateOnlyForTimeZone } from "@/lib/dates";
+import { getClubSettings } from "@/lib/club-settings";
+import { computeWeeklyAllowanceRemainingForMember } from "@/lib/weekly-session-consumption";
+import { utcDateOnlyForTimeZone } from "@/lib/dates";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -93,31 +95,7 @@ export default async function AttendanceTodayPage() {
         },
       });
 
-      const { start: weekStart, end: weekEnd } = getWeekRangeUtc(new Date());
-      const subIds = subs.map((sub) => sub.id);
-      const weeklyCounts = new Map<string, number>();
-
-      if (subIds.length > 0) {
-        const weeklyRows = await prisma.attendance.findMany({
-          where: {
-            status: { in: ["PRESENT", "ABSENT"] },
-            memberSubscriptionId: { in: subIds },
-            session: {
-              sessionDate: { gte: weekStart, lt: weekEnd },
-            },
-          },
-          select: { memberSubscriptionId: true },
-        });
-
-        for (const row of weeklyRows) {
-          if (!row.memberSubscriptionId) continue;
-          weeklyCounts.set(
-            row.memberSubscriptionId,
-            (weeklyCounts.get(row.memberSubscriptionId) ?? 0) + 1,
-          );
-        }
-      }
-
+      const clubSettings = await getClubSettings();
       const validKeys = new Set<string>();
 
       for (const session of rawSessions) {
@@ -126,16 +104,29 @@ export default async function AttendanceTodayPage() {
         for (const member of session.group.members) {
           const memberSubs = subs.filter((s) => s.memberId === member.memberId);
           
-          const hasValidSub = memberSubs.some((sub) => {
-            const totalPaid = sub.payments.reduce((acc, p) => acc + p.amount, 0);
-            if (totalPaid < sub.amount) return false;
-            if (sub.plan.sportId && sub.plan.sportId !== sessionSportId) return false;
-            if (sub.plan.sessionsPerWeek) {
-              const count = weeklyCounts.get(sub.id) ?? 0;
-              if (count >= sub.plan.sessionsPerWeek) return false;
+          const hasValidSub = await (async () => {
+            for (const sub of memberSubs) {
+              const totalPaid = sub.payments.reduce((acc, p) => acc + p.amount, 0);
+              if (totalPaid < sub.amount) continue;
+              if (sub.plan.sportId && sub.plan.sportId !== sessionSportId) continue;
+
+              if (sub.plan.sessionsPerWeek) {
+                const weeklyRemaining = await computeWeeklyAllowanceRemainingForMember({
+                  sessionId: session.id,
+                  groupId: session.groupId,
+                  sessionDate: session.sessionDate,
+                  memberId: sub.memberId,
+                  memberSubscriptionId: sub.id,
+                  planSessionsPerWeek: sub.plan.sessionsPerWeek,
+                  absentConsumesSession: clubSettings.absentConsumesSession,
+                });
+                if (weeklyRemaining <= 0) continue;
+              }
+
+              return true;
             }
-            return true;
-          });
+            return false;
+          })();
 
           if (hasValidSub) {
             validKeys.add(`${session.id}_${member.memberId}`);

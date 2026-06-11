@@ -7,6 +7,7 @@ import {
 } from "@/lib/schemas/subscription-plan";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { totalSessionsFromWeekly } from "@/lib/subscription-plan-utils";
+import { validatePlanSessionsPerWeekForSport } from "@/lib/sport-weekly-standard";
 
 export const runtime = "nodejs";
 
@@ -62,6 +63,12 @@ export async function POST(request: Request) {
   }
 
   const descriptionValue = parsed.data.description?.trim() || null;
+
+  const sportId = parsed.data.sportId;
+  const planCapError = await validatePlanSessionsPerWeekForSport(sportId, parsed.data.sessionsPerWeek);
+  if (planCapError) {
+    return NextResponse.json({ error: planCapError, code: "PLAN_EXCEEDS_SPORT_STANDARD" }, { status: 409 });
+  }
 
   try {
     const plan = await prisma.subscriptionPlan.create({
@@ -132,6 +139,23 @@ export async function PATCH(request: Request) {
   const payload = updatePayload.data;
 
   try {
+    const currentPlan = await prisma.subscriptionPlan.findUnique({
+      where: { id: planId },
+      select: { sportId: true },
+    });
+
+    if (!currentPlan) {
+      return NextResponse.json({ error: "Plan introuvable" }, { status: 404 });
+    }
+
+    if (payload.sessionsPerWeek !== undefined) {
+      const sportId = payload.sportId && payload.sportId !== "" ? payload.sportId : currentPlan.sportId;
+      const planCapError = await validatePlanSessionsPerWeekForSport(sportId, payload.sessionsPerWeek);
+      if (planCapError) {
+        return NextResponse.json({ error: planCapError, code: "PLAN_EXCEEDS_SPORT_STANDARD" }, { status: 409 });
+      }
+    }
+
     const updated = await prisma.subscriptionPlan.update({
       where: { id: planId },
       data: {
