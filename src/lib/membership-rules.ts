@@ -2,7 +2,7 @@ import type { Offer, OfferKind, Prisma, SubscriptionPlan } from "@prisma/client"
 
 import { getAppTimeZone } from "@/lib/dates";
 import { getClubSettings } from "@/lib/club-settings";
-import { parseOfferRules } from "@/lib/schemas/offer";
+import { resolveOfferRules } from "@/lib/offer-rules";
 import type { EnrollmentLineInput } from "@/lib/schemas/enrollment";
 import { prisma } from "@/lib/prisma";
 
@@ -341,7 +341,7 @@ function applyOfferToLines(
   const warnings: string[] = [];
   if (!offer || !offer.isActive) return { discounts, offerName: null, warnings };
 
-  const rules = parseOfferRules(offer.kind, JSON.parse(offer.rules));
+  const rules = resolveOfferRules(offer);
   const listPrices = resolved.map((r) => r.listPrice);
 
   switch (offer.kind as OfferKind) {

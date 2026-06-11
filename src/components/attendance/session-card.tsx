@@ -5,6 +5,7 @@ import { Clock, Users, DoorOpen, CalendarClock, CheckCircle2, XCircle, User } fr
 
 export type SessionCardData = {
   id: string;
+  sessionDate: string;
   startTime: string;
   endTime: string;
   room: string;
@@ -24,11 +25,13 @@ export function SessionCard({
   isSelected,
   onSelect,
   postponeHref,
+  postponeDisabled = false,
 }: {
   session: SessionCardData;
   isSelected: boolean;
   onSelect: () => void;
   postponeHref: string;
+  postponeDisabled?: boolean;
 }) {
   const label = "Pointage disponible";
   const postponementInfo = (() => {
@@ -112,7 +115,7 @@ export function SessionCard({
           </div>
           <div className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
             <DoorOpen className="size-3" />
-            {session.room}
+            {session.room?.trim() ? session.room : "À définir"}
           </div>
         </div>
 
@@ -219,15 +222,25 @@ export function SessionCard({
             <Clock className="size-3 text-[var(--muted-foreground)]" />
             <p className="text-[0.65rem] text-[var(--muted-foreground)]">{label}</p>
           </div>
-          <Link
-            href={postponeHref}
-            onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[0.65rem] font-medium text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
-            title="Reporter cette séance"
-          >
-            <CalendarClock className="size-3" />
-            Reporter
-          </Link>
+          {postponeDisabled ? (
+            <span
+              className="inline-flex cursor-not-allowed items-center gap-1 rounded-md px-2 py-1 text-[0.65rem] font-medium text-[var(--muted-foreground)] opacity-60"
+              title="Annulez les pointages (↶) avant de reporter la séance"
+            >
+              <CalendarClock className="size-3" />
+              Reporter
+            </span>
+          ) : (
+            <Link
+              href={postponeHref}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[0.65rem] font-medium text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
+              title="Modifier le créneau ou reporter via le planning du groupe"
+            >
+              <CalendarClock className="size-3" />
+              Reporter
+            </Link>
+          )}
         </div>
       </div>
     </div>

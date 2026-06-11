@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { CheckInPanel } from "@/components/attendance/check-in-panel";
 import { getClubSettings } from "@/lib/club-settings";
+import { canCheckInWithPayment } from "@/lib/membership-rules";
 import { computeWeeklyAllowanceRemainingForMember } from "@/lib/weekly-session-consumption";
 import { utcDateOnlyForTimeZone } from "@/lib/dates";
 import Link from "next/link";
@@ -37,6 +38,8 @@ export default async function AttendanceTodayPage() {
     attendances: Array<{ id: string; memberId: string; status: string; overrideReason?: string | null }>;
   }>;
   let activeSubscriptionMemberIds: string[] = [];
+  let partialPaymentMemberIds: string[] = [];
+  let partialPaymentDebtsCents: Record<string, number> = {};
   let hasError = false;
 
   try {
@@ -91,24 +94,35 @@ export default async function AttendanceTodayPage() {
           amount: true,
           remainingSessions: true,
           payments: { select: { amount: true } },
-          plan: { select: { sportId: true, sessionsPerWeek: true } }
+          plan: { select: { sportId: true, sessionsPerWeek: true, name: true } }
         },
       });
 
       const clubSettings = await getClubSettings();
       const validKeys = new Set<string>();
+      const partialKeys = new Set<string>();
+      const partialDebtByKey = new Map<string, number>();
 
       for (const session of rawSessions) {
         const sessionSportId = session.group.sportId;
 
         for (const member of session.group.members) {
           const memberSubs = subs.filter((s) => s.memberId === member.memberId);
-          
-          const hasValidSub = await (async () => {
+
+          const matchedSub = await (async () => {
             for (const sub of memberSubs) {
               const totalPaid = sub.payments.reduce((acc, p) => acc + p.amount, 0);
-              if (totalPaid < sub.amount) continue;
               if (sub.plan.sportId && sub.plan.sportId !== sessionSportId) continue;
+
+              const paymentCheck = await canCheckInWithPayment({
+                id: sub.id,
+                sportId: sub.plan.sportId ?? sessionSportId,
+                remainingSessions: sub.remainingSessions,
+                amount: sub.amount,
+                totalPaid,
+                plan: sub.plan,
+              });
+              if (!paymentCheck.allowed) continue;
 
               if (sub.plan.sessionsPerWeek) {
                 const weeklyRemaining = await computeWeeklyAllowanceRemainingForMember({
@@ -123,18 +137,25 @@ export default async function AttendanceTodayPage() {
                 if (weeklyRemaining <= 0) continue;
               }
 
-              return true;
+              return { sub, totalPaid };
             }
-            return false;
+            return null;
           })();
 
-          if (hasValidSub) {
-            validKeys.add(`${session.id}_${member.memberId}`);
+          if (matchedSub) {
+            const key = `${session.id}_${member.memberId}`;
+            validKeys.add(key);
+            if (matchedSub.totalPaid < matchedSub.sub.amount) {
+              partialKeys.add(key);
+              partialDebtByKey.set(key, matchedSub.sub.amount - matchedSub.totalPaid);
+            }
           }
         }
       }
 
       activeSubscriptionMemberIds = Array.from(validKeys);
+      partialPaymentMemberIds = Array.from(partialKeys);
+      partialPaymentDebtsCents = Object.fromEntries(partialDebtByKey);
     }
   } catch {
     hasError = true;
@@ -177,7 +198,14 @@ export default async function AttendanceTodayPage() {
       />
 
       <section className="panel panel-soft p-4 md:p-6">
-        <CheckInPanel data={{ sessions, activeSubscriptionMemberIds }} />
+        <CheckInPanel
+          data={{
+            sessions,
+            activeSubscriptionMemberIds,
+            partialPaymentMemberIds,
+            partialPaymentDebtsCents,
+          }}
+        />
       </section>
     </main>
   );
