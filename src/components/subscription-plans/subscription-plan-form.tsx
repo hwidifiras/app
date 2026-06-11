@@ -96,14 +96,16 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
   }
 
   function applyTemplate(months: 1 | 2 | 3) {
-    const weeksPerMonth = 4;
     const spw = parseInt(sessionsPerWeek, 10) || 3;
     setName(months === 1 ? "Formule 1 mois" : months === 2 ? "Formule 2 mois" : "Formule 3 mois");
     setValidityDays(String(months * 30));
     setSessionsPerWeek(String(spw));
-    if (price) {
-      const base = parseFloat(price.replace(",", ".")) || 0;
-      if (base > 0) setPrice((base * months).toFixed(2));
+
+    const currentPrice = parseFloat(price.replace(",", ".")) || 0;
+    const currentDays = parseInt(validityDays, 10) || 30;
+    if (currentPrice > 0 && currentDays > 0) {
+      const monthlyRate = currentPrice / (currentDays / 30);
+      setPrice((monthlyRate * months).toFixed(2));
     }
   }
 
@@ -131,11 +133,6 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
       <div>
         <label className="mb-1 block text-xs font-medium text-muted-foreground">Nom du plan *</label>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Mensuel Standard" className="field" required />
-      </div>
-
-      <div>
-        <label className="mb-1 block text-xs font-medium text-muted-foreground">Description</label>
-        <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Accès illimité, 1 coach..." className="field" />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
