@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 
-import { buildPasswordResetEmail } from "@/lib/email-templates";
+import { buildPasswordResetEmail, buildPaymentReminderEmail } from "@/lib/email-templates";
 
 export type EmailDeliveryResult =
   | { delivered: true }
@@ -44,6 +44,55 @@ export async function sendPasswordResetEmail(
 
   if (error) {
     console.error("Resend send failed:", { from, to, error });
+    return { delivered: false, reason: "EMAIL_SEND_FAILED" };
+  }
+
+  return { delivered: true };
+}
+
+export type PaymentReminderEmailParams = {
+  to: string;
+  memberName: string;
+  totalDebtCents: number;
+  lines: Array<{ label: string; outstandingCents: number }>;
+  clubName: string;
+  clubPhone: string;
+  clubAddress: string;
+};
+
+export function isPaymentReminderEmailConfigured(): boolean {
+  return Boolean(process.env.RESEND_API_KEY?.trim() && process.env.PASSWORD_RESET_FROM?.trim());
+}
+
+export async function sendPaymentReminderEmail(
+  params: PaymentReminderEmailParams,
+): Promise<EmailDeliveryResult> {
+  const from = process.env.PASSWORD_RESET_FROM?.trim();
+  const resend = getResendClient();
+
+  if (!resend || !from) {
+    return { delivered: false, reason: "EMAIL_NOT_CONFIGURED" };
+  }
+
+  const { subject, html, text } = buildPaymentReminderEmail({
+    memberName: params.memberName,
+    totalDebtCents: params.totalDebtCents,
+    lines: params.lines,
+    clubName: params.clubName,
+    clubPhone: params.clubPhone,
+    clubAddress: params.clubAddress,
+  });
+
+  const { error } = await resend.emails.send({
+    from,
+    to: params.to,
+    subject,
+    html,
+    text,
+  });
+
+  if (error) {
+    console.error("Resend payment reminder failed:", { from, to: params.to, error });
     return { delivered: false, reason: "EMAIL_SEND_FAILED" };
   }
 

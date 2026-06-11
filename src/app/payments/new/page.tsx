@@ -10,12 +10,13 @@ export const revalidate = 0;
 export default async function NewPaymentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ memberSubscriptionId?: string }>;
+  searchParams: Promise<{ memberSubscriptionId?: string; memberId?: string }>;
 }) {
-  const { memberSubscriptionId } = await searchParams;
+  const { memberSubscriptionId, memberId } = await searchParams;
   let hasError = false;
   let subscriptions: Array<{
     id: string;
+    memberId: string;
     memberName: string;
     planName: string;
     amount: number;
@@ -27,22 +28,30 @@ export default async function NewPaymentPage({
       where: { status: "ACTIVE" },
       orderBy: { createdAt: "desc" },
       include: {
-        member: { select: { firstName: true, lastName: true } },
+        member: { select: { id: true, firstName: true, lastName: true } },
         plan: { select: { name: true } },
         payments: { select: { amount: true } },
       },
     });
 
-    subscriptions = rows.map((s) => ({
-      id: s.id,
-      memberName: `${s.member.firstName} ${s.member.lastName}`,
-      planName: s.plan?.name ?? "—",
-      amount: s.amount,
-      totalPaid: s.payments.reduce((sum, p) => sum + p.amount, 0),
-    }));
+    subscriptions = rows
+      .filter((s) => !memberId || s.member.id === memberId)
+      .map((s) => ({
+        id: s.id,
+        memberId: s.member.id,
+        memberName: `${s.member.firstName} ${s.member.lastName}`,
+        planName: s.plan?.name ?? "—",
+        amount: s.amount,
+        totalPaid: s.payments.reduce((sum, p) => sum + p.amount, 0),
+      }));
   } catch {
     hasError = true;
   }
+
+  const defaultSubscriptionId =
+    memberSubscriptionId ??
+    subscriptions.find((s) => s.amount > s.totalPaid)?.id ??
+    subscriptions[0]?.id;
 
   if (hasError) {
     return (
@@ -77,7 +86,7 @@ export default async function NewPaymentPage({
       />
 
       <section className="panel panel-soft p-6">
-        <PaymentAddForm subscriptions={subscriptions} defaultSubscriptionId={memberSubscriptionId} />
+        <PaymentAddForm subscriptions={subscriptions} defaultSubscriptionId={defaultSubscriptionId} />
       </section>
     </main>
   );

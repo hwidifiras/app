@@ -1,13 +1,32 @@
 ﻿import { prisma } from "@/lib/prisma";
 import { getClubSettings } from "@/lib/club-settings";
 import Link from "next/link";
-import { Activity, BadgeCheck, CalendarPlus, ClipboardCheck, UserPlus, Users, Wallet } from "lucide-react";
+import {
+  AlertCircle,
+  BadgeCheck,
+  Banknote,
+  CalendarClock,
+  ClipboardCheck,
+  TrendingUp,
+  UserPlus,
+  Users,
+  Wallet,
+} from "lucide-react";
 import { utcDateOnlyForTimeZone } from "@/lib/dates";
 
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DashboardDebtsTable } from "@/components/dashboard/dashboard-debts-table";
+import { DashboardDebtsSection } from "@/components/dashboard/dashboard-debts-section";
+import {
+  computeFinanceSnapshot,
+  computeMemberDebts,
+  startOfUtcMonth,
+  startOfUtcWeek,
+} from "@/lib/dashboard-finance";
+import { enrichDebtsWithReminderMeta } from "@/lib/payment-reminders";
+import { isPaymentReminderEmailConfigured } from "@/lib/email";
+import { formatMoney } from "@/lib/subscription-billing";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -15,12 +34,13 @@ export const revalidate = 0;
 type KpiCardProps = {
   label: string;
   value: number | string;
+  hint?: string;
   icon: React.ReactNode;
   color: string;
   href?: string;
 };
 
-function KpiCard({ label, value, icon, color, href }: KpiCardProps) {
+function KpiCard({ label, value, hint, icon, color, href }: KpiCardProps) {
   const content = (
     <Card
       size="sm"
@@ -33,6 +53,7 @@ function KpiCard({ label, value, icon, color, href }: KpiCardProps) {
         <div className="min-w-0 flex-1">
           <p className="text-[0.62rem] font-medium leading-tight text-muted-foreground sm:text-xs">{label}</p>
           <p className="truncate text-base font-bold leading-tight tracking-tight text-foreground sm:text-xl">{value}</p>
+          {hint ? <p className="mt-0.5 text-[0.6rem] text-muted-foreground sm:text-[0.65rem]">{hint}</p> : null}
         </div>
       </CardContent>
     </Card>
@@ -69,89 +90,73 @@ function QuickActionLink({ title, description, href, icon: Icon, tone }: QuickAc
   );
 }
 
-function formatCurrency(cents: number) {
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
-}
-
-const quickLinks = [
+const financeQuickLinks = [
   {
-    title: "Créer un membre",
-    description: "Inscription complète avec groupe, abonnement et premier paiement.",
-    href: "/members/new",
-    icon: UserPlus,
-    tone: "bg-sky-500",
-  },
-  {
-    title: "Nouveau paiement",
-    description: "Encaisser une avance ou solder un abonnement existant.",
+    title: "Encaisser",
+    description: "Enregistrer un paiement ou solder un abonnement.",
     href: "/payments/new",
-    icon: Wallet,
+    icon: Banknote,
     tone: "bg-emerald-600",
   },
   {
-    title: "Planifier une séance",
-    description: "Ouvrir le planning et ajuster les séances de la semaine.",
-    href: "/sessions",
-    icon: CalendarPlus,
+    title: "Paiements reçus",
+    description: "Historique des encaissements et filtres.",
+    href: "/payments",
+    icon: Wallet,
+    tone: "bg-amber-500",
+  },
+  {
+    title: "Abonnements",
+    description: "Suivi des forfaits actifs et impayés.",
+    href: "/subscriptions",
+    icon: ClipboardCheck,
     tone: "bg-indigo-600",
   },
   {
-    title: "Pointage",
-    description: "Contrôler les présences du jour avec les règles d'abonnement.",
-    href: "/attendance/today",
-    icon: BadgeCheck,
-    tone: "bg-rose-600",
+    title: "Inscription",
+    description: "Nouveau membre avec abonnement et premier versement.",
+    href: "/enrollment",
+    icon: UserPlus,
+    tone: "bg-sky-500",
   },
 ];
 
 export default async function Home() {
-  let hasSportDataError = false;
+  let hasDataError = false;
   let activeMembers = 0;
-  let resignedMembers = 0;
-  let activeSports = 0;
-  let totalSports = 0;
-  let activeCoaches = 0;
-  let totalCoaches = 0;
-  let activeSubscriptions = 0;
   let attendanceToday = 0;
   let revenueToday = 0;
-  let debts: Array<{ memberId: string; memberName: string; phone: string; totalDebt: number; subscriptions: number }> = [];
-
-  let debtThresholdCents = 0;
+  let revenueWeek = 0;
+  let revenueMonth = 0;
+  let finance = {
+    totalOutstandingCents: 0,
+    debtorsCount: 0,
+    partialPayersCount: 0,
+    collectionRatePercent: null as number | null,
+    expiringIn7Days: 0,
+    activeSubscriptionsCount: 0,
+  };
+  let debts: Awaited<ReturnType<typeof enrichDebtsWithReminderMeta>> = [];
+  let emailConfigured = false;
 
   try {
     const clubSettings = await getClubSettings();
-    debtThresholdCents = clubSettings.debtAlertThresholdCents;
-    const today = utcDateOnlyForTimeZone(new Date());
+    const now = new Date();
+    const today = utcDateOnlyForTimeZone(now);
     const tomorrow = new Date(today);
     tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    const weekStart = startOfUtcWeek(today);
+    const monthStart = startOfUtcMonth(today);
 
     const [
       fetchedActiveMembers,
-      fetchedResignedMembers,
-      fetchedActiveSports,
-      fetchedTotalSports,
-      fetchedActiveCoaches,
-      fetchedTotalCoaches,
-      fetchedActiveSubscriptions,
       fetchedAttendanceToday,
       fetchedRevenueToday,
+      fetchedRevenueWeek,
+      fetchedRevenueMonth,
       fetchedSubscriptions,
     ] = await Promise.all([
       prisma.member.count({ where: { status: "ACTIVE" } }),
-      prisma.member.count({ where: { status: "ARCHIVED" } }),
-      prisma.sport.count({ where: { isActive: true } }),
-      prisma.sport.count(),
-      prisma.coach.count({ where: { isActive: true } }),
-      prisma.coach.count(),
-      prisma.memberSubscription.count({
-        where: {
-          status: "ACTIVE",
-          startDate: { lte: new Date() },
-          OR: [{ endDate: null }, { endDate: { gte: new Date() } }],
-          remainingSessions: { gt: 0 },
-        },
-      }),
       prisma.attendance.count({
         where: {
           status: { in: ["PRESENT", "OVERRIDE"] },
@@ -162,11 +167,23 @@ export default async function Home() {
         _sum: { amount: true },
         where: { paymentDate: { gte: today, lt: tomorrow } },
       }),
+      prisma.payment.aggregate({
+        _sum: { amount: true },
+        where: { paymentDate: { gte: weekStart, lt: tomorrow } },
+      }),
+      prisma.payment.aggregate({
+        _sum: { amount: true },
+        where: { paymentDate: { gte: monthStart, lt: tomorrow } },
+      }),
       prisma.memberSubscription.findMany({
+        where: { status: "ACTIVE" },
         select: {
           id: true,
           amount: true,
           memberId: true,
+          status: true,
+          startDate: true,
+          endDate: true,
           member: { select: { firstName: true, lastName: true, phone: true } },
           payments: { select: { amount: true } },
         },
@@ -174,103 +191,150 @@ export default async function Home() {
     ]);
 
     activeMembers = fetchedActiveMembers;
-    resignedMembers = fetchedResignedMembers;
-    activeSports = fetchedActiveSports;
-    totalSports = fetchedTotalSports;
-    activeCoaches = fetchedActiveCoaches;
-    totalCoaches = fetchedTotalCoaches;
-    activeSubscriptions = fetchedActiveSubscriptions;
     attendanceToday = fetchedAttendanceToday;
     revenueToday = fetchedRevenueToday._sum.amount ?? 0;
+    revenueWeek = fetchedRevenueWeek._sum.amount ?? 0;
+    revenueMonth = fetchedRevenueMonth._sum.amount ?? 0;
 
-    const debtMap = new Map<string, { memberId: string; memberName: string; phone: string; totalDebt: number; subscriptions: number }>();
-    for (const sub of fetchedSubscriptions) {
-      const totalPaid = sub.payments.reduce((sum, p) => sum + p.amount, 0);
-      const outstanding = Math.max(0, sub.amount - totalPaid);
-      if (outstanding <= 0) continue;
-      const key = sub.memberId;
-      const entry = debtMap.get(key) ?? {
-        memberId: sub.memberId,
-        memberName: `${sub.member.firstName} ${sub.member.lastName}`,
-        phone: sub.member.phone,
-        totalDebt: 0,
-        subscriptions: 0,
-      };
-      entry.totalDebt += outstanding;
-      entry.subscriptions += 1;
-      debtMap.set(key, entry);
-    }
-
-    debts = Array.from(debtMap.values())
-      .filter((d) => debtThresholdCents <= 0 || d.totalDebt >= debtThresholdCents)
-      .sort((a, b) => b.totalDebt - a.totalDebt)
-      .slice(0, 10);
+    finance = computeFinanceSnapshot(fetchedSubscriptions, { now });
+    const rawDebts = computeMemberDebts(fetchedSubscriptions, {
+      debtThresholdCents: clubSettings.debtAlertThresholdCents,
+      now,
+    }).slice(0, 15);
+    debts = await enrichDebtsWithReminderMeta(rawDebts, { now });
+    emailConfigured = isPaymentReminderEmailConfigured();
   } catch (error) {
-    hasSportDataError = true;
-    console.error("Dashboard degraded mode due to Prisma model mismatch:", error);
-
-    const [fetchedActiveMembers, fetchedResignedMembers] = await Promise.all([
-      prisma.member.count({ where: { status: "ACTIVE" } }),
-      prisma.member.count({ where: { status: "ARCHIVED" } }),
-    ]);
-
-    activeMembers = fetchedActiveMembers;
-    resignedMembers = fetchedResignedMembers;
+    hasDataError = true;
+    console.error("Dashboard degraded mode:", error);
   }
 
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Vue d'ensemble"
-        title="Dashboard réception"
-        description="Pilotage rapide des actions quotidiennes du front desk."
+        overline="Pilotage"
+        title="Tableau de bord finance"
+        description="Impayés, encaissements et abonnements à relancer — actions rapides pour la réception."
       />
 
-      {hasSportDataError ? (
+      {hasDataError ? (
         <div className="mb-5 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-200">
-          Données sports/coachs temporairement indisponibles. Exécutez{" "}
-          <code className="rounded bg-amber-100 px-1.5 py-0.5 text-xs dark:bg-amber-500/25">npm run prisma:generate</code> puis redémarrez.
+          Données temporairement indisponibles. Vérifiez la base et redémarrez le serveur.
         </div>
       ) : null}
 
-      <section className="kpi-grid">
-        <KpiCard label="Membres actifs" value={activeMembers} icon={<Users className="size-4 text-white sm:size-5" />} color="bg-[var(--primary)]" href="/members" />
-        <KpiCard label="CA du jour" value={formatCurrency(revenueToday)} icon={<Wallet className="size-4 text-white sm:size-5" />} color="bg-amber-500" href="/payments" />
-        <KpiCard label="Séances pointées" value={attendanceToday} icon={<Activity className="size-4 text-white sm:size-5" />} color="bg-sky-500" href="/attendance/today" />
-        <KpiCard label="Abonnements actifs" value={activeSubscriptions} icon={<ClipboardCheck className="size-4 text-white sm:size-5" />} color="bg-rose-500" href="/subscriptions" />
+      <section>
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          Indicateurs financiers
+        </h2>
+        <div className="kpi-grid">
+          <KpiCard
+            label="Impayés (actifs)"
+            value={formatMoney(finance.totalOutstandingCents)}
+            hint={`${finance.debtorsCount} membre${finance.debtorsCount > 1 ? "s" : ""}`}
+            icon={<AlertCircle className="size-4 text-white sm:size-5" />}
+            color="bg-[var(--danger)]"
+            href="/subscriptions"
+          />
+          <KpiCard
+            label="CA du mois"
+            value={formatMoney(revenueMonth)}
+            hint={`Semaine : ${formatMoney(revenueWeek)}`}
+            icon={<TrendingUp className="size-4 text-white sm:size-5" />}
+            color="bg-emerald-600"
+            href="/payments"
+          />
+          <KpiCard
+            label="CA du jour"
+            value={formatMoney(revenueToday)}
+            icon={<Wallet className="size-4 text-white sm:size-5" />}
+            color="bg-amber-500"
+            href="/payments/new"
+          />
+          <KpiCard
+            label="Recouvrement"
+            value={finance.collectionRatePercent === null ? "—" : `${finance.collectionRatePercent} %`}
+            hint={`${finance.activeSubscriptionsCount} abo actifs`}
+            icon={<ClipboardCheck className="size-4 text-white sm:size-5" />}
+            color="bg-indigo-600"
+            href="/subscriptions"
+          />
+          <KpiCard
+            label="Expire sous 7 j"
+            value={finance.expiringIn7Days}
+            icon={<CalendarClock className="size-4 text-white sm:size-5" />}
+            color="bg-orange-500"
+            href="/subscriptions"
+          />
+          <KpiCard
+            label="Paiements partiels"
+            value={finance.partialPayersCount}
+            hint="Solde restant à encaisser"
+            icon={<Banknote className="size-4 text-white sm:size-5" />}
+            color="bg-[var(--warning)]"
+            href="/payments/new"
+          />
+        </div>
       </section>
 
       <section className="mt-4 sm:mt-6">
-        <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:text-sm sm:normal-case sm:tracking-normal">
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           Actions rapides
         </h2>
         <div className="quick-actions-grid">
-          {quickLinks.map((item) => (
+          {financeQuickLinks.map((item) => (
             <QuickActionLink key={item.href} {...item} />
           ))}
         </div>
-        <p className="mt-2.5 text-[0.65rem] leading-relaxed text-muted-foreground sm:mt-3 sm:text-xs">
-          Membres résiliés: {resignedMembers} · Sports actifs: {activeSports}/{totalSports} · Coachs actifs:{" "}
-          {activeCoaches}/{totalCoaches}
-        </p>
       </section>
 
       <section className="mt-4 sm:mt-6">
         <Card size="sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold sm:text-base">Dettes en cours</CardTitle>
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 pb-2">
+            <CardTitle className="text-sm font-semibold sm:text-base">Impayés à relancer</CardTitle>
+            {debts.length > 0 ? (
+              <Link href="/payments/new" className="text-xs font-medium text-[var(--primary)] hover:underline">
+                Encaisser →
+              </Link>
+            ) : null}
           </CardHeader>
           <CardContent className="pt-0">
             {debts.length === 0 ? (
-              <p className="text-sm text-[var(--muted-foreground)]">Aucune dette en cours.</p>
+              <p className="text-sm text-[var(--muted-foreground)]">Aucun impayé au-dessus du seuil configuré.</p>
             ) : (
-              <DashboardDebtsTable debts={debts} />
+              <DashboardDebtsSection debts={debts} emailConfigured={emailConfigured} />
             )}
           </CardContent>
         </Card>
       </section>
+
+      <section className="mt-4 sm:mt-6">
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          Activité du jour
+        </h2>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <KpiCard
+            label="Membres actifs"
+            value={activeMembers}
+            icon={<Users className="size-4 text-white sm:size-5" />}
+            color="bg-[var(--primary)]"
+            href="/members"
+          />
+          <KpiCard
+            label="Présences aujourd'hui"
+            value={attendanceToday}
+            icon={<BadgeCheck className="size-4 text-white sm:size-5" />}
+            color="bg-sky-500"
+            href="/attendance/today"
+          />
+          <KpiCard
+            label="Pointer"
+            value="Ouvrir"
+            icon={<BadgeCheck className="size-4 text-white sm:size-5" />}
+            color="bg-rose-500"
+            href="/attendance/today"
+          />
+        </div>
+      </section>
     </main>
   );
 }
-
-
