@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CalendarDays } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { GroupSchedulesManager } from "@/components/groups/group-schedules-manager";
 import { PageHeader } from "@/components/ui/page-header";
+import { formatGroupRoomLabel } from "@/lib/group-room";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -89,11 +90,17 @@ export default async function GroupSchedulesPage({ params }: { params: Promise<{
       <PageHeader
         overline="Planification"
         title={group.name}
-        description={`${group.sport.name} — Coach ${group.coach.firstName} ${group.coach.lastName} — Salle ${group.room}`}
+        description={`${group.sport.name} — Coach ${group.coach.firstName} ${group.coach.lastName} — Salle ${formatGroupRoomLabel(group.room)}`}
         actions={
-          <Link href={`/groups/${group.id}/edit`} className="btn btn-ghost text-sm">
-            Modifier groupe
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link href={`/sessions?groupId=${group.id}`} className="btn btn-primary text-sm">
+              <CalendarDays className="size-3.5" />
+              Planning séances
+            </Link>
+            <Link href={`/groups/${group.id}/edit`} className="btn btn-ghost text-sm">
+              Modifier groupe
+            </Link>
+          </div>
         }
       />
 

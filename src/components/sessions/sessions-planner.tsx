@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { SessionDto, SessionStatusDto } from "@/types/session";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { UndoButton } from "@/components/ui/undo-button";
+import { useActionHistory } from "@/hooks/use-action-history";
 import {
   addWeeksToStartIso,
   formatUtcDateOnlyIso,
@@ -17,6 +19,8 @@ import { parseApiResponse } from "@/lib/parse-api-response";
 type SessionsPlannerProps = {
   initialSessions: SessionDto[];
   initialWeekStart: string;
+  initialGroupId?: string;
+  initialSessionId?: string;
   groupsOptions: Array<{ id: string; name: string }>;
   coachesOptions: Array<{ id: string; firstName: string; lastName: string }>;
 };
@@ -37,10 +41,17 @@ function formatDateFr(dateIso: string) {
   });
 }
 
-export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptions, coachesOptions }: SessionsPlannerProps) {
+export function SessionsPlanner({
+  initialSessions,
+  initialWeekStart,
+  initialGroupId = "",
+  initialSessionId = "",
+  groupsOptions,
+  coachesOptions,
+}: SessionsPlannerProps) {
   const [sessions, setSessions] = useState<SessionDto[]>(initialSessions);
   const [weekStart, setWeekStart] = useState(initialWeekStart);
-  const [groupId, setGroupId] = useState("");
+  const [groupId, setGroupId] = useState(initialGroupId);
   const [dayFilter, setDayFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState<"ALL" | SessionStatusDto>("ALL");
   const [searchTerm, setSearchTerm] = useState("");
@@ -61,7 +72,21 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
   const [editLoading, setEditLoading] = useState(false);
   const [editMessage, setEditMessage] = useState<string | null>(null);
 
+  const deepLinkHandled = useRef(false);
+  const { push, undoLast, loading: undoLoading, canUndo } = useActionHistory({ enableKeyboard: true });
+
   const weekEnd = useMemo(() => weekEndIsoFromStartIso(weekStart), [weekStart]);
+  const editingHasAttendances = (editingSession?.attendanceCount ?? 0) > 0;
+
+  useEffect(() => {
+    if (deepLinkHandled.current || !initialSessionId) return;
+
+    const session = sessions.find((item) => item.id === initialSessionId);
+    if (!session) return;
+
+    deepLinkHandled.current = true;
+    openEdit(session);
+  }, [initialSessionId, sessions]);
 
   async function reloadSessions(nextWeekStart: string, nextGroupId: string) {
     setLoading(true);
@@ -188,6 +213,24 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
       return;
     }
 
+    const undoSnapshot =
+      editMode === "exception"
+        ? {
+            sessionId: editingSession.id,
+            weekStart,
+            groupId,
+            previous: {
+              sessionDate: editingSession.sessionDate,
+              coachId: editingSession.coachId,
+              room: editingSession.room,
+              startTime: editingSession.startTime,
+              endTime: editingSession.endTime,
+              status: editingSession.status,
+              exceptionReason: editingSession.exceptionReason,
+            },
+          }
+        : null;
+
     const updated = result.data;
 
     if (editMode === "permanent") {
@@ -216,6 +259,54 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
         : "Séance modifiée avec succès",
     );
     setEditLoading(false);
+
+    if (undoSnapshot && updated) {
+      push({
+        scope: "session-edit",
+        label: "Modification séance",
+        undo: async () => {
+          const revertResponse = await fetch(`/api/sessions/${undoSnapshot.sessionId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              editMode: "exception",
+              sessionDate: undoSnapshot.previous.sessionDate,
+              coachId: undoSnapshot.previous.coachId,
+              room: undoSnapshot.previous.room,
+              startTime: undoSnapshot.previous.startTime,
+              endTime: undoSnapshot.previous.endTime,
+              status: undoSnapshot.previous.status,
+              exceptionReason: undoSnapshot.previous.exceptionReason ?? "",
+            }),
+          });
+          const revertResult = await parseApiResponse<{ data?: SessionDto; error?: string }>(revertResponse);
+          if (!revertResponse.ok) {
+            setMessage(revertResult.error ?? "Impossible d'annuler la modification.");
+            return false;
+          }
+
+          const reverted = revertResult.data;
+          if (reverted?.sessionDate) {
+            const targetWeek = weekStartIsoForDate(new Date(reverted.sessionDate));
+            if (targetWeek !== weekStart) {
+              setWeekStart(targetWeek);
+              await reloadSessions(targetWeek, groupId);
+            } else {
+              setSessions((current) =>
+                current.map((session) =>
+                  session.id === undoSnapshot.sessionId ? { ...session, ...reverted } : session,
+                ),
+              );
+            }
+          }
+
+          setMessage("Modification de séance annulée.");
+          return true;
+        },
+      });
+      setMessage("Séance modifiée avec succès");
+    }
+
     setTimeout(() => closeEdit(), 600);
   }
 
@@ -345,6 +436,16 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
 
         {loading ? <p className="mt-4 text-sm text-[var(--muted-foreground)]">Chargement du planning...</p> : null}
         <FeedbackMessage message={message} className="mt-4" />
+        {canUndo ? (
+          <div className="mt-2">
+            <UndoButton
+              onClick={() => undoLast()}
+              disabled={undoLoading || loading}
+              label="Annuler la dernière modification"
+              title="Annuler la dernière modification de séance (Ctrl+Z)"
+            />
+          </div>
+        ) : null}
 
         <div className="mt-5 space-y-4">
           {sessionsByDay.map(([dayKey, daySessions]) => (
@@ -378,7 +479,13 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
                           <button
                             type="button"
                             onClick={() => { void deleteSession(item.id); }}
-                            className="btn btn-danger btn-block-mobile md:min-h-0 md:px-2 md:py-1 md:text-xs"
+                            disabled={(item.attendanceCount ?? 0) > 0}
+                            title={
+                              (item.attendanceCount ?? 0) > 0
+                                ? "Annulez les pointages depuis le pointage du jour avant de supprimer"
+                                : undefined
+                            }
+                            className="btn btn-danger btn-block-mobile md:min-h-0 md:px-2 md:py-1 md:text-xs disabled:opacity-50"
                           >
                             Supprimer
                           </button>
@@ -410,6 +517,13 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
               {editingSession.groupName} — {new Date(editingSession.sessionDate).toLocaleDateString("fr-FR")}
             </p>
 
+            {editingHasAttendances ? (
+              <p className="mt-3 rounded-lg border border-[var(--warning)]/30 bg-[var(--warning)]/10 px-3 py-2 text-sm text-[var(--foreground)]">
+                Cette séance a {editingSession.attendanceCount} pointage(s). Annulez les présences depuis le pointage du
+                jour avant de modifier ou reporter.
+              </p>
+            ) : null}
+
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Jour</label>
@@ -417,6 +531,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
                   type="date"
                   value={editForm.sessionDate}
                   onChange={(e) => setEditForm((f) => ({ ...f, sessionDate: e.target.value }))}
+                  disabled={editingHasAttendances}
                   className="field text-sm"
                 />
                 {editMode === "permanent" ? (
@@ -434,6 +549,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
                 <select
                   value={editForm.coachId}
                   onChange={(e) => setEditForm((f) => ({ ...f, coachId: e.target.value }))}
+                  disabled={editingHasAttendances}
                   className="field text-sm"
                 >
                   <option value="">Aucun</option>
@@ -447,6 +563,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
                 <input
                   value={editForm.room}
                   onChange={(e) => setEditForm((f) => ({ ...f, room: e.target.value }))}
+                  disabled={editingHasAttendances}
                   className="field text-sm"
                 />
               </div>
@@ -456,6 +573,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
                   type="time"
                   value={editForm.startTime}
                   onChange={(e) => setEditForm((f) => ({ ...f, startTime: e.target.value }))}
+                  disabled={editingHasAttendances}
                   className="field text-sm"
                 />
               </div>
@@ -465,6 +583,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
                   type="time"
                   value={editForm.endTime}
                   onChange={(e) => setEditForm((f) => ({ ...f, endTime: e.target.value }))}
+                  disabled={editingHasAttendances}
                   className="field text-sm"
                 />
               </div>
@@ -473,6 +592,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
                 <select
                   value={editForm.status}
                   onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value as SessionStatusDto }))}
+                  disabled={editingHasAttendances}
                   className="field text-sm"
                 >
                   <option value="PLANNED">Planifiée</option>
@@ -488,6 +608,7 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
                     value={editForm.exceptionReason}
                     onChange={(e) => setEditForm((f) => ({ ...f, exceptionReason: e.target.value }))}
                     placeholder="Ex: férié, coach indisponible..."
+                    disabled={editingHasAttendances}
                     className="field text-sm"
                     required={editForm.status === "CANCELLED"}
                   />
@@ -503,7 +624,8 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
                 <button
                   type="button"
                   onClick={() => setEditMode("exception")}
-                  className={`rounded-lg border px-3 py-2.5 text-sm transition-colors sm:flex-1 ${
+                  disabled={editingHasAttendances}
+                  className={`rounded-lg border px-3 py-2.5 text-sm transition-colors sm:flex-1 disabled:opacity-50 ${
                     editMode === "exception"
                       ? "border-[var(--primary)] bg-[var(--primary)]/5 text-[var(--foreground)]"
                       : "border-[var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)]"
@@ -515,7 +637,8 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
                 <button
                   type="button"
                   onClick={() => setEditMode("permanent")}
-                  className={`rounded-lg border px-3 py-2.5 text-sm transition-colors sm:flex-1 ${
+                  disabled={editingHasAttendances}
+                  className={`rounded-lg border px-3 py-2.5 text-sm transition-colors sm:flex-1 disabled:opacity-50 ${
                     editMode === "permanent"
                       ? "border-[var(--primary)] bg-[var(--primary)]/5 text-[var(--foreground)]"
                       : "border-[var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)]"
@@ -531,7 +654,11 @@ export function SessionsPlanner({ initialSessions, initialWeekStart, groupsOptio
                 <button
                   type="button"
                   onClick={() => { void saveEdit(); }}
-                  disabled={editLoading || (editForm.status === "CANCELLED" && !editForm.exceptionReason.trim())}
+                  disabled={
+                    editLoading ||
+                    editingHasAttendances ||
+                    (editForm.status === "CANCELLED" && !editForm.exceptionReason.trim())
+                  }
                   className="btn btn-primary btn-block-mobile"
                 >
                   {editLoading ? "Enregistrement..." : "Enregistrer"}

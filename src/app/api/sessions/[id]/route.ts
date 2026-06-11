@@ -14,6 +14,12 @@ import {
   formatSessionSlotLabel,
   validateSessionSlot,
 } from "@/lib/session-slot-conflict";
+import {
+  assertNoAttendancesForSessionEdit,
+  assertNoAttendancesForSessionIds,
+  getSessionAttendanceCount,
+  SessionEditBlockedError,
+} from "@/lib/session-attendance-guard";
 
 export const runtime = "nodejs";
 
@@ -52,6 +58,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Séance introuvable" }, { status: 404 });
   }
 
+  const attendanceCount = await getSessionAttendanceCount(id);
+
   return NextResponse.json({
     data: {
       id: session.id,
@@ -70,6 +78,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       postponementReason: session.postponementReason,
       postponementDetails: session.postponementDetails,
       schedule: session.schedule,
+      attendanceCount,
       createdAt: session.createdAt.toISOString(),
       updatedAt: session.updatedAt.toISOString(),
     },
@@ -268,6 +277,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       });
 
       const affectedIds = affectedSessions.map((s) => s.id);
+
+      try {
+        await assertNoAttendancesForSessionIds(affectedIds);
+      } catch (error) {
+        if (error instanceof SessionEditBlockedError) {
+          return NextResponse.json({ error: error.message }, { status: 409 });
+        }
+        throw error;
+      }
+
       const plannedUpdates: Array<{
         id: string;
         sessionDate: Date;
@@ -367,6 +386,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
 
     // Exception mode or no schedule — just update this session
+    try {
+      await assertNoAttendancesForSessionEdit(id);
+    } catch (error) {
+      if (error instanceof SessionEditBlockedError) {
+        return NextResponse.json({ error: error.message }, { status: 409 });
+      }
+      throw error;
+    }
+
     const updated = await prisma.session.update({
       where: { id },
       data: sessionData,
@@ -411,6 +439,15 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 
   if (!existing) {
     return NextResponse.json({ error: "Séance introuvable" }, { status: 404 });
+  }
+
+  try {
+    await assertNoAttendancesForSessionEdit(id);
+  } catch (error) {
+    if (error instanceof SessionEditBlockedError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+    throw error;
   }
 
   await prisma.session.delete({

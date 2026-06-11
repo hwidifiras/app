@@ -16,6 +16,7 @@ export type SessionDto = {
   postponedTo: string | null;
   postponementReason: string | null;
   postponementDetails: string | null;
+  attendanceCount: number;
   createdAt: string;
   updatedAt: string;
 };

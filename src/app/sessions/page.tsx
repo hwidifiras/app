@@ -11,11 +11,11 @@ export const revalidate = 0;
 export default async function SessionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ week?: string }>;
+  searchParams: Promise<{ week?: string; groupId?: string; sessionId?: string }>;
 }) {
   let hasSessionsDataError = false;
 
-  const { week: weekParam } = await searchParams;
+  const { week: weekParam, groupId: groupIdParam, sessionId: sessionIdParam } = await searchParams;
   const initialWeekStart =
     weekParam && /^\d{4}-\d{2}-\d{2}$/.test(weekParam) ? weekParam : weekStartIsoForDate(new Date());
   const { start: weekStart, end: weekEndExclusive } = getWeekRangeFromStartIso(initialWeekStart);
@@ -36,6 +36,7 @@ export default async function SessionsPage({
     postponedTo: string | null;
     postponementReason: string | null;
     postponementDetails: string | null;
+    attendanceCount: number;
     createdAt: string;
     updatedAt: string;
   }> = [];
@@ -51,10 +52,12 @@ export default async function SessionsPage({
             gte: weekStart,
             lt: weekEndExclusive,
           },
+          ...(groupIdParam ? { groupId: groupIdParam } : {}),
         },
         include: {
           group: { select: { name: true } },
           coach: { select: { firstName: true, lastName: true } },
+          _count: { select: { attendances: true } },
         },
         orderBy: [{ sessionDate: "asc" }, { startTime: "asc" }],
         take: 300,
@@ -87,6 +90,7 @@ export default async function SessionsPage({
       postponedTo: session.postponedTo ? session.postponedTo.toISOString() : null,
       postponementReason: session.postponementReason,
       postponementDetails: session.postponementDetails,
+      attendanceCount: session._count.attendances,
       createdAt: session.createdAt.toISOString(),
       updatedAt: session.updatedAt.toISOString(),
     }));
@@ -130,6 +134,8 @@ export default async function SessionsPage({
         groupsOptions={groupsOptions}
         coachesOptions={coachesOptions}
         initialWeekStart={initialWeekStart}
+        initialGroupId={groupIdParam ?? ""}
+        initialSessionId={sessionIdParam ?? ""}
       />
     </main>
   );

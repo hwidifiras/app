@@ -107,6 +107,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     );
   }
 
+  const attendanceCount = await prisma.attendance.count({ where: { sessionId: id } });
+  if (attendanceCount > 0) {
+    return NextResponse.json(
+      {
+        error:
+          "Impossible de reporter une séance avec des pointages enregistrés. Annulez les présences avant de reporter.",
+      },
+      { status: 409 },
+    );
+  }
+
   const postponementDate = new Date(parsed.data.postponedTo);
   if (Number.isNaN(postponementDate.getTime())) {
     return NextResponse.json({ error: "Date de report invalide" }, { status: 400 });
