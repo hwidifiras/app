@@ -84,12 +84,27 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       coachId: true,
       room: true,
       postponementDetails: true,
-      group: { select: { name: true } },
+      status: true,
+      group: { select: { name: true, coachId: true } },
     },
   });
 
   if (!existing) {
     return NextResponse.json({ error: "Séance introuvable" }, { status: 404 });
+  }
+
+  if (existing.status === "CANCELLED") {
+    return NextResponse.json(
+      { error: "Impossible de reporter une séance annulée" },
+      { status: 409 },
+    );
+  }
+
+  if (existing.status === "COMPLETED") {
+    return NextResponse.json(
+      { error: "Impossible de reporter une séance déjà terminée" },
+      { status: 409 },
+    );
   }
 
   const postponementDate = new Date(parsed.data.postponedTo);
@@ -109,7 +124,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     sessionDate: newSessionDate,
     startTime: newStartTime,
     endTime: newEndTime,
-    coachId: existing.coachId,
+    coachId: existing.coachId ?? existing.group.coachId,
     room: existing.room,
     excludeIds: [id],
   });
