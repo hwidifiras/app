@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { AUTH_COOKIE_NAME, signAuthToken } from "@/lib/auth";
 import { verifyPassword } from "@/lib/password";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -13,7 +14,18 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+const LOGIN_LIMIT = 10;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+
 export async function POST(request: Request) {
+  const rateLimit = checkRateLimit(`login:${getClientIp(request)}`, LOGIN_LIMIT, LOGIN_WINDOW_MS);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Trop de tentatives. Réessayez dans quelques minutes." },
+      { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } },
+    );
+  }
+
   let body: unknown;
 
   try {

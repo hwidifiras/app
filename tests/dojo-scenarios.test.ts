@@ -23,6 +23,7 @@ import { POST as createUser } from "@/app/api/users/route";
 import { POST as requestPasswordReset } from "@/app/api/auth/forgot-password/route";
 import { POST as resetPassword } from "@/app/api/auth/reset-password/route";
 import { signAuthToken, type AuthRole } from "@/lib/auth";
+import { resetRateLimitsForTests } from "@/lib/rate-limit";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import {
   buildEnrollmentQuote,
@@ -273,6 +274,7 @@ async function createSessionForGroup(
 
 beforeEach(async () => {
   authState.token = null;
+  resetRateLimitsForTests();
   await resetData();
 });
 
@@ -1373,6 +1375,36 @@ describe("admin permissions and password reset", () => {
         debtAlertThresholdCents: 0,
       },
     });
+  });
+
+  it("blocks staff without payments.manage from recording payments", async () => {
+    const staff = await prisma.user.create({
+      data: {
+        name: "Members Only",
+        email: "members-only@test.local",
+        role: "STAFF",
+        passwordHash: await hashPassword("password123"),
+        permissions: { create: [{ key: "members.manage" }] },
+      },
+    });
+    authState.token = await signAuthToken({
+      userId: staff.id,
+      email: staff.email,
+      name: staff.name,
+      role: "STAFF",
+      permissions: ["members.manage"],
+    });
+
+    const fx = await dojoFixture();
+    const sub = await createActiveSubscription(fx);
+    const response = await createPayment(
+      jsonRequest("POST", {
+        memberSubscriptionId: sub.id,
+        amount: 1000,
+      }),
+    );
+
+    expect(response.status).toBe(403);
   });
 });
 

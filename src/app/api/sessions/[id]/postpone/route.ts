@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/request-user";
+import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { getAppTimeZone, utcDateOnlyForTimeZone } from "@/lib/dates";
 import { postponeSessionSchema } from "@/lib/schemas/session";
 import { validateSessionSlot } from "@/lib/session-slot-conflict";
@@ -48,9 +48,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   let actor;
   try {
-    actor = await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    actor = await requirePermission(request, "catalog.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
 
   let body: unknown;

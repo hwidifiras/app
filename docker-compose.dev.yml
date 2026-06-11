@@ -22,6 +22,8 @@ services:
       - "3001:3000"
     volumes:
       - dojo_data_dev:/app/data
+      - dojo_branding_dev:/app/public/branding
 
 volumes:
   dojo_data_dev:
+  dojo_branding_dev:

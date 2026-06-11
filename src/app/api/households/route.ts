@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/request-user";
+import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import {
   addHouseholdMemberSchema,
   createHouseholdSchema,
@@ -11,9 +11,9 @@ export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   try {
-    await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    await requirePermission(request, "members.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
 
   const { searchParams } = new URL(request.url);
@@ -64,9 +64,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    await requirePermission(request, "members.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
 
   let body: unknown;
@@ -121,9 +121,9 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    await requirePermission(request, "members.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
 
   let body: unknown;

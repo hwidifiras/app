@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/request-user";
+import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { createOfferSchema, parseOfferRules } from "@/lib/schemas/offer";
 import { validateStaffOfferDiscount } from "@/lib/membership-rules";
 
@@ -9,9 +9,9 @@ export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   try {
-    await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    await requirePermission(request, "offers.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
 
   const offers = await prisma.offer.findMany({
@@ -30,9 +30,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   let actor;
   try {
-    actor = await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    actor = await requirePermission(request, "offers.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
 
   let body: unknown;

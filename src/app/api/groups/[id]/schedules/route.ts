@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { createGroupScheduleSchema, updateGroupScheduleSchema } from "@/lib/schemas/group";
 import { utcDateOnlyForTimeZone } from "@/lib/dates";
 import { SessionStatus } from "@prisma/client";
-import { requireAuth } from "@/lib/request-user";
+import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 
 export const runtime = "nodejs";
 
@@ -34,9 +34,9 @@ function toScheduleDto(schedule: {
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireAuth(_request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    await requirePermission(_request, "catalog.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
 
   const { id } = await params;
@@ -60,9 +60,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    await requirePermission(request, "catalog.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
 
   const { id } = await params;
@@ -267,9 +267,9 @@ async function generateSessionsForGroup(
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    await requirePermission(request, "catalog.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
 
   const { id } = await params;
@@ -339,9 +339,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    await requirePermission(request, "catalog.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
 
   const { id } = await params;

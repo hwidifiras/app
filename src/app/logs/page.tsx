@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { ChevronRight } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
@@ -29,6 +30,22 @@ export default async function LogsPage({
 }) {
   const { q } = await searchParams;
   const query = q?.trim();
+  const role = (await headers()).get("x-user-role");
+
+  if (role !== "ADMIN") {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Administration"
+          title="Historique des actions"
+          description="Seul un administrateur peut consulter le journal."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
 
   const allLogs = await prisma.auditLog.findMany({
     orderBy: { createdAt: "desc" },

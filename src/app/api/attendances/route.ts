@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createAttendanceSchema, updateAttendanceSchema } from "@/lib/schemas/attendance";
 import { getClubSettings } from "@/lib/club-settings";
-import { requireAuth } from "@/lib/request-user";
+import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import {
   countWeeklySlotUsage,
   RECOVERY_OVERRIDE_PREFIX,
@@ -36,9 +36,9 @@ async function countOverrides(memberId: string): Promise<number> {
 
 export async function GET(request: Request) {
   try {
-    await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    await requirePermission(request, "attendance.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
 
   const { searchParams } = new URL(request.url);
@@ -71,9 +71,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   let actor;
   try {
-    actor = await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    actor = await requirePermission(request, "attendance.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
 
   let body: unknown;
@@ -368,9 +368,9 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   let actor;
   try {
-    actor = await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    actor = await requirePermission(request, "attendance.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
   let body: unknown;
 
@@ -491,9 +491,9 @@ export async function PATCH(request: Request) {
 export async function DELETE(request: Request) {
   let actor;
   try {
-    actor = await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    actor = await requirePermission(request, "attendance.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
   let body: unknown;
 

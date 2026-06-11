@@ -5,7 +5,7 @@ import {
   createSubscriptionPlanSchema,
   updateSubscriptionPlanSchema,
 } from "@/lib/schemas/subscription-plan";
-import { requireAuth } from "@/lib/request-user";
+import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { totalSessionsFromWeekly } from "@/lib/subscription-plan-utils";
 
 export const runtime = "nodejs";
@@ -15,9 +15,9 @@ export async function GET(request: Request) {
   const query = searchParams.get("q")?.trim();
 
   try {
-    await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    await requirePermission(request, "catalog.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
 
   const plans = await prisma.subscriptionPlan.findMany({
@@ -38,9 +38,9 @@ export async function POST(request: Request) {
   let body: unknown;
 
   try {
-    await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    await requirePermission(request, "catalog.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
 
   try {
@@ -96,9 +96,9 @@ export async function PATCH(request: Request) {
   let body: unknown;
 
   try {
-    await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    await requirePermission(request, "catalog.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
 
   try {
@@ -184,9 +184,9 @@ export async function DELETE(request: Request) {
   let body: unknown;
 
   try {
-    await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    await requirePermission(request, "catalog.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
 
   try {

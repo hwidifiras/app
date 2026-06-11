@@ -35,7 +35,7 @@ RUN apt-get update -y \
 
 RUN addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 nextjs \
-  && mkdir -p /app/data \
+  && mkdir -p /app/data /app/public/branding \
   && chown -R nextjs:nodejs /app
 
 COPY --from=builder --chown=nextjs:nodejs /app/package.json /app/package-lock.json ./

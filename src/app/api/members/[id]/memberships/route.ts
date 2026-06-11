@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/request-user";
+import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { expireStaleSubscriptions, getTotalPaid } from "@/lib/membership-rules";
 
 export const runtime = "nodejs";
@@ -11,9 +11,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    await requirePermission(request, "members.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
 
   const { id } = await params;

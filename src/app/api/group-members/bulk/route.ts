@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { bulkCreateGroupMembersSchema, bulkDeleteGroupMembersSchema } from "@/lib/schemas/group-member";
-import { requireAuth } from "@/lib/request-user";
+import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 
 export const runtime = "nodejs";
 
@@ -71,9 +71,9 @@ async function checkScheduleConflict(groupId: string, memberId: string) {
 
 export async function POST(request: Request) {
   try {
-    await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    await requirePermission(request, "enrollment.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
 
   let body: unknown;
@@ -266,9 +266,9 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    await requirePermission(request, "enrollment.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
 
   let body: unknown;

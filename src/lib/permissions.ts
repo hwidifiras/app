@@ -1,3 +1,5 @@
+import { NextResponse } from "next/server";
+
 import { prisma } from "@/lib/prisma";
 import {
   FULL_STAFF_PERMISSIONS,
@@ -42,4 +44,9 @@ export function permissionErrorResponse(error: unknown) {
     error: code === "UNAUTHENTICATED" ? "Non authentifié" : "Accès refusé",
     status: code === "UNAUTHENTICATED" ? 401 : 403,
   };
+}
+
+export function jsonAuthFailureResponse(error: unknown) {
+  const { error: message, status } = permissionErrorResponse(error);
+  return NextResponse.json({ error: message }, { status });
 }

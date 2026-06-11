@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { utcDateOnlyForTimeZone } from "@/lib/dates";
 import { generateSessionsSchema } from "@/lib/schemas/session";
-import { requireAuth } from "@/lib/request-user";
+import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 
 export const runtime = "nodejs";
 
@@ -73,9 +73,9 @@ function toSessionDto(session: {
 
 export async function GET(request: Request) {
   try {
-    await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    await requirePermission(request, "catalog.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
 
   const { searchParams } = new URL(request.url);
@@ -112,9 +112,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    await requirePermission(request, "catalog.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
 
   let body: unknown = {};

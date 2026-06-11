@@ -7,6 +7,7 @@ import {
   createPasswordResetToken,
   sendPasswordResetEmail,
 } from "@/lib/password-reset";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -14,7 +15,22 @@ const forgotPasswordSchema = z.object({
   email: z.string().trim().email(),
 });
 
+const FORGOT_PASSWORD_LIMIT = 5;
+const FORGOT_PASSWORD_WINDOW_MS = 15 * 60 * 1000;
+
 export async function POST(request: Request) {
+  const rateLimit = checkRateLimit(
+    `forgot-password:${getClientIp(request)}`,
+    FORGOT_PASSWORD_LIMIT,
+    FORGOT_PASSWORD_WINDOW_MS,
+  );
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Trop de demandes. Réessayez dans quelques minutes." },
+      { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } },
+    );
+  }
+
   let body: unknown;
   try {
     body = await request.json();

@@ -16,6 +16,8 @@ services:
       - "3000:3000"
     volumes:
       - dojo_data:/app/data
+      - dojo_branding:/app/public/branding
 
 volumes:
   dojo_data:
+  dojo_branding:

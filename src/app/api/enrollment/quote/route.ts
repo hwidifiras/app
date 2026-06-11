@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireAuth } from "@/lib/request-user";
+import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { enrollmentQuoteSchema } from "@/lib/schemas/enrollment";
 import { buildEnrollmentQuote } from "@/lib/membership-rules";
 
@@ -8,9 +8,9 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    await requirePermission(request, "enrollment.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
 
   let body: unknown;

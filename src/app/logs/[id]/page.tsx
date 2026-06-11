@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
@@ -16,6 +17,22 @@ export const revalidate = 0;
 
 export default async function LogDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const role = (await headers()).get("x-user-role");
+
+  if (role !== "ADMIN") {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Journal"
+          title="Détail de l'action"
+          description="Seul un administrateur peut consulter le journal."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
 
   const log = await prisma.auditLog.findUnique({ where: { id } });
   if (!log) notFound();

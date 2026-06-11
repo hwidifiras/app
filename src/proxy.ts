@@ -1,34 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { AUTH_COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
-
-const permissionRules: Array<{ paths: string[]; permission: string }> = [
-  { paths: ["/enrollment", "/api/enrollment", "/api/group-members"], permission: "enrollment.manage" },
-  { paths: ["/attendance", "/api/attendances"], permission: "attendance.manage" },
-  { paths: ["/payments", "/api/payments"], permission: "payments.manage" },
-  { paths: ["/offers", "/api/offers"], permission: "offers.manage" },
-  {
-    paths: [
-      "/sports",
-      "/coaches",
-      "/groups",
-      "/sessions",
-      "/subscription-plans",
-      "/subscriptions",
-      "/api/sports",
-      "/api/coaches",
-      "/api/groups",
-      "/api/sessions",
-      "/api/subscription-plans",
-      "/api/member-subscriptions",
-    ],
-    permission: "catalog.manage",
-  },
-  {
-    paths: ["/members", "/api/members", "/api/households"],
-    permission: "members.manage",
-  },
-];
+import { isAdminOnlyPath, requiredPermissionForPath } from "@/lib/route-permissions";
 
 function isPublicPath(pathname: string): boolean {
   if (pathname === "/login") return true;
@@ -39,15 +12,6 @@ function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/_next")) return true;
   if (pathname === "/favicon.ico") return true;
   return false;
-}
-
-function requiredPermissionForPath(pathname: string): string | null {
-  for (const rule of permissionRules) {
-    if (rule.paths.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
-      return rule.permission;
-    }
-  }
-  return null;
 }
 
 function forbiddenResponse(request: NextRequest) {
@@ -93,13 +57,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (
-    pathname.startsWith("/settings/users") ||
-    pathname.startsWith("/settings/club") ||
-    pathname.startsWith("/api/users") ||
-    pathname.startsWith("/api/club-settings")
-  ) {
-    if (payload.role !== "ADMIN") return forbiddenResponse(request);
+  if (isAdminOnlyPath(pathname) && payload.role !== "ADMIN") {
+    return forbiddenResponse(request);
   }
 
   if (payload.role !== "ADMIN") {

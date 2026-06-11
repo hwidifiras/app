@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/request-user";
+import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { enrollmentApplySchema } from "@/lib/schemas/enrollment";
 import { familyBundleRulesSchema } from "@/lib/schemas/offer";
 import {
@@ -22,9 +22,9 @@ function formatPaymentPrefill(cents: number) {
 export async function POST(request: Request) {
   let actor;
   try {
-    actor = await requireAuth(request);
-  } catch {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    actor = await requirePermission(request, "enrollment.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
   }
 
   let body: unknown;
