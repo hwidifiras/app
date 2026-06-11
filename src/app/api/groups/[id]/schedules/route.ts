@@ -5,6 +5,7 @@ import { createGroupScheduleSchema, updateGroupScheduleSchema } from "@/lib/sche
 import { utcDateOnlyForTimeZone } from "@/lib/dates";
 import { SessionStatus } from "@prisma/client";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
+import { sessionRoomFromGroup } from "@/lib/group-room";
 
 export const runtime = "nodejs";
 
@@ -173,7 +174,7 @@ async function generateSessionsForGroup(
   });
 
   const coachId = group?.coachId ?? null;
-  const room = group?.room ?? "";
+  const room = sessionRoomFromGroup(group?.room);
 
   const candidates: {
     groupId: string;

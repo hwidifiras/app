@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { createGroupSchema, updateGroupSchema } from "@/lib/schemas/group";
+import { normalizeGroupRoomInput } from "@/lib/group-room";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 
 export const runtime = "nodejs";
@@ -23,7 +24,7 @@ function toGroupDto(group: {
   sportId: string;
   coachId: string;
   capacity: number;
-  room: string;
+  room: string | null;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -145,7 +146,7 @@ export async function POST(request: Request) {
       sportId: parsed.data.sportId,
       coachId: parsed.data.coachId,
       capacity: parsed.data.capacity,
-      room: parsed.data.room,
+      room: normalizeGroupRoomInput(parsed.data.room),
     },
     include: {
       sport: { select: { name: true } },
@@ -219,7 +220,7 @@ export async function PATCH(request: Request) {
         sportId: payload.sportId,
         coachId: payload.coachId,
         capacity: payload.capacity,
-        room: payload.room,
+        room: payload.room === undefined ? undefined : normalizeGroupRoomInput(payload.room),
         isActive: payload.isActive,
       },
       include: {

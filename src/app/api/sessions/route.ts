@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { utcDateOnlyForTimeZone } from "@/lib/dates";
+import { sessionRoomFromGroup } from "@/lib/group-room";
 import { generateSessionsSchema } from "@/lib/schemas/session";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 
@@ -49,6 +50,7 @@ function toSessionDto(session: {
   updatedAt: Date;
   group: { name: string };
   coach: { firstName: string; lastName: string } | null;
+  _count: { attendances: number };
 }) {
   return {
     id: session.id,
@@ -66,6 +68,7 @@ function toSessionDto(session: {
     postponedTo: session.postponedTo ? session.postponedTo.toISOString() : null,
     postponementReason: session.postponementReason,
     postponementDetails: session.postponementDetails,
+    attendanceCount: session._count.attendances,
     createdAt: session.createdAt.toISOString(),
     updatedAt: session.updatedAt.toISOString(),
   };
@@ -102,6 +105,7 @@ export async function GET(request: Request) {
     include: {
       group: { select: { name: true } },
       coach: { select: { firstName: true, lastName: true } },
+      _count: { select: { attendances: true } },
     },
     orderBy: [{ sessionDate: "asc" }, { startTime: "asc" }],
     take: 300,
@@ -198,7 +202,7 @@ export async function POST(request: Request) {
           startTime: schedule.startTime,
           endTime: addMinutesToTime(schedule.startTime, schedule.durationMinutes),
           coachId: group.coachId,
-          room: group.room,
+          room: sessionRoomFromGroup(group.room),
           status: "PLANNED",
         });
       }

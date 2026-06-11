@@ -213,7 +213,7 @@ model Group {
   coachId   String
   coach     Coach           @relation(fields: [coachId], references: [id], onDelete: Restrict)
   capacity  Int
-  room      String
+  room      String?
   isActive  Boolean         @default(true)
   members   GroupMember[]
   schedules GroupSchedule[]

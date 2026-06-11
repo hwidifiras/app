@@ -25,7 +25,7 @@ export type GroupDto = {
   coachId: string;
   coachName: string;
   capacity: number;
-  room: string;
+  room: string | null;
   isActive: boolean;
   schedules: GroupScheduleDto[];
   createdAt: string;

@@ -7,6 +7,11 @@ import { CoachDto } from "@/types/coach";
 import { MemberDto } from "@/types/member";
 import { SportDto } from "@/types/sport";
 
+function formatCoachOptionLabel(coach: CoachDto) {
+  const name = `${coach.firstName} ${coach.lastName}`;
+  return coach.sportName ? `${name} - ${coach.sportName}` : name;
+}
+
 export function GroupAddForm({
   sportsOptions,
   coachesOptions,
@@ -170,13 +175,21 @@ export function GroupAddForm({
             <select value={coachId} onChange={(e) => setCoachId(e.target.value)} className="field text-sm" required>
               <option value="">Choisir</option>
               {coachesOptions.map((coach) => (
-                <option key={coach.id} value={coach.id}>{coach.firstName} {coach.lastName}</option>
+                <option key={coach.id} value={coach.id}>{formatCoachOptionLabel(coach)}</option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Salle</label>
-            <input value={room} onChange={(e) => setRoom(e.target.value)} className="field text-sm" required />
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Salle par défaut</label>
+            <input
+              value={room}
+              onChange={(e) => setRoom(e.target.value)}
+              placeholder="Optionnel — définir par séance"
+              className="field text-sm"
+            />
+            <p className="mt-1 text-[0.65rem] text-[var(--muted-foreground)]">
+              La salle peut aussi être modifiée sur chaque séance.
+            </p>
           </div>
           <div>
             <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Capacité</label>

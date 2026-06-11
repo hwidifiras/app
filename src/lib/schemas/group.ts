@@ -36,7 +36,7 @@ export const createGroupSchema = z.object({
   sportId: z.string().trim().min(1, "Sport requis"),
   coachId: z.string().trim().min(1, "Coach requis"),
   capacity: z.number().int().min(1, "Capacité invalide").max(200, "Capacité invalide"),
-  room: z.string().trim().min(1, "Salle requise").max(100),
+  room: z.string().trim().max(100).optional().or(z.literal("")),
 });
 
 export type CreateGroupInput = z.infer<typeof createGroupSchema>;
@@ -48,7 +48,7 @@ export const updateGroupSchema = z
     sportId: z.string().trim().min(1, "Sport requis").optional(),
     coachId: z.string().trim().min(1, "Coach requis").optional(),
     capacity: z.number().int().min(1, "Capacité invalide").max(200, "Capacité invalide").optional(),
-    room: z.string().trim().min(1, "Salle requise").max(100).optional(),
+    room: z.string().trim().max(100).optional().or(z.literal("")).optional(),
     isActive: z.boolean().optional(),
   })
   .refine(
