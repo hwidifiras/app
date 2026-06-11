@@ -5,7 +5,6 @@ import { createAttendanceSchema, updateAttendanceSchema } from "@/lib/schemas/at
 import { getClubSettings } from "@/lib/club-settings";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import {
-  countOverrides,
   RECOVERY_OVERRIDE_PREFIX,
   validateRecoveryCheckIn,
 } from "@/lib/attendance-rules";
