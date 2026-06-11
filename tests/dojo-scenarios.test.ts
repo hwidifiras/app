@@ -13,9 +13,11 @@ import { POST as createAttendance, PATCH as patchAttendance, DELETE as deleteAtt
 import { POST as createPayment, PATCH as patchPayment, DELETE as deletePayment } from "@/app/api/payments/route";
 import { DELETE as archiveMember } from "@/app/api/members/route";
 import { PATCH as postponeSession } from "@/app/api/sessions/[id]/postpone/route";
+import { PATCH as patchSession, DELETE as deleteSession } from "@/app/api/sessions/[id]/route";
 import { DELETE as deleteSport } from "@/app/api/sports/route";
 import { DELETE as deleteSubscriptionPlan, POST as createSubscriptionPlan } from "@/app/api/subscription-plans/route";
 import { POST as applyEnrollment } from "@/app/api/enrollment/apply/route";
+import { POST as revertEnrollment } from "@/app/api/enrollment/revert/route";
 import {
   PATCH as patchMemberSubscription,
   POST as createMemberSubscription,
@@ -34,7 +36,9 @@ import {
   resolveActiveSubscription,
 } from "@/lib/membership-rules";
 import { enrollmentQuoteSchema } from "@/lib/schemas/enrollment";
+import { createGroupSchema } from "@/lib/schemas/group";
 import { createSubscriptionPlanSchema } from "@/lib/schemas/subscription-plan";
+import { POST as createGroup } from "@/app/api/groups/route";
 import { validateSessionSlot } from "@/lib/session-slot-conflict";
 import {
   sessionAdjustmentDelta,
@@ -430,6 +434,18 @@ describe("schema guardrails", () => {
     }
   });
 
+  it("allows creating a group without a default room", () => {
+    const parsed = createGroupSchema.safeParse({
+      name: "Groupe sans salle",
+      groupType: "ADULTS",
+      sportId: "sport-id",
+      coachId: "coach-id",
+      capacity: 12,
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
   it("requires parent name and phone when enrolling a new child", async () => {
     const fx = await dojoFixture();
 
@@ -439,7 +455,6 @@ describe("schema guardrails", () => {
           newMember: {
             firstName: "Child",
             lastName: "No Parent",
-            phone: "child-phone",
             memberType: "KID",
           },
           groupId: fx.kidBjj.id,
@@ -449,6 +464,28 @@ describe("schema guardrails", () => {
     });
 
     expect(parsed.success).toBe(false);
+  });
+
+  it("allows enrolling a child without their own phone when parent phone is provided", async () => {
+    const fx = await dojoFixture();
+
+    const parsed = enrollmentQuoteSchema.safeParse({
+      lines: [
+        {
+          newMember: {
+            firstName: "Child",
+            lastName: "With Parent",
+            memberType: "KID",
+            parentName: "Parent Name",
+            parentPhone: "0612345678",
+          },
+          groupId: fx.kidBjj.id,
+          planId: fx.bjjPlan.id,
+        },
+      ],
+    });
+
+    expect(parsed.success).toBe(true);
   });
 });
 
@@ -1642,7 +1679,7 @@ describe("attendance session balance corrections", () => {
 });
 
 describe("session postpone scenarios", () => {
-  it("postpones a session and keeps attendances linked to the same session id", async () => {
+  it("rejects postpone when attendances already exist on the session", async () => {
     await signIn();
     const fx = await dojoFixture();
     const session = await createSessionForGroup(fx.adultBjj.id, {
@@ -1656,6 +1693,57 @@ describe("session postpone scenarios", () => {
     await createAttendance(
       jsonRequest("POST", { sessionId: session.id, memberId: fx.adult.id, status: "PRESENT" }),
     );
+
+    const res = await routeWithSessionId(postponeSession, session.id, "PATCH", {
+      postponedTo: "2026-05-25T16:00:00.000Z",
+      reason: "MAUVAIS_METEO",
+      details: "Pluie",
+    });
+    const body = await responseJson(res);
+
+    expect(res.status).toBe(409);
+    expect(String(body.error)).toMatch(/pointages/i);
+  });
+
+  it("allows postpone after attendances are deleted", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const session = await createSessionForGroup(fx.adultBjj.id, {
+      sessionDate: new Date("2026-05-18T18:00:00.000Z"),
+    });
+    const sub = await createActiveSubscription(fx, { remainingSessions: 5 });
+    await prisma.payment.create({ data: { memberSubscriptionId: sub.id, amount: sub.amount } });
+    await prisma.groupMember.create({
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date() },
+    });
+    const attendanceRes = await createAttendance(
+      jsonRequest("POST", { sessionId: session.id, memberId: fx.adult.id, status: "PRESENT" }),
+    );
+    const attendanceBody = await responseJson(attendanceRes);
+    const attendanceId = (attendanceBody.data as { id: string }).id;
+
+    const blocked = await routeWithSessionId(postponeSession, session.id, "PATCH", {
+      postponedTo: "2026-05-25T16:00:00.000Z",
+      reason: "MAUVAIS_METEO",
+    });
+    expect(blocked.status).toBe(409);
+
+    const deleted = await deleteAttendance(jsonRequest("DELETE", { attendanceId }));
+    expect(deleted.status).toBe(200);
+
+    const postponed = await routeWithSessionId(postponeSession, session.id, "PATCH", {
+      postponedTo: "2026-05-25T16:00:00.000Z",
+      reason: "MAUVAIS_METEO",
+    });
+    expect(postponed.status).toBe(200);
+  });
+
+  it("postpones a session when no attendances exist", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const session = await createSessionForGroup(fx.adultBjj.id, {
+      sessionDate: new Date("2026-05-18T18:00:00.000Z"),
+    });
 
     const postponed = await routeWithSessionId(
       postponeSession,
@@ -1673,7 +1761,6 @@ describe("session postpone scenarios", () => {
       sessionDate: string;
       postponementDetails: string;
     };
-    const attendances = await prisma.attendance.findMany({ where: { sessionId: session.id } });
     const details = JSON.parse(data.postponementDetails) as {
       original: { date: string; startTime: string };
     };
@@ -1681,8 +1768,6 @@ describe("session postpone scenarios", () => {
     expect(postponed.status).toBe(200);
     expect(data.status).toBe("RESCHEDULED");
     expect(details.original.startTime).toBe("18:00");
-    expect(attendances).toHaveLength(1);
-    expect(attendances[0]?.sessionId).toBe(session.id);
   });
 
   it("preserves the original slot when postponing twice", async () => {
@@ -1802,6 +1887,92 @@ describe("session postpone scenarios", () => {
 
     expect(res.status).toBe(409);
     expect(String(body.error)).toMatch(/salle/i);
+  });
+});
+
+describe("session edit guard scenarios", () => {
+  it("rejects PATCH session when attendances already exist", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const session = await createSessionForGroup(fx.adultBjj.id, {
+      sessionDate: new Date("2026-05-18T18:00:00.000Z"),
+    });
+    const sub = await createActiveSubscription(fx, { remainingSessions: 5 });
+    await prisma.payment.create({ data: { memberSubscriptionId: sub.id, amount: sub.amount } });
+    await prisma.groupMember.create({
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date() },
+    });
+    await createAttendance(
+      jsonRequest("POST", { sessionId: session.id, memberId: fx.adult.id, status: "PRESENT" }),
+    );
+
+    const res = await routeWithSessionId(patchSession, session.id, "PATCH", {
+      editMode: "exception",
+      room: "Dojo B",
+    });
+    const body = await responseJson(res);
+
+    expect(res.status).toBe(409);
+    expect(String(body.error)).toMatch(/pointages/i);
+  });
+
+  it("rejects DELETE session when attendances already exist", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const session = await createSessionForGroup(fx.adultBjj.id, {
+      sessionDate: new Date("2026-05-18T18:00:00.000Z"),
+    });
+    const sub = await createActiveSubscription(fx, { remainingSessions: 5 });
+    await prisma.payment.create({ data: { memberSubscriptionId: sub.id, amount: sub.amount } });
+    await prisma.groupMember.create({
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date() },
+    });
+    await createAttendance(
+      jsonRequest("POST", { sessionId: session.id, memberId: fx.adult.id, status: "PRESENT" }),
+    );
+
+    const res = await routeWithSessionId(deleteSession, session.id, "DELETE", null);
+    const body = await responseJson(res);
+
+    expect(res.status).toBe(409);
+    expect(String(body.error)).toMatch(/pointages/i);
+  });
+
+  it("allows PATCH session after attendances are deleted", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const session = await createSessionForGroup(fx.adultBjj.id, {
+      sessionDate: new Date("2026-05-18T18:00:00.000Z"),
+      room: "Dojo A",
+    });
+    const sub = await createActiveSubscription(fx, { remainingSessions: 5 });
+    await prisma.payment.create({ data: { memberSubscriptionId: sub.id, amount: sub.amount } });
+    await prisma.groupMember.create({
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date() },
+    });
+    const attendanceRes = await createAttendance(
+      jsonRequest("POST", { sessionId: session.id, memberId: fx.adult.id, status: "PRESENT" }),
+    );
+    const attendanceBody = await responseJson(attendanceRes);
+    const attendanceId = (attendanceBody.data as { id: string }).id;
+
+    const blocked = await routeWithSessionId(patchSession, session.id, "PATCH", {
+      editMode: "exception",
+      room: "Dojo B",
+    });
+    expect(blocked.status).toBe(409);
+
+    const deleted = await deleteAttendance(jsonRequest("DELETE", { attendanceId }));
+    expect(deleted.status).toBe(200);
+
+    const patched = await routeWithSessionId(patchSession, session.id, "PATCH", {
+      editMode: "exception",
+      room: "Dojo B",
+    });
+    const body = await responseJson(patched);
+
+    expect(patched.status).toBe(200);
+    expect((body.data as { room: string }).room).toBe("Dojo B");
   });
 });
 
@@ -2062,6 +2233,149 @@ describe("contextual weekly consumption (plan below group standard)", () => {
 
     expect(remainingBeforeThird).toBe(1);
     expect(thirdUnits).toBe(1);
+  });
+});
+
+describe("group room rules", () => {
+  it("creates a group without a default room", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+
+    const res = await createGroup(
+      jsonRequest("POST", {
+        name: "No Room Group",
+        groupType: "ADULTS",
+        sportId: fx.bjj.id,
+        coachId: fx.coach.id,
+        capacity: 8,
+      }),
+    );
+    const body = await responseJson(res);
+
+    expect(res.status).toBe(201);
+    expect((body.data as { room: string | null }).room).toBeNull();
+  });
+});
+
+describe("enrollment revert", () => {
+  it("reverts a fresh enrollment with payment and group assignment", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+
+    const applyResponse = await applyEnrollment(
+      jsonRequest("POST", {
+        lines: [
+          {
+            memberId: fx.adult.id,
+            groupId: fx.adultBjj.id,
+            planId: fx.bjjPlan.id,
+            paymentCents: 5000,
+          },
+        ],
+      }),
+    );
+    const applyBody = await responseJson(applyResponse);
+
+    expect(applyResponse.status).toBe(201);
+    const undoSnapshot = (applyBody.data as { undoSnapshot: Record<string, unknown> }).undoSnapshot;
+    expect(undoSnapshot.createdPaymentIds).toHaveLength(1);
+    expect(undoSnapshot.createdSubscriptionIds).toHaveLength(1);
+    expect(undoSnapshot.createdGroupMemberIds).toHaveLength(1);
+
+    const revertResponse = await revertEnrollment(jsonRequest("POST", { undoSnapshot }));
+    expect(revertResponse.status).toBe(200);
+
+    const activeSubs = await prisma.memberSubscription.findMany({
+      where: { memberId: fx.adult.id, status: "ACTIVE" },
+    });
+    expect(activeSubs).toHaveLength(0);
+
+    const groupMember = await prisma.groupMember.findUnique({
+      where: { groupId_memberId: { groupId: fx.adultBjj.id, memberId: fx.adult.id } },
+    });
+    expect(groupMember).toBeNull();
+  });
+
+  it("reverts a discounted renewal and restores the previous subscription", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const previousSub = await createActiveSubscription(fx, { memberId: fx.adult.id, amount: 3500 });
+    const offer = await prisma.offer.create({
+      data: {
+        name: "10% off",
+        kind: "PERCENT_OFF",
+        rules: JSON.stringify({ percentOff: 10 }),
+      },
+    });
+
+    const applyResponse = await applyEnrollment(
+      jsonRequest("POST", {
+        offerId: offer.id,
+        lines: [
+          {
+            memberId: fx.adult.id,
+            groupId: fx.adultBjj.id,
+            planId: fx.bjjPlan.id,
+            paymentCents: 1000,
+          },
+        ],
+      }),
+    );
+    const applyBody = await responseJson(applyResponse);
+
+    expect(applyResponse.status).toBe(201);
+    const undoSnapshot = (applyBody.data as { undoSnapshot: Record<string, unknown> }).undoSnapshot;
+    expect(undoSnapshot.createdSubscriptionIds).toHaveLength(1);
+    expect(undoSnapshot.expiredSubscriptionIds).toContain(previousSub.id);
+
+    const revertResponse = await revertEnrollment(jsonRequest("POST", { undoSnapshot }));
+    expect(revertResponse.status).toBe(200);
+
+    const activeSubs = await prisma.memberSubscription.findMany({
+      where: { memberId: fx.adult.id, status: "ACTIVE" },
+    });
+    expect(activeSubs).toHaveLength(1);
+    expect(activeSubs[0]?.id).toBe(previousSub.id);
+  });
+
+  it("blocks revert when attendances exist on created subscriptions", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+
+    const applyResponse = await applyEnrollment(
+      jsonRequest("POST", {
+        lines: [
+          {
+            memberId: fx.adult.id,
+            groupId: fx.adultBjj.id,
+            planId: fx.bjjPlan.id,
+          },
+        ],
+      }),
+    );
+    const applyBody = await responseJson(applyResponse);
+    expect(applyResponse.status).toBe(201);
+
+    const createdSubId = (
+      (applyBody.data as { undoSnapshot: { createdSubscriptionIds: string[] } }).undoSnapshot
+        .createdSubscriptionIds[0]
+    );
+    const session = await createSessionForGroup(fx.adultBjj.id);
+    await prisma.attendance.create({
+      data: {
+        sessionId: session.id,
+        memberId: fx.adult.id,
+        memberSubscriptionId: createdSubId,
+        status: "PRESENT",
+      },
+    });
+
+    const revertResponse = await revertEnrollment(
+      jsonRequest("POST", {
+        undoSnapshot: (applyBody.data as { undoSnapshot: Record<string, unknown> }).undoSnapshot,
+      }),
+    );
+    expect(revertResponse.status).toBe(409);
   });
 });
 
