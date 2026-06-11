@@ -2,18 +2,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { MemberDangerActions } from "@/components/members/member-danger-actions";
+import { MemberProfileHero } from "@/components/members/member-profile-hero";
+import { MemberSubscriptionCards } from "@/components/members/member-subscription-cards";
+import { formatGroupRoomLabel } from "@/lib/group-room";
 import { MemberEditCard } from "@/components/members/member-edit-card";
+import { MemberOffersSection } from "@/components/members/member-offers-section";
 import { HouseholdCard } from "@/components/members/household-card";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-function formatCurrency(cents: number) {
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
-}
 
 function formatDate(date: Date | string) {
   return new Date(date).toLocaleDateString("fr-FR");
@@ -77,6 +75,20 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
     const totalPaid = sub.payments.reduce((acc, payment) => acc + payment.amount, 0);
     return sum + Math.max(0, sub.amount - totalPaid);
   }, 0);
+
+  const subscriptionCards = member.subscriptions.map((sub) => ({
+    id: sub.id,
+    planName: sub.plan.name,
+    sportName: sub.sport.name,
+    status: sub.status,
+    startDate: sub.startDate,
+    endDate: sub.endDate,
+    amount: sub.amount,
+    paidCents: sub.payments.reduce((sum, payment) => sum + payment.amount, 0),
+    remainingSessions: sub.remainingSessions,
+    totalSessions: sub.plan.totalSessions,
+  }));
+
   return (
     <main className="app-shell py-4 md:py-8">
       <Link
@@ -86,17 +98,31 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
         <ArrowLeft className="size-3.5" /> Retour à la liste
       </Link>
 
-      <PageHeader
-        overline="Dossier membre"
-        title={`${member.firstName} ${member.lastName}`}
-        description={
-          totalDebt > 0
-            ? `Dette en cours: ${formatCurrency(totalDebt)}`
-            : "Aucune dette en cours"
-        }
-      />
+      <div className="grid gap-6">
+        <MemberProfileHero
+          member={{
+            id: member.id,
+            firstName: member.firstName,
+            lastName: member.lastName,
+            phone: member.phone,
+            email: member.email,
+            memberType: member.memberType,
+            status: member.status,
+            joinedAt: member.joinedAt,
+            parentName: member.parentName,
+            parentPhone: member.parentPhone,
+          }}
+          totalDebtCents={totalDebt}
+          activeSubscriptionsCount={activeSubsBySport.length}
+          activeGroupsCount={activeGroups.length}
+        />
 
-      <div className="grid gap-6 md:grid-cols-3">
+        <MemberOffersSection
+          memberId={member.id}
+          memberName={`${member.firstName} ${member.lastName}`}
+        />
+
+        <div className="grid gap-6 md:grid-cols-3">
         {/* Carte identité */}
         <MemberEditCard
           member={{
@@ -118,26 +144,6 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
         />
 
         <HouseholdCard memberId={member.id} />
-
-        {activeSubsBySport.length > 0 && (
-          <section className="panel p-5 md:col-span-3">
-            <h2 className="text-lg font-semibold">Abonnements actifs par discipline</h2>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              {activeSubsBySport.map((sub) => {
-                const paid = sub.payments.reduce((s, p) => s + p.amount, 0);
-                return (
-                  <div key={sub.id} className="rounded-lg border p-3">
-                    <p className="font-medium">{sub.sport.name}</p>
-                    <p className="text-sm text-[var(--muted-foreground)]">{sub.plan.name}</p>
-                    <p className="text-sm">
-                      {formatCurrency(paid)} / {formatCurrency(sub.amount)} — {sub.remainingSessions} séances
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
 
         {/* Groupes actifs */}
         <section className="panel p-5 md:col-span-2">
@@ -166,7 +172,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                       <p className="text-xs text-[var(--muted-foreground)]">
                         {gm.group.sport?.name ?? "-"} •{" "}
                         {gm.group.coach ? `${gm.group.coach.firstName} ${gm.group.coach.lastName}` : "-"} • Salle{" "}
-                        {gm.group.room}
+                        {formatGroupRoomLabel(gm.group.room)}
                       </p>
                       {gm.group.schedules[0] ? (
                         <p className="text-xs text-[var(--muted-foreground)]">
@@ -199,7 +205,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                     <div>
                       <p className="text-sm font-medium">{gm.group.name}</p>
                       <p className="text-xs text-[var(--muted-foreground)]">
-                        {gm.group.sport?.name ?? "-"} • Salle {gm.group.room}
+                        {gm.group.sport?.name ?? "-"} • Salle {formatGroupRoomLabel(gm.group.room)}
                       </p>
                     </div>
                     <StatusBadge variant="muted">Inactif</StatusBadge>
@@ -217,56 +223,11 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
         {/* Abonnements */}
         <section className="panel p-5 md:col-span-3">
           <h2 className="text-lg font-semibold text-[var(--foreground)]">
-            Abonnements ({member.subscriptions.length})
+            Historique abonnements ({member.subscriptions.length})
           </h2>
-          {member.subscriptions.length === 0 ? (
-            <p className="mt-3 text-sm text-[var(--muted-foreground)]">Aucun abonnement enregistré.</p>
-          ) : (
-            <ul className="mt-3 space-y-2">
-              {member.subscriptions.map((sub) => {
-                const totalPaid = sub.payments.reduce((sum, p) => sum + p.amount, 0);
-                return (
-                  <li key={sub.id} className="rounded-lg border border-[var(--border)] p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-medium">{sub.plan.name}</p>
-                        <p className="text-xs text-[var(--muted-foreground)]">
-                          {formatDate(sub.startDate)}
-                          {sub.endDate ? ` → ${formatDate(sub.endDate)}` : ""} —{" "}
-                          <span className={totalPaid >= sub.amount ? "text-[var(--success)]" : "text-[var(--warning)]"}>
-                            Payé {formatCurrency(totalPaid)} / {formatCurrency(sub.amount)}
-                          </span>
-                          {sub.status === "ACTIVE" && sub.plan && (
-                            <span className={sub.remainingSessions > 0 ? "text-[var(--info)] ml-1" : "text-[var(--danger)] ml-1"}>
-                              ({sub.remainingSessions} / {sub.plan.totalSessions} séances restantes)
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                      <StatusBadge
-                        variant={
-                          sub.status === "ACTIVE"
-                            ? "success"
-                            : sub.status === "DRAFT"
-                              ? "info"
-                              : sub.status === "EXPIRED"
-                                ? "warning"
-                                : "danger"
-                        }
-                      >
-                        {sub.status === "ACTIVE" ? "Actif" : sub.status === "DRAFT" ? "Brouillon" : sub.status === "EXPIRED" ? "Expiré" : "Annulé"}
-                      </StatusBadge>
-                    </div>
-                    {sub.payments.length > 0 && (
-                      <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-                        Dernier paiement: {formatCurrency(sub.payments[0].amount)} le {formatDate(sub.payments[0].paymentDate)}
-                      </p>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+          <div className="mt-3">
+            <MemberSubscriptionCards subscriptions={subscriptionCards} />
+          </div>
         </section>
 
         <MemberDangerActions
@@ -323,6 +284,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
             </div>
           )}
         </section>
+      </div>
       </div>
     </main>
   );
