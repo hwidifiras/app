@@ -1,0 +1,6 @@
+# Copy to docker-compose.override.yml on the VPS when port 3000 is already in use.
+# Prefer HOST_PORT=3001 in .env.production instead (see .env.production.example).
+services:
+  dojo-app:
+    ports:
+      - "3001:3000"
