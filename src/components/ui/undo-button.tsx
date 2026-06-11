@@ -3,7 +3,7 @@
 import { Undo2 } from "lucide-react";
 
 type UndoButtonProps = {
-  onClick: () => void | Promise<void>;
+  onClick: () => void | Promise<unknown>;
   disabled?: boolean;
   title?: string;
   label?: string;

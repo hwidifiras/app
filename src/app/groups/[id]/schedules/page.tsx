@@ -16,7 +16,7 @@ export default async function GroupSchedulesPage({ params }: { params: Promise<{
   let group: {
     id: string;
     name: string;
-    room: string;
+    room: string | null;
     coachId: string;
     capacity: number;
     sportId: string;

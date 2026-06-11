@@ -7,6 +7,7 @@ import { MemberProfileHero } from "@/components/members/member-profile-hero";
 import { MemberSubscriptionCards } from "@/components/members/member-subscription-cards";
 import { formatGroupRoomLabel } from "@/lib/group-room";
 import { MemberEditCard } from "@/components/members/member-edit-card";
+import { MemberDangerActions } from "@/components/members/member-danger-actions";
 import { MemberOffersSection } from "@/components/members/member-offers-section";
 import { HouseholdCard } from "@/components/members/household-card";
 

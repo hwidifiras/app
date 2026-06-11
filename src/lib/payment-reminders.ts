@@ -168,10 +168,13 @@ export async function sendPaymentReminderToMember(
   });
 
   if (!delivery.delivered) {
+    if (delivery.reason === "EMAIL_NOT_CONFIGURED") {
+      return { memberId, status: "skipped", reason: "EMAIL_NOT_CONFIGURED" };
+    }
     return {
       memberId,
-      status: delivery.reason === "EMAIL_NOT_CONFIGURED" ? "skipped" : "failed",
-      reason: delivery.reason === "EMAIL_NOT_CONFIGURED" ? "EMAIL_NOT_CONFIGURED" : "EMAIL_SEND_FAILED",
+      status: "failed",
+      reason: "EMAIL_SEND_FAILED",
       email: details.email,
     };
   }

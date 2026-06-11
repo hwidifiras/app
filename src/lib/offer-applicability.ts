@@ -1,7 +1,6 @@
 import type { OfferKind } from "@prisma/client";
 
 import { formatOfferRulesSummary } from "@/lib/offer-display";
-import { resolveOfferRules } from "@/lib/offer-rules";
 import { prisma } from "@/lib/prisma";
 
 export type OfferRelevance = "high" | "medium" | "general";
@@ -86,14 +85,13 @@ export async function getMemberOfferContext(memberId: string): Promise<MemberOff
 
   const applicableOffers = offers
     .map((offer) => {
-      const rules = resolveOfferRules(offer);
       const summary = formatOfferRulesSummary({
         id: offer.id,
         name: offer.name,
         kind: offer.kind,
         isActive: offer.isActive,
         sportName: offer.sport?.name ?? null,
-        rules,
+        rules: offer.rules,
         percentOff: offer.percentOff,
         amountOffCents: offer.amountOffCents,
         bundlePriceCents: offer.bundlePriceCents,
@@ -120,7 +118,7 @@ export async function getMemberOfferContext(memberId: string): Promise<MemberOff
           }
           break;
         case "FAMILY_BUNDLE": {
-          const minMembers = (rules as { minMembers: number }).minMembers;
+          const minMembers = offer.minMembers ?? 2;
           if (householdSize >= minMembers) {
             relevance = "high";
             hint = `Foyer de ${householdSize} membre(s) — incluez au moins ${minMembers} personnes dans le devis.`;

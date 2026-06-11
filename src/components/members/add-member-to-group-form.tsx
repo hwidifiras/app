@@ -4,6 +4,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions } from "@/components/ui/form-layout";
+import { formatGroupRoomLabel } from "@/lib/group-room";
 
 type Plan = {
   id: string;
@@ -27,7 +28,7 @@ type Group = {
   sportId: string;
   sportName: string;
   coachName: string;
-  room: string;
+  room: string | null;
   capacity: number;
   activeMembers: number;
   groupType: "KIDS" | "ADULTS";
@@ -198,7 +199,7 @@ export function AddMemberToGroupForm({
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Salle:</span>
-              <span className="font-medium">{selectedGroup.room}</span>
+              <span className="font-medium">{formatGroupRoomLabel(selectedGroup.room)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Sport:</span>
