@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 
 import { DisplayModeToggle } from "@/components/layout/display-mode-toggle";
+import { NotificationCenter } from "@/components/notifications/notification-center";
 import { SetupGuide } from "@/components/onboarding/setup-guide";
 import { UserAccountMenu } from "@/components/layout/user-account-menu";
 
@@ -37,8 +38,9 @@ export function DesktopTopNav() {
         </div>
         <div className="flex items-center gap-3">
           <DisplayModeToggle />
-        <SetupGuide variant="header" />
-        <UserAccountMenu />
+          <SetupGuide variant="header" />
+          <NotificationCenter />
+          <UserAccountMenu />
         </div>
       </div>
     </header>

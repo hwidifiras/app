@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Banknote, ChevronDown, Clock, Home, Menu, PlusCircle, Search, X } from "lucide-react";
 
 import { ClubBrandMark } from "@/components/layout/club-brand-mark";
+import { NotificationCenter } from "@/components/notifications/notification-center";
 import { UserAccountMenu } from "@/components/layout/user-account-menu";
 import { cn } from "@/lib/utils";
 import { SetupGuide } from "@/components/onboarding/setup-guide";
@@ -63,6 +64,7 @@ export function MobileNav() {
         </Link>
         <div className="flex items-center gap-2">
           <SetupGuide variant="header" />
+          <NotificationCenter />
           <UserAccountMenu onNavigate={close} />
           <button
             onClick={() => setOpen((v) => !v)}

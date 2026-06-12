@@ -89,6 +89,7 @@ model User {
   role                UserRole             @default(STAFF)
   isActive            Boolean              @default(true)
   permissions         UserPermission[]
+  notificationReads   NotificationRead[]
   passwordResetTokens PasswordResetToken[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
@@ -116,6 +117,18 @@ model PasswordResetToken {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model NotificationRead {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notificationKey String
+  readAt          DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, notificationKey])
+  @@index([userId, readAt])
 }
 
 model ClubSettings {
