@@ -10,6 +10,8 @@ import { MemberEditCard } from "@/components/members/member-edit-card";
 import { MemberDangerActions } from "@/components/members/member-danger-actions";
 import { MemberOffersSection } from "@/components/members/member-offers-section";
 import { HouseholdCard } from "@/components/members/household-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { CalendarCheck2, UsersRound } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -99,7 +101,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
         <ArrowLeft className="size-3.5" /> Retour à la liste
       </Link>
 
-      <div className="grid gap-6">
+      <div className="grid min-w-0 gap-4 sm:gap-5">
         <MemberProfileHero
           member={{
             id: member.id,
@@ -118,132 +120,85 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
           activeGroupsCount={activeGroups.length}
         />
 
-        <MemberOffersSection
-          memberId={member.id}
-          memberName={`${member.firstName} ${member.lastName}`}
-        />
-
-        <div className="grid gap-6 md:grid-cols-3">
-        {/* Carte identité */}
-        <MemberEditCard
-          member={{
-            id: member.id,
-            firstName: member.firstName,
-            lastName: member.lastName,
-            phone: member.phone,
-            email: member.email,
-            memberType: member.memberType,
-            birthDate: member.birthDate?.toISOString() ?? null,
-            address: member.address,
-            parentName: member.parentName,
-            parentPhone: member.parentPhone,
-            parentAddress: member.parentAddress,
-            status: member.status,
-            joinedAt: member.joinedAt.toISOString(),
-            archivedAt: member.archivedAt?.toISOString() ?? null,
-          }}
-        />
-
-        <HouseholdCard memberId={member.id} />
-
-        {/* Groupes actifs */}
-        <section className="panel p-5 md:col-span-2">
-          <div className="mb-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-lg font-semibold text-[var(--foreground)]">
-              Groupes actifs ({activeGroups.length})
-            </h2>
-            {member.status === "ACTIVE" && (
-              <Link
-                href={`/members/${member.id}/add-to-group`}
-                className="btn btn-primary btn-block-mobile text-xs sm:w-auto"
-              >
-                + Ajouter
-              </Link>
-            )}
-          </div>
-          {activeGroups.length === 0 ? (
-            <p className="mt-3 text-sm text-[var(--muted-foreground)]">Aucun groupe actif.</p>
-          ) : (
-            <ul className="mt-3 space-y-2">
-              {activeGroups.map((gm) => (
-                <li key={gm.id} className="rounded-lg border border-[var(--border)] p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-medium">{gm.group.name}</p>
-                      <p className="text-xs text-[var(--muted-foreground)]">
-                        {gm.group.sport?.name ?? "-"} •{" "}
-                        {gm.group.coach ? `${gm.group.coach.firstName} ${gm.group.coach.lastName}` : "-"} • Salle{" "}
-                        {formatGroupRoomLabel(gm.group.room)}
+        <div className="grid min-w-0 items-start gap-4 sm:gap-5 lg:grid-cols-12">
+          <div className="contents">
+            <section className="panel order-2 min-w-0 p-4 sm:p-5 lg:col-span-8 lg:row-start-1">
+              <div className="mb-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-lg font-semibold text-[var(--foreground)]">
+                  Groupes actifs ({activeGroups.length})
+                </h2>
+                {member.status === "ACTIVE" && (
+                  <Link
+                    href={`/members/${member.id}/add-to-group`}
+                    className="btn btn-primary btn-block-mobile btn-sm sm:w-auto"
+                  >
+                    + Ajouter au groupe
+                  </Link>
+                )}
+              </div>
+              {activeGroups.length === 0 ? (
+                <EmptyState
+                  icon={<UsersRound className="size-8 opacity-45" />}
+                  title="Aucun groupe actif"
+                  message="Affectez ce membre à un groupe pour planifier ses séances."
+                  action={
+                    member.status === "ACTIVE" ? (
+                      <Link href={`/members/${member.id}/add-to-group`} className="btn btn-primary">
+                        Ajouter au groupe
+                      </Link>
+                    ) : undefined
+                  }
+                  className="py-8"
+                />
+              ) : (
+                <ul className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr))]">
+                  {activeGroups.map((gm) => (
+                    <li key={gm.id} className="rounded-xl border border-[var(--border)] bg-[var(--surface-soft)]/35 p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold">{gm.group.name}</p>
+                          <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                            {gm.group.sport?.name ?? "-"} ·{" "}
+                            {gm.group.coach ? `${gm.group.coach.firstName} ${gm.group.coach.lastName}` : "Sans coach"}
+                          </p>
+                          <p className="text-xs text-[var(--muted-foreground)]">
+                            Salle {formatGroupRoomLabel(gm.group.room)}
+                            {gm.group.schedules[0]
+                              ? ` · ${gm.group.schedules[0].dayOfWeek} ${gm.group.schedules[0].startTime}`
+                              : ""}
+                          </p>
+                        </div>
+                        <StatusBadge variant="success">Actif</StatusBadge>
+                      </div>
+                      <p className="mt-2 text-[0.7rem] text-[var(--muted-foreground)]">
+                        Depuis le {new Date(gm.startDate).toLocaleDateString("fr-FR")}
                       </p>
-                      {gm.group.schedules[0] ? (
-                        <p className="text-xs text-[var(--muted-foreground)]">
-                          {gm.group.schedules[0].dayOfWeek} {gm.group.schedules[0].startTime} (
-                          {gm.group.schedules[0].durationMinutes} min)
-                        </p>
-                      ) : null}
-                    </div>
-                    <StatusBadge variant="success">Actif</StatusBadge>
-                  </div>
-                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-                    Depuis le {new Date(gm.startDate).toLocaleDateString("fr-FR")}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
 
-        {/* Historique groupes */}
-        {inactiveGroups.length > 0 ? (
-          <section className="panel p-5 md:col-span-3">
-            <h2 className="text-lg font-semibold text-[var(--foreground)]">
-              Historique des affectations ({inactiveGroups.length})
-            </h2>
-            <ul className="mt-3 space-y-2">
-              {inactiveGroups.map((gm) => (
-                <li key={gm.id} className="rounded-lg border border-[var(--border)] p-3 opacity-70">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-medium">{gm.group.name}</p>
-                      <p className="text-xs text-[var(--muted-foreground)]">
-                        {gm.group.sport?.name ?? "-"} • Salle {formatGroupRoomLabel(gm.group.room)}
-                      </p>
-                    </div>
-                    <StatusBadge variant="muted">Inactif</StatusBadge>
-                  </div>
-                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-                    {new Date(gm.startDate).toLocaleDateString("fr-FR")}
-                    {gm.endDate ? ` → ${new Date(gm.endDate).toLocaleDateString("fr-FR")}` : ""}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
+            <section className="panel order-3 min-w-0 p-4 sm:p-5 lg:col-span-8 lg:row-start-2">
+              <h2 className="text-lg font-semibold text-[var(--foreground)]">
+                Abonnements ({member.subscriptions.length})
+              </h2>
+              <div className="mt-3">
+                <MemberSubscriptionCards subscriptions={subscriptionCards} />
+              </div>
+            </section>
 
-        {/* Abonnements */}
-        <section className="panel p-5 md:col-span-3">
-          <h2 className="text-lg font-semibold text-[var(--foreground)]">
-            Historique abonnements ({member.subscriptions.length})
-          </h2>
-          <div className="mt-3">
-            <MemberSubscriptionCards subscriptions={subscriptionCards} />
-          </div>
-        </section>
-
-        <MemberDangerActions
-          memberId={member.id}
-          memberName={`${member.firstName} ${member.lastName}`}
-          status={member.status}
-        />
-
-        {/* Présences récentes */}
-        <section className="panel p-5 md:col-span-3">
+            <section className="panel order-6 min-w-0 p-4 sm:p-5 lg:col-span-8 lg:row-start-3">
           <h2 className="text-lg font-semibold text-[var(--foreground)]">
             Présences récentes ({member.attendances.length})
           </h2>
           {member.attendances.length === 0 ? (
-            <p className="mt-3 text-sm text-[var(--muted-foreground)]">Aucune présence enregistrée.</p>
+            <EmptyState
+              icon={<CalendarCheck2 className="size-8 opacity-45" />}
+              title="Aucun pointage"
+              message="Les présences et absences apparaîtront ici après le premier pointage."
+              className="mt-3 py-8"
+            />
           ) : (
             <div className="mt-3 data-table overflow-x-auto">
               <table className="w-full text-sm">
@@ -284,8 +239,71 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
               </table>
             </div>
           )}
-        </section>
-      </div>
+            </section>
+
+            {inactiveGroups.length > 0 ? (
+              <details className="panel order-7 min-w-0 p-4 sm:p-5 lg:col-span-12 lg:row-start-5">
+                <summary className="cursor-pointer text-sm font-semibold text-[var(--foreground)]">
+                  Anciennes affectations ({inactiveGroups.length})
+                </summary>
+                <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {inactiveGroups.map((gm) => (
+                    <li key={gm.id} className="rounded-xl border border-[var(--border)] p-3 opacity-75">
+                      <p className="text-sm font-medium">{gm.group.name}</p>
+                      <p className="text-xs text-[var(--muted-foreground)]">
+                        {gm.group.sport?.name ?? "-"} · Salle {formatGroupRoomLabel(gm.group.room)}
+                      </p>
+                      <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                        {formatDate(gm.startDate)}
+                        {gm.endDate ? ` → ${formatDate(gm.endDate)}` : ""}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ) : null}
+          </div>
+
+          <aside className="contents">
+            <div className="order-1 min-w-0 lg:col-span-4 lg:row-start-1">
+              <MemberEditCard
+                member={{
+                  id: member.id,
+                  firstName: member.firstName,
+                  lastName: member.lastName,
+                  phone: member.phone,
+                  email: member.email,
+                  memberType: member.memberType,
+                  birthDate: member.birthDate?.toISOString() ?? null,
+                  address: member.address,
+                  parentName: member.parentName,
+                  parentPhone: member.parentPhone,
+                  parentAddress: member.parentAddress,
+                  status: member.status,
+                  joinedAt: member.joinedAt.toISOString(),
+                  archivedAt: member.archivedAt?.toISOString() ?? null,
+                }}
+              />
+            </div>
+            <div className="order-4 min-w-0 lg:col-span-4 lg:row-start-2">
+              <HouseholdCard memberId={member.id} />
+            </div>
+            <div className="order-5 min-w-0 lg:col-span-12 lg:row-start-4">
+              <MemberOffersSection
+                memberId={member.id}
+                memberName={`${member.firstName} ${member.lastName}`}
+                wide
+              />
+            </div>
+            <div className="order-8 min-w-0 lg:col-span-4 lg:row-start-3">
+              <MemberDangerActions
+                memberId={member.id}
+                memberName={`${member.firstName} ${member.lastName}`}
+                status={member.status}
+              />
+            </div>
+          </aside>
+        </div>
       </div>
     </main>
   );

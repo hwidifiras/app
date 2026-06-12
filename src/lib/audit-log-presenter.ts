@@ -33,6 +33,7 @@ export type AuditPresentation = {
 
 const ACTION_LABELS: Record<string, string> = {
   OFFER_CREATED: "Offre promotionnelle créée",
+  OFFER_DEACTIVATED: "Offre promotionnelle désactivée",
   ENROLLMENT_APPLIED: "Inscription enregistrée",
   CLUB_SETTINGS_UPDATED: "Règles du club modifiées",
   PASSWORD_RESET_COMPLETED: "Mot de passe réinitialisé",

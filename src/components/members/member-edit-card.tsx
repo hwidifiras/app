@@ -122,7 +122,7 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
   }
 
   return (
-    <section className="panel panel-soft p-5 md:col-span-1">
+    <section className="panel panel-soft h-full min-w-0 p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <h2 className="text-lg font-semibold text-[var(--foreground)]">Informations</h2>
         {isEditing ? null : (
@@ -220,8 +220,8 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
           </FormActions>
         </form>
       ) : (
-        <dl className="mt-4 space-y-3 text-sm">
-          <div className="flex justify-between">
+        <dl className="mt-4 grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-1">
+          <div className="flex min-w-0 justify-between gap-3">
             <dt className="text-[var(--muted-foreground)]">Statut</dt>
             <dd>
               <StatusBadge variant={member.status === "ACTIVE" ? "success" : "muted"}>
@@ -229,41 +229,41 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
               </StatusBadge>
             </dd>
           </div>
-          <div className="flex justify-between">
+          <div className="flex min-w-0 justify-between gap-3">
             <dt className="text-[var(--muted-foreground)]">Telephone</dt>
-            <dd className="font-medium">{member.phone}</dd>
+            <dd className="min-w-0 break-words text-right font-medium">{member.phone}</dd>
           </div>
-          <div className="flex justify-between">
+          <div className="flex min-w-0 justify-between gap-3">
             <dt className="text-[var(--muted-foreground)]">Type</dt>
             <dd className="font-medium">{memberTypeLabel(member.memberType)}</dd>
           </div>
-          <div className="flex justify-between">
+          <div className="flex min-w-0 justify-between gap-3">
             <dt className="text-[var(--muted-foreground)]">Date de naissance</dt>
             <dd className="font-medium">
               {formatDate(member.birthDate)}
               {age !== null ? ` (${age} ans)` : ""}
             </dd>
           </div>
-          <div className="flex justify-between">
+          <div className="flex min-w-0 justify-between gap-3">
             <dt className="text-[var(--muted-foreground)]">Adresse</dt>
-            <dd className="font-medium">{member.address ?? "-"}</dd>
+            <dd className="min-w-0 break-words text-right font-medium">{member.address ?? "-"}</dd>
           </div>
-          <div className="flex justify-between">
+          <div className="flex min-w-0 justify-between gap-3">
             <dt className="text-[var(--muted-foreground)]">Email</dt>
-            <dd className="font-medium">{member.email ?? "-"}</dd>
+            <dd className="min-w-0 break-all text-right font-medium">{member.email ?? "-"}</dd>
           </div>
-          <div className="flex justify-between">
+          <div className="flex min-w-0 justify-between gap-3">
             <dt className="text-[var(--muted-foreground)]">Inscription</dt>
             <dd className="font-medium">{formatDate(member.joinedAt)}</dd>
           </div>
           {member.archivedAt ? (
-            <div className="flex justify-between">
+            <div className="flex min-w-0 justify-between gap-3">
               <dt className="text-[var(--muted-foreground)]">Archive le</dt>
               <dd className="font-medium text-[var(--danger)]">{formatDate(member.archivedAt)}</dd>
             </div>
           ) : null}
           {member.memberType === "KID" ? (
-            <div className="rounded-lg border border-[var(--border)] p-3 text-xs">
+            <div className="rounded-lg border border-[var(--border)] p-3 text-xs sm:col-span-2 lg:col-span-1">
               <p className="mb-2 text-[var(--muted-foreground)]">Responsable legal</p>
               <p className="font-medium">{member.parentName ?? "-"}</p>
               <p className="text-[var(--muted-foreground)]">{member.parentPhone ?? "-"}</p>

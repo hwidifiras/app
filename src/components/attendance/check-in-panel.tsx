@@ -200,7 +200,44 @@ export function CheckInPanel({ data }: { data: TodayData }) {
 
   async function undoLastForSession() {
     if (!selectedId || undoLoading) return;
-    await undoLast(selectedId);
+    if (sessionUndoCount > 0) {
+      await undoLast(selectedId);
+      return;
+    }
+
+    const session = sessions.find((item) => item.id === selectedId);
+    const latestAttendance = [...(session?.attendances ?? [])].sort((left, right) =>
+      (left.checkedAt ?? "").localeCompare(right.checkedAt ?? ""),
+    ).at(-1);
+    if (!latestAttendance) return;
+
+    setLoadingId(latestAttendance.memberId);
+    const response = await fetch("/api/attendances", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ attendanceId: latestAttendance.id }),
+    });
+    const result = (await response.json()) as { error?: string; warning?: string };
+    if (!response.ok) {
+      setMessage(result.error ?? "Impossible d'annuler le dernier pointage");
+      setLoadingId(null);
+      return;
+    }
+
+    setSessions((current) =>
+      current.map((item) =>
+        item.id === selectedId
+          ? {
+              ...item,
+              attendances: item.attendances.filter(
+                (attendance) => attendance.id !== latestAttendance.id,
+              ),
+            }
+          : item,
+      ),
+    );
+    setMessage(result.warning ?? "Dernier pointage annulé");
+    setLoadingId(null);
   }
 
   if (sessions.length === 0) {
@@ -239,9 +276,11 @@ export function CheckInPanel({ data }: { data: TodayData }) {
           onClose={() => setSelectedId(null)}
           loadingId={loadingId}
           message={message}
-          canUndo={sessionUndoCount > 0}
+          canUndo={effectiveSession.attendances.length > 0}
+          undoCount={effectiveSession.attendances.length}
           undoLoading={undoLoading}
           onUndo={undoLastForSession}
+          postponeHref={`/sessions?week=${weekStartIsoForDate(new Date(effectiveSession.sessionDate))}&groupId=${effectiveSession.group.id}&sessionId=${effectiveSession.id}`}
         />
       )}
     </div>

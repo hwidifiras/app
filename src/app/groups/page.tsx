@@ -77,7 +77,7 @@ export default async function GroupsPage() {
         description="Consulter, modifier ou supprimer les groupes d'entraînement."
       />
 
-      <section className="panel p-5">
+      <section className="panel p-3 sm:p-5">
         <GroupListClient initialGroups={initialGroups} />
       </section>
     </main>

@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
-import { FormActions, FormField, FormGrid, FormSection } from "@/components/ui/form-layout";
+import { FormActions } from "@/components/ui/form-layout";
 
 type GroupOption = { id: string; name: string };
 type PlanOption = { id: string; name: string; price: number; totalSessions: number; validityDays: number };
@@ -82,28 +82,9 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
       return;
     }
 
-    setMessage("Inscription créée avec succès");
-    setFirstName("");
-    setLastName("");
-    setPhone("");
-    setEmail("");
-    setMemberType("ADULT");
-    setBirthDate("");
-    setAddress("");
-    setParentName("");
-    setParentPhone("");
-    setParentAddress("");
-    setGroupId("");
-    setPlanId("");
-    setPaymentAmount("");
-    setPaymentMethod("CASH");
-    setPaymentDate(new Date().toISOString().split("T")[0]);
-    setPaymentNotes("");
-    setLoading(false);
-
-    setTimeout(() => {
-      router.push("/members");
-    }, 800);
+    const memberId = result.data?.id as string | undefined;
+    router.push(memberId ? `/members/${memberId}` : "/members");
+    router.refresh();
   }
 
   return (
@@ -276,7 +257,7 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
         {selectedPlan ? (
           <div className="rounded-xl border border-[var(--border)] p-4">
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-              Paiement à l'inscription (optionnel)
+              Paiement à l&apos;inscription (optionnel)
             </p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>

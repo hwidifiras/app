@@ -1,42 +1,17 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
-import { StatusBadge } from "@/components/ui/status-badge";
-import type { AttendanceStatus } from "@prisma/client";
+import {
+  AttendanceHistoryList,
+  type AttendanceHistoryRow,
+} from "@/components/attendance/attendance-history-list";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-function statusVariant(status: AttendanceStatus) {
-  switch (status) {
-    case "PRESENT": return "success";
-    case "ABSENT": return "danger";
-    case "OVERRIDE": return "warning";
-    default: return "muted";
-  }
-}
-function statusLabel(status: AttendanceStatus) {
-  switch (status) {
-    case "PRESENT": return "Présent";
-    case "ABSENT": return "Absent";
-    case "OVERRIDE": return "Exception";
-    default: return status;
-  }
-}
-
 export default async function AttendancePage() {
   let hasError = false;
-  let rows: Array<{
-    id: string;
-    memberName: string;
-    groupName: string;
-    sessionDate: string;
-    startTime: string;
-    status: AttendanceStatus;
-    overrideReason: string | null;
-    checkedBy: string | null;
-    checkedAt: string;
-  }> = [];
+  let rows: AttendanceHistoryRow[] = [];
 
   try {
     const data = await prisma.attendance.findMany({
@@ -87,55 +62,19 @@ export default async function AttendancePage() {
         title="Présences"
         description={`${rows.length} pointage(s) enregistré(s).`}
         actions={
-          <Link href="/attendance/groups" className="btn btn-ghost btn-block-mobile min-h-11 text-sm sm:w-auto">
-            Présences par groupe
-          </Link>
+          <>
+            <Link href="/attendance/groups" className="btn btn-ghost btn-block-mobile min-h-11 text-sm sm:w-auto">
+              Rapport par groupe
+            </Link>
+            <Link href="/attendance/today" className="btn btn-primary btn-block-mobile min-h-11 text-sm sm:w-auto">
+              Pointer aujourd&apos;hui
+            </Link>
+          </>
         }
       />
 
-      <section className="panel p-5">
-        <div className="data-table overflow-x-auto rounded-xl border border-[var(--border)]">
-          <table className="w-full text-sm">
-            <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
-              <tr>
-                <th className="px-4 py-3 text-left font-semibold">Membre</th>
-                <th className="px-4 py-3 text-left font-semibold">Groupe</th>
-                <th className="px-4 py-3 text-left font-semibold hidden sm:table-cell">Séance</th>
-                <th className="px-4 py-3 text-left font-semibold">Statut</th>
-                <th className="px-4 py-3 text-left font-semibold hidden md:table-cell">Pointage</th>
-                <th className="px-4 py-3 text-left font-semibold hidden lg:table-cell">Motif</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {rows.map((r) => (
-                <tr key={r.id} className="hover:bg-[var(--surface-soft)] transition-colors">
-                  <td className="data-table-primary px-4 py-3 font-medium text-[var(--foreground)]" data-label="Membre">{r.memberName}</td>
-                  <td className="px-4 py-3" data-label="Groupe">{r.groupName}</td>
-                  <td className="px-4 py-3 hidden sm:table-cell" data-label="Séance">
-                    {new Date(r.sessionDate).toLocaleDateString("fr-FR")}
-                    <span className="text-[var(--muted-foreground)] ml-1">({r.startTime})</span>
-                  </td>
-                  <td className="px-4 py-3" data-label="Statut">
-                    <StatusBadge variant={statusVariant(r.status)}>{statusLabel(r.status)}</StatusBadge>
-                  </td>
-                  <td className="px-4 py-3 hidden md:table-cell text-[var(--muted-foreground)]" data-label="Pointage">
-                    {r.checkedBy ?? "Système"} — {new Date(r.checkedAt).toLocaleDateString("fr-FR")}
-                  </td>
-                  <td className="px-4 py-3 hidden lg:table-cell text-[var(--muted-foreground)]" data-label="Motif">
-                    {r.overrideReason ?? "—"}
-                  </td>
-                </tr>
-              ))}
-              {rows.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-5 text-center text-[var(--muted-foreground)]">
-                    Aucune présence enregistrée.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+      <section className="panel p-3 sm:p-5">
+        <AttendanceHistoryList rows={rows} />
       </section>
     </main>
   );

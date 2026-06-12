@@ -2,13 +2,11 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
-import { FormActions } from "@/components/ui/form-layout";
+import { FormActions, FormField } from "@/components/ui/form-layout";
 import { ReceptionInfoCard } from "@/components/ui/reception-info-card";
-import { UndoButton } from "@/components/ui/undo-button";
-import { useActionHistory } from "@/hooks/use-action-history";
-import type { EnrollmentUndoSnapshot } from "@/lib/enrollment-undo";
 import type { OfferLike } from "@/lib/offer-display";
 import {
   formatOfferRulesSummary,
@@ -78,11 +76,11 @@ function formatEur(cents: number) {
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
 }
 
-function newLine(): LineState {
+function newLine(memberId = ""): LineState {
   return {
     key: crypto.randomUUID(),
     mode: "existing",
-    memberId: "",
+    memberId,
     newFirstName: "",
     newLastName: "",
     newPhone: "",
@@ -106,8 +104,9 @@ export function EnrollmentWizard({
   initialOfferId?: string;
   initialStep?: number;
 }) {
+  const router = useRouter();
   const [step, setStep] = useState(initialStep >= 2 && initialStep <= 3 ? initialStep : 1);
-  const [lines, setLines] = useState<LineState[]>([newLine()]);
+  const [lines, setLines] = useState<LineState[]>([newLine(initialMemberId)]);
   const [offerId, setOfferId] = useState(initialOfferId);
   const [members, setMembers] = useState<MemberOption[]>([]);
   const [groups, setGroups] = useState<GroupOption[]>([]);
@@ -116,8 +115,6 @@ export function EnrollmentWizard({
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [appliedMemberIds, setAppliedMemberIds] = useState<string[]>([]);
-  const { push, undoLast, loading: undoLoading, canUndo } = useActionHistory({ enableKeyboard: true });
 
   useEffect(() => {
     Promise.all([
@@ -149,32 +146,6 @@ export function EnrollmentWizard({
       setOffers(o.data ?? []);
     });
   }, []);
-
-  useEffect(() => {
-    if (!initialMemberId) return;
-
-    setLines((current) => {
-      const first = current[0] ?? newLine();
-      if (first.memberId === initialMemberId && first.mode === "existing") {
-        return current;
-      }
-
-      return [
-        {
-          ...first,
-          mode: "existing",
-          memberId: initialMemberId,
-        },
-        ...current.slice(1),
-      ];
-    });
-  }, [initialMemberId]);
-
-  useEffect(() => {
-    if (initialOfferId) {
-      setOfferId(initialOfferId);
-    }
-  }, [initialOfferId]);
 
   const buildPayload = useCallback(() => {
     return {
@@ -256,7 +227,6 @@ export function EnrollmentWizard({
     const data = await res.json() as {
       data?: {
         memberIds: string[];
-        undoSnapshot: EnrollmentUndoSnapshot;
       };
       error?: string;
     };
@@ -266,39 +236,10 @@ export function EnrollmentWizard({
       return;
     }
 
-    const undoSnapshot = data.data?.undoSnapshot;
     const memberIds = data.data?.memberIds ?? [];
-    if (!undoSnapshot) {
-      setMessage("Inscription confirmée.");
-      setAppliedMemberIds(memberIds);
-      return;
-    }
-
-    push({
-      scope: "enrollment",
-      label: "Inscription",
-      undo: async () => {
-        const revertRes = await fetch("/api/enrollment/revert", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ undoSnapshot }),
-        });
-        const revertData = (await revertRes.json()) as { error?: string };
-        if (!revertRes.ok) {
-          setMessage(revertData.error ?? "Impossible d'annuler l'inscription.");
-          return false;
-        }
-
-        setAppliedMemberIds([]);
-        setQuote(null);
-        setStep(2);
-        setMessage("Inscription annulée.");
-        return true;
-      },
-    });
-
-    setAppliedMemberIds(memberIds);
     setMessage("Inscription confirmée.");
+    router.push(memberIds[0] ? `/members/${memberIds[0]}` : "/members");
+    router.refresh();
   }
 
   function plansForGroup(groupId: string) {
@@ -334,41 +275,19 @@ export function EnrollmentWizard({
           (l.memberType !== "KID" || (l.parentName && l.parentPhone)))),
   );
 
-  const successMessage = useMemo(
-    () =>
-      message === "Inscription confirmée." || message === "Inscription annulée." ? message : null,
-    [message],
-  );
-
   return (
     <form onSubmit={applyEnrollment} className="space-y-6 pb-4 lg:pb-0">
       {message ? (
         <FeedbackMessage
           message={message}
           variant={
-            successMessage
+            message === "Inscription confirmée."
               ? "success"
               : message.startsWith("Impossible") || message.includes("Erreur")
                 ? "error"
                 : undefined
           }
         />
-      ) : null}
-
-      {successMessage === "Inscription confirmée." && canUndo ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <UndoButton
-            onClick={() => undoLast()}
-            disabled={undoLoading || loading}
-            label="Annuler cette inscription"
-            title="Annuler la dernière inscription (Ctrl+Z)"
-          />
-          {appliedMemberIds[0] ? (
-            <Link href={`/members/${appliedMemberIds[0]}`} className="text-sm font-medium text-[var(--primary)] hover:underline">
-              Ouvrir le dossier membre
-            </Link>
-          ) : null}
-        </div>
       ) : null}
 
       <ReceptionInfoCard title="À retenir" variant="info">
@@ -604,105 +523,136 @@ function LineEditor({
         </label>
       </div>
       {line.mode === "existing" ? (
-        <select
-          className="field"
-          value={line.memberId}
-          onChange={(e) => onChange({ ...line, memberId: e.target.value })}
-        >
-          <option value="">Élève</option>
-          {members.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.firstName} {m.lastName}
-            </option>
-          ))}
-        </select>
+        <FormField label="Membre existant" htmlFor={`${line.key}-member`}>
+          <select
+            id={`${line.key}-member`}
+            className="field"
+            value={line.memberId}
+            onChange={(e) => onChange({ ...line, memberId: e.target.value })}
+          >
+            <option value="">Sélectionner un membre</option>
+            {members.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.firstName} {m.lastName}
+              </option>
+            ))}
+          </select>
+        </FormField>
       ) : (
         <div className="grid gap-2 sm:grid-cols-3">
-          <input
-            placeholder="Prénom"
-            className="field"
-            value={line.newFirstName}
-            onChange={(e) => onChange({ ...line, newFirstName: e.target.value })}
-          />
-          <input
-            placeholder="Nom"
-            className="field"
-            value={line.newLastName}
-            onChange={(e) => onChange({ ...line, newLastName: e.target.value })}
-          />
-          <input
-            placeholder="Téléphone"
-            className="field"
-            value={line.newPhone}
-            onChange={(e) => onChange({ ...line, newPhone: e.target.value })}
-          />
-          <select
-            className="field sm:col-span-3"
-            value={line.memberType}
-            onChange={(e) =>
-              onChange({ ...line, memberType: e.target.value as LineState["memberType"] })
-            }
-          >
-            <option value="NOT_SPECIFIED">Type non précisé</option>
-            <option value="ADULT">Adulte</option>
-            <option value="KID">Enfant</option>
-          </select>
+          <FormField label="Prénom" htmlFor={`${line.key}-first-name`}>
+            <input
+              id={`${line.key}-first-name`}
+              className="field"
+              value={line.newFirstName}
+              onChange={(e) => onChange({ ...line, newFirstName: e.target.value })}
+            />
+          </FormField>
+          <FormField label="Nom" htmlFor={`${line.key}-last-name`}>
+            <input
+              id={`${line.key}-last-name`}
+              className="field"
+              value={line.newLastName}
+              onChange={(e) => onChange({ ...line, newLastName: e.target.value })}
+            />
+          </FormField>
+          <FormField label="Téléphone" htmlFor={`${line.key}-phone`}>
+            <input
+              id={`${line.key}-phone`}
+              className="field"
+              inputMode="tel"
+              value={line.newPhone}
+              onChange={(e) => onChange({ ...line, newPhone: e.target.value })}
+            />
+          </FormField>
+          <FormField label="Type de membre" htmlFor={`${line.key}-type`} className="sm:col-span-3">
+            <select
+              id={`${line.key}-type`}
+              className="field"
+              value={line.memberType}
+              onChange={(e) =>
+                onChange({ ...line, memberType: e.target.value as LineState["memberType"] })
+              }
+            >
+              <option value="NOT_SPECIFIED">Type non précisé</option>
+              <option value="ADULT">Adulte</option>
+              <option value="KID">Enfant</option>
+            </select>
+          </FormField>
           {line.memberType === "KID" && (
             <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3 sm:col-span-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
                 Informations parent / tuteur
               </p>
               <div className="grid gap-2 sm:grid-cols-2">
-                <input
-                  placeholder="Nom du parent *"
-                  className="field"
-                  value={line.parentName}
-                  onChange={(e) => onChange({ ...line, parentName: e.target.value })}
-                  required
-                />
-                <input
-                  placeholder="Téléphone parent *"
-                  className="field"
-                  value={line.parentPhone}
-                  onChange={(e) => onChange({ ...line, parentPhone: e.target.value })}
-                  required
-                />
-                <input
-                  placeholder="Adresse parent (optionnelle)"
-                  className="field sm:col-span-2"
-                  value={line.parentAddress}
-                  onChange={(e) => onChange({ ...line, parentAddress: e.target.value })}
-                />
+                <FormField label="Nom du parent" htmlFor={`${line.key}-parent-name`}>
+                  <input
+                    id={`${line.key}-parent-name`}
+                    className="field"
+                    value={line.parentName}
+                    onChange={(e) => onChange({ ...line, parentName: e.target.value })}
+                    required
+                  />
+                </FormField>
+                <FormField label="Téléphone du parent" htmlFor={`${line.key}-parent-phone`}>
+                  <input
+                    id={`${line.key}-parent-phone`}
+                    className="field"
+                    inputMode="tel"
+                    value={line.parentPhone}
+                    onChange={(e) => onChange({ ...line, parentPhone: e.target.value })}
+                    required
+                  />
+                </FormField>
+                <FormField
+                  label="Adresse du parent"
+                  htmlFor={`${line.key}-parent-address`}
+                  hint="Optionnelle"
+                  className="sm:col-span-2"
+                >
+                  <input
+                    id={`${line.key}-parent-address`}
+                    className="field"
+                    value={line.parentAddress}
+                    onChange={(e) => onChange({ ...line, parentAddress: e.target.value })}
+                  />
+                </FormField>
               </div>
             </div>
           )}
         </div>
       )}
-      <select
-        className="field"
-        value={line.groupId}
-        onChange={(e) => onChange({ ...line, groupId: e.target.value, planId: "" })}
-      >
-        <option value="">Cours</option>
-        {groups.map((g) => (
-          <option key={g.id} value={g.id}>
-            {g.name} — {g.sportName} ({g.activeMembers}/{g.capacity})
-          </option>
-        ))}
-      </select>
-      <select
-        className="field"
-        value={line.planId}
-        onChange={(e) => onChange({ ...line, planId: e.target.value })}
-        disabled={!line.groupId}
-      >
-        <option value="">Formule</option>
-        {plans.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name} — {(p.price / 100).toFixed(2)} €
-          </option>
-        ))}
-      </select>
+      <FormField label="Groupe" htmlFor={`${line.key}-group`}>
+        <select
+          id={`${line.key}-group`}
+          className="field"
+          value={line.groupId}
+          onChange={(e) => onChange({ ...line, groupId: e.target.value, planId: "" })}
+        >
+          <option value="">Sélectionner un groupe</option>
+          {groups.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.name} — {g.sportName} ({g.activeMembers}/{g.capacity})
+            </option>
+          ))}
+        </select>
+      </FormField>
+      <FormField label="Formule" htmlFor={`${line.key}-plan`}>
+        <select
+          id={`${line.key}-plan`}
+          className="field"
+          value={line.planId}
+          onChange={(e) => onChange({ ...line, planId: e.target.value })}
+          disabled={!line.groupId}
+        >
+          <option value="">Sélectionner une formule</option>
+          {plans.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name} — {(p.price / 100).toFixed(2)} €
+            </option>
+          ))}
+        </select>
+      </FormField>
       {canRemove && (
         <button type="button" className="btn btn-ghost btn-block-mobile min-h-11 text-red-600 sm:w-auto" onClick={onRemove}>
           Supprimer cette ligne

@@ -1,11 +1,9 @@
 import { headers } from "next/headers";
 
-import { SetupGuideAdminPanel } from "@/components/onboarding/setup-guide-admin-panel";
 import { ClubSettingsForm } from "@/components/settings/club-settings-form";
 import { ReceptionRulesCard } from "@/components/settings/reception-rules-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { getClubSettings } from "@/lib/club-settings";
-import { getSetupGuideProgress } from "@/lib/setup-guide";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -29,21 +27,21 @@ export default async function SettingsClubPage() {
     );
   }
 
-  const [settings, guideProgress] = await Promise.all([getClubSettings(), getSetupGuideProgress()]);
+  const settings = await getClubSettings();
 
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
         overline="Paramètres"
         title="Règles du club"
-        description="Identité du club, pointage, dettes et remises staff."
+        description="Personnalisez l'identité du club et les règles appliquées à la réception."
       />
 
-      <section className="mb-4">
-        <ReceptionRulesCard />
-      </section>
+      <div className="mx-auto w-full max-w-5xl">
+        <section className="mb-4">
+          <ReceptionRulesCard />
+        </section>
 
-      <section className="panel p-4 sm:p-5 md:p-6">
         <ClubSettingsForm
           initial={{
             clubName: settings.clubName,
@@ -55,12 +53,9 @@ export default async function SettingsClubPage() {
             absentConsumesSession: settings.absentConsumesSession,
             maxStaffDiscountPercent: settings.maxStaffDiscountPercent,
             debtAlertThresholdCents: settings.debtAlertThresholdCents,
-            updatedAt: settings.updatedAt.toISOString(),
           }}
         />
-      </section>
-
-      <SetupGuideAdminPanel progress={guideProgress} />
+      </div>
     </main>
   );
 }

@@ -12,7 +12,7 @@ export default function SettingsAccountPage() {
         description="Modifiez votre nom, votre email de connexion et votre mot de passe."
       />
 
-      <section className="panel p-4 sm:p-5 md:p-6">
+      <section className="mx-auto w-full max-w-3xl">
         <AccountSettingsForm />
       </section>
     </main>

@@ -131,3 +131,58 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Erreur création offre" }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  let actor;
+  try {
+    actor = await requirePermission(request, "offers.manage");
+  } catch (e) {
+    return jsonAuthFailureResponse(e);
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "JSON invalide" }, { status: 400 });
+  }
+
+  const offerId =
+    typeof body === "object" && body !== null && "offerId" in body
+      ? String((body as { offerId: unknown }).offerId).trim()
+      : "";
+
+  if (!offerId) {
+    return NextResponse.json({ error: "Offre requise" }, { status: 400 });
+  }
+
+  const offer = await prisma.offer.findUnique({
+    where: { id: offerId },
+    select: { id: true, name: true, kind: true, isActive: true },
+  });
+
+  if (!offer) {
+    return NextResponse.json({ error: "Offre introuvable" }, { status: 404 });
+  }
+
+  if (!offer.isActive) {
+    return NextResponse.json({ data: offer });
+  }
+
+  const archived = await prisma.offer.update({
+    where: { id: offerId },
+    data: { isActive: false },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      action: "OFFER_DEACTIVATED",
+      entityType: "Offer",
+      entityId: offer.id,
+      userId: actor.id,
+      details: JSON.stringify({ kind: offer.kind, name: offer.name }),
+    },
+  });
+
+  return NextResponse.json({ data: archived });
+}

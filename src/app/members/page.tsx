@@ -135,7 +135,7 @@ export default async function MembersPage() {
         description="Rechercher, filtrer et consulter les dossiers membres."
       />
 
-      <section className="panel p-5">
+      <section className="panel p-3 sm:p-5">
         <MemberListClient
           initialMembers={initialMembers}
           groupsOptions={groupsOptions}

@@ -1,9 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { CreditCard, RotateCcw } from "lucide-react";
 
 import { StatusBadge } from "@/components/ui/status-badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  FilterField,
+  ListSearch,
+  MobileFilterSheet,
+  MobileFiltersButton,
+} from "@/components/ui/list-controls";
 import { buildSubscriptionBillingView, formatMoney } from "@/lib/subscription-billing";
 import {
   DataTable,
@@ -65,10 +73,6 @@ function statusLabel(status: SubscriptionStatus) {
   }
 }
 
-function formatCurrency(cents: number) {
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
-}
-
 function formatDate(iso: string | null) {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("fr-FR");
@@ -76,20 +80,108 @@ function formatDate(iso: string | null) {
 
 export function SubscriptionsListClient({ subscriptions }: { subscriptions: SubscriptionRow[] }) {
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | SubscriptionStatus>("ALL");
+  const [paymentFilter, setPaymentFilter] = useState<"ALL" | "PAID" | "OPEN">("ALL");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const filteredSubscriptions = useMemo(() => {
+    const query = searchTerm.trim().toLocaleLowerCase("fr");
+    return subscriptions.filter((subscription) => {
+      const matchesSearch =
+        !query ||
+        subscription.memberName.toLocaleLowerCase("fr").includes(query) ||
+        subscription.memberPhone.toLocaleLowerCase("fr").includes(query) ||
+        subscription.planName.toLocaleLowerCase("fr").includes(query);
+      const matchesStatus = statusFilter === "ALL" || subscription.status === statusFilter;
+      const matchesPayment =
+        paymentFilter === "ALL" ||
+        (paymentFilter === "PAID"
+          ? subscription.totalPaid >= subscription.amount
+          : subscription.totalPaid < subscription.amount);
+      return matchesSearch && matchesStatus && matchesPayment;
+    });
+  }, [paymentFilter, searchTerm, statusFilter, subscriptions]);
+
+  const activeFilterCount = [statusFilter !== "ALL", paymentFilter !== "ALL"].filter(Boolean).length;
+
+  function resetFilters() {
+    setStatusFilter("ALL");
+    setPaymentFilter("ALL");
+  }
 
   function toggle(id: string) {
     setExpandedIds((current) => (current.includes(id) ? current.filter((x) => x !== id) : [...current, id]));
   }
 
-  if (subscriptions.length === 0) {
-    return (
-      <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center text-sm text-muted-foreground">
-        Aucun abonnement enregistré.
-      </div>
-    );
-  }
-
   return (
+    <>
+    <div className="sticky top-[57px] z-20 -mx-2 mb-4 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[3.5rem]">
+      <div className="flex flex-col gap-2 md:flex-row md:items-end">
+        <div className="min-w-0 flex-1">
+          <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Recherche</label>
+          <ListSearch
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Membre, téléphone ou formule..."
+          />
+        </div>
+        <MobileFiltersButton onClick={() => setFiltersOpen(true)} count={activeFilterCount} />
+        <div className="hidden grid-cols-[minmax(10rem,1fr)_minmax(10rem,1fr)_auto] gap-2 md:grid">
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+            className="field text-xs"
+            aria-label="Statut de l'abonnement"
+          >
+            <option value="ALL">Tous les statuts</option>
+            <option value="ACTIVE">Actifs</option>
+            <option value="DRAFT">Brouillons</option>
+            <option value="EXPIRED">Expirés</option>
+            <option value="CANCELLED">Résiliés</option>
+          </select>
+          <select
+            value={paymentFilter}
+            onChange={(event) => setPaymentFilter(event.target.value as typeof paymentFilter)}
+            className="field text-xs"
+            aria-label="État du paiement"
+          >
+            <option value="ALL">Tous les paiements</option>
+            <option value="OPEN">Solde restant</option>
+            <option value="PAID">Soldés</option>
+          </select>
+          {activeFilterCount > 0 ? (
+            <button type="button" onClick={resetFilters} className="btn btn-ghost shrink-0 px-3" title="Réinitialiser">
+              <RotateCcw className="size-4" />
+            </button>
+          ) : <span />}
+        </div>
+      </div>
+      <p className="mt-2 text-xs text-[var(--muted-foreground)]">
+        {filteredSubscriptions.length} abonnement{filteredSubscriptions.length > 1 ? "s" : ""} affiché{filteredSubscriptions.length > 1 ? "s" : ""}
+      </p>
+    </div>
+
+    {filteredSubscriptions.length === 0 ? (
+      <EmptyState
+        icon={<CreditCard className="size-8 opacity-45" />}
+        title={subscriptions.length === 0 ? "Aucun abonnement" : "Aucun résultat"}
+        message={
+          subscriptions.length === 0
+            ? "Les abonnements membres apparaîtront ici."
+            : "Modifiez la recherche ou réinitialisez les filtres."
+        }
+        action={
+          subscriptions.length === 0 ? (
+            <Link href="/subscriptions/new" className="btn btn-primary">Créer un abonnement</Link>
+          ) : (
+            <button type="button" onClick={() => { setSearchTerm(""); resetFilters(); }} className="btn btn-ghost">
+              Réinitialiser
+            </button>
+          )
+        }
+      />
+    ) : (
     <DataTable>
       <DataTableHead>
         <tr>
@@ -106,7 +198,7 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
         </tr>
       </DataTableHead>
       <DataTableBody>
-        {subscriptions.map((sub) => {
+        {filteredSubscriptions.map((sub) => {
           const isExpanded = expandedIds.includes(sub.id);
           const billing = buildSubscriptionBillingView({
             amount: sub.amount,
@@ -187,5 +279,41 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
         })}
       </DataTableBody>
     </DataTable>
+    )}
+
+    <MobileFilterSheet
+      open={filtersOpen}
+      onClose={() => setFiltersOpen(false)}
+      onReset={resetFilters}
+      activeCount={activeFilterCount}
+      resultCount={filteredSubscriptions.length}
+      title="Filtrer les abonnements"
+    >
+      <FilterField label="Statut">
+        <select
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+          className="field"
+        >
+          <option value="ALL">Tous les statuts</option>
+          <option value="ACTIVE">Actifs</option>
+          <option value="DRAFT">Brouillons</option>
+          <option value="EXPIRED">Expirés</option>
+          <option value="CANCELLED">Résiliés</option>
+        </select>
+      </FilterField>
+      <FilterField label="Paiement">
+        <select
+          value={paymentFilter}
+          onChange={(event) => setPaymentFilter(event.target.value as typeof paymentFilter)}
+          className="field"
+        >
+          <option value="ALL">Tous les paiements</option>
+          <option value="OPEN">Solde restant</option>
+          <option value="PAID">Soldés</option>
+        </select>
+      </FilterField>
+    </MobileFilterSheet>
+    </>
   );
 }

@@ -6,6 +6,7 @@ import { ArrowLeft, CheckCircle2, Trash2 } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions } from "@/components/ui/form-layout";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const METHODS = [
   { value: "CASH", label: "Espèces" },
@@ -46,6 +47,7 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const subscription = payment.memberSubscription;
   const otherPaid = subscription.payments
@@ -88,16 +90,11 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
       return;
     }
 
-    setMessage("Paiement modifié avec succès.");
-    setTimeout(() => router.push("/payments"), 800);
+    router.push("/payments");
+    router.refresh();
   }
 
   async function handleDelete() {
-    const confirmed = window.confirm(
-      `Supprimer ce paiement de ${formatCurrency(payment.amount)} ? Le solde dû de l'abonnement sera recalculé.`,
-    );
-    if (!confirmed) return;
-
     setDeleting(true);
     setMessage(null);
 
@@ -238,7 +235,7 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
         </p>
         <button
           type="button"
-          onClick={handleDelete}
+          onClick={() => setDeleteOpen(true)}
           disabled={busy}
           className="btn btn-ghost btn-block-mobile mt-3 min-h-11 inline-flex items-center justify-center gap-1.5 border border-[var(--danger)]/40 text-[var(--danger)] hover:bg-[var(--danger)]/10 sm:w-auto"
         >
@@ -250,6 +247,16 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
           Supprimer ce paiement
         </button>
       </section>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title="Supprimer ce paiement ?"
+        description={`Le paiement de ${formatCurrency(payment.amount)} sera retiré de l'historique et le solde de l'abonnement sera recalculé.`}
+        confirmLabel="Supprimer le paiement"
+        loading={deleting}
+        onCancel={() => setDeleteOpen(false)}
+        onConfirm={handleDelete}
+      />
     </form>
   );
 }

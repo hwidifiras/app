@@ -6,15 +6,12 @@ import { Mail, Pencil } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormField, FormGrid, FormSection } from "@/components/ui/form-layout";
-import { StatusBadge } from "@/components/ui/status-badge";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 type AccountData = {
-  id: string;
   email: string;
   name: string;
-  role: "ADMIN" | "STAFF";
-  isActive: boolean;
 };
 
 export function AccountSettingsForm() {
@@ -37,24 +34,31 @@ export function AccountSettingsForm() {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   useEffect(() => {
-    void loadAccount();
+    let cancelled = false;
+
+    fetch("/api/account")
+      .then(async (res) => {
+        const json = await res.json();
+        if (cancelled) return;
+        if (!res.ok || !json.data) {
+          setMessage(json?.error ?? "Impossible de charger le compte");
+          return;
+        }
+        setAccount(json.data);
+        setName(json.data.name);
+        setNewEmail(json.data.email);
+      })
+      .catch(() => {
+        if (!cancelled) setMessage("Impossible de charger le compte");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
-
-  async function loadAccount() {
-    setLoading(true);
-    const res = await fetch("/api/account");
-    const json = await res.json();
-    setLoading(false);
-
-    if (!res.ok || !json.data) {
-      setMessage(json?.error ?? "Impossible de charger le compte");
-      return;
-    }
-
-    setAccount(json.data);
-    setName(json.data.name);
-    setNewEmail(json.data.email);
-  }
 
   function closeEmailEdit() {
     setEmailEditOpen(false);
@@ -176,7 +180,7 @@ export function AccountSettingsForm() {
   }
 
   if (loading) {
-    return <p className="text-sm text-[var(--muted-foreground)]">Chargement du compte…</p>;
+    return <LoadingSkeleton lines={4} />;
   }
 
   if (!account) {
@@ -189,21 +193,12 @@ export function AccountSettingsForm() {
     <div className="space-y-4">
       <FeedbackMessage message={message} variant={message?.includes("succès") ? "success" : undefined} />
 
-      <FormSection title="Profil">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <StatusBadge variant={account.role === "ADMIN" ? "info" : "muted"}>
-            {account.role === "ADMIN" ? "Administrateur" : "Staff"}
-          </StatusBadge>
-          <StatusBadge variant={account.isActive ? "success" : "warning"}>
-            {account.isActive ? "Actif" : "Désactivé"}
-          </StatusBadge>
-        </div>
-
+      <FormSection title="Informations personnelles" description="Ces informations identifient votre compte dans l'application.">
         <form onSubmit={saveName} className="space-y-4">
           <FormField label="Nom affiché">
             <input className="field" value={name} onChange={(e) => setName(e.target.value)} required minLength={2} />
           </FormField>
-          <FormActions sticky>
+          <FormActions>
             <button type="submit" className="btn btn-primary btn-block-mobile min-h-11" disabled={savingName}>
               {savingName ? "Enregistrement…" : "Enregistrer le nom"}
             </button>
@@ -264,7 +259,7 @@ export function AccountSettingsForm() {
                 </p>
               )}
 
-              <div className="page-actions">
+              <FormActions className="mt-0">
                 <button
                   type="submit"
                   className="btn btn-primary btn-block-mobile min-h-11"
@@ -276,17 +271,17 @@ export function AccountSettingsForm() {
                 <button type="button" className="btn btn-ghost btn-block-mobile min-h-11" onClick={closeEmailEdit}>
                   Annuler
                 </button>
-              </div>
+              </FormActions>
             </form>
           ) : null}
         </div>
       </FormSection>
 
-      <FormSection title="Apparence">
+      <FormSection title="Apparence" description="Choisissez le thème le plus confortable pour votre écran.">
         <ThemeToggle />
       </FormSection>
 
-      <FormSection title="Mot de passe">
+      <FormSection title="Sécurité" description="Utilisez un mot de passe unique d'au moins 8 caractères.">
         {!passwordEditOpen ? (
           <button type="button" className="btn btn-ghost btn-block-mobile" onClick={() => setPasswordEditOpen(true)}>
             <Pencil className="size-4" />
@@ -328,7 +323,7 @@ export function AccountSettingsForm() {
                 />
               </FormField>
             </FormGrid>
-            <FormActions sticky className="mt-0 border-t-0 pt-0">
+            <FormActions className="mt-0 border-t-0 pt-0">
               <button type="button" className="btn btn-ghost btn-block-mobile" onClick={closePasswordEdit}>
                 Annuler
               </button>

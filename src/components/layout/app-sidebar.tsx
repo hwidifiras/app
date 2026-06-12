@@ -139,8 +139,19 @@ export function AppSidebar({
 
   return (
     <aside className="sidebar-scroll hidden border-b border-[var(--border)] bg-[var(--surface)]/95 backdrop-blur lg:sticky lg:block lg:top-0 lg:h-screen lg:overflow-y-auto lg:overscroll-y-contain lg:border-r lg:border-b-0">
-      <div className="flex items-center justify-between border-b border-[var(--border)] px-3 py-3 lg:px-4">
-        <Link href="/" className="min-w-0 flex-1 rounded-xl transition hover:bg-[var(--surface-soft)]">
+      <div
+        className={cn(
+          "border-b border-[var(--border)] py-3",
+          collapsed ? "flex flex-col items-center gap-2 px-2" : "flex items-center justify-between px-3 lg:px-4",
+        )}
+      >
+        <Link
+          href="/"
+          className={cn(
+            "min-w-0 rounded-xl transition hover:bg-[var(--surface-soft)]",
+            collapsed ? "flex-none" : "flex-1",
+          )}
+        >
           <div className={`flex items-center ${collapsed ? "justify-center" : "gap-3 px-1"}`}>
             <ClubBrandMark size="md" compact={collapsed} />
           </div>
@@ -149,7 +160,7 @@ export function AppSidebar({
           <button
             type="button"
             onClick={onToggleCollapsed}
-            className="hidden size-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)] lg:inline-flex"
+            className="hidden size-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)] lg:inline-flex"
             title={collapsed ? "Développer le menu" : "Réduire le menu"}
             aria-label={collapsed ? "Développer le menu" : "Réduire le menu"}
           >

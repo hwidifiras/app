@@ -3,11 +3,13 @@ import { Inbox } from "lucide-react";
 
 type EmptyStateProps = {
   icon?: React.ReactNode;
+  title?: string;
   message: string;
+  action?: React.ReactNode;
   className?: string;
 };
 
-export function EmptyState({ icon, message, className }: EmptyStateProps) {
+export function EmptyState({ icon, title, message, action, className }: EmptyStateProps) {
   return (
     <div
       className={cn(
@@ -18,7 +20,11 @@ export function EmptyState({ icon, message, className }: EmptyStateProps) {
       <span className="text-[var(--muted-foreground)]">
         {icon ?? <Inbox className="size-8 opacity-40" />}
       </span>
-      <p className="text-sm text-[var(--muted-foreground)]">{message}</p>
+      <div>
+        {title ? <p className="font-semibold text-[var(--foreground)]">{title}</p> : null}
+        <p className="mt-0.5 text-sm text-[var(--muted-foreground)]">{message}</p>
+      </div>
+      {action ? <div className="mt-2">{action}</div> : null}
     </div>
   );
 }

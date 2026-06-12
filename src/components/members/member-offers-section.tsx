@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Tag } from "lucide-react";
+import { Tag, Trash2 } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { getOfferKindLabel } from "@/lib/offer-display";
 import type { ApplicableOffer, MemberOfferContext } from "@/lib/offer-applicability";
 import type { OfferKind } from "@prisma/client";
@@ -15,10 +18,20 @@ const relevanceLabels: Record<ApplicableOffer["relevance"], string> = {
   general: "Général",
 };
 
-export function MemberOffersSection({ memberId, memberName }: { memberId: string; memberName: string }) {
+export function MemberOffersSection({
+  memberId,
+  memberName,
+  wide = false,
+}: {
+  memberId: string;
+  memberName: string;
+  wide?: boolean;
+}) {
   const [context, setContext] = useState<MemberOfferContext | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [pendingDeleteOffer, setPendingDeleteOffer] = useState<ApplicableOffer | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -49,8 +62,32 @@ export function MemberOffersSection({ memberId, memberName }: { memberId: string
 
   const offers = context?.offers ?? [];
 
+  async function deleteOffer(offer: ApplicableOffer) {
+    setDeletingId(offer.id);
+    setMessage(null);
+    const response = await fetch("/api/offers", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ offerId: offer.id }),
+    });
+    const result = (await response.json()) as { error?: string };
+
+    if (!response.ok) {
+      setMessage(result.error ?? "Impossible de supprimer l'offre");
+      setDeletingId(null);
+      return;
+    }
+
+    setContext((current) =>
+      current ? { ...current, offers: current.offers.filter((item) => item.id !== offer.id) } : current,
+    );
+    setPendingDeleteOffer(null);
+    setMessage("Offre supprimée des offres actives.");
+    setDeletingId(null);
+  }
+
   return (
-    <section className="panel p-5">
+    <section className="panel min-w-0 p-4 sm:p-5">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-[var(--foreground)]">Offres applicables</h2>
@@ -58,7 +95,7 @@ export function MemberOffersSection({ memberId, memberName }: { memberId: string
             Offres actives classées selon le profil de {memberName}.
           </p>
         </div>
-        <Link href={context?.createOfferHref ?? `/offers?memberId=${memberId}`} className="btn btn-ghost text-sm">
+        <Link href={context?.createOfferHref ?? `/offers?memberId=${memberId}`} className="btn btn-ghost btn-sm">
           Créer une offre
         </Link>
       </div>
@@ -72,14 +109,30 @@ export function MemberOffersSection({ memberId, memberName }: { memberId: string
       <FeedbackMessage message={message} />
 
       {loading ? (
-        <p className="text-sm text-[var(--muted-foreground)]">Chargement des offres…</p>
+        <LoadingSkeleton lines={2} />
       ) : offers.length === 0 ? (
-        <p className="text-sm text-[var(--muted-foreground)]">Aucune offre active pour le moment.</p>
+        <EmptyState
+          icon={<Tag className="size-8 opacity-45" />}
+          title="Aucune offre applicable"
+          message="Créez une offre ou poursuivez l'inscription sans réduction."
+          action={
+            <Link href={context?.createOfferHref ?? `/offers?memberId=${memberId}`} className="btn btn-ghost">
+              Créer une offre
+            </Link>
+          }
+          className="px-3 py-7"
+        />
       ) : (
-        <ul className="space-y-3">
+        <ul
+          className={
+            wide
+              ? "grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,19rem),1fr))]"
+              : "space-y-3"
+          }
+        >
           {offers.map((offer) => (
-            <li key={offer.id} className="rounded-xl border border-[var(--border)] p-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <li key={offer.id} className="h-full rounded-xl border border-[var(--border)] bg-[var(--surface-soft)]/35 p-3">
+              <div className="flex h-full flex-col gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <Tag className="size-4 text-[var(--primary)]" />
@@ -96,14 +149,35 @@ export function MemberOffersSection({ memberId, memberName }: { memberId: string
                     <p className="mt-2 text-xs text-amber-800 dark:text-amber-200">{offer.hint}</p>
                   ) : null}
                 </div>
-                <Link href={offer.enrollmentHref} className="btn btn-primary btn-block-mobile text-sm sm:w-auto">
-                  Utiliser à l&apos;inscription
-                </Link>
+                <div className="grid shrink-0 grid-cols-2 gap-2">
+                  <Link href={offer.enrollmentHref} className="btn btn-primary btn-block-mobile text-sm sm:w-auto">
+                    Utiliser
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setPendingDeleteOffer(offer)}
+                    disabled={deletingId !== null}
+                    className="btn btn-ghost btn-block-mobile btn-sm border-[var(--danger)]/25 text-[var(--danger)] sm:w-auto"
+                  >
+                    <Trash2 className="size-3.5" />
+                    {deletingId === offer.id ? "Suppression…" : "Supprimer"}
+                  </button>
+                </div>
               </div>
             </li>
           ))}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={pendingDeleteOffer !== null}
+        title="Désactiver cette offre ?"
+        description={`L'offre « ${pendingDeleteOffer?.name ?? ""} » ne sera plus proposée à ${memberName}. Les inscriptions existantes seront conservées.`}
+        confirmLabel="Désactiver l'offre"
+        loading={deletingId === pendingDeleteOffer?.id}
+        onCancel={() => setPendingDeleteOffer(null)}
+        onConfirm={() => pendingDeleteOffer ? deleteOffer(pendingDeleteOffer) : undefined}
+      />
     </section>
   );
 }

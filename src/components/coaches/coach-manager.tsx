@@ -1,12 +1,16 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { FormEvent, useMemo, useState } from "react";
+import { Pencil, Trash2, UserRound } from "lucide-react";
 
 import { CoachDto } from "@/types/coach";
 import { SportDto } from "@/types/sport";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { FormActions, FormField, FormGrid } from "@/components/ui/form-layout";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ListSearch } from "@/components/ui/list-controls";
 
 type CoachManagerProps = {
   initialCoaches: CoachDto[];
@@ -33,6 +37,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
   const [searchTerm, setSearchTerm] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [blockedCoach, setBlockedCoach] = useState<null | { name: string; groups: Array<{ id: string; name: string }> }>(null);
+  const [pendingDeleteCoach, setPendingDeleteCoach] = useState<CoachDto | null>(null);
 
   async function reloadCoaches(query?: string) {
     const params = new URLSearchParams();
@@ -54,10 +59,19 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
     }
   }
 
-  async function onSearchSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    await reloadCoaches(searchTerm);
-  }
+  const filteredCoaches = useMemo(() => {
+    const query = searchTerm.trim().toLocaleLowerCase("fr");
+    if (!query) return coaches;
+    return coaches.filter((coach) =>
+      [
+        coach.firstName,
+        coach.lastName,
+        coach.phone,
+        coach.email ?? "",
+        coach.sportName ?? "",
+      ].some((value) => value.toLocaleLowerCase("fr").includes(query)),
+    );
+  }, [coaches, searchTerm]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -144,11 +158,6 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
   }
 
   async function deleteCoach(coachId: string) {
-    const confirmed = window.confirm("Confirmer la suppression de ce coach ?");
-    if (!confirmed) {
-      return;
-    }
-
     const coachRecord = coaches.find((item) => item.id === coachId);
     const coachLabel = coachRecord ? `${coachRecord.firstName} ${coachRecord.lastName}` : "Coach";
 
@@ -165,6 +174,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
 
     if (!response.ok) {
       if (response.status === 409 && result.details?.groups?.length) {
+        setPendingDeleteCoach(null);
         setBlockedCoach({ name: coachLabel.trim(), groups: result.details.groups });
       }
       setMessage(result.error ?? "Erreur lors de la suppression du coach");
@@ -173,6 +183,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
     }
 
     setMessage("Coach supprimé avec succès");
+    setPendingDeleteCoach(null);
     if (editingId === coachId) {
       cancelEdit();
     }
@@ -183,109 +194,130 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
   return (
     <div>
       <div className="grid w-full gap-6 md:grid-cols-2">
-        <section className="panel panel-soft p-6">
+        <section className="panel panel-soft p-4 sm:p-6">
           <h2 className="text-lg font-semibold text-[var(--foreground)]">Ajouter un coach</h2>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">
             Créer un nouveau coach avec sa spécialité sportive.
           </p>
 
           <form onSubmit={onSubmit} className="mt-5 space-y-4">
-            <input
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              placeholder="Prénom"
-              className="field"
-              required
-            />
-            <input
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              placeholder="Nom"
-              className="field"
-              required
-            />
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="Téléphone"
-              className="field"
-              required
-            />
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email (optionnel)"
-              className="field"
-            />
-            <select
-              value={sportId}
-              onFocus={() => void reloadSports()}
-              onClick={() => void reloadSports()}
-              onChange={(e) => setSportId(e.target.value)}
-              className="field"
-            >
-              <option value="">Spécialité non renseignée</option>
-              {sports.map((sport) => (
-                <option key={sport.id} value={sport.id}>
-                  {sport.name}
-                </option>
-              ))}
-            </select>
+            <FormGrid>
+              <FormField label="Prénom" htmlFor="coach-first-name">
+                <input
+                  id="coach-first-name"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className="field"
+                  required
+                />
+              </FormField>
+              <FormField label="Nom" htmlFor="coach-last-name">
+                <input
+                  id="coach-last-name"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className="field"
+                  required
+                />
+              </FormField>
+              <FormField label="Téléphone" htmlFor="coach-phone">
+                <input
+                  id="coach-phone"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="field"
+                  inputMode="tel"
+                  required
+                />
+              </FormField>
+              <FormField label="Email" htmlFor="coach-email" hint="Optionnel">
+                <input
+                  id="coach-email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="field"
+                  type="email"
+                />
+              </FormField>
+            </FormGrid>
+            <FormField label="Spécialité" htmlFor="coach-sport" hint="Optionnelle">
+              <select
+                id="coach-sport"
+                value={sportId}
+                onFocus={() => void reloadSports()}
+                onClick={() => void reloadSports()}
+                onChange={(e) => setSportId(e.target.value)}
+                className="field"
+              >
+                <option value="">Spécialité non renseignée</option>
+                {sports.map((sport) => (
+                  <option key={sport.id} value={sport.id}>
+                    {sport.name}
+                  </option>
+                ))}
+              </select>
+            </FormField>
 
-            <button type="submit" disabled={loading} className="btn btn-primary w-full py-2.5 text-sm">
-              {loading ? "Enregistrement..." : "Créer coach"}
-            </button>
+            <FormActions>
+              <button type="submit" disabled={loading} className="btn btn-primary btn-block-mobile">
+                {loading ? "Enregistrement…" : "Créer le coach"}
+              </button>
+            </FormActions>
           </form>
 
           <FeedbackMessage message={message} className="mt-4" />
         </section>
 
-        <section className="panel p-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-xl font-semibold text-[var(--foreground)]">Coachs enregistrés</h2>
-            <form onSubmit={onSearchSubmit} className="flex w-full flex-col gap-2 sm:flex-row sm:w-auto">
-              <input
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Rechercher nom/téléphone"
-                className="field text-xs sm:w-56"
-              />
-              <button type="submit" className="btn btn-ghost btn-block-mobile whitespace-nowrap">
-                Rechercher
-              </button>
-            </form>
+        <section className="panel p-4 sm:p-6">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-xl font-semibold text-[var(--foreground)]">Coachs enregistrés</h2>
+              <span className="text-xs text-[var(--muted-foreground)]">
+                {filteredCoaches.length} coach{filteredCoaches.length > 1 ? "s" : ""}
+              </span>
+            </div>
+            <ListSearch
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Nom, téléphone, email ou spécialité..."
+            />
           </div>
 
           <ul className="mt-4 space-y-2">
-            {coaches.map((coach) => (
+            {filteredCoaches.map((coach) => (
               <li key={coach.id} className="rounded-xl border border-[var(--border)] px-3 py-2.5">
                 {editingId === coach.id ? (
                   <div className="space-y-2">
                     <input
+                      aria-label="Prénom du coach"
                       value={editFirstName}
                       onChange={(e) => setEditFirstName(e.target.value)}
                       placeholder="Prénom"
                       className="field text-xs"
                     />
                     <input
+                      aria-label="Nom du coach"
                       value={editLastName}
                       onChange={(e) => setEditLastName(e.target.value)}
                       placeholder="Nom"
                       className="field text-xs"
                     />
                     <input
+                      aria-label="Téléphone du coach"
                       value={editPhone}
                       onChange={(e) => setEditPhone(e.target.value)}
                       placeholder="Téléphone"
                       className="field text-xs"
                     />
                     <input
+                      aria-label="Email du coach"
                       value={editEmail}
                       onChange={(e) => setEditEmail(e.target.value)}
                       placeholder="Email"
                       className="field text-xs"
                     />
                     <select
+                      aria-label="Spécialité du coach"
                       value={editSportId}
                       onFocus={() => void reloadSports()}
                       onClick={() => void reloadSports()}
@@ -362,7 +394,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                       </button>
                       <button
                         type="button"
-                        onClick={() => deleteCoach(coach.id)}
+                        onClick={() => setPendingDeleteCoach(coach)}
                         disabled={actionLoadingId === coach.id}
                         className="btn btn-danger btn-sm inline-flex size-9 items-center justify-center p-0"
                         title="Supprimer"
@@ -375,9 +407,25 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                 )}
               </li>
             ))}
-            {coaches.length === 0 ? (
-              <li className="rounded-xl border border-dashed border-[var(--border)] p-3 text-sm text-[var(--muted-foreground)]">
-                Aucun coach enregistré pour le moment.
+            {filteredCoaches.length === 0 ? (
+              <li>
+                <EmptyState
+                  icon={<UserRound className="size-8 opacity-45" />}
+                  title={coaches.length === 0 ? "Aucun coach" : "Aucun résultat"}
+                  message={
+                    coaches.length === 0
+                      ? "Ajoutez le premier coach et sa spécialité."
+                      : "Essayez un autre terme ou effacez la recherche."
+                  }
+                  action={
+                    searchTerm ? (
+                      <button type="button" onClick={() => setSearchTerm("")} className="btn btn-ghost">
+                        Effacer la recherche
+                      </button>
+                    ) : undefined
+                  }
+                  className="py-8"
+                />
               </li>
             ) : null}
           </ul>
@@ -408,6 +456,16 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
           </div>
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={pendingDeleteCoach !== null}
+        title="Supprimer ce coach ?"
+        description={`${pendingDeleteCoach?.firstName ?? ""} ${pendingDeleteCoach?.lastName ?? ""} sera supprimé si aucun groupe ne lui est encore affecté.`}
+        confirmLabel="Supprimer le coach"
+        loading={actionLoadingId === pendingDeleteCoach?.id}
+        onCancel={() => setPendingDeleteCoach(null)}
+        onConfirm={() => pendingDeleteCoach ? deleteCoach(pendingDeleteCoach.id) : undefined}
+      />
     </div>
   );
 }

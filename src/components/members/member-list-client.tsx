@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronDown, RotateCcw, Search, SlidersHorizontal, X } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 type GroupOption = {
   id: string;
@@ -59,6 +60,22 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
   const [expandedMemberIds, setExpandedMemberIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [message, setMessage] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+
+  useEffect(() => {
+    if (!filtersOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setFiltersOpen(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [filtersOpen]);
 
   function toggleExpandMember(memberId: string) {
     setExpandedMemberIds((current) =>
@@ -76,6 +93,21 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
     setCurrentPage(1);
     setSelectedMemberIds([]);
   }
+
+  function resetFilters() {
+    setStatusFilter("ALL");
+    setPaymentFilter("ALL");
+    setSportFilter("ALL");
+    setViewMode("LIST");
+    resetPagingAndSelection();
+  }
+
+  const activeFilterCount = [
+    statusFilter !== "ALL",
+    paymentFilter !== "ALL",
+    sportFilter !== "ALL",
+    viewMode !== "LIST",
+  ].filter(Boolean).length;
 
   const filteredMembers = useMemo(
     () =>
@@ -154,11 +186,6 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
   async function bulkDeleteSelectedMembers() {
     if (selectedMemberIds.length === 0) return;
 
-    const confirmed = window.confirm(
-      `Confirmer la suppression définitive de ${selectedMemberIds.length} membre(s) sélectionné(s) ? Cette action est irréversible.`,
-    );
-    if (!confirmed) return;
-
     setMessage(null);
     setActionLoadingId("bulk-delete");
 
@@ -182,6 +209,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
     }
 
     setSelectedMemberIds([]);
+    setBulkDeleteOpen(false);
     await reloadMembers();
     setActionLoadingId(null);
   }
@@ -261,70 +289,115 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
 
   return (
     <div>
-      <div className="mb-4 grid gap-3 sm:flex sm:flex-wrap sm:items-end">
-        <div className="sm:min-w-48 sm:flex-1">
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Recherche</label>
-          <input
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              resetPagingAndSelection();
-            }}
-            placeholder="Nom, téléphone, email..."
-            className="field w-full text-xs"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Statut</label>
-          <select value={statusFilter} onChange={(e) => {
-            setStatusFilter(e.target.value as typeof statusFilter);
-            resetPagingAndSelection();
-          }} className="field w-full text-xs sm:w-auto sm:min-w-32">
-            <option value="ALL">Tous</option>
-            <option value="ACTIVE">Actifs</option>
-            <option value="ARCHIVED">Résiliés</option>
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Paiement</label>
-          <select value={paymentFilter} onChange={(e) => {
-            setPaymentFilter(e.target.value as typeof paymentFilter);
-            resetPagingAndSelection();
-          }} className="field w-full text-xs sm:w-auto sm:min-w-40">
-            <option value="ALL">Tous</option>
-            <option value="PAID">Payé</option>
-            <option value="PARTIAL">Partiel</option>
-            <option value="UNPAID">Non payé</option>
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Sport</label>
-          <select value={sportFilter} onChange={(e) => {
-            setSportFilter(e.target.value);
-            resetPagingAndSelection();
-          }} className="field w-full text-xs sm:w-auto sm:min-w-40">
-            <option value="ALL">Tous</option>
-            {sportsOptions.map((sport) => (
-              <option key={sport.id} value={sport.id}>
-                {sport.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Affichage</label>
-          <select value={viewMode} onChange={(e) => {
-            setViewMode(e.target.value as typeof viewMode);
-            resetPagingAndSelection();
-          }} className="field w-full text-xs sm:w-auto sm:min-w-40">
-            <option value="LIST">Liste</option>
-            <option value="GROUPED">Par groupe</option>
-          </select>
-        </div>
-        <div className="sm:ml-auto">
-          <Link href="/members/new" className="btn btn-primary btn-block-mobile inline-flex justify-center">
+      <div className="sticky top-[57px] z-20 -mx-2 mb-4 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[3.5rem]">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          <div className="min-w-0 flex-1">
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Recherche</label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
+              <input
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  resetPagingAndSelection();
+                }}
+                placeholder="Nom, téléphone ou email..."
+                className="field w-full pl-9 pr-9 text-sm"
+                type="search"
+                enterKeyHint="search"
+              />
+              {searchTerm ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm("");
+                    resetPagingAndSelection();
+                  }}
+                  className="absolute right-2 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)]"
+                  aria-label="Effacer la recherche"
+                >
+                  <X className="size-4" />
+                </button>
+              ) : null}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFiltersOpen(true)}
+            className="btn btn-ghost min-h-12 shrink-0 sm:min-h-[2.75rem] md:hidden"
+          >
+            <SlidersHorizontal className="size-4" />
+            Filtres
+            {activeFilterCount > 0 ? (
+              <span className="rounded-full bg-[var(--primary)] px-1.5 py-0.5 text-[0.65rem] text-white">
+                {activeFilterCount}
+              </span>
+            ) : null}
+          </button>
+          <Link href="/members/new" className="btn btn-primary btn-block-mobile shrink-0 sm:w-auto">
             + Ajouter un membre
           </Link>
+        </div>
+
+        <div className="mt-3 hidden grid-cols-4 gap-2 md:grid">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Statut</label>
+            <select value={statusFilter} onChange={(e) => {
+              setStatusFilter(e.target.value as typeof statusFilter);
+              resetPagingAndSelection();
+            }} className="field text-xs">
+              <option value="ALL">Tous les statuts</option>
+              <option value="ACTIVE">Actifs</option>
+              <option value="ARCHIVED">Résiliés</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Paiement</label>
+            <select value={paymentFilter} onChange={(e) => {
+              setPaymentFilter(e.target.value as typeof paymentFilter);
+              resetPagingAndSelection();
+            }} className="field text-xs">
+              <option value="ALL">Tous les paiements</option>
+              <option value="PAID">Payé</option>
+              <option value="PARTIAL">Partiel</option>
+              <option value="UNPAID">Non payé</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Discipline</label>
+            <select value={sportFilter} onChange={(e) => {
+              setSportFilter(e.target.value);
+              resetPagingAndSelection();
+            }} className="field text-xs">
+              <option value="ALL">Toutes les disciplines</option>
+              {sportsOptions.map((sport) => (
+                <option key={sport.id} value={sport.id}>{sport.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Affichage</label>
+            <div className="flex gap-2">
+              <select value={viewMode} onChange={(e) => {
+                setViewMode(e.target.value as typeof viewMode);
+                resetPagingAndSelection();
+              }} className="field min-w-0 flex-1 text-xs">
+                <option value="LIST">Liste</option>
+                <option value="GROUPED">Par groupe</option>
+              </select>
+              {activeFilterCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="btn btn-ghost min-h-0 shrink-0 px-3"
+                  title="Réinitialiser les filtres"
+                  aria-label="Réinitialiser les filtres"
+                >
+                  <RotateCcw className="size-4" />
+                </button>
+              ) : null}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -340,7 +413,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
               {selectedMemberIds.length > 0 ? (
                 <>
                   <span className="text-xs font-medium text-muted-foreground">{selectedMemberIds.length} sélectionné(s)</span>
-                  <button type="button" onClick={bulkDeleteSelectedMembers} disabled={actionLoadingId === "bulk-delete"} className="btn btn-danger btn-block-mobile min-h-11 px-3 py-2 text-xs sm:w-auto">
+                  <button type="button" onClick={() => setBulkDeleteOpen(true)} disabled={actionLoadingId === "bulk-delete"} className="btn btn-danger btn-block-mobile min-h-11 px-3 py-2 text-xs sm:w-auto">
                     {actionLoadingId === "bulk-delete" ? "Suppression..." : "Supprimer la sélection"}
                   </button>
                   <button type="button" onClick={() => setSelectedMemberIds([])} className="btn btn-ghost btn-block-mobile min-h-11 px-3 py-2 text-xs sm:w-auto">
@@ -456,6 +529,107 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
           ))}
         </div>
       )}
+
+      {filtersOpen ? (
+        <div
+          className="fixed inset-0 z-[70] flex items-end bg-black/40 md:hidden"
+          onClick={() => setFiltersOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="max-h-[86dvh] w-full overflow-y-auto rounded-t-3xl border border-[var(--border)] bg-[var(--surface)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[var(--shadow-floating)]"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="member-filters-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h2 id="member-filters-title" className="text-lg font-semibold">Filtrer les membres</h2>
+                <p className="text-xs text-[var(--muted-foreground)]">
+                  {activeFilterCount > 0 ? `${activeFilterCount} filtre(s) actif(s)` : "Aucun filtre actif"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFiltersOpen(false)}
+                className="btn btn-ghost min-h-11 min-w-11 rounded-full p-2"
+                aria-label="Fermer les filtres"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <div className="grid gap-4">
+              <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
+                Statut
+                <select value={statusFilter} onChange={(e) => {
+                  setStatusFilter(e.target.value as typeof statusFilter);
+                  resetPagingAndSelection();
+                }} className="field">
+                  <option value="ALL">Tous les statuts</option>
+                  <option value="ACTIVE">Actifs</option>
+                  <option value="ARCHIVED">Résiliés</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
+                Paiement
+                <select value={paymentFilter} onChange={(e) => {
+                  setPaymentFilter(e.target.value as typeof paymentFilter);
+                  resetPagingAndSelection();
+                }} className="field">
+                  <option value="ALL">Tous les paiements</option>
+                  <option value="PAID">Payé</option>
+                  <option value="PARTIAL">Partiel</option>
+                  <option value="UNPAID">Non payé</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
+                Discipline
+                <select value={sportFilter} onChange={(e) => {
+                  setSportFilter(e.target.value);
+                  resetPagingAndSelection();
+                }} className="field">
+                  <option value="ALL">Toutes les disciplines</option>
+                  {sportsOptions.map((sport) => (
+                    <option key={sport.id} value={sport.id}>{sport.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
+                Affichage
+                <select value={viewMode} onChange={(e) => {
+                  setViewMode(e.target.value as typeof viewMode);
+                  resetPagingAndSelection();
+                }} className="field">
+                  <option value="LIST">Liste</option>
+                  <option value="GROUPED">Par groupe</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-2 border-t border-[var(--border)] pt-4">
+              <button type="button" onClick={resetFilters} className="btn btn-ghost min-h-12">
+                <RotateCcw className="size-4" />
+                Réinitialiser
+              </button>
+              <button type="button" onClick={() => setFiltersOpen(false)} className="btn btn-primary min-h-12">
+                Voir {filteredMembers.length} résultat{filteredMembers.length > 1 ? "s" : ""}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <ConfirmDialog
+        open={bulkDeleteOpen}
+        title={`Supprimer ${selectedMemberIds.length} membre${selectedMemberIds.length > 1 ? "s" : ""} ?`}
+        description="Les dossiers sélectionnés et toutes leurs données associées seront supprimés définitivement."
+        confirmLabel="Supprimer définitivement"
+        loading={actionLoadingId === "bulk-delete"}
+        onCancel={() => setBulkDeleteOpen(false)}
+        onConfirm={bulkDeleteSelectedMembers}
+      />
     </div>
   );
 }

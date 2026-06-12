@@ -1,10 +1,15 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
+import { Dumbbell } from "lucide-react";
 
 import { SportDto } from "@/types/sport";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { FormActions, FormField } from "@/components/ui/form-layout";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ListSearch } from "@/components/ui/list-controls";
 
 type SportManagerProps = {
   initialSports: SportDto[];
@@ -28,6 +33,7 @@ export function SportManager({ initialSports }: SportManagerProps) {
     plans: Array<{ id: string; name: string }>;
     subscriptions: Array<{ id: string; label: string }>;
   }>(null);
+  const [pendingDeleteSport, setPendingDeleteSport] = useState<SportDto | null>(null);
 
   async function reloadSports(query?: string) {
     const params = new URLSearchParams();
@@ -40,10 +46,15 @@ export function SportManager({ initialSports }: SportManagerProps) {
     setSports(result.data ?? []);
   }
 
-  async function onSearchSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    await reloadSports(searchTerm);
-  }
+  const filteredSports = useMemo(() => {
+    const query = searchTerm.trim().toLocaleLowerCase("fr");
+    if (!query) return sports;
+    return sports.filter(
+      (sport) =>
+        sport.name.toLocaleLowerCase("fr").includes(query) ||
+        (sport.description?.toLocaleLowerCase("fr").includes(query) ?? false),
+    );
+  }, [searchTerm, sports]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -67,7 +78,7 @@ export function SportManager({ initialSports }: SportManagerProps) {
     setMessage("Sport créé avec succès");
     setName("");
     setDescription("");
-    await reloadSports(searchTerm);
+    await reloadSports();
     setLoading(false);
   }
 
@@ -118,11 +129,6 @@ export function SportManager({ initialSports }: SportManagerProps) {
   }
 
   async function deleteSport(sportId: string) {
-    const confirmed = window.confirm("Confirmer la suppression de ce sport ?");
-    if (!confirmed) {
-      return;
-    }
-
     setActionLoadingId(sportId);
     setMessage(null);
 
@@ -136,6 +142,7 @@ export function SportManager({ initialSports }: SportManagerProps) {
 
     if (!response.ok) {
       if (response.status === 409 && result.details) {
+        setPendingDeleteSport(null);
         const sportName = sports.find((item) => item.id === sportId)?.name ?? "Sport";
         const details = result.details as {
           groups?: Array<{ id: string; name: string }>;
@@ -155,6 +162,7 @@ export function SportManager({ initialSports }: SportManagerProps) {
     }
 
     setMessage("Sport supprimé avec succès");
+    setPendingDeleteSport(null);
     if (editingId === sportId) {
       cancelEdit();
     }
@@ -165,64 +173,73 @@ export function SportManager({ initialSports }: SportManagerProps) {
   return (
     <div>
       <div className="grid w-full gap-6 md:grid-cols-2">
-        <section className="panel panel-soft p-6">
+        <section className="panel panel-soft p-4 sm:p-6">
           <h2 className="text-lg font-semibold text-[var(--foreground)]">Ajouter un sport</h2>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">
             Créer une nouvelle discipline pour le club.
           </p>
 
           <form onSubmit={onSubmit} className="mt-5 space-y-4">
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Nom du sport"
-              className="field"
-              required
-            />
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Description (optionnelle)"
-              className="field"
-              rows={3}
-            />
+            <FormField label="Nom de la discipline" htmlFor="sport-name">
+              <input
+                id="sport-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ex. Karaté"
+                className="field"
+                required
+              />
+            </FormField>
+            <FormField label="Description" htmlFor="sport-description" hint="Optionnelle">
+              <textarea
+                id="sport-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Public, niveau ou particularités..."
+                className="field"
+                rows={3}
+              />
+            </FormField>
 
-            <button type="submit" disabled={loading} className="btn btn-primary w-full py-2.5 text-sm">
-              {loading ? "Enregistrement..." : "Créer sport"}
-            </button>
+            <FormActions>
+              <button type="submit" disabled={loading} className="btn btn-primary btn-block-mobile">
+                {loading ? "Enregistrement…" : "Créer le sport"}
+              </button>
+            </FormActions>
           </form>
 
           <FeedbackMessage message={message} className="mt-4" />
         </section>
 
-        <section className="panel p-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-xl font-semibold text-[var(--foreground)]">Sports enregistrés</h2>
-            <form onSubmit={onSearchSubmit} className="flex w-full flex-col gap-2 sm:flex-row sm:w-auto">
-              <input
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Rechercher nom/description"
-                className="field text-xs sm:w-56"
-              />
-              <button type="submit" className="btn btn-ghost btn-block-mobile whitespace-nowrap">
-                Rechercher
-              </button>
-            </form>
+        <section className="panel p-4 sm:p-6">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-xl font-semibold text-[var(--foreground)]">Sports enregistrés</h2>
+              <span className="text-xs text-[var(--muted-foreground)]">
+                {filteredSports.length} discipline{filteredSports.length > 1 ? "s" : ""}
+              </span>
+            </div>
+            <ListSearch
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Rechercher par nom ou description..."
+            />
           </div>
 
           <ul className="mt-4 space-y-3">
-            {sports.map((sport) => (
+            {filteredSports.map((sport) => (
               <li key={sport.id} className="rounded-xl border border-[var(--border)] p-3">
                 {editingId === sport.id ? (
                   <div className="space-y-2">
                     <input
+                      aria-label="Nom de la discipline"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       placeholder="Nom du sport"
                       className="field text-xs"
                     />
                     <textarea
+                      aria-label="Description de la discipline"
                       value={editDescription}
                       onChange={(e) => setEditDescription(e.target.value)}
                       placeholder="Description"
@@ -278,7 +295,7 @@ export function SportManager({ initialSports }: SportManagerProps) {
                       </button>
                       <button
                         type="button"
-                        onClick={() => deleteSport(sport.id)}
+                        onClick={() => setPendingDeleteSport(sport)}
                         disabled={actionLoadingId === sport.id}
                         className="btn btn-danger btn-block-mobile"
                       >
@@ -289,9 +306,25 @@ export function SportManager({ initialSports }: SportManagerProps) {
                 )}
               </li>
             ))}
-            {sports.length === 0 ? (
-              <li className="rounded-xl border border-dashed border-[var(--border)] p-3 text-sm text-[var(--muted-foreground)]">
-                Aucun sport enregistré pour le moment.
+            {filteredSports.length === 0 ? (
+              <li>
+                <EmptyState
+                  icon={<Dumbbell className="size-8 opacity-45" />}
+                  title={sports.length === 0 ? "Aucune discipline" : "Aucun résultat"}
+                  message={
+                    sports.length === 0
+                      ? "Créez la première discipline proposée par le club."
+                      : "Essayez un autre nom ou effacez la recherche."
+                  }
+                  action={
+                    searchTerm ? (
+                      <button type="button" onClick={() => setSearchTerm("")} className="btn btn-ghost">
+                        Effacer la recherche
+                      </button>
+                    ) : undefined
+                  }
+                  className="py-8"
+                />
               </li>
             ) : null}
           </ul>
@@ -349,6 +382,16 @@ export function SportManager({ initialSports }: SportManagerProps) {
           </div>
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={pendingDeleteSport !== null}
+        title="Supprimer cette discipline ?"
+        description={`La discipline « ${pendingDeleteSport?.name ?? ""} » sera supprimée si elle n'est liée à aucun groupe, plan ou abonnement.`}
+        confirmLabel="Supprimer la discipline"
+        loading={actionLoadingId === pendingDeleteSport?.id}
+        onCancel={() => setPendingDeleteSport(null)}
+        onConfirm={() => pendingDeleteSport ? deleteSport(pendingDeleteSport.id) : undefined}
+      />
     </div>
   );
 }

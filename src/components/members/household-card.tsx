@@ -1,7 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { UsersRound } from "lucide-react";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { ListSearch } from "@/components/ui/list-controls";
 
 type HouseholdMember = {
   id: string;
@@ -42,7 +47,7 @@ export function HouseholdCard({ memberId }: { memberId: string }) {
     return ids;
   }, [memberId, data]);
 
-  function load() {
+  const load = useCallback(() => {
     setLoading(true);
     fetch(`/api/households?memberId=${memberId}`)
       .then((r) => r.json())
@@ -52,17 +57,33 @@ export function HouseholdCard({ memberId }: { memberId: string }) {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }
+  }, [memberId]);
 
   useEffect(() => {
-    load();
+    let cancelled = false;
+
+    fetch(`/api/households?memberId=${memberId}`)
+      .then((response) => response.json())
+      .then((json) => {
+        if (cancelled) return;
+        const link = json.data as { household?: HouseholdInfo } | null;
+        setData(link?.household ? { household: link.household } : null);
+      })
+      .catch(() => {
+        if (!cancelled) setMessage("Impossible de charger le foyer.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [memberId]);
 
   useEffect(() => {
     const q = searchQuery.trim();
     if (q.length < 2) {
-      setSearchResults([]);
-      setSearching(false);
       return;
     }
 
@@ -124,22 +145,31 @@ export function HouseholdCard({ memberId }: { memberId: string }) {
     setSearchResults([]);
   }
 
-  if (loading) return <p className="text-sm text-[var(--muted-foreground)]">Chargement foyer…</p>;
+  if (loading) {
+    return (
+      <section className="panel h-full p-4 sm:p-5">
+        <LoadingSkeleton lines={3} />
+      </section>
+    );
+  }
 
   return (
-    <section className="panel p-5">
+    <section className="panel h-full min-w-0 p-4 sm:p-5">
       <h2 className="mb-3 text-lg font-semibold">Famille / foyer</h2>
       {message && <FeedbackMessage variant="error" message={message} />}
 
       {!data?.household ? (
-        <div>
-          <p className="mb-2 text-sm text-[var(--muted-foreground)]">
-            Liez les frères/sœurs ou parent-enfant pour les offres famille.
-          </p>
-          <button type="button" className="btn btn-primary btn-block-mobile min-h-11 text-sm sm:w-auto" onClick={createHousehold}>
-            Créer un foyer pour cet élève
-          </button>
-        </div>
+        <EmptyState
+          icon={<UsersRound className="size-8 opacity-45" />}
+          title="Aucun foyer associé"
+          message="Reliez les membres d'une même famille pour faciliter les inscriptions et les offres famille."
+          action={
+            <button type="button" className="btn btn-primary btn-block-mobile min-h-11 text-sm sm:w-auto" onClick={createHousehold}>
+              Créer le foyer
+            </button>
+          }
+          className="px-3 py-7"
+        />
       ) : (
         <div className="space-y-3">
           <ul className="space-y-1 text-sm">
@@ -157,18 +187,19 @@ export function HouseholdCard({ memberId }: { memberId: string }) {
             <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
               Ajouter un membre au foyer
             </label>
-            <input
-              type="search"
-              className="field"
+            <ListSearch
               placeholder="Nom, prénom ou numéro de téléphone…"
               value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                if (selectedMember && e.target.value !== `${selectedMember.firstName} ${selectedMember.lastName}`) {
+              onChange={(value) => {
+                setSearchQuery(value);
+                if (value.trim().length < 2) {
+                  setSearchResults([]);
+                  setSearching(false);
+                }
+                if (selectedMember && value !== `${selectedMember.firstName} ${selectedMember.lastName}`) {
                   setSelectedMember(null);
                 }
               }}
-              autoComplete="off"
             />
             {searching ? (
               <p className="text-xs text-[var(--muted-foreground)]">Recherche…</p>
@@ -226,9 +257,9 @@ export function HouseholdCard({ memberId }: { memberId: string }) {
             </div>
           </div>
 
-          <a href="/enrollment" className="text-sm text-[var(--primary)] hover:underline">
+          <Link href="/enrollment" className="text-sm text-[var(--primary)] hover:underline">
             Inscrire plusieurs membres du foyer
-          </a>
+          </Link>
         </div>
       )}
     </section>

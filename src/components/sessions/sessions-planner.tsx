@@ -1,11 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
 
 import { SessionDto, SessionStatusDto } from "@/types/session";
+import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { UndoButton } from "@/components/ui/undo-button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  FilterField,
+  ListSearch,
+  MobileFilterSheet,
+  MobileFiltersButton,
+} from "@/components/ui/list-controls";
 import { useActionHistory } from "@/hooks/use-action-history";
 import {
   addWeeksToStartIso,
@@ -55,8 +64,10 @@ export function SessionsPlanner({
   const [dayFilter, setDayFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState<"ALL" | SessionStatusDto>("ALL");
   const [searchTerm, setSearchTerm] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [pendingDeleteSession, setPendingDeleteSession] = useState<SessionDto | null>(null);
 
   const [editingSession, setEditingSession] = useState<SessionDto | null>(null);
   const [editForm, setEditForm] = useState({
@@ -311,9 +322,6 @@ export function SessionsPlanner({
   }
 
   async function deleteSession(sessionId: string) {
-    const confirmed = window.confirm("Confirmer la suppression de cette séance ?");
-    if (!confirmed) return;
-
     setLoading(true);
     const response = await fetch(`/api/sessions/${sessionId}`, {
       method: "DELETE",
@@ -327,6 +335,7 @@ export function SessionsPlanner({
     }
 
     setSessions((current) => current.filter((s) => s.id !== sessionId));
+    setPendingDeleteSession(null);
     setMessage("Séance supprimée avec succès");
     setLoading(false);
   }
@@ -371,10 +380,24 @@ export function SessionsPlanner({
     return Array.from(map.entries()).sort(([a], [b]) => (a < b ? -1 : 1));
   }, [filteredSessions]);
 
+  const activeFilterCount = [
+    Boolean(groupId),
+    dayFilter !== "ALL",
+    statusFilter !== "ALL",
+  ].filter(Boolean).length;
+
+  async function resetFilters() {
+    setDayFilter("ALL");
+    setStatusFilter("ALL");
+    if (groupId) {
+      await onGroupChange("");
+    }
+  }
+
   return (
     <div>
-      <section className="panel p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <section className="panel p-3 sm:p-5">
+        <div className="flex flex-col gap-3 border-b border-[var(--border)] pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-[var(--foreground)]">Vue semaine filtrable</h2>
             <p className="text-sm text-[var(--muted-foreground)]">
@@ -382,56 +405,55 @@ export function SessionsPlanner({
             </p>
           </div>
 
-          <div className="grid w-full gap-2 sm:flex sm:w-auto sm:flex-wrap">
-            <button type="button" onClick={() => { void goToWeek(-1); }} className="btn btn-ghost btn-block-mobile">Semaine -1</button>
-            <button type="button" onClick={() => { void resetCurrentWeek(); }} className="btn btn-ghost btn-block-mobile">Semaine actuelle</button>
-            <button type="button" onClick={() => { void goToWeek(1); }} className="btn btn-ghost btn-block-mobile">Semaine +1</button>
+          <div className="grid grid-cols-[auto_1fr_auto] gap-2 sm:flex sm:w-auto">
+            <button type="button" onClick={() => { void goToWeek(-1); }} className="btn btn-ghost px-3" aria-label="Semaine précédente">
+              <ChevronLeft className="size-4" />
+            </button>
+            <button type="button" onClick={() => { void resetCurrentWeek(); }} className="btn btn-ghost">
+              Semaine actuelle
+            </button>
+            <button type="button" onClick={() => { void goToWeek(1); }} className="btn btn-ghost px-3" aria-label="Semaine suivante">
+              <ChevronRight className="size-4" />
+            </button>
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <select
-            value={groupId}
-            onChange={(e) => {
-              void onGroupChange(e.target.value);
-            }}
-            className="field"
-          >
-            <option value="">Tous les groupes</option>
-            {groupsOptions.map((group) => (
-              <option key={group.id} value={group.id}>{group.name}</option>
-            ))}
-          </select>
-
-          <select value={dayFilter} onChange={(e) => setDayFilter(e.target.value)} className="field">
-            <option value="ALL">Tous les jours</option>
-            <option value="1">Lundi</option>
-            <option value="2">Mardi</option>
-            <option value="3">Mercredi</option>
-            <option value="4">Jeudi</option>
-            <option value="5">Vendredi</option>
-            <option value="6">Samedi</option>
-            <option value="0">Dimanche</option>
-          </select>
-
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as "ALL" | SessionStatusDto)}
-            className="field"
-          >
-            <option value="ALL">Tous les statuts</option>
-            <option value="PLANNED">Planifiée</option>
-            <option value="RESCHEDULED">Reportée</option>
-            <option value="CANCELLED">Annulée</option>
-            <option value="COMPLETED">Terminée</option>
-          </select>
-
-          <input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Rechercher groupe/coach/salle"
-            className="field"
-          />
+        <div className="sticky top-[57px] z-20 -mx-2 mt-3 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[3.5rem]">
+          <div className="flex flex-col gap-2 md:flex-row md:items-end">
+            <div className="min-w-0 flex-1">
+              <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Recherche</label>
+              <ListSearch
+                value={searchTerm}
+                onChange={setSearchTerm}
+                placeholder="Groupe, coach ou salle..."
+              />
+            </div>
+            <MobileFiltersButton onClick={() => setFiltersOpen(true)} count={activeFilterCount} />
+            <div className="hidden grid-cols-[minmax(11rem,1fr)_minmax(9rem,0.7fr)_minmax(10rem,0.8fr)_auto] gap-2 md:grid">
+              <select value={groupId} onChange={(event) => { void onGroupChange(event.target.value); }} className="field text-xs">
+                <option value="">Tous les groupes</option>
+                {groupsOptions.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+              </select>
+              <select value={dayFilter} onChange={(event) => setDayFilter(event.target.value)} className="field text-xs">
+                <option value="ALL">Tous les jours</option>
+                <option value="1">Lundi</option><option value="2">Mardi</option><option value="3">Mercredi</option>
+                <option value="4">Jeudi</option><option value="5">Vendredi</option><option value="6">Samedi</option><option value="0">Dimanche</option>
+              </select>
+              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "ALL" | SessionStatusDto)} className="field text-xs">
+                <option value="ALL">Tous les statuts</option>
+                <option value="PLANNED">Planifiées</option><option value="RESCHEDULED">Reportées</option>
+                <option value="CANCELLED">Annulées</option><option value="COMPLETED">Terminées</option>
+              </select>
+              {activeFilterCount > 0 ? (
+                <button type="button" onClick={() => { void resetFilters(); }} className="btn btn-ghost px-3" title="Réinitialiser">
+                  <RotateCcw className="size-4" />
+                </button>
+              ) : <span />}
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-[var(--muted-foreground)]">
+            {filteredSessions.length} séance{filteredSessions.length > 1 ? "s" : ""} affichée{filteredSessions.length > 1 ? "s" : ""}
+          </p>
         </div>
 
         {loading ? <p className="mt-4 text-sm text-[var(--muted-foreground)]">Chargement du planning...</p> : null}
@@ -452,10 +474,10 @@ export function SessionsPlanner({
             <section key={dayKey} className="rounded-xl border border-[var(--border)] p-4">
               <h3 className="text-sm font-semibold capitalize text-[var(--foreground)]">{formatDateFr(`${dayKey}T00:00:00`)}</h3>
 
-              <ul className="mt-3 space-y-2">
+              <ul className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                 {daySessions.map((item) => (
                   <li key={item.id} className="rounded-lg border border-[var(--border)] p-3">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex h-full flex-col gap-3">
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-[var(--foreground)]">{item.groupName}</p>
                         <p className="text-xs text-[var(--muted-foreground)]">{item.startTime} - {item.endTime} • Salle {item.room}</p>
@@ -464,28 +486,28 @@ export function SessionsPlanner({
                           <p className="text-xs text-[var(--danger)]">Motif: {item.exceptionReason}</p>
                         ) : null}
                       </div>
-                      <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
+                      <div className="mt-auto flex w-full items-center justify-between gap-2">
                         <StatusBadge variant={item.status === "CANCELLED" ? "danger" : item.status === "COMPLETED" ? "success" : item.status === "RESCHEDULED" ? "warning" : "info"}>
                           {sessionStatusLabels[item.status]}
                         </StatusBadge>
-                        <div className="list-card-actions">
+                        <div className="flex items-center gap-1">
                           <button
                             type="button"
                             onClick={() => openEdit(item)}
-                            className="btn btn-ghost btn-block-mobile md:min-h-0 md:px-2 md:py-1 md:text-xs"
+                            className="btn btn-ghost btn-sm"
                           >
                             Modifier
                           </button>
                           <button
                             type="button"
-                            onClick={() => { void deleteSession(item.id); }}
+                            onClick={() => setPendingDeleteSession(item)}
                             disabled={(item.attendanceCount ?? 0) > 0}
                             title={
                               (item.attendanceCount ?? 0) > 0
                                 ? "Annulez les pointages depuis le pointage du jour avant de supprimer"
                                 : undefined
                             }
-                            className="btn btn-danger btn-block-mobile md:min-h-0 md:px-2 md:py-1 md:text-xs disabled:opacity-50"
+                            className="btn btn-ghost btn-sm border-[var(--danger)]/30 text-[var(--danger)] disabled:opacity-50"
                           >
                             Supprimer
                           </button>
@@ -499,12 +521,49 @@ export function SessionsPlanner({
           ))}
 
           {sessionsByDay.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-[var(--border)] p-4 text-sm text-[var(--muted-foreground)]">
-              Aucune séance trouvée pour ces filtres.
-            </div>
+            <EmptyState
+              icon={<CalendarDays className="size-8 opacity-45" />}
+              title="Aucune séance trouvée"
+              message="Changez de semaine ou réinitialisez les filtres."
+              action={
+                <button type="button" onClick={() => { setSearchTerm(""); void resetFilters(); }} className="btn btn-ghost">
+                  Réinitialiser
+                </button>
+              }
+            />
           ) : null}
         </div>
       </section>
+
+      <MobileFilterSheet
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        onReset={() => { void resetFilters(); }}
+        activeCount={activeFilterCount}
+        resultCount={filteredSessions.length}
+        title="Filtrer le planning"
+      >
+        <FilterField label="Groupe">
+          <select value={groupId} onChange={(event) => { void onGroupChange(event.target.value); }} className="field">
+            <option value="">Tous les groupes</option>
+            {groupsOptions.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+          </select>
+        </FilterField>
+        <FilterField label="Jour">
+          <select value={dayFilter} onChange={(event) => setDayFilter(event.target.value)} className="field">
+            <option value="ALL">Tous les jours</option>
+            <option value="1">Lundi</option><option value="2">Mardi</option><option value="3">Mercredi</option>
+            <option value="4">Jeudi</option><option value="5">Vendredi</option><option value="6">Samedi</option><option value="0">Dimanche</option>
+          </select>
+        </FilterField>
+        <FilterField label="Statut">
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "ALL" | SessionStatusDto)} className="field">
+            <option value="ALL">Tous les statuts</option>
+            <option value="PLANNED">Planifiées</option><option value="RESCHEDULED">Reportées</option>
+            <option value="CANCELLED">Annulées</option><option value="COMPLETED">Terminées</option>
+          </select>
+        </FilterField>
+      </MobileFilterSheet>
 
       {/* Modal d'édition de séance */}
       {editingSession ? (
@@ -668,6 +727,20 @@ export function SessionsPlanner({
           </div>
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={pendingDeleteSession !== null}
+        title="Supprimer cette séance ?"
+        description={
+          pendingDeleteSession
+            ? `${pendingDeleteSession.groupName}, le ${formatDateFr(pendingDeleteSession.sessionDate)}. Cette action est irréversible.`
+            : ""
+        }
+        confirmLabel="Supprimer la séance"
+        loading={loading}
+        onCancel={() => setPendingDeleteSession(null)}
+        onConfirm={() => pendingDeleteSession ? deleteSession(pendingDeleteSession.id) : undefined}
+      />
     </div>
   );
 }

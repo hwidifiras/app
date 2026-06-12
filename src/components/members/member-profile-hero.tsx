@@ -43,11 +43,11 @@ export function MemberProfileHero({
       : member.phone;
 
   return (
-    <section className="panel overflow-hidden md:col-span-3">
-      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+    <section className="panel overflow-hidden">
+      <div className="flex flex-col gap-5 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 items-center gap-4">
           <div
-            className="flex size-16 shrink-0 items-center justify-center rounded-2xl text-xl font-bold shadow-md sm:size-20 sm:text-2xl"
+            className="flex size-14 shrink-0 items-center justify-center rounded-2xl text-lg font-bold shadow-sm sm:size-16 sm:text-xl"
             style={avatarStyle}
             aria-hidden
           >
@@ -87,7 +87,7 @@ export function MemberProfileHero({
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 sm:justify-end">
+        <div className="grid grid-cols-3 gap-2 lg:flex lg:justify-end">
           <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-center min-w-[5.5rem]">
             <p className="text-[0.65rem] uppercase tracking-wide text-[var(--muted-foreground)]">Abos</p>
             <p className="text-lg font-bold text-[var(--foreground)]">{activeSubscriptionsCount}</p>
@@ -115,7 +115,7 @@ export function MemberProfileHero({
           {totalDebtCents > 0 ? (
             <Link
               href={`/payments/new?memberId=${member.id}`}
-              className="btn btn-primary inline-flex items-center gap-2 self-center"
+              className="btn btn-primary col-span-3 inline-flex items-center gap-2 lg:col-span-1 lg:self-center"
             >
               <Banknote className="size-4" />
               Encaisser

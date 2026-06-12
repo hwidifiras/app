@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormField, FormGrid, FormSection } from "@/components/ui/form-layout";
+import { cn } from "@/lib/utils";
 
 export type ClubSettingsFormData = {
   clubName: string;
@@ -16,7 +17,6 @@ export type ClubSettingsFormData = {
   absentConsumesSession: boolean;
   maxStaffDiscountPercent: number;
   debtAlertThresholdCents: number;
-  updatedAt: string;
 };
 
 type ClubSettingsFormProps = {
@@ -39,7 +39,12 @@ function ToggleRow({
   return (
     <label
       htmlFor={id}
-      className="flex cursor-pointer items-start justify-between gap-4 rounded-xl border border-border/80 bg-[var(--surface-soft)]/60 p-3.5 transition hover:border-primary/25 sm:p-4"
+      className={cn(
+        "flex cursor-pointer items-start justify-between gap-4 rounded-xl border p-3.5 transition sm:p-4",
+        checked
+          ? "border-primary/30 bg-primary/5"
+          : "border-border/80 bg-[var(--surface-soft)]/60 hover:border-primary/25",
+      )}
     >
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold text-foreground">{label}</span>
@@ -102,13 +107,13 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
     e.preventDefault();
     const discount = Number.parseInt(maxStaffDiscountPercent, 10);
     if (Number.isNaN(discount) || discount < 0 || discount > 100) {
-      setMessage("La réduction staff doit être entre 0 et 100 %");
+      setMessage("La réduction maximale de l'équipe doit être comprise entre 0 et 100 %");
       return;
     }
 
     const debtAlertThresholdCents = eurosInputToCents(debtThresholdEuros);
     if (Number.isNaN(debtAlertThresholdCents)) {
-      setMessage("Seuil dette invalide (ex. 15 ou 15,00)");
+      setMessage("Le seuil de dette doit être un montant positif, par exemple 15 €");
       return;
     }
 
@@ -163,7 +168,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
       json = await res.json();
     } catch {
       setLogoUploading(false);
-      setMessage("Erreur serveur lors du téléversement du logo");
+      setMessage("Impossible d'importer le logo pour le moment");
       return;
     }
     setLogoUploading(false);
@@ -185,7 +190,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
       json = await res.json();
     } catch {
       setLogoUploading(false);
-      setMessage("Erreur serveur lors de la suppression du logo");
+      setMessage("Impossible de supprimer le logo pour le moment");
       return;
     }
     setLogoUploading(false);
@@ -198,21 +203,21 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
     router.refresh();
   }
 
-  const updatedLabel = new Intl.DateTimeFormat("fr-FR", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(initial.updatedAt));
-
   return (
     <form onSubmit={submit} className="space-y-5">
       <FeedbackMessage message={message} />
 
       <FormSection
         title="Identité du club"
-        description="Nom et logo affichés dans la barre mobile et la barre latérale."
+        description="Ces informations apparaissent dans l'application et sur les écrans d'accueil."
       >
-        <FormGrid cols={1}>
-          <FormField label="Nom du club" htmlFor="clubName" hint="Si vide, le nom produit (GymDay) est affiché.">
+        <FormGrid>
+          <FormField
+            label="Nom du club"
+            htmlFor="clubName"
+            hint="Laissez vide pour conserver le nom actuel de l'application."
+            className="md:col-span-2"
+          >
             <input
               id="clubName"
               className="field"
@@ -224,7 +229,8 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
           <FormField
             label="Logo du club"
             htmlFor="clubLogoFile"
-            hint="PNG, JPEG ou WebP — max 1 Mo. Ou indiquez une URL ci-dessous."
+            hint="Image PNG, JPEG ou WebP, jusqu'à 1 Mo."
+            className="md:col-span-2"
           >
             <div className="flex flex-wrap items-start gap-4">
               <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-[var(--surface-soft)]">
@@ -254,7 +260,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
                     logoUploading ? "pointer-events-none opacity-60" : ""
                   }`}
                 >
-                  {logoUploading ? "Import..." : "Choisir un fichier"}
+                  {logoUploading ? "Importation…" : "Choisir une image"}
                 </label>
                 {clubLogoUrl ? (
                   <button
@@ -268,19 +274,6 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
                 ) : null}
               </div>
             </div>
-          </FormField>
-          <FormField
-            label="URL du logo (optionnel)"
-            htmlFor="clubLogoUrl"
-            hint="Lien externe ou chemin après import (ex. /branding/club-logo.png)."
-          >
-            <input
-              id="clubLogoUrl"
-              className="field"
-              value={clubLogoUrl}
-              onChange={(e) => setClubLogoUrl(e.target.value)}
-              placeholder="https://… ou /branding/club-logo.png"
-            />
           </FormField>
           <FormField label="Adresse" htmlFor="clubAddress">
             <input
@@ -298,6 +291,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
               value={clubPhone}
               onChange={(e) => setClubPhone(e.target.value)}
               placeholder="+216 ..."
+              inputMode="tel"
             />
           </FormField>
         </FormGrid>
@@ -305,7 +299,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
 
       <FormSection
         title="Pointage & paiements"
-        description="Politique de pointage à la réception."
+        description="Définissez ce que l'équipe peut accepter pendant le pointage."
       >
         <div className="space-y-3">
           <ToggleRow
@@ -317,66 +311,70 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
           />
           <ToggleRow
             id="allowWithoutSubscription"
-            label="Pointage sans abonnement (exception)"
-            description="Autorise un passage exceptionnel avec motif si aucun abonnement actif. Sinon, refusé même en exception."
+            label="Autoriser exceptionnellement sans abonnement"
+            description="L'équipe pourra enregistrer un passage motivé pour une personne sans abonnement actif."
             checked={allowWithoutSubscription}
             onChange={setAllowWithoutSubscription}
           />
           <ToggleRow
             id="absentConsumesSession"
             label="Une absence consomme une séance"
-            description="Si activé, un pointage ABSENT décrémente le quota comme une présence."
+            description="Lorsqu'elle est activée, une absence déduit une séance du quota restant."
             checked={absentConsumesSession}
             onChange={setAbsentConsumesSession}
           />
         </div>
       </FormSection>
 
-      <FormSection title="Alertes & offres" description="Dashboard et remises staff.">
-        <FormGrid cols={1}>
+      <FormSection
+        title="Alertes et remises"
+        description="Réglez les montants visibles et la marge de remise accordée à l'équipe."
+      >
+        <FormGrid>
           <FormField
-            label="Seuil dette affichée (€)"
+            label="Afficher les dettes à partir de"
             htmlFor="debtThreshold"
-            hint="Laisser vide ou 0 pour tout afficher. Ex. 15 = masquer les dettes sous 15 €."
+            hint="Laissez vide ou saisissez 0 pour afficher toutes les dettes."
           >
-            <input
-              id="debtThreshold"
-              type="text"
-              inputMode="decimal"
-              className="field max-w-[10rem]"
-              value={debtThresholdEuros}
-              onChange={(e) => setDebtThresholdEuros(e.target.value)}
-              placeholder="0"
-            />
+            <div className="relative">
+              <input
+                id="debtThreshold"
+                type="text"
+                inputMode="decimal"
+                className="field pr-10"
+                value={debtThresholdEuros}
+                onChange={(e) => setDebtThresholdEuros(e.target.value)}
+                placeholder="0"
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">€</span>
+            </div>
           </FormField>
           <FormField
-            label="Réduction maximale staff (%)"
+            label="Réduction maximale de l'équipe"
             htmlFor="maxStaffDiscount"
-            hint="0–100. Les administrateurs peuvent toujours aller jusqu'à 100 %."
+            hint="Limite appliquée aux comptes non administrateurs."
           >
-            <input
-              id="maxStaffDiscount"
-              type="number"
-              min={0}
-              max={100}
-              step={1}
-              className="field max-w-[8rem]"
-              value={maxStaffDiscountPercent}
-              onChange={(e) => setMaxStaffDiscountPercent(e.target.value)}
-              required
-            />
+            <div className="relative">
+              <input
+                id="maxStaffDiscount"
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                className="field pr-10"
+                value={maxStaffDiscountPercent}
+                onChange={(e) => setMaxStaffDiscountPercent(e.target.value)}
+                required
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+            </div>
           </FormField>
         </FormGrid>
       </FormSection>
 
-      <p className="text-xs text-muted-foreground">
-        Comptes staff : <span className="font-medium text-foreground">Paramètres → Utilisateurs</span>.
-      </p>
-      <p className="text-xs text-muted-foreground">Dernière modification : {updatedLabel}</p>
-
       <FormActions sticky>
         <button type="submit" className="btn btn-primary btn-block-mobile" disabled={saving}>
-          {saving ? "Enregistrement..." : "Enregistrer les règles"}
+          {saving ? "Enregistrement…" : "Enregistrer les paramètres"}
         </button>
       </FormActions>
     </form>

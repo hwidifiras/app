@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { Check, Users, X, XIcon } from "lucide-react";
+import Link from "next/link";
+import { CalendarClock, Check, RotateCcw, Users, X, XIcon } from "lucide-react";
 
 import { UndoButton } from "@/components/ui/undo-button";
 import type { SessionCardData } from "./session-card";
@@ -19,8 +20,10 @@ export function CheckInDrawer({
   loadingId,
   message,
   canUndo = false,
+  undoCount = 0,
   undoLoading = false,
   onUndo,
+  postponeHref,
 }: {
   session: SessionCardData;
   activeSubscriptionMemberIds: string[];
@@ -36,8 +39,10 @@ export function CheckInDrawer({
   loadingId: string | null;
   message: string | null;
   canUndo?: boolean;
+  undoCount?: number;
   undoLoading?: boolean;
   onUndo?: () => void | Promise<void>;
+  postponeHref: string;
 }) {
   const [modalMember, setModalMember] = useState<{ memberId: string; name: string; status: string } | null>(null);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
@@ -160,7 +165,7 @@ export function CheckInDrawer({
     >
       <div
         ref={sheetRef}
-        className="drawer-sheet drawer-sheet-adaptive flex w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-[var(--surface)] shadow-xl md:h-full md:max-h-none md:rounded-none"
+        className="drawer-sheet drawer-sheet-adaptive flex w-full max-w-3xl flex-col overflow-hidden rounded-t-3xl bg-[var(--surface)] shadow-2xl md:h-full md:max-h-none md:rounded-none"
         role="dialog"
         aria-modal="true"
         aria-labelledby="check-in-drawer-title"
@@ -170,7 +175,7 @@ export function CheckInDrawer({
           <div className="h-1 w-10 rounded-full bg-[var(--border)]" aria-hidden />
         </div>
 
-        <div className="flex shrink-0 items-start justify-between gap-2 border-b border-[var(--border)] px-4 py-3 pb-3">
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-3 sm:px-5">
           <div className="min-w-0 flex-1">
             <h2 id="check-in-drawer-title" className="truncate text-lg font-semibold text-[var(--foreground)]">
               {session.group.name}
@@ -203,13 +208,6 @@ export function CheckInDrawer({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            {canUndo && onUndo ? (
-              <UndoButton
-                onClick={onUndo}
-                disabled={undoLoading || loadingId !== null}
-                title="Annuler le dernier pointage"
-              />
-            ) : null}
             <button
               type="button"
               onClick={onClose}
@@ -221,19 +219,29 @@ export function CheckInDrawer({
           </div>
         </div>
 
-        {total <= MARK_ALL_MAX && unmarkedWithSub.length > 0 && (
-          <div className="shrink-0 border-b border-[var(--border)] px-4 py-2">
+        <div className="shrink-0 border-b border-[var(--border)] bg-[var(--surface-soft)]/55 px-4 py-3 sm:px-5">
+          <div className="grid gap-2 sm:grid-cols-2">
+          {total <= MARK_ALL_MAX && unmarkedWithSub.length > 0 ? (
             <button
               type="button"
               onClick={markAllPresent}
               disabled={markingAll || loadingId !== null}
-              className="btn btn-primary btn-block-mobile inline-flex w-full min-h-11 items-center justify-center gap-2 text-sm"
+              className="btn btn-primary inline-flex min-h-11 w-full items-center justify-center gap-2 text-sm"
             >
               <Users className="size-4" />
               {markingAll ? "Pointage en cours…" : `Tous présents (${unmarkedWithSub.length})`}
             </button>
+          ) : <div />}
+          <button
+            type="button"
+            onClick={openRecoveryPanel}
+            disabled={loadingId !== null || markingAll}
+            className="btn btn-secondary min-h-11 w-full text-sm"
+          >
+            Rattrapage d&apos;absence
+          </button>
           </div>
-        )}
+        </div>
 
         {message && (
           <div className="shrink-0 px-4 py-2">
@@ -241,21 +249,7 @@ export function CheckInDrawer({
           </div>
         )}
 
-        <div className="shrink-0 border-t border-[var(--border)] px-4 py-3">
-          <button
-            type="button"
-            onClick={openRecoveryPanel}
-            disabled={loadingId !== null || markingAll}
-            className="btn btn-secondary btn-block-mobile min-h-11 text-sm"
-          >
-            Rattrapage absence (même semaine)
-          </button>
-          <p className="mt-1 text-[0.65rem] text-[var(--muted-foreground)]">
-            Pour un élève absent cette semaine sur un cours équivalent (même sport, même type).
-          </p>
-        </div>
-
-        <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="divide-y divide-[var(--border)]">
             {session.group.members.map((gm) => {
               const att = getAtt(gm.memberId);
@@ -271,8 +265,9 @@ export function CheckInDrawer({
                       : "border-l-4 border-l-transparent";
 
               return (
-                <div key={gm.id} className={`px-4 py-3 transition-colors ${rowTone}`}>
-                  <div className="flex min-w-0 items-center gap-3">
+                <div key={gm.id} className={`px-4 py-3 transition-colors sm:px-5 ${rowTone}`}>
+                  <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
                     <div
                       className={`flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
                         att?.status === "PRESENT"
@@ -313,12 +308,12 @@ export function CheckInDrawer({
                     </div>
                   </div>
 
-                  <div className="mt-3 grid grid-cols-2 gap-2 md:mt-2 md:flex md:justify-end md:gap-2">
+                  <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:shrink-0">
                     <button
                       type="button"
                       onClick={() => handleClick(mid, "PRESENT")}
                       disabled={loadingId === mid || markingAll}
-                      className={`inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold shadow-sm transition-all active:scale-[0.98] disabled:opacity-50 md:min-h-9 md:min-w-[7rem] md:flex-none md:rounded-lg md:px-3 md:text-xs ${
+                      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 sm:min-w-[7rem] ${
                         att?.status === "PRESENT"
                           ? "ring-2 ring-[var(--success)] ring-offset-2 ring-offset-[var(--surface)] bg-[var(--success)] text-white"
                           : "bg-[var(--success)] text-white hover:bg-[var(--success)]/90"
@@ -331,7 +326,7 @@ export function CheckInDrawer({
                       type="button"
                       onClick={() => handleClick(mid, "ABSENT")}
                       disabled={loadingId === mid || markingAll}
-                      className={`inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold shadow-sm transition-all active:scale-[0.98] disabled:opacity-50 md:min-h-9 md:min-w-[7rem] md:flex-none md:rounded-lg md:px-3 md:text-xs ${
+                      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 sm:min-w-[7rem] ${
                         att?.status === "ABSENT"
                           ? "ring-2 ring-[var(--danger)] ring-offset-2 ring-offset-[var(--surface)] bg-[var(--danger)] text-white"
                           : "bg-[var(--danger)] text-white hover:bg-[var(--danger)]/90"
@@ -341,10 +336,50 @@ export function CheckInDrawer({
                       Absent
                     </button>
                   </div>
+                  </div>
                 </div>
               );
             })}
           </div>
+        </div>
+
+        <div className="shrink-0 border-t border-[var(--border)] bg-[var(--surface)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(16,36,63,0.08)] sm:px-5">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <UndoButton
+              onClick={onUndo ?? (() => undefined)}
+              disabled={!canUndo || !onUndo || undoLoading || loadingId !== null}
+              label={
+                undoLoading
+                  ? "Annulation…"
+                  : undoCount > 0
+                    ? `Annuler le dernier pointage (${undoCount})`
+                    : "Aucun pointage à annuler"
+              }
+              title="Annuler les pointages un par un (Ctrl+Z)"
+              className="min-h-11 w-full justify-center"
+            />
+            {checked === 0 ? (
+              <Link href={postponeHref} className="btn btn-secondary min-h-11 w-full">
+                <CalendarClock className="size-4" />
+                Reporter la séance
+              </Link>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="btn btn-secondary min-h-11 w-full"
+                title="Annulez tous les pointages avant de reporter la séance"
+              >
+                <RotateCcw className="size-4" />
+                Reporter après annulation
+              </button>
+            )}
+          </div>
+          {checked > 0 ? (
+            <p className="mt-2 text-center text-xs text-[var(--muted-foreground)]">
+              Annulez les {checked} pointage{checked > 1 ? "s" : ""} un par un pour réactiver le report.
+            </p>
+          ) : null}
         </div>
       </div>
 

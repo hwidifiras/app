@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Activity, ChevronDown, CircleUser, LogOut, Users } from "lucide-react";
 
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { DisplayModeToggle } from "@/components/layout/display-mode-toggle";
 import { cn } from "@/lib/utils";
 
 type AccountData = {
@@ -148,6 +149,10 @@ export function UserAccountMenu({
               Apparence
             </p>
             <ThemeToggle compact />
+            <p className="mb-1.5 mt-3 text-[0.6rem] font-bold uppercase tracking-[0.14em] text-[var(--muted-foreground)] opacity-70">
+              Mise en page
+            </p>
+            <DisplayModeToggle />
           </div>
 
           <div className="border-t border-[var(--border)] pt-1">

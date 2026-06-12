@@ -3,6 +3,8 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { FormActions } from "@/components/ui/form-layout";
+import { GroupMemberSelector } from "@/components/groups/group-member-selector";
 import { CoachDto } from "@/types/coach";
 import { MemberDto } from "@/types/member";
 import { SportDto } from "@/types/sport";
@@ -60,22 +62,6 @@ export function GroupEditForm({
     if (!query) return true;
     return `${member.firstName} ${member.lastName}`.toLowerCase().includes(query) || member.phone.toLowerCase().includes(query);
   }).filter((member) => isMemberAllowed(member.memberType));
-
-  function toggleMemberSelection(memberId: string) {
-    setSelectedMemberIds((current) =>
-      current.includes(memberId) ? current.filter((id) => id !== memberId) : [...current, memberId]
-    );
-  }
-
-  function toggleSelectAll() {
-    const visibleIds = filteredMembers.map((m) => m.id);
-    const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedMemberIds.includes(id));
-    if (allSelected) {
-      setSelectedMemberIds((current) => current.filter((id) => !visibleIds.includes(id)));
-    } else {
-      setSelectedMemberIds((current) => Array.from(new Set([...current, ...visibleIds])));
-    }
-  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -145,11 +131,8 @@ export function GroupEditForm({
     if (addMsg) parts.push(addMsg);
     if (removeMsg) parts.push(removeMsg);
     setMessage(parts.join(" • "));
-    setLoading(false);
-
-    setTimeout(() => {
-      router.push("/groups");
-    }, 1000);
+    router.push("/groups");
+    router.refresh();
   }
 
   return (
@@ -226,94 +209,27 @@ export function GroupEditForm({
         </div>
       </div>
 
-      {/* Member table matching /members style */}
-      <div className="rounded-xl border border-[var(--border)] p-4">
-        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-          <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-            Membres du groupe ({selectedMemberIds.length})
-          </p>
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-            <input
-              value={membersSearch}
-              onChange={(e) => setMembersSearch(e.target.value)}
-              placeholder="Rechercher..."
-              className="field w-full text-xs sm:w-48"
-            />
-            <button type="button" className="btn btn-ghost btn-block-mobile text-xs" onClick={toggleSelectAll}>
-              {filteredMembers.length > 0 && filteredMembers.every((m) => selectedMemberIds.includes(m.id))
-                ? "Tout désélectionner"
-                : "Tout sélectionner"}
-            </button>
-          </div>
-        </div>
+      <GroupMemberSelector
+        members={filteredMembers}
+        selectedIds={selectedMemberIds}
+        search={membersSearch}
+        title="Membres du groupe"
+        description="Sélectionnez les membres à conserver ou à ajouter. Désélectionner retire l'affectation."
+        emptyMessage="Aucun membre compatible avec ce type de groupe."
+        onSearchChange={setMembersSearch}
+        onSelectionChange={setSelectedMemberIds}
+      />
 
-        <div className="data-table overflow-x-auto rounded-xl border border-[var(--border)]">
-          <table className="w-full text-sm">
-            <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
-              <tr>
-                <th className="px-3 py-2 text-left font-semibold w-10">#</th>
-                <th className="px-3 py-2 text-left font-semibold">Nom</th>
-                <th className="px-3 py-2 text-left font-semibold">Téléphone</th>
-                <th className="px-3 py-2 text-left font-semibold hidden sm:table-cell">Email</th>
-                <th className="px-3 py-2 text-left font-semibold">Statut</th>
-                <th className="px-3 py-2 text-left font-semibold hidden md:table-cell">Inscrit le</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {filteredMembers.map((member) => (
-                <tr
-                  key={member.id}
-                  className={`hover:bg-[var(--surface-soft)] transition-colors cursor-pointer ${selectedMemberIds.includes(member.id) ? "bg-[var(--surface-soft)]" : ""}`}
-                  onClick={() => toggleMemberSelection(member.id)}
-                >
-                  <td className="px-3 py-2" data-label="Sélection">
-                    <input
-                      type="checkbox"
-                      checked={selectedMemberIds.includes(member.id)}
-                      onChange={() => toggleMemberSelection(member.id)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </td>
-                  <td className="data-table-primary px-3 py-2 font-medium text-[var(--foreground)]" data-label="Nom">
-                    {member.firstName} {member.lastName}
-                  </td>
-                  <td className="px-3 py-2" data-label="Téléphone">{member.phone}</td>
-                  <td className="px-3 py-2 mobile-detail-cell text-[var(--muted-foreground)]" data-label="Email">{member.email ?? "-"}</td>
-                  <td className="px-3 py-2" data-label="Statut">
-                    <span className={`chip ${member.status === "ACTIVE" ? "chip-active" : "chip-muted"}`}>
-                      {member.status === "ACTIVE" ? "ACTIF" : "RÉSILIÉ"}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 mobile-detail-cell text-[var(--muted-foreground)]" data-label="Inscrit le">
-                    {new Date(member.createdAt).toLocaleDateString("fr-FR")}
-                  </td>
-                </tr>
-              ))}
-              {filteredMembers.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-3 py-5 text-center text-[var(--muted-foreground)]">
-                    Aucun membre trouvé.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-        <p className="mt-2 text-xs text-[var(--muted-foreground)]">
-          Coché = membre affecté au groupe • Décoché = membre retiré
-        </p>
-      </div>
+      <FeedbackMessage message={message} />
 
-      <div className="form-actions">
-        <button type="submit" disabled={loading} className="btn btn-primary btn-block-mobile">
-          {loading ? "Enregistrement..." : "Enregistrer les modifications"}
-        </button>
+      <FormActions sticky>
         <button type="button" onClick={() => router.push("/groups")} className="btn btn-ghost btn-block-mobile">
           Annuler
         </button>
-      </div>
-
-      <FeedbackMessage message={message} />
+        <button type="submit" disabled={loading} className="btn btn-primary btn-block-mobile">
+          {loading ? "Enregistrement…" : "Enregistrer les modifications"}
+        </button>
+      </FormActions>
     </form>
   );
 }

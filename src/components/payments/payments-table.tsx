@@ -1,11 +1,18 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronRight, Plus } from "lucide-react";
+import { Banknote, ChevronDown, ChevronRight, Plus, RotateCcw } from "lucide-react";
 
 import { buildSubscriptionBillingView, formatMoney } from "@/lib/subscription-billing";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  FilterField,
+  ListSearch,
+  MobileFilterSheet,
+  MobileFiltersButton,
+} from "@/components/ui/list-controls";
 
 type PaymentGroup = {
   subscriptionId: string;
@@ -131,6 +138,30 @@ function AmountSummary({ group }: { group: PaymentGroup }) {
 export function PaymentsTable({ groups }: PaymentsTableProps) {
   const router = useRouter();
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [paymentFilter, setPaymentFilter] = useState<"ALL" | "COMPLETE" | "OPEN">("ALL");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const filteredGroups = useMemo(() => {
+    const query = searchTerm.trim().toLocaleLowerCase("fr");
+    return groups.filter((group) => {
+      const matchesSearch =
+        !query ||
+        group.memberName.toLocaleLowerCase("fr").includes(query) ||
+        group.planName.toLocaleLowerCase("fr").includes(query) ||
+        (group.offerName?.toLocaleLowerCase("fr").includes(query) ?? false);
+      const matchesPayment =
+        paymentFilter === "ALL" ||
+        (paymentFilter === "COMPLETE" ? group.isComplete : !group.isComplete);
+      return matchesSearch && matchesPayment;
+    });
+  }, [groups, paymentFilter, searchTerm]);
+
+  const activeFilterCount = paymentFilter === "ALL" ? 0 : 1;
+
+  function resetFilters() {
+    setPaymentFilter("ALL");
+  }
 
   function toggleExpand(subscriptionId: string) {
     setExpandedId((prev) => (prev === subscriptionId ? null : subscriptionId));
@@ -144,18 +175,69 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
     router.push(`/payments/${paymentId}/edit`);
   }
 
-  if (groups.length === 0) {
-    return (
-      <div className="rounded-xl border border-[var(--border)] p-6 text-center text-sm text-[var(--muted-foreground)]">
-        Aucun paiement enregistré.
-      </div>
-    );
-  }
-
   return (
     <>
+      <div className="sticky top-[57px] z-20 -mx-2 mb-4 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[3.5rem]">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end">
+          <div className="min-w-0 flex-1">
+            <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Recherche</label>
+            <ListSearch
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Membre, formule ou offre..."
+            />
+          </div>
+          <MobileFiltersButton onClick={() => setFiltersOpen(true)} count={activeFilterCount} />
+          <div className="hidden min-w-48 md:block">
+            <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">État du paiement</label>
+            <div className="flex gap-2">
+              <select
+                value={paymentFilter}
+                onChange={(event) => setPaymentFilter(event.target.value as typeof paymentFilter)}
+                className="field text-xs"
+              >
+                <option value="ALL">Tous</option>
+                <option value="OPEN">Solde restant</option>
+                <option value="COMPLETE">Soldés</option>
+              </select>
+              {activeFilterCount > 0 ? (
+                <button type="button" onClick={resetFilters} className="btn btn-ghost shrink-0 px-3" title="Réinitialiser">
+                  <RotateCcw className="size-4" />
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+        <p className="mt-2 text-xs text-[var(--muted-foreground)]">
+          {filteredGroups.length} abonnement{filteredGroups.length > 1 ? "s" : ""} affiché{filteredGroups.length > 1 ? "s" : ""}
+        </p>
+      </div>
+
+      {filteredGroups.length === 0 ? (
+        <EmptyState
+          icon={<Banknote className="size-8 opacity-45" />}
+          title={groups.length === 0 ? "Aucun paiement" : "Aucun résultat"}
+          message={
+            groups.length === 0
+              ? "Les encaissements apparaîtront ici après leur enregistrement."
+              : "Modifiez la recherche ou réinitialisez les filtres."
+          }
+          action={
+            groups.length === 0 ? (
+              <button type="button" onClick={() => router.push("/payments/new")} className="btn btn-primary">
+                Nouveau paiement
+              </button>
+            ) : (
+              <button type="button" onClick={() => { setSearchTerm(""); resetFilters(); }} className="btn btn-ghost">
+                Réinitialiser
+              </button>
+            )
+          }
+        />
+      ) : (
+      <>
       <ul className="space-y-2.5 md:hidden">
-        {groups.map((group) => {
+        {filteredGroups.map((group) => {
           const billing = buildSubscriptionBillingView({
             amount: group.totalDue,
             totalPaid: group.totalPaid,
@@ -273,7 +355,7 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border)]">
-            {groups.map((group) => {
+            {filteredGroups.map((group) => {
               const billing = buildSubscriptionBillingView({
                 amount: group.totalDue,
                 totalPaid: group.totalPaid,
@@ -372,6 +454,29 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
           </tbody>
         </table>
       </div>
+      </>
+      )}
+
+      <MobileFilterSheet
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        onReset={resetFilters}
+        activeCount={activeFilterCount}
+        resultCount={filteredGroups.length}
+        title="Filtrer les paiements"
+      >
+        <FilterField label="État du paiement">
+          <select
+            value={paymentFilter}
+            onChange={(event) => setPaymentFilter(event.target.value as typeof paymentFilter)}
+            className="field"
+          >
+            <option value="ALL">Tous</option>
+            <option value="OPEN">Solde restant</option>
+            <option value="COMPLETE">Soldés</option>
+          </select>
+        </FilterField>
+      </MobileFilterSheet>
     </>
   );
 }

@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { CreditCard } from "lucide-react";
 
 import { StatusBadge } from "@/components/ui/status-badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { paymentProgressPercent } from "@/lib/member-avatar";
 import { formatMoney } from "@/lib/subscription-billing";
 
@@ -23,11 +25,19 @@ function formatDate(date: Date | string) {
 
 export function MemberSubscriptionCards({ subscriptions }: { subscriptions: SubscriptionCard[] }) {
   if (subscriptions.length === 0) {
-    return <p className="text-sm text-[var(--muted-foreground)]">Aucun abonnement enregistré.</p>;
+    return (
+      <EmptyState
+        icon={<CreditCard className="size-8 opacity-45" />}
+        title="Aucun abonnement"
+        message="Ajoutez une formule pour suivre les séances et les paiements de ce membre."
+        action={<Link href="/subscriptions/new" className="btn btn-primary">Ajouter un abonnement</Link>}
+        className="py-8"
+      />
+    );
   }
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
       {subscriptions.map((sub) => {
         const progress = paymentProgressPercent(sub.paidCents, sub.amount);
         const isPaid = sub.paidCents >= sub.amount;
@@ -36,7 +46,7 @@ export function MemberSubscriptionCards({ subscriptions }: { subscriptions: Subs
         return (
           <article
             key={sub.id}
-            className="flex flex-col rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm"
+            className="flex flex-col rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">

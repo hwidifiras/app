@@ -1,12 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { UserMinus, UserPlus, UsersRound } from "lucide-react";
 
 import { GroupMemberDto } from "@/types/group-member";
 import { GroupDto } from "@/types/group";
 import { MemberDto } from "@/types/member";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ListSearch } from "@/components/ui/list-controls";
+import { FormField } from "@/components/ui/form-layout";
 
 type GroupMembersManagerProps = {
   groups: GroupDto[];
@@ -22,9 +27,11 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [selectedAssignedMemberIds, setSelectedAssignedMemberIds] = useState<string[]>([]);
   const [assignments, setAssignments] = useState<GroupMemberDto[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [bulkAction, setBulkAction] = useState<"assign" | "remove" | null>(null);
+  const [assignmentsLoading, setAssignmentsLoading] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [pendingRemoval, setPendingRemoval] = useState<GroupMemberDto | "bulk" | null>(null);
 
   const selectedGroup = useMemo(() => groups.find((item) => item.id === groupId) ?? null, [groupId, groups]);
   const activeAssignments = useMemo(() => assignments.filter((item) => item.status === "ACTIVE"), [assignments]);
@@ -79,9 +86,18 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
       return;
     }
 
-    const response = await fetch(`/api/group-members?groupId=${activeGroupId}`, { cache: "no-store" });
-    const result = await response.json();
-    setAssignments(result.data ?? []);
+    setAssignmentsLoading(true);
+    try {
+      const response = await fetch(`/api/group-members?groupId=${activeGroupId}`, { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok) {
+        setMessage(result.error ?? "Impossible de charger les affectations");
+        return;
+      }
+      setAssignments(result.data ?? []);
+    } finally {
+      setAssignmentsLoading(false);
+    }
   }, [groupId]);
 
   useEffect(() => {
@@ -148,7 +164,7 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
       return;
     }
 
-    setLoading(true);
+    setBulkAction("assign");
     setMessage(null);
 
     const response = await fetch("/api/group-members/bulk", {
@@ -166,7 +182,7 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
 
     if (!response.ok) {
       setMessage(result.error ?? "Erreur lors de l'affectation multiple");
-      setLoading(false);
+      setBulkAction(null);
       return;
     }
 
@@ -177,7 +193,7 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
     setSelectedMemberIds([]);
     setEndDate("");
     await reloadAssignments();
-    setLoading(false);
+    setBulkAction(null);
   }
 
   async function removeSelectedAssignments() {
@@ -185,12 +201,7 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
       return;
     }
 
-    const confirmed = window.confirm("Confirmer la suppression des affectations sélectionnées ?");
-    if (!confirmed) {
-      return;
-    }
-
-    setLoading(true);
+    setBulkAction("remove");
     setMessage(null);
 
     const response = await fetch("/api/group-members/bulk", {
@@ -206,14 +217,15 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
 
     if (!response.ok) {
       setMessage(result.error ?? "Erreur lors de la suppression multiple");
-      setLoading(false);
+      setBulkAction(null);
       return;
     }
 
     setMessage(`Suppression terminée: ${result.data?.deletedCount ?? 0} affectations supprimées.`);
     setSelectedAssignedMemberIds([]);
+    setPendingRemoval(null);
     await reloadAssignments();
-    setLoading(false);
+    setBulkAction(null);
   }
 
   async function toggleStatus(item: GroupMemberDto) {
@@ -247,11 +259,6 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
   }
 
   async function removeAssignment(item: GroupMemberDto) {
-    const confirmed = window.confirm("Confirmer la suppression de cette affectation ?");
-    if (!confirmed) {
-      return;
-    }
-
     setActionLoadingId(item.id);
     setMessage(null);
 
@@ -270,6 +277,7 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
     }
 
     setMessage("Affectation supprimée");
+    setPendingRemoval(null);
     await reloadAssignments();
     setActionLoadingId(null);
   }
@@ -282,38 +290,53 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
       </p>
 
       <div className="mt-4 grid gap-3 md:grid-cols-3">
-        <select
-          value={groupId}
-          onChange={(e) => {
-            void onGroupChange(e.target.value);
-          }}
-          className="field"
-          required
-        >
-          <option value="">Choisir un groupe</option>
-          {groups.map((group) => (
-            <option key={group.id} value={group.id}>
-              {group.name}
-            </option>
-          ))}
-        </select>
-
-        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="field" required />
-        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="field" />
+        <FormField label="Groupe">
+          <select
+            value={groupId}
+            onChange={(e) => {
+              void onGroupChange(e.target.value);
+            }}
+            className="field"
+            required
+          >
+            <option value="">Choisir un groupe</option>
+            {groups.map((group) => (
+              <option key={group.id} value={group.id}>
+                {group.name}
+              </option>
+            ))}
+          </select>
+        </FormField>
+        <FormField label="Date de début">
+          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="field" required />
+        </FormField>
+        <FormField label="Date de fin" hint="Optionnelle">
+          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="field" />
+        </FormField>
       </div>
 
       {selectedGroup ? (
-        <p className="mt-3 text-xs text-[var(--muted-foreground)]">
-          Capacité groupe: {selectedGroup.capacity} • Affectations actives: {activeAssignments.length}
-        </p>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:max-w-sm">
+          <div className="rounded-lg bg-[var(--surface-soft)] px-3 py-2">
+            <p className="text-[0.65rem] uppercase tracking-wide text-[var(--muted-foreground)]">Capacité</p>
+            <p className="text-sm font-semibold text-[var(--foreground)]">{selectedGroup.capacity} membres</p>
+          </div>
+          <div className="rounded-lg bg-[var(--surface-soft)] px-3 py-2">
+            <p className="text-[0.65rem] uppercase tracking-wide text-[var(--muted-foreground)]">Actuellement</p>
+            <p className="text-sm font-semibold text-[var(--foreground)]">{activeAssignments.length} actifs</p>
+          </div>
+        </div>
       ) : null}
 
       <FeedbackMessage message={message} className="mt-3" />
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <section className="rounded-xl border border-[var(--border)] p-4">
+      <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
+        <section className="rounded-xl border border-[var(--border)] p-3 sm:p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-[var(--foreground)]">Ajouter des membres</h3>
+            <div>
+              <h3 className="text-sm font-semibold text-[var(--foreground)]">Membres disponibles</h3>
+              <p className="text-xs text-[var(--muted-foreground)]">{availableMembers.length} résultat(s)</p>
+            </div>
             <button type="button" onClick={toggleSelectAllAvailable} className="btn btn-ghost text-xs">
               {availableMembers.length > 0 && availableMembers.every((m) => selectedMemberIds.includes(m.id))
                 ? "Tout désélectionner"
@@ -321,14 +344,14 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
             </button>
           </div>
 
-          <input
+          <ListSearch
             value={membersSearch}
-            onChange={(e) => setMembersSearch(e.target.value)}
-            placeholder="Rechercher membre à ajouter"
-            className="field mt-3 text-xs"
+            onChange={setMembersSearch}
+            placeholder="Nom ou téléphone..."
+            className="mt-3"
           />
 
-          <ul className="mt-3 max-h-64 space-y-2 overflow-auto pr-1">
+          <ul className="mt-3 max-h-[min(45dvh,24rem)] space-y-2 overflow-auto pr-1">
             {availableMembers.map((member) => (
               <li key={member.id} className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-2 py-1.5 text-xs">
                 <input
@@ -343,8 +366,14 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
               </li>
             ))}
             {availableMembers.length === 0 ? (
-              <li className="rounded-lg border border-dashed border-[var(--border)] p-2 text-xs text-[var(--muted-foreground)]">
-                Aucun membre disponible pour ajout.
+              <li>
+                <EmptyState
+                  icon={<UserPlus className="size-7 opacity-45" />}
+                  title="Aucun membre disponible"
+                  message={membersSearch ? "Aucun membre ne correspond à cette recherche." : "Tous les membres compatibles sont déjà affectés."}
+                  action={membersSearch ? <button type="button" onClick={() => setMembersSearch("")} className="btn btn-ghost btn-sm">Effacer</button> : undefined}
+                  className="px-3 py-7"
+                />
               </li>
             ) : null}
           </ul>
@@ -354,16 +383,19 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
             onClick={() => {
               void assignSelectedMembers();
             }}
-            disabled={loading || !groupId || selectedMemberIds.length === 0}
+            disabled={bulkAction !== null || !groupId || selectedMemberIds.length === 0}
             className="btn btn-primary mt-3 w-full"
           >
-            {loading ? "Affectation..." : `Ajouter la sélection (${selectedMemberIds.length})`}
+            {bulkAction === "assign" ? "Affectation…" : `Ajouter au groupe (${selectedMemberIds.length})`}
           </button>
         </section>
 
-        <section className="rounded-xl border border-[var(--border)] p-4">
+        <section className="rounded-xl border border-[var(--border)] p-3 sm:p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-[var(--foreground)]">Membres affectés</h3>
+            <div>
+              <h3 className="text-sm font-semibold text-[var(--foreground)]">Membres affectés</h3>
+              <p className="text-xs text-[var(--muted-foreground)]">{displayedAssignments.length} résultat(s)</p>
+            </div>
             <button type="button" onClick={toggleSelectAllAssigned} className="btn btn-ghost text-xs">
               {displayedAssignments.length > 0 &&
               displayedAssignments.every((a) => selectedAssignedMemberIds.includes(a.memberId))
@@ -372,15 +404,20 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
             </button>
           </div>
 
-          <input
+          <ListSearch
             value={assignedSearch}
-            onChange={(e) => setAssignedSearch(e.target.value)}
-            placeholder="Rechercher membre affecté"
-            className="field mt-3 text-xs"
+            onChange={setAssignedSearch}
+            placeholder="Nom ou téléphone..."
+            className="mt-3"
           />
 
-          <ul className="mt-3 max-h-64 space-y-2 overflow-auto pr-1">
-            {displayedAssignments.map((item) => (
+          <ul className="mt-3 max-h-[min(45dvh,24rem)] space-y-2 overflow-auto pr-1">
+            {assignmentsLoading ? (
+              <li className="flex min-h-28 items-center justify-center text-sm text-[var(--muted-foreground)]">
+                Chargement des affectations…
+              </li>
+            ) : null}
+            {!assignmentsLoading ? displayedAssignments.map((item) => (
               <li key={item.id} className="rounded-lg border border-[var(--border)] p-2">
                 <div className="flex items-start justify-between gap-2">
                   <label className="flex items-start gap-2 text-xs">
@@ -415,9 +452,7 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      void removeAssignment(item);
-                    }}
+                    onClick={() => setPendingRemoval(item)}
                     disabled={actionLoadingId === item.id}
                     className="btn btn-danger text-xs"
                   >
@@ -425,26 +460,50 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
                   </button>
                 </div>
               </li>
-            ))}
-            {displayedAssignments.length === 0 ? (
-              <li className="rounded-lg border border-dashed border-[var(--border)] p-2 text-xs text-[var(--muted-foreground)]">
-                Aucune affectation pour ce groupe.
+            )) : null}
+            {!assignmentsLoading && displayedAssignments.length === 0 ? (
+              <li>
+                <EmptyState
+                  icon={<UsersRound className="size-7 opacity-45" />}
+                  title={assignments.length === 0 ? "Groupe encore vide" : "Aucun résultat"}
+                  message={assignments.length === 0 ? "Ajoutez des membres depuis la liste disponible." : "Aucune affectation ne correspond à cette recherche."}
+                  action={assignedSearch ? <button type="button" onClick={() => setAssignedSearch("")} className="btn btn-ghost btn-sm">Effacer</button> : undefined}
+                  className="px-3 py-7"
+                />
               </li>
             ) : null}
           </ul>
 
           <button
             type="button"
-            onClick={() => {
-              void removeSelectedAssignments();
-            }}
-            disabled={loading || !groupId || selectedAssignedMemberIds.length === 0}
+            onClick={() => setPendingRemoval("bulk")}
+            disabled={bulkAction !== null || !groupId || selectedAssignedMemberIds.length === 0}
             className="btn btn-danger mt-3 w-full"
           >
-            {loading ? "Suppression..." : `Supprimer la sélection (${selectedAssignedMemberIds.length})`}
+            <UserMinus className="size-4" />
+            {bulkAction === "remove" ? "Retrait…" : `Retirer du groupe (${selectedAssignedMemberIds.length})`}
           </button>
         </section>
       </div>
+
+      <ConfirmDialog
+        open={pendingRemoval === "bulk"}
+        title={`Retirer ${selectedAssignedMemberIds.length} membre${selectedAssignedMemberIds.length > 1 ? "s" : ""} du groupe ?`}
+        description={`Les affectations sélectionnées seront supprimées du groupe « ${selectedGroup?.name ?? ""} ». Les dossiers membres seront conservés.`}
+        confirmLabel="Retirer la sélection"
+        loading={bulkAction === "remove"}
+        onCancel={() => setPendingRemoval(null)}
+        onConfirm={removeSelectedAssignments}
+      />
+      <ConfirmDialog
+        open={pendingRemoval !== null && pendingRemoval !== "bulk"}
+        title="Retirer ce membre du groupe ?"
+        description={`${pendingRemoval && pendingRemoval !== "bulk" ? pendingRemoval.memberName : ""} ne sera plus affecté au groupe « ${selectedGroup?.name ?? ""} ». Son dossier sera conservé.`}
+        confirmLabel="Retirer du groupe"
+        loading={pendingRemoval !== null && pendingRemoval !== "bulk" && actionLoadingId === pendingRemoval.id}
+        onCancel={() => setPendingRemoval(null)}
+        onConfirm={() => pendingRemoval && pendingRemoval !== "bulk" ? removeAssignment(pendingRemoval) : undefined}
+      />
     </section>
   );
 }

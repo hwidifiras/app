@@ -1,6 +1,15 @@
-import "dotenv/config";
+import { existsSync, readFileSync } from "node:fs";
+import { config } from "dotenv";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+
+config();
+if (!process.env.DATABASE_URL && existsSync(".env.development")) {
+  config({ path: ".env.development" });
+}
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = "file:./prisma/dev.db";
+}
 
 const prisma = new PrismaClient();
 

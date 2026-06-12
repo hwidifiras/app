@@ -3,6 +3,8 @@
 import { FormEvent, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { FormActions } from "@/components/ui/form-layout";
 
 type DayOfWeekValue =
   | "MONDAY"
@@ -70,6 +72,8 @@ export function GroupSchedulesManager({
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [expandedScheduleIds, setExpandedScheduleIds] = useState<string[]>([]);
+  const [pendingDeleteSchedule, setPendingDeleteSchedule] = useState<ScheduleRow | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   function toggleExpand(scheduleId: string) {
     setExpandedScheduleIds((current) =>
@@ -139,9 +143,8 @@ export function GroupSchedulesManager({
   }
 
   async function onDeleteSchedule(scheduleId: string) {
-    const confirmed = window.confirm("Confirmer la suppression de ce créneau ?");
-    if (!confirmed) return;
-
+    setDeletingId(scheduleId);
+    setMessage(null);
     const response = await fetch(`/api/groups/${groupId}/schedules`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -151,11 +154,14 @@ export function GroupSchedulesManager({
     if (!response.ok) {
       const result = await response.json();
       setMessage(result.error ?? "Erreur lors de la suppression");
+      setDeletingId(null);
       return;
     }
 
     setSchedules((current) => current.filter((s) => s.id !== scheduleId));
+    setPendingDeleteSchedule(null);
     setMessage("Créneau supprimé");
+    setDeletingId(null);
   }
 
   return (
@@ -205,7 +211,8 @@ export function GroupSchedulesManager({
                       <div className="card-actions-stack">
                         <button
                           type="button"
-                          onClick={() => { void onDeleteSchedule(row.id); }}
+                          onClick={() => setPendingDeleteSchedule(row)}
+                          disabled={deletingId !== null}
                           className="btn btn-danger md:min-h-0 md:px-2 md:py-1 md:text-xs"
                         >
                           Supprimer
@@ -310,15 +317,29 @@ export function GroupSchedulesManager({
             </div>
           </div>
 
-          <div className="form-actions">
+          <FormActions sticky>
             <button type="submit" disabled={loading} className="btn btn-primary btn-block-mobile">
-              {loading ? "Enregistrement..." : "Enregistrer et générer les séances"}
+              {loading ? "Enregistrement…" : "Enregistrer et générer les séances"}
             </button>
-          </div>
+          </FormActions>
         </form>
 
         <FeedbackMessage message={message} className="mt-3" />
       </div>
+
+      <ConfirmDialog
+        open={pendingDeleteSchedule !== null}
+        title="Supprimer ce créneau ?"
+        description={
+          pendingDeleteSchedule
+            ? `${dayLabels[pendingDeleteSchedule.dayOfWeek as DayOfWeekValue] ?? pendingDeleteSchedule.dayOfWeek} à ${pendingDeleteSchedule.startTime}. Les séances déjà générées ne seront pas automatiquement recréées.`
+            : ""
+        }
+        confirmLabel="Supprimer le créneau"
+        loading={deletingId === pendingDeleteSchedule?.id}
+        onCancel={() => setPendingDeleteSchedule(null)}
+        onConfirm={() => pendingDeleteSchedule ? onDeleteSchedule(pendingDeleteSchedule.id) : undefined}
+      />
     </div>
   );
 }

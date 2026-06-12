@@ -183,7 +183,7 @@ export default async function PaymentsPage() {
         }
       />
 
-      <section className="panel p-5">
+      <section className="panel p-3 sm:p-5">
         <PaymentsTable groups={paymentGroups} />
       </section>
     </main>

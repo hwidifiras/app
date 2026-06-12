@@ -1,4 +1,5 @@
 import { THEME_STORAGE_KEY } from "@/lib/theme";
+import { DISPLAY_MODE_STORAGE_KEY } from "@/lib/display-mode";
 
 /** Inline script for root layout <head> — avoids React 19 client <script> warning. */
 export const THEME_INIT_SCRIPT = `
@@ -13,6 +14,8 @@ export const THEME_INIT_SCRIPT = `
     if (dark) root.classList.add("dark");
     else root.classList.remove("dark");
     root.style.colorScheme = dark ? "dark" : "light";
+    var displayMode = localStorage.getItem(${JSON.stringify(DISPLAY_MODE_STORAGE_KEY)});
+    root.dataset.displayMode = displayMode === "compact" ? "compact" : "wide";
   } catch (e) {}
 })();
 `.trim();

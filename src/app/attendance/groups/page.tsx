@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { CalendarSearch, ChevronRight, RotateCcw } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
+import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 
@@ -146,25 +147,53 @@ export default async function AttendanceByGroupPage({
         description="Rapport par séance : pointages, effectif du cours et détail par élève."
       />
 
-      <section className="panel p-5">
-        <form className="page-actions mb-4 grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
-          <select name="groupId" defaultValue={groupId ?? ""} className="field text-sm">
-            <option value="">Tous les groupes</option>
-            {groups.map((group) => (
-              <option key={group.id} value={group.id}>
-                {group.name}
-              </option>
-            ))}
-          </select>
-          <input name="from" type="date" defaultValue={formatDateInput(fromDate)} className="field text-sm" />
-          <input name="to" type="date" defaultValue={formatDateInput(toDate)} className="field text-sm" />
-          <button type="submit" className="btn btn-primary btn-block-mobile min-h-11 sm:w-auto">
-            Filtrer
-          </button>
+      <section className="panel p-3 sm:p-5">
+        <form className="sticky top-[57px] z-20 -mx-2 mb-4 grid gap-3 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur sm:grid-cols-2 lg:top-[3.5rem] lg:grid-cols-[minmax(14rem,1fr)_minmax(10rem,0.55fr)_minmax(10rem,0.55fr)_auto]">
+          <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
+            Groupe
+            <select name="groupId" defaultValue={groupId ?? ""} className="field text-sm">
+              <option value="">Tous les groupes</option>
+              {groups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
+            Du
+            <input name="from" type="date" defaultValue={formatDateInput(fromDate)} className="field text-sm" />
+          </label>
+          <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
+            Au
+            <input name="to" type="date" defaultValue={formatDateInput(toDate)} className="field text-sm" />
+          </label>
+          <div className="grid grid-cols-2 gap-2 self-end sm:col-span-2 lg:col-span-1">
+            <Link
+              href="/attendance/groups"
+              className="btn btn-ghost min-h-11"
+              title="Réinitialiser les filtres"
+            >
+              <RotateCcw className="size-4" />
+              <span className="lg:sr-only">Réinitialiser</span>
+            </Link>
+            <button type="submit" className="btn btn-primary min-h-11">
+              Filtrer
+            </button>
+          </div>
         </form>
 
         {grouped.size === 0 ? (
-          <p className="text-sm text-[var(--muted-foreground)]">Aucune séance sur cette période.</p>
+          <EmptyState
+            icon={<CalendarSearch className="size-8 opacity-45" />}
+            title="Aucune séance trouvée"
+            message="Élargissez la période ou choisissez un autre groupe."
+            action={
+              <Link href="/attendance/groups" className="btn btn-ghost">
+                Réinitialiser les filtres
+              </Link>
+            }
+          />
         ) : (
           <div className="space-y-4">
             {Array.from(grouped.values()).map((group) => (

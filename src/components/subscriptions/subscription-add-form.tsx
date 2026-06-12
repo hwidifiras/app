@@ -50,17 +50,9 @@ export function SubscriptionAddForm({ membersOptions, plansOptions }: Subscripti
   const paymentTooHigh = selectedPlan ? paymentNum > selectedPlan.price : false;
 
   useEffect(() => {
-    if (!memberId) {
-      setPreview(null);
-      setPreviewError(null);
-      setPreviewLoading(false);
-      setCarryOverRemainingSessions(false);
-      return;
-    }
+    if (!memberId) return;
 
     const controller = new AbortController();
-    setPreviewLoading(true);
-    setPreviewError(null);
 
     fetch(`/api/member-subscriptions?memberId=${memberId}`, { signal: controller.signal })
       .then(async (response) => {
@@ -83,9 +75,13 @@ export function SubscriptionAddForm({ membersOptions, plansOptions }: Subscripti
         const active = rows.find((row) => row.status === "ACTIVE") ?? rows[0];
         if (!active) {
           setPreview(null);
+          setCarryOverRemainingSessions(false);
           return;
         }
 
+        if (active.status !== "ACTIVE" || active.remainingSessions <= 0) {
+          setCarryOverRemainingSessions(false);
+        }
         setPreview({
           id: active.id,
           status: active.status,
@@ -110,9 +106,13 @@ export function SubscriptionAddForm({ membersOptions, plansOptions }: Subscripti
     return () => controller.abort();
   }, [memberId]);
 
-  useEffect(() => {
-    if (!canCarryOver) setCarryOverRemainingSessions(false);
-  }, [canCarryOver]);
+  function handleMemberChange(nextMemberId: string) {
+    setMemberId(nextMemberId);
+    setPreview(null);
+    setPreviewError(null);
+    setPreviewLoading(Boolean(nextMemberId));
+    setCarryOverRemainingSessions(false);
+  }
 
   function handlePlanChange(nextPlanId: string) {
     setPlanId(nextPlanId);
@@ -167,9 +167,8 @@ export function SubscriptionAddForm({ membersOptions, plansOptions }: Subscripti
       return;
     }
 
-    setMessage("Renouvellement enregistré avec succès");
-    setLoading(false);
-    setTimeout(() => router.push("/subscriptions"), 800);
+    router.push("/subscriptions");
+    router.refresh();
   }
 
   return (
@@ -181,7 +180,7 @@ export function SubscriptionAddForm({ membersOptions, plansOptions }: Subscripti
 
       <div>
         <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Membre *</label>
-        <select value={memberId} onChange={(e) => setMemberId(e.target.value)} className="field" required>
+        <select value={memberId} onChange={(e) => handleMemberChange(e.target.value)} className="field" required>
           <option value="">Sélectionner un membre</option>
           {membersOptions.map((m) => (
             <option key={m.id} value={m.id}>

@@ -6,6 +6,7 @@
     "predev": "npm run prisma:migrate:dev",
     "dev": "next dev",
     "dev:setup": "node scripts/dev-setup.mjs",
+    "dev:reset": "node scripts/dev-reset.mjs",
     "build": "next build",
     "start": "next start",
     "docker:dev:up": "node scripts/docker-compose.mjs -f docker-compose.dev.yml up -d --build",
@@ -24,6 +25,7 @@
     "offers:backfill": "npx tsx scripts/backfill-offer-rules.ts",
     "offers:backfill:dev": "node scripts/with-dev-env.mjs scripts/run-offers-backfill.mjs",
     "prisma:generate": "prisma generate",
+    "prisma:generate:dev": "node scripts/with-dev-env.mjs scripts/run-prisma-generate.mjs",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:dev": "node scripts/with-dev-env.mjs scripts/run-prisma-migrate.mjs",
     "prisma:repair:dev": "node scripts/with-dev-env.mjs scripts/repair-club-settings-columns.mjs",
@@ -32,7 +34,7 @@
     "lighthouse": "node scripts/lighthouse-audit.mjs",
     "perf:check": "node scripts/perf-check.mjs",
     "perf:check:local": "node scripts/perf-check.mjs --with-server",
-    "postinstall": "prisma generate"
+    "postinstall": "node scripts/with-dev-env.mjs scripts/run-prisma-generate.mjs"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

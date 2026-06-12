@@ -35,7 +35,13 @@ export default async function AttendanceTodayPage() {
       }>;
     };
     coach: { firstName: string; lastName: string } | null;
-    attendances: Array<{ id: string; memberId: string; status: string; overrideReason?: string | null }>;
+    attendances: Array<{
+      id: string;
+      memberId: string;
+      status: string;
+      overrideReason?: string | null;
+      checkedAt: string;
+    }>;
   }>;
   let activeSubscriptionMemberIds: string[] = [];
   let partialPaymentMemberIds: string[] = [];
@@ -61,7 +67,10 @@ export default async function AttendanceTodayPage() {
           },
         },
         coach: { select: { firstName: true, lastName: true } },
-        attendances: { select: { id: true, memberId: true, status: true, overrideReason: true } },
+        attendances: {
+          select: { id: true, memberId: true, status: true, overrideReason: true, checkedAt: true },
+          orderBy: { checkedAt: "asc" },
+        },
       },
       orderBy: { startTime: "asc" },
     });
@@ -71,6 +80,10 @@ export default async function AttendanceTodayPage() {
       sessionDate: s.sessionDate.toISOString(),
       postponedTo: s.postponedTo ? s.postponedTo.toISOString() : null,
       postponementDetails: s.postponementDetails ?? null,
+      attendances: s.attendances.map((attendance) => ({
+        ...attendance,
+        checkedAt: attendance.checkedAt.toISOString(),
+      })),
     }));
 
     // Collect all member IDs from sessions to check subscriptions

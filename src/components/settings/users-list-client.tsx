@@ -33,7 +33,6 @@ export function UsersListClient({
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editActive, setEditActive] = useState(true);
-  const [devResetUrl, setDevResetUrl] = useState<string | null>(null);
 
   function startEdit(user: UserRow) {
     setEditingId(user.id);
@@ -41,13 +40,11 @@ export function UsersListClient({
     setEditEmail(user.email);
     setEditActive(user.isActive);
     setMessage(null);
-    setDevResetUrl(null);
   }
 
   async function saveEdit(userId: string) {
     setLoadingId(userId);
     setMessage(null);
-    setDevResetUrl(null);
 
     const res = await fetch(`/api/users/${userId}`, {
       method: "PATCH",
@@ -70,7 +67,6 @@ export function UsersListClient({
   async function sendReset(userId: string) {
     setLoadingId(userId);
     setMessage(null);
-    setDevResetUrl(null);
 
     const res = await fetch(`/api/users/${userId}/send-reset`, { method: "POST" });
     const json = await res.json();
@@ -81,18 +77,10 @@ export function UsersListClient({
       return;
     }
 
-    if (json.data?.resetUrl) {
-      setDevResetUrl(json.data.resetUrl);
-    }
-
     setMessage(
       json.data?.emailConfigured
         ? "Lien de réinitialisation envoyé par email"
-        : json.data?.emailError === "EMAIL_SEND_FAILED"
-          ? "Resend a refusé l'envoi — vérifiez les logs serveur (docker compose logs dojo-app)"
-          : json.data?.emailError === "EMAIL_NOT_CONFIGURED"
-            ? "Email non configuré — vérifiez RESEND_API_KEY et PASSWORD_RESET_FROM sur le serveur"
-            : "Email non configuré — utilisez le lien de test ci-dessous (dev)",
+        : "Le lien n'a pas pu être envoyé. Vérifiez la configuration des emails ou contactez l'administrateur.",
     );
   }
 
@@ -106,15 +94,6 @@ export function UsersListClient({
         message={message}
         variant={message?.includes("envoyé") || message?.includes("mis à jour") ? "success" : undefined}
       />
-
-      {devResetUrl && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-          Lien de test :{" "}
-          <a href={devResetUrl} className="font-medium underline underline-offset-4">
-            réinitialiser le mot de passe
-          </a>
-        </div>
-      )}
 
       {users.map((u) => {
         const isEditing = editingId === u.id;

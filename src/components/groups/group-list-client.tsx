@@ -1,16 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Clock, Pencil, Trash2 } from "lucide-react";
+import { Clock, Pencil, RotateCcw, Trash2, UsersRound } from "lucide-react";
 import { formatGroupRoomLabel } from "@/lib/group-room";
 import { GroupDto } from "@/types/group";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  FilterField,
+  ListSearch,
+  MobileFilterSheet,
+  MobileFiltersButton,
+} from "@/components/ui/list-controls";
 import {
   DataTable,
   DataTableBody,
-  DataTableEmpty,
   DataTableHead,
   DataTableRow,
   MobileRowToggle,
@@ -22,9 +29,12 @@ import {
 export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }) {
   const [groups, setGroups] = useState<GroupDto[]>(initialGroups);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [expandedGroupIds, setExpandedGroupIds] = useState<string[]>([]);
   const [message, setMessage] = useState<string | null>(null);
+  const [pendingDeleteGroup, setPendingDeleteGroup] = useState<GroupDto | null>(null);
 
   function toggleExpand(groupId: string) {
     setExpandedGroupIds((current) =>
@@ -32,23 +42,23 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
     );
   }
 
-  const filteredGroups = groups.filter((group) => {
-    const query = searchTerm.trim().toLowerCase();
-    if (!query) return true;
-    return (
-      group.name.toLowerCase().includes(query) ||
-      group.sportName.toLowerCase().includes(query) ||
-      group.coachName.toLowerCase().includes(query) ||
-      (group.room ?? "").toLowerCase().includes(query)
-    );
-  });
+  const filteredGroups = useMemo(() => groups.filter((group) => {
+    const query = searchTerm.trim().toLocaleLowerCase("fr");
+    const matchesSearch =
+      !query ||
+      group.name.toLocaleLowerCase("fr").includes(query) ||
+      group.sportName.toLocaleLowerCase("fr").includes(query) ||
+      group.coachName.toLocaleLowerCase("fr").includes(query) ||
+      (group.room ?? "").toLocaleLowerCase("fr").includes(query);
+    const matchesStatus =
+      statusFilter === "ALL" ||
+      (statusFilter === "ACTIVE" ? group.isActive : !group.isActive);
+    return matchesSearch && matchesStatus;
+  }), [groups, searchTerm, statusFilter]);
+
+  const activeFilterCount = statusFilter === "ALL" ? 0 : 1;
 
   async function deleteGroup(groupId: string) {
-    const confirmed = window.confirm(
-      "Confirmer la suppression de ce groupe ? Les seances planifiees seront egalement supprimees.",
-    );
-    if (!confirmed) return;
-
     setActionLoadingId(groupId);
     setMessage(null);
 
@@ -67,6 +77,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
     }
 
     setGroups((current) => current.filter((g) => g.id !== groupId));
+    setPendingDeleteGroup(null);
     setMessage("Groupe supprimé avec succès");
     setActionLoadingId(null);
   }
@@ -91,25 +102,61 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
 
   return (
     <div>
-      <div className="mb-4 grid gap-3 sm:flex sm:flex-wrap sm:items-end">
-        <div className="sm:min-w-48 sm:flex-1">
+      <div className="sticky top-[57px] z-20 -mx-2 mb-4 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[3.5rem]">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end">
+        <div className="min-w-0 flex-1">
           <label className="mb-1 block text-xs font-medium text-muted-foreground">Recherche</label>
-          <input
+          <ListSearch
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={setSearchTerm}
             placeholder="Nom, sport, coach, salle..."
-            className="field w-full text-xs"
           />
         </div>
-        <div className="sm:ml-auto">
-          <Link href="/groups/new" className="btn btn-primary btn-block-mobile inline-flex justify-center">
+        <MobileFiltersButton onClick={() => setFiltersOpen(true)} count={activeFilterCount} />
+        <div className="hidden min-w-44 md:block">
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Statut</label>
+          <div className="flex gap-2">
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)} className="field text-xs">
+              <option value="ALL">Tous les statuts</option>
+              <option value="ACTIVE">Actifs</option>
+              <option value="INACTIVE">Inactifs</option>
+            </select>
+            {activeFilterCount > 0 ? (
+              <button type="button" onClick={() => setStatusFilter("ALL")} className="btn btn-ghost px-3" title="Réinitialiser">
+                <RotateCcw className="size-4" />
+              </button>
+            ) : null}
+          </div>
+        </div>
+        <div>
+          <Link href="/groups/new" className="btn btn-primary btn-block-mobile">
             + Créer un groupe
           </Link>
         </div>
+        </div>
+        <p className="mt-2 text-xs text-[var(--muted-foreground)]">
+          {filteredGroups.length} groupe{filteredGroups.length > 1 ? "s" : ""} affiché{filteredGroups.length > 1 ? "s" : ""}
+        </p>
       </div>
 
       <FeedbackMessage message={message} className="mb-3" />
 
+      {filteredGroups.length === 0 ? (
+        <EmptyState
+          icon={<UsersRound className="size-8 opacity-45" />}
+          title={groups.length === 0 ? "Aucun groupe" : "Aucun résultat"}
+          message={groups.length === 0 ? "Créez le premier groupe et ses créneaux." : "Modifiez la recherche ou le filtre de statut."}
+          action={
+            groups.length === 0 ? (
+              <Link href="/groups/new" className="btn btn-primary">Créer un groupe</Link>
+            ) : (
+              <button type="button" onClick={() => { setSearchTerm(""); setStatusFilter("ALL"); }} className="btn btn-ghost">
+                Réinitialiser
+              </button>
+            )
+          }
+        />
+      ) : (
       <DataTable>
         <DataTableHead>
           <tr>
@@ -167,9 +214,9 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
                     </Link>
                     <button
                       type="button"
-                      onClick={() => deleteGroup(group.id)}
+                      onClick={() => setPendingDeleteGroup(group)}
                       disabled={actionLoadingId === group.id}
-                      className="btn btn-danger btn-sm inline-flex size-9 items-center justify-center p-0"
+                      className="btn btn-ghost btn-sm inline-flex size-9 items-center justify-center border-[var(--danger)]/30 p-0 text-[var(--danger)]"
                       title="Supprimer"
                       aria-label="Supprimer"
                     >
@@ -181,9 +228,36 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
               </DataTableRow>
             );
           })}
-          {filteredGroups.length === 0 ? <DataTableEmpty colSpan={7} message="Aucun groupe trouvé." /> : null}
         </DataTableBody>
       </DataTable>
+      )}
+
+      <MobileFilterSheet
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        onReset={() => setStatusFilter("ALL")}
+        activeCount={activeFilterCount}
+        resultCount={filteredGroups.length}
+        title="Filtrer les groupes"
+      >
+        <FilterField label="Statut">
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)} className="field">
+            <option value="ALL">Tous les statuts</option>
+            <option value="ACTIVE">Actifs</option>
+            <option value="INACTIVE">Inactifs</option>
+          </select>
+        </FilterField>
+      </MobileFilterSheet>
+
+      <ConfirmDialog
+        open={pendingDeleteGroup !== null}
+        title="Supprimer ce groupe ?"
+        description={`Le groupe « ${pendingDeleteGroup?.name ?? ""} » et ses séances planifiées seront supprimés.`}
+        confirmLabel="Supprimer le groupe"
+        loading={actionLoadingId === pendingDeleteGroup?.id}
+        onCancel={() => setPendingDeleteGroup(null)}
+        onConfirm={() => pendingDeleteGroup ? deleteGroup(pendingDeleteGroup.id) : undefined}
+      />
     </div>
   );
 }

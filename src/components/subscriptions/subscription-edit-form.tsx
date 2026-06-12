@@ -94,9 +94,8 @@ export function SubscriptionEditForm({ subscription, plansOptions }: Subscriptio
       return;
     }
 
-    setMessage(status === "CANCELLED" ? "Abonnement résilié avec succès" : "Abonnement modifié avec succès");
-    setLoading(false);
-    setTimeout(() => router.push("/subscriptions"), 700);
+    router.push("/subscriptions");
+    router.refresh();
   }
 
   return (

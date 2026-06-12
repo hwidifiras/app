@@ -35,6 +35,12 @@ execSync("node scripts/run-prisma-migrate.mjs", {
   env: { ...process.env, DATABASE_URL: databaseUrl },
 });
 
+execSync("node scripts/run-prisma-generate.mjs", {
+  cwd: root,
+  stdio: "inherit",
+  env: { ...process.env, DATABASE_URL: databaseUrl },
+});
+
 console.log("\nDev fork ready.");
 console.log("  Local hot reload:  npm run dev");
 console.log("  Create admin:      npm run admin:create");

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 
 type MemberDangerActionsProps = {
@@ -15,13 +16,9 @@ export function MemberDangerActions({ memberId, memberName, status }: MemberDang
   const router = useRouter();
   const [loading, setLoading] = useState<"archive" | "delete" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<"archive" | "delete" | null>(null);
 
   async function archiveMember() {
-    const confirmed = window.confirm(
-      `Confirmer la résiliation de ${memberName} ? Le dossier sera archivé (historique conservé).`,
-    );
-    if (!confirmed) return;
-
     setLoading("archive");
     setMessage(null);
 
@@ -39,17 +36,13 @@ export function MemberDangerActions({ memberId, memberName, status }: MemberDang
       return;
     }
 
+    setPendingAction(null);
     setMessage("Membre résilié avec succès");
     setLoading(null);
     router.refresh();
   }
 
   async function deleteMember() {
-    const confirmed = window.confirm(
-      `Supprimer définitivement ${memberName} ? Cette action est irréversible (abonnements, présences, paiements liés).`,
-    );
-    if (!confirmed) return;
-
     setLoading("delete");
     setMessage(null);
 
@@ -69,7 +62,7 @@ export function MemberDangerActions({ memberId, memberName, status }: MemberDang
   const busy = loading !== null;
 
   return (
-    <section className="panel border border-[var(--danger)]/25 p-5 md:col-span-3">
+    <section className="panel h-full min-w-0 border border-[var(--danger)]/25 p-4 sm:p-5">
       <h2 className="text-lg font-semibold text-[var(--foreground)]">Gestion du dossier</h2>
       <p className="mt-1 max-w-2xl text-sm text-[var(--muted-foreground)]">
         La résiliation archive le membre sans effacer l&apos;historique. La suppression définitive retire toutes les
@@ -81,7 +74,7 @@ export function MemberDangerActions({ memberId, memberName, status }: MemberDang
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         <button
           type="button"
-          onClick={archiveMember}
+          onClick={() => setPendingAction("archive")}
           disabled={busy || status === "ARCHIVED"}
           className="btn btn-danger btn-block-mobile min-h-11 sm:w-auto"
         >
@@ -89,13 +82,32 @@ export function MemberDangerActions({ memberId, memberName, status }: MemberDang
         </button>
         <button
           type="button"
-          onClick={deleteMember}
+          onClick={() => setPendingAction("delete")}
           disabled={busy}
           className="btn btn-ghost btn-block-mobile min-h-11 border border-[var(--danger)]/40 text-[var(--danger)] hover:bg-[var(--danger)]/10 sm:w-auto"
         >
           {loading === "delete" ? "Suppression…" : "Supprimer définitivement"}
         </button>
       </div>
+
+      <ConfirmDialog
+        open={pendingAction === "archive"}
+        title="Résilier ce membre ?"
+        description={`${memberName} sera archivé. Son historique, ses abonnements et ses paiements resteront consultables.`}
+        confirmLabel="Résilier"
+        loading={loading === "archive"}
+        onCancel={() => setPendingAction(null)}
+        onConfirm={archiveMember}
+      />
+      <ConfirmDialog
+        open={pendingAction === "delete"}
+        title="Supprimer définitivement ce membre ?"
+        description={`${memberName} et toutes les données associées seront supprimés. Cette action est irréversible.`}
+        confirmLabel="Supprimer définitivement"
+        loading={loading === "delete"}
+        onCancel={() => setPendingAction(null)}
+        onConfirm={deleteMember}
+      />
     </section>
   );
 }

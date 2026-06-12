@@ -66,20 +66,16 @@ export function PostponeForm({ sessionId, initialDateTime }: PostponeFormProps) 
       return;
     }
 
-    setMessage("Séance reportée avec succès");
-    setLoading(false);
-
     const targetWeek = result.data?.sessionDate
       ? weekStartIsoForDate(new Date(result.data.sessionDate))
       : null;
 
-    setTimeout(() => {
-      if (targetWeek) {
-        router.push(`/sessions?week=${targetWeek}`);
-      } else {
-        router.push("/attendance/today");
-      }
-    }, 600);
+    if (targetWeek) {
+      router.push(`/sessions?week=${targetWeek}`);
+    } else {
+      router.push("/attendance/today");
+    }
+    router.refresh();
   }
 
   return (
