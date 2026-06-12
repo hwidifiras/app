@@ -160,7 +160,7 @@ export function CheckInDrawer({
     >
       <div
         ref={sheetRef}
-        className="drawer-sheet drawer-sheet-adaptive flex w-full max-w-lg flex-col rounded-t-2xl bg-[var(--surface)] shadow-xl md:h-full md:max-h-none md:rounded-none"
+        className="drawer-sheet drawer-sheet-adaptive flex w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-[var(--surface)] shadow-xl md:h-full md:max-h-none md:rounded-none"
         role="dialog"
         aria-modal="true"
         aria-labelledby="check-in-drawer-title"
@@ -255,7 +255,7 @@ export function CheckInDrawer({
           </p>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))]">
           <div className="divide-y divide-[var(--border)]">
             {session.group.members.map((gm) => {
               const att = getAtt(gm.memberId);

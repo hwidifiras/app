@@ -987,14 +987,16 @@ a {
   }
 }
 
-/* Pointage drawer: grow with content, cap on tall lists */
+/* Pointage drawer: fixed height so the member list can scroll inside */
 .drawer-sheet-adaptive {
-  height: auto;
+  height: min(calc(92dvh - env(safe-area-inset-top, 0px)), 100%);
   max-height: min(calc(92dvh - env(safe-area-inset-top, 0px)), 100%);
+  overflow: hidden;
 }
 
 @supports not (height: 100dvh) {
   .drawer-sheet-adaptive {
+    height: min(92vh, 100%);
     max-height: min(92vh, 100%);
   }
 }
