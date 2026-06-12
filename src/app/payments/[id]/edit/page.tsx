@@ -51,7 +51,7 @@ export default async function EditPaymentPage({ params }: { params: Promise<{ id
         description="Modifier le montant, la date, la méthode ou les notes d’un versement existant."
       />
 
-      <section className="panel panel-soft p-6">
+      <section className="panel p-4 sm:p-6">
         <PaymentEditForm
           payment={{
             ...payment,

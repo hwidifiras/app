@@ -53,6 +53,8 @@ export default async function NewPaymentPage({
     subscriptions.find((s) => s.amount > s.totalPaid)?.id ??
     subscriptions[0]?.id;
 
+  const payableSubscriptions = subscriptions.filter((subscription) => subscription.amount > subscription.totalPaid);
+
   if (hasError) {
     return (
       <main className="app-shell py-6">
@@ -60,7 +62,7 @@ export default async function NewPaymentPage({
           <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted-foreground)]">Mode dégradé</p>
           <h1 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">Création de paiement indisponible</h1>
           <p className="mt-3 text-sm text-[var(--muted-foreground)]">
-            Données inaccessibles. Lancez `npm run prisma:generate` puis redémarrez le serveur.
+            Les abonnements ne sont pas accessibles pour le moment. Réessayez dans quelques instants.
           </p>
           <div className="mt-4">
             <Link href="/payments" className="btn btn-ghost">Retour aux paiements</Link>
@@ -81,12 +83,19 @@ export default async function NewPaymentPage({
 
       <PageHeader
         overline="Abonnements & Finance"
-        title="Nouveau paiement"
-        description="Enregistrer un paiement pour un abonnement actif. Le montant ne peut pas dépasser le solde restant dû."
+        title="Encaisser un paiement"
+        description="Choisissez le membre et l'abonnement concerné, puis confirmez le montant reçu."
       />
 
-      <section className="panel panel-soft p-6">
-        <PaymentAddForm subscriptions={subscriptions} defaultSubscriptionId={defaultSubscriptionId} />
+      <section className="panel p-3.5 sm:p-5">
+        <PaymentAddForm
+          subscriptions={payableSubscriptions}
+          defaultSubscriptionId={
+            payableSubscriptions.some((subscription) => subscription.id === defaultSubscriptionId)
+              ? defaultSubscriptionId
+              : payableSubscriptions[0]?.id
+          }
+        />
       </section>
     </main>
   );

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Trash2 } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { FieldControl } from "@/components/ui/field-control";
 import { FormActions } from "@/components/ui/form-layout";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
@@ -140,7 +141,7 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
         <label htmlFor="amount" className="text-sm font-semibold text-[var(--foreground)]">
           Montant (€) <span className="text-[var(--danger)]">*</span>
         </label>
-        <div className="relative">
+        <FieldControl suffix="€">
           <input
             id="amount"
             type="number"
@@ -152,8 +153,7 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
             className={`field pr-10 ${wouldExceed ? "border-[var(--danger)] ring-1 ring-[var(--danger)]" : ""}`}
             placeholder="Ex: 49.90"
           />
-          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[var(--muted-foreground)]">€</span>
-        </div>
+        </FieldControl>
         {wouldExceed && (
           <p className="text-xs text-[var(--danger)] font-medium">Dépassement du solde restant dû !</p>
         )}

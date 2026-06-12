@@ -3,13 +3,24 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, CreditCard, Wallet, Banknote, CheckCircle2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Banknote,
+  Check,
+  CheckCircle2,
+  CreditCard,
+  ReceiptText,
+  UserRound,
+  Wallet,
+} from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { FieldControl } from "@/components/ui/field-control";
 import { FormActions, FormField, FormGrid, FormSection } from "@/components/ui/form-layout";
-import { ReceptionInfoCard, SubscriptionBillingSummary } from "@/components/ui/reception-info-card";
+import { SubscriptionBillingSummary } from "@/components/ui/reception-info-card";
 import { UndoButton } from "@/components/ui/undo-button";
 import { useActionHistory } from "@/hooks/use-action-history";
+import { cn } from "@/lib/utils";
 
 const METHODS = [
   { value: "CASH", label: "Espèces", icon: <Banknote className="size-4" /> },
@@ -24,6 +35,7 @@ function formatCurrency(cents: number) {
 
 type SubscriptionRow = {
   id: string;
+  memberId: string;
   memberName: string;
   planName: string;
   amount: number;
@@ -39,7 +51,10 @@ export function PaymentAddForm({
 }) {
   const router = useRouter();
   const [subscriptions, setSubscriptions] = useState(initialSubscriptions);
-  const [subscriptionId, setSubscriptionId] = useState(defaultSubscriptionId ?? "");
+  const initialSubscriptionId = defaultSubscriptionId ?? initialSubscriptions[0]?.id ?? "";
+  const [subscriptionId, setSubscriptionId] = useState(initialSubscriptionId);
+  const defaultSubscription = initialSubscriptions.find((row) => row.id === initialSubscriptionId);
+  const [memberId, setMemberId] = useState(defaultSubscription?.memberId ?? initialSubscriptions[0]?.memberId ?? "");
   const [amount, setAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [method, setMethod] = useState("CASH");
@@ -52,6 +67,20 @@ export function PaymentAddForm({
   const remaining = selected ? selected.amount - selected.totalPaid : 0;
   const amountNum = Math.round(parseFloat(amount.replace(",", ".")) * 100) || 0;
   const wouldExceed = selected && amountNum > remaining;
+  const balanceAfter = Math.max(0, remaining - amountNum);
+  const members = useMemo(
+    () =>
+      Array.from(
+        new Map(
+          subscriptions.map((subscription) => [
+            subscription.memberId,
+            { id: subscription.memberId, name: subscription.memberName },
+          ]),
+        ).values(),
+      ).sort((a, b) => a.name.localeCompare(b.name, "fr")),
+    [subscriptions],
+  );
+  const memberSubscriptions = subscriptions.filter((subscription) => subscription.memberId === memberId);
 
   const successMessage = useMemo(
     () => (message?.startsWith("Paiement enregistré") ? message : null),
@@ -138,17 +167,38 @@ export function PaymentAddForm({
     setMessage("Paiement enregistré avec succès.");
   }
 
+  function selectMember(nextMemberId: string) {
+    setMemberId(nextMemberId);
+    const firstSubscription = subscriptions.find((subscription) => subscription.memberId === nextMemberId);
+    setSubscriptionId(firstSubscription?.id ?? "");
+    setAmount("");
+    setMessage(null);
+  }
+
+  function selectSubscription(nextSubscriptionId: string) {
+    setSubscriptionId(nextSubscriptionId);
+    setAmount("");
+    setMessage(null);
+  }
+
+  function fillRemainingBalance() {
+    if (remaining <= 0) return;
+    setAmount((remaining / 100).toFixed(2));
+    setMessage(null);
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit}>
       {message && (
         <FeedbackMessage
           message={message}
+          className="mb-4"
           variant={successMessage ? "success" : message.startsWith("Dernier paiement annulé") ? "success" : undefined}
         />
       )}
 
       {successMessage && canUndo ? (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
           <UndoButton
             onClick={() => undoLast()}
             disabled={undoLoading || loading}
@@ -161,109 +211,227 @@ export function PaymentAddForm({
         </div>
       ) : null}
 
-      <ReceptionInfoCard title="Rappel" variant="info">
-        Encaisser règle le solde dû. Cela ne crée pas de séances supplémentaires.
-      </ReceptionInfoCard>
+      {subscriptions.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-5 py-10 text-center">
+          <CheckCircle2 className="mx-auto size-9 text-[var(--success)]" />
+          <h2 className="mt-3 text-base font-semibold">Aucun solde à encaisser</h2>
+          <p className="mx-auto mt-1 max-w-md text-sm text-[var(--muted-foreground)]">
+            Aucun abonnement actif ne présente de montant restant dû.
+          </p>
+          <Link href="/subscriptions" className="btn btn-secondary mt-4">
+            Voir les abonnements
+          </Link>
+        </div>
+      ) : (
+        <div className="grid min-w-0 items-start gap-4 lg:grid-cols-12">
+          <div className="space-y-4 lg:col-span-8">
+            <FormSection
+              title="1. Membre et abonnement"
+              description="Identifiez d'abord le dossier concerné, puis la formule à régler."
+            >
+              <FormGrid>
+                <FormField label="Membre *" htmlFor="member">
+                  <FieldControl icon={<UserRound className="size-4" />}>
+                    <select
+                      id="member"
+                      value={memberId}
+                      onChange={(event) => selectMember(event.target.value)}
+                      required
+                      className="field has-leading-icon"
+                    >
+                      <option value="">Sélectionner un membre</option>
+                      {members.map((member) => (
+                        <option key={member.id} value={member.id}>
+                          {member.name}
+                        </option>
+                      ))}
+                    </select>
+                  </FieldControl>
+                </FormField>
 
-      <FormSection title="Abonnement" description="Sélectionnez l'abonnement à régler.">
-        <FormField label="Abonnement *" htmlFor="subscription">
-          <select
-            id="subscription"
-            value={subscriptionId}
-            onChange={(e) => setSubscriptionId(e.target.value)}
-            required
-            className="field"
-          >
-            <option value="">Sélectionner un abonnement...</option>
-            {subscriptions.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.memberName} — {s.planName} (dû: {formatCurrency(s.amount)}, payé:{" "}
-                {formatCurrency(s.totalPaid)})
-              </option>
-            ))}
-          </select>
-          {subscriptions.length === 0 && (
-            <p className="mt-1 text-xs text-[var(--warning)]">
-              Aucun abonnement actif trouvé. Créez d&apos;abord un abonnement.
-            </p>
-          )}
-          {selected && (
-            <div className="mt-3">
-              <SubscriptionBillingSummary
-                amountDueCents={selected.amount}
-                totalPaidCents={selected.totalPaid}
-              />
-            </div>
-          )}
-        </FormField>
-      </FormSection>
+                <FormField label="Abonnement à régler *" htmlFor="subscription">
+                  <select
+                    id="subscription"
+                    value={subscriptionId}
+                    onChange={(event) => selectSubscription(event.target.value)}
+                    required
+                    disabled={!memberId}
+                    className="field"
+                  >
+                    <option value="">Sélectionner un abonnement</option>
+                    {memberSubscriptions.map((subscription) => (
+                      <option key={subscription.id} value={subscription.id}>
+                        {subscription.planName} · reste {formatCurrency(subscription.amount - subscription.totalPaid)}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+              </FormGrid>
 
-      <FormSection title="Montant">
-        <FormField label="Montant (€) *" htmlFor="amount">
-          <div className="relative">
-            <input
-              id="amount"
-              type="number"
-              step="0.01"
-              min="0.01"
-              required
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className={`field pr-10 ${wouldExceed ? "border-[var(--danger)] ring-1 ring-[var(--danger)]" : ""}`}
-              placeholder="Ex: 49.90"
-            />
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[var(--muted-foreground)]">
-              €
-            </span>
+              {selected ? (
+                <div className="mt-4">
+                  <SubscriptionBillingSummary
+                    amountDueCents={selected.amount}
+                    totalPaidCents={selected.totalPaid}
+                  />
+                </div>
+              ) : null}
+            </FormSection>
+
+            <FormSection
+              title="2. Montant reçu"
+              description="Saisissez le versement remis par le membre, sans dépasser le reste dû."
+            >
+              <FormField label="Montant encaissé (€) *" htmlFor="amount">
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <FieldControl suffix="€" className="flex-1">
+                    <input
+                      id="amount"
+                      type="number"
+                      inputMode="decimal"
+                      step="0.01"
+                      min="0.01"
+                      max={selected ? (remaining / 100).toFixed(2) : undefined}
+                      required
+                      value={amount}
+                      onChange={(event) => setAmount(event.target.value)}
+                      className={`field pr-10 text-lg font-semibold tabular-nums ${wouldExceed ? "border-[var(--danger)] ring-1 ring-[var(--danger)]" : ""}`}
+                      placeholder="0,00"
+                    />
+                  </FieldControl>
+                  <button
+                    type="button"
+                    onClick={fillRemainingBalance}
+                    disabled={!selected || remaining <= 0}
+                    className="btn btn-secondary whitespace-nowrap sm:min-w-36"
+                  >
+                    Solder {selected ? formatCurrency(remaining) : ""}
+                  </button>
+                </div>
+                {selected ? (
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-1 text-xs">
+                    <span className="text-[var(--muted-foreground)]">
+                      Maximum autorisé: <strong className="text-[var(--foreground)]">{formatCurrency(remaining)}</strong>
+                    </span>
+                    {wouldExceed ? (
+                      <span className="font-semibold text-[var(--danger)]">Le montant dépasse le reste dû.</span>
+                    ) : amountNum > 0 ? (
+                      <span className="font-medium text-[var(--success)]">
+                        Solde après paiement: {formatCurrency(balanceAfter)}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+              </FormField>
+            </FormSection>
+
+            <FormSection
+              title="3. Détails du règlement"
+              description="La date et le moyen de paiement apparaîtront dans l'historique."
+            >
+              <FormField label="Moyen de paiement *">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {METHODS.map((paymentMethod) => (
+                    <button
+                      key={paymentMethod.value}
+                      type="button"
+                      onClick={() => setMethod(paymentMethod.value)}
+                      className={cn(
+                        "relative flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-xs font-semibold transition",
+                        method === paymentMethod.value
+                          ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)] ring-1 ring-[var(--primary)]/20"
+                          : "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-soft)]",
+                      )}
+                      aria-pressed={method === paymentMethod.value}
+                    >
+                      {method === paymentMethod.value ? (
+                        <Check className="absolute right-2 top-2 size-3.5" />
+                      ) : null}
+                      {paymentMethod.icon}
+                      {paymentMethod.label}
+                    </button>
+                  ))}
+                </div>
+              </FormField>
+
+              <FormGrid className="mt-4">
+                <FormField label="Date du règlement" htmlFor="paymentDate">
+                  <input
+                    id="paymentDate"
+                    type="date"
+                    value={paymentDate}
+                    onChange={(event) => setPaymentDate(event.target.value)}
+                    className="field"
+                  />
+                </FormField>
+                <FormField
+                  label="Référence ou note"
+                  htmlFor="notes"
+                  hint="Facultatif: numéro de chèque, référence de virement ou remarque."
+                >
+                  <input
+                    id="notes"
+                    value={notes}
+                    onChange={(event) => setNotes(event.target.value)}
+                    className="field"
+                    placeholder="Ex: chèque n° 1234"
+                  />
+                </FormField>
+              </FormGrid>
+            </FormSection>
           </div>
-          {selected && (
-            <div className="mt-1 flex items-center justify-between text-xs">
-              <span className="text-[var(--muted-foreground)]">
-                Restant dû: <strong className="text-[var(--foreground)]">{formatCurrency(remaining)}</strong>
-              </span>
-              {wouldExceed && <span className="font-medium text-[var(--danger)]">Dépassement !</span>}
+
+          <aside className="lg:sticky lg:top-20 lg:col-span-4">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
+              <div className="flex items-center gap-2">
+                <span className="flex size-9 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">
+                  <ReceiptText className="size-4" />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold">Récapitulatif</p>
+                  <p className="text-xs text-[var(--muted-foreground)]">À vérifier avant validation</p>
+                </div>
+              </div>
+
+              <dl className="mt-4 divide-y divide-[var(--border)] text-sm">
+                <div className="flex items-start justify-between gap-3 py-2.5">
+                  <dt className="text-[var(--muted-foreground)]">Membre</dt>
+                  <dd className="text-right font-medium">{selected?.memberName ?? "Non sélectionné"}</dd>
+                </div>
+                <div className="flex items-start justify-between gap-3 py-2.5">
+                  <dt className="text-[var(--muted-foreground)]">Abonnement</dt>
+                  <dd className="text-right font-medium">{selected?.planName ?? "Non sélectionné"}</dd>
+                </div>
+                <div className="flex items-start justify-between gap-3 py-2.5">
+                  <dt className="text-[var(--muted-foreground)]">Reste actuel</dt>
+                  <dd className="text-right font-semibold">{selected ? formatCurrency(remaining) : "—"}</dd>
+                </div>
+                <div className="flex items-start justify-between gap-3 py-2.5">
+                  <dt className="text-[var(--muted-foreground)]">Montant reçu</dt>
+                  <dd className="text-right text-base font-bold text-[var(--primary)]">
+                    {amountNum > 0 ? formatCurrency(amountNum) : "—"}
+                  </dd>
+                </div>
+                <div className="flex items-start justify-between gap-3 py-2.5">
+                  <dt className="text-[var(--muted-foreground)]">Solde après</dt>
+                  <dd className={cn("text-right font-bold", balanceAfter > 0 ? "text-[var(--danger)]" : "text-[var(--success)]")}>
+                    {selected && amountNum > 0 ? formatCurrency(balanceAfter) : "—"}
+                  </dd>
+                </div>
+              </dl>
+
+              <p className="mt-3 rounded-xl bg-[var(--surface-soft)] px-3 py-2 text-xs leading-relaxed text-[var(--muted-foreground)]">
+                Cet encaissement réduit uniquement le solde de l&apos;abonnement. Il n&apos;ajoute pas de séances.
+              </p>
             </div>
-          )}
-        </FormField>
-      </FormSection>
+          </aside>
+        </div>
+      )}
 
-      <FormGrid>
-        <FormField label="Date de paiement" htmlFor="paymentDate">
-          <input
-            id="paymentDate"
-            type="date"
-            value={paymentDate}
-            onChange={(e) => setPaymentDate(e.target.value)}
-            className="field"
-          />
-        </FormField>
-        <FormField label="Méthode" htmlFor="method">
-          <select id="method" value={method} onChange={(e) => setMethod(e.target.value)} className="field">
-            {METHODS.map((m) => (
-              <option key={m.value} value={m.value}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-        </FormField>
-      </FormGrid>
-
-      <FormSection>
-        <FormField label="Notes" htmlFor="notes">
-          <textarea
-            id="notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="field min-h-[80px]"
-            placeholder="Numéro de chèque, remarque..."
-          />
-        </FormField>
-      </FormSection>
-
-      <FormActions sticky>
+      {subscriptions.length > 0 ? <FormActions sticky>
         <button type="button" onClick={() => router.push("/payments")} className="btn btn-ghost btn-block-mobile">
           <ArrowLeft className="size-4" />
-          Annuler
+          Retour
         </button>
         <button
           type="submit"
@@ -275,9 +443,9 @@ export function PaymentAddForm({
           ) : (
             <CheckCircle2 className="size-4" />
           )}
-          Enregistrer le paiement
+          {amountNum > 0 ? `Encaisser ${formatCurrency(amountNum)}` : "Encaisser le paiement"}
         </button>
-      </FormActions>
+      </FormActions> : null}
     </form>
   );
 }
