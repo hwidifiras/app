@@ -117,8 +117,8 @@ export function DashboardDebtsSection({
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-[var(--muted-foreground)]">
           {emailConfigured
-            ? `Rappels email via Resend · cooldown ${PAYMENT_REMINDER_COOLDOWN_DAYS} jours`
-            : "Rappels email indisponibles — configurez RESEND_API_KEY et PASSWORD_RESET_FROM."}
+            ? `Rappels email actifs · un nouvel envoi est possible après ${PAYMENT_REMINDER_COOLDOWN_DAYS} jours`
+            : "Le service de rappel email est actuellement indisponible."}
         </p>
         {emailConfigured && remindableCount > 0 ? (
           <button

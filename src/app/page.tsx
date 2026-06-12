@@ -3,9 +3,11 @@ import { getClubSettings } from "@/lib/club-settings";
 import Link from "next/link";
 import {
   AlertCircle,
+  ArrowRight,
   BadgeCheck,
   Banknote,
   CalendarClock,
+  CalendarDays,
   ClipboardCheck,
   TrendingUp,
   UserPlus,
@@ -78,46 +80,51 @@ type QuickActionProps = {
 
 function QuickActionLink({ title, description, href, icon: Icon, tone }: QuickActionProps) {
   return (
-    <Link href={href} className="quick-action-btn" aria-label={title}>
-      <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg sm:size-9", tone)}>
+    <Link
+      href={href}
+      className="group flex min-h-14 items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 transition hover:border-[var(--primary)]/35 hover:bg-[var(--surface-soft)]"
+      aria-label={title}
+    >
+      <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", tone)}>
         <Icon className="size-4 text-white" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[0.72rem] font-semibold leading-tight text-foreground sm:text-sm">{title}</span>
-        <span className="mt-0.5 hidden text-[0.65rem] leading-snug text-muted-foreground md:block">{description}</span>
+        <span className="block text-sm font-semibold leading-tight text-foreground">{title}</span>
+        <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">{description}</span>
       </span>
+      <ArrowRight className="size-4 shrink-0 text-[var(--muted-foreground)] transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--primary)]" />
     </Link>
   );
 }
 
-const financeQuickLinks = [
+const receptionQuickLinks = [
+  {
+    title: "Pointer les séances",
+    description: "Marquer les présences et absences du jour.",
+    href: "/attendance/today",
+    icon: BadgeCheck,
+    tone: "bg-rose-500",
+  },
   {
     title: "Encaisser",
-    description: "Enregistrer un paiement ou solder un abonnement.",
+    description: "Enregistrer un règlement membre.",
     href: "/payments/new",
     icon: Banknote,
     tone: "bg-emerald-600",
   },
   {
-    title: "Paiements reçus",
-    description: "Historique des encaissements et filtres.",
-    href: "/payments",
-    icon: Wallet,
-    tone: "bg-amber-500",
-  },
-  {
-    title: "Abonnements",
-    description: "Suivi des forfaits actifs et impayés.",
-    href: "/subscriptions",
-    icon: ClipboardCheck,
-    tone: "bg-indigo-600",
-  },
-  {
-    title: "Inscription",
-    description: "Nouveau membre avec abonnement et premier versement.",
+    title: "Nouvelle inscription",
+    description: "Créer le dossier, l'abonnement et le groupe.",
     href: "/enrollment",
     icon: UserPlus,
     tone: "bg-sky-500",
+  },
+  {
+    title: "Consulter les membres",
+    description: "Rechercher ou ouvrir un dossier membre.",
+    href: "/members",
+    icon: Users,
+    tone: "bg-indigo-600",
   },
 ];
 
@@ -125,6 +132,7 @@ export default async function Home() {
   let hasDataError = false;
   let activeMembers = 0;
   let attendanceToday = 0;
+  let sessionsToday = 0;
   let revenueToday = 0;
   let revenueWeek = 0;
   let revenueMonth = 0;
@@ -151,6 +159,7 @@ export default async function Home() {
     const [
       fetchedActiveMembers,
       fetchedAttendanceToday,
+      fetchedSessionsToday,
       fetchedRevenueToday,
       fetchedRevenueWeek,
       fetchedRevenueMonth,
@@ -161,6 +170,12 @@ export default async function Home() {
         where: {
           status: { in: ["PRESENT", "OVERRIDE"] },
           session: { sessionDate: { gte: today, lt: tomorrow } },
+        },
+      }),
+      prisma.session.count({
+        where: {
+          sessionDate: { gte: today, lt: tomorrow },
+          status: { not: "CANCELLED" },
         },
       }),
       prisma.payment.aggregate({
@@ -192,6 +207,7 @@ export default async function Home() {
 
     activeMembers = fetchedActiveMembers;
     attendanceToday = fetchedAttendanceToday;
+    sessionsToday = fetchedSessionsToday;
     revenueToday = fetchedRevenueToday._sum.amount ?? 0;
     revenueWeek = fetchedRevenueWeek._sum.amount ?? 0;
     revenueMonth = fetchedRevenueMonth._sum.amount ?? 0;
@@ -212,8 +228,8 @@ export default async function Home() {
     <main className="app-shell py-4 md:py-8">
       <PageHeader
         overline="Pilotage"
-        title="Tableau de bord finance"
-        description="Impayés, encaissements et abonnements à relancer — actions rapides pour la réception."
+        title="Tableau de bord"
+        description="Les priorités financières et l'activité du club, réunies dans une vue de travail."
       />
 
       {hasDataError ? (
@@ -222,13 +238,13 @@ export default async function Home() {
         </div>
       ) : null}
 
-      <section>
+      <section aria-labelledby="dashboard-overview-title">
         <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          Indicateurs financiers
+          <span id="dashboard-overview-title">Vue d&apos;ensemble</span>
         </h2>
-        <div className="kpi-grid">
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           <KpiCard
-            label="Impayés (actifs)"
+            label="Impayés à recouvrer"
             value={formatMoney(finance.totalOutstandingCents)}
             hint={`${finance.debtorsCount} membre${finance.debtorsCount > 1 ? "s" : ""}`}
             icon={<AlertCircle className="size-4 text-white sm:size-5" />}
@@ -238,103 +254,116 @@ export default async function Home() {
           <KpiCard
             label="CA du mois"
             value={formatMoney(revenueMonth)}
-            hint={`Semaine : ${formatMoney(revenueWeek)}`}
+            hint={`Cette semaine : ${formatMoney(revenueWeek)}`}
             icon={<TrendingUp className="size-4 text-white sm:size-5" />}
             color="bg-emerald-600"
             href="/payments"
           />
           <KpiCard
-            label="CA du jour"
-            value={formatMoney(revenueToday)}
-            icon={<Wallet className="size-4 text-white sm:size-5" />}
-            color="bg-amber-500"
-            href="/payments/new"
-          />
-          <KpiCard
-            label="Recouvrement"
+            label="Taux de recouvrement"
             value={finance.collectionRatePercent === null ? "—" : `${finance.collectionRatePercent} %`}
-            hint={`${finance.activeSubscriptionsCount} abo actifs`}
+            hint={`${finance.activeSubscriptionsCount} abonnement${finance.activeSubscriptionsCount > 1 ? "s" : ""} actif${finance.activeSubscriptionsCount > 1 ? "s" : ""}`}
             icon={<ClipboardCheck className="size-4 text-white sm:size-5" />}
             color="bg-indigo-600"
             href="/subscriptions"
           />
           <KpiCard
-            label="Expire sous 7 j"
+            label="Échéances sous 7 jours"
             value={finance.expiringIn7Days}
             icon={<CalendarClock className="size-4 text-white sm:size-5" />}
             color="bg-orange-500"
             href="/subscriptions"
           />
-          <KpiCard
-            label="Paiements partiels"
-            value={finance.partialPayersCount}
-            hint="Solde restant à encaisser"
-            icon={<Banknote className="size-4 text-white sm:size-5" />}
-            color="bg-[var(--warning)]"
-            href="/payments/new"
-          />
         </div>
       </section>
 
-      <section className="mt-4 sm:mt-6">
-        <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          Actions rapides
-        </h2>
-        <div className="quick-actions-grid">
-          {financeQuickLinks.map((item) => (
-            <QuickActionLink key={item.href} {...item} />
-          ))}
-        </div>
-      </section>
+      <div className="mt-4 grid min-w-0 items-start gap-4 sm:mt-6 xl:grid-cols-12">
+        <section className="order-3 min-w-0 xl:order-1 xl:col-span-8 xl:row-span-2" aria-labelledby="dashboard-debts-title">
+          <Card size="sm">
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 border-b pb-3">
+              <div>
+                <CardTitle id="dashboard-debts-title" className="text-sm font-semibold sm:text-base">
+                  Impayés à traiter
+                </CardTitle>
+                <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
+                  {finance.debtorsCount === 0
+                    ? "Aucun membre à relancer."
+                    : `${finance.debtorsCount} membre${finance.debtorsCount > 1 ? "s" : ""} · ${finance.partialPayersCount} paiement${finance.partialPayersCount > 1 ? "s" : ""} partiel${finance.partialPayersCount > 1 ? "s" : ""}`}
+                </p>
+              </div>
+              {debts.length > 0 ? (
+                <Link href="/subscriptions" className="btn btn-ghost btn-sm">
+                  Voir les abonnements
+                </Link>
+              ) : null}
+            </CardHeader>
+            <CardContent className="pt-0">
+              {debts.length === 0 ? (
+                <div className="flex min-h-32 flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-soft)]/45 px-4 text-center">
+                  <BadgeCheck className="size-7 text-[var(--success)]" />
+                  <p className="mt-2 text-sm font-semibold">Aucun impayé prioritaire</p>
+                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                    Tous les soldes sont sous le seuil d&apos;alerte configuré.
+                  </p>
+                </div>
+              ) : (
+                <DashboardDebtsSection debts={debts} emailConfigured={emailConfigured} />
+              )}
+            </CardContent>
+          </Card>
+        </section>
 
-      <section className="mt-4 sm:mt-6">
-        <Card size="sm">
-          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 pb-2">
-            <CardTitle className="text-sm font-semibold sm:text-base">Impayés à relancer</CardTitle>
-            {debts.length > 0 ? (
-              <Link href="/payments/new" className="text-xs font-medium text-[var(--primary)] hover:underline">
-                Encaisser →
-              </Link>
-            ) : null}
-          </CardHeader>
-          <CardContent className="pt-0">
-            {debts.length === 0 ? (
-              <p className="text-sm text-[var(--muted-foreground)]">Aucun impayé au-dessus du seuil configuré.</p>
-            ) : (
-              <DashboardDebtsSection debts={debts} emailConfigured={emailConfigured} />
-            )}
-          </CardContent>
-        </Card>
-      </section>
+        <section className="order-1 xl:order-2 xl:col-span-4" aria-labelledby="dashboard-actions-title">
+          <Card size="sm">
+            <CardHeader className="border-b pb-3">
+              <CardTitle id="dashboard-actions-title">Actions rapides</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-2 pt-0 sm:grid-cols-2 xl:grid-cols-1">
+              {receptionQuickLinks.map((item) => (
+                <QuickActionLink key={item.href} {...item} />
+              ))}
+            </CardContent>
+          </Card>
+        </section>
 
-      <section className="mt-4 sm:mt-6">
-        <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          Activité du jour
-        </h2>
-        <div className="grid gap-2 sm:grid-cols-3">
-          <KpiCard
-            label="Membres actifs"
-            value={activeMembers}
-            icon={<Users className="size-4 text-white sm:size-5" />}
-            color="bg-[var(--primary)]"
-            href="/members"
-          />
-          <KpiCard
-            label="Présences aujourd'hui"
-            value={attendanceToday}
-            icon={<BadgeCheck className="size-4 text-white sm:size-5" />}
-            color="bg-sky-500"
-            href="/attendance/today"
-          />
-          <KpiCard
-            label="Pointer"
-            value="Ouvrir"
-            icon={<BadgeCheck className="size-4 text-white sm:size-5" />}
-            color="bg-rose-500"
-            href="/attendance/today"
-          />
-        </div>
-      </section>
+        <section className="order-2 xl:order-3 xl:col-span-4 xl:col-start-9" aria-labelledby="dashboard-activity-title">
+          <Card size="sm">
+            <CardHeader className="border-b pb-3">
+              <CardTitle id="dashboard-activity-title">Activité et repères</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-2 pt-0">
+              <KpiCard
+                label="Séances"
+                value={sessionsToday}
+                icon={<CalendarDays className="size-4 text-white" />}
+                color="bg-violet-600"
+                href="/attendance/today"
+              />
+              <KpiCard
+                label="Présences"
+                value={attendanceToday}
+                icon={<BadgeCheck className="size-4 text-white" />}
+                color="bg-sky-500"
+                href="/attendance/today"
+              />
+              <KpiCard
+                label="Encaissé"
+                value={formatMoney(revenueToday)}
+                icon={<Wallet className="size-4 text-white" />}
+                color="bg-emerald-600"
+                href="/payments"
+              />
+              <KpiCard
+                label="Membres actifs"
+                value={activeMembers}
+                icon={<Users className="size-4 text-white" />}
+                color="bg-[var(--primary)]"
+                href="/members"
+              />
+            </CardContent>
+          </Card>
+        </section>
+      </div>
     </main>
   );
 }
