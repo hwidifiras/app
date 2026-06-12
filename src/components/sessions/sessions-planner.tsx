@@ -429,21 +429,27 @@ export function SessionsPlanner({
               />
             </div>
             <MobileFiltersButton onClick={() => setFiltersOpen(true)} count={activeFilterCount} />
-            <div className="hidden grid-cols-[minmax(11rem,1fr)_minmax(9rem,0.7fr)_minmax(10rem,0.8fr)_auto] gap-2 md:grid">
-              <select value={groupId} onChange={(event) => { void onGroupChange(event.target.value); }} className="field text-xs">
-                <option value="">Tous les groupes</option>
-                {groupsOptions.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
-              </select>
-              <select value={dayFilter} onChange={(event) => setDayFilter(event.target.value)} className="field text-xs">
-                <option value="ALL">Tous les jours</option>
-                <option value="1">Lundi</option><option value="2">Mardi</option><option value="3">Mercredi</option>
-                <option value="4">Jeudi</option><option value="5">Vendredi</option><option value="6">Samedi</option><option value="0">Dimanche</option>
-              </select>
-              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "ALL" | SessionStatusDto)} className="field text-xs">
-                <option value="ALL">Tous les statuts</option>
-                <option value="PLANNED">Planifiées</option><option value="RESCHEDULED">Reportées</option>
-                <option value="CANCELLED">Annulées</option><option value="COMPLETED">Terminées</option>
-              </select>
+            <div className="hidden grid-cols-[minmax(11rem,1fr)_minmax(9rem,0.7fr)_minmax(10rem,0.8fr)_auto] items-end gap-2 md:grid">
+              <FilterField label="Groupe">
+                <select value={groupId} onChange={(event) => { void onGroupChange(event.target.value); }} className="field text-xs">
+                  <option value="">Tous les groupes</option>
+                  {groupsOptions.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+                </select>
+              </FilterField>
+              <FilterField label="Jour">
+                <select value={dayFilter} onChange={(event) => setDayFilter(event.target.value)} className="field text-xs">
+                  <option value="ALL">Tous les jours</option>
+                  <option value="1">Lundi</option><option value="2">Mardi</option><option value="3">Mercredi</option>
+                  <option value="4">Jeudi</option><option value="5">Vendredi</option><option value="6">Samedi</option><option value="0">Dimanche</option>
+                </select>
+              </FilterField>
+              <FilterField label="Statut">
+                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "ALL" | SessionStatusDto)} className="field text-xs">
+                  <option value="ALL">Tous les statuts</option>
+                  <option value="PLANNED">Planifiées</option><option value="RESCHEDULED">Reportées</option>
+                  <option value="CANCELLED">Annulées</option><option value="COMPLETED">Terminées</option>
+                </select>
+              </FilterField>
               {activeFilterCount > 0 ? (
                 <button type="button" onClick={() => { void resetFilters(); }} className="btn btn-ghost px-3" title="Réinitialiser">
                   <RotateCcw className="size-4" />

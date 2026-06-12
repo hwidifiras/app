@@ -54,7 +54,7 @@ export default async function EditSubscriptionPage({ params }: { params: Promise
         description="Ajustez le plan, les dates, les séances restantes ou résiliez proprement l'abonnement."
       />
 
-      <section className="panel panel-soft p-6">
+      <section className="panel p-4 sm:p-6">
         <SubscriptionEditForm
           subscription={{
             id: subscription.id,

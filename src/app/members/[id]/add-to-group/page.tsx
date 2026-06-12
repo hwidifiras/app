@@ -140,7 +140,7 @@ export default async function AddMemberToGroupPage({
         description="Sélectionnez un groupe et l'abonnement associé. Les conflits d'horaires seront détectés automatiquement."
       />
 
-      <section className="panel panel-soft p-6">
+      <section className="panel p-4 sm:p-6">
         <AddMemberToGroupForm
           memberId={id}
           memberName={`${member.firstName} ${member.lastName}`}

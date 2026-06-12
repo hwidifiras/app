@@ -16,7 +16,7 @@ export default function NewPlanPage() {
         description="Créer un forfait d'abonnement avec tarif et durée."
       />
 
-      <section className="panel panel-soft p-6">
+      <section className="panel p-4 sm:p-6">
         <SubscriptionPlanForm mode="create" />
       </section>
     </main>

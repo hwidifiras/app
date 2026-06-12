@@ -99,7 +99,7 @@ export default async function EditGroupPage({ params }: { params: Promise<{ id: 
         description={group.name}
       />
 
-      <section className="panel panel-soft p-6">
+      <section className="panel p-4 sm:p-6">
         <GroupEditForm
           groupId={group.id}
           initialData={{

@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Tag, Trash2 } from "lucide-react";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { FieldControl } from "@/components/ui/field-control";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormActions } from "@/components/ui/form-layout";
@@ -69,6 +70,30 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
       formatOfferRulesSummary(offer).toLocaleLowerCase("fr").includes(query),
     );
   }, [offers, searchTerm]);
+
+  const offerPreview = useMemo(() => {
+    if (kind === "PERCENT_OFF") {
+      return `${percentOff || "0"} % de réduction${maxMembers ? ` sur ${maxMembers} inscription(s) maximum` : " sur les lignes éligibles"}.`;
+    }
+    if (kind === "SECOND_DISCIPLINE") {
+      return `${percentOff || "0"} % de réduction lorsqu'un membre ajoute une deuxième discipline.`;
+    }
+    if (kind === "FIXED_OFF") {
+      return `${fixedAmountEur || "0"} € retiré par inscription${maxMembers ? `, pour ${maxMembers} ligne(s) maximum` : ""}.`;
+    }
+    const discipline = sportsOptions.find((sport) => sport.id === sportId)?.name ?? "toutes les disciplines";
+    return `Prix total ${bundlePrice || "0"} € à partir de ${minMembers || "0"} inscription(s), pour ${discipline}${requiresHousehold ? ", avec foyer commun requis" : ""}.`;
+  }, [
+    bundlePrice,
+    fixedAmountEur,
+    kind,
+    maxMembers,
+    minMembers,
+    percentOff,
+    requiresHousehold,
+    sportId,
+    sportsOptions,
+  ]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -181,18 +206,24 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
               <option value="SECOND_DISCIPLINE">Réduction 2e discipline (%)</option>
             </select>
           </label>
+          <div className="rounded-xl border border-[var(--primary)]/20 bg-[var(--primary)]/5 px-3 py-2.5">
+            <p className="text-[0.65rem] font-bold uppercase tracking-wide text-[var(--primary)]">Aperçu</p>
+            <p className="mt-1 text-sm text-[var(--foreground)]">{offerPreview}</p>
+          </div>
           {(kind === "PERCENT_OFF" || kind === "SECOND_DISCIPLINE") && (
             <>
               <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
                 Pourcentage de réduction
-                <input
-                  className="field"
-                  inputMode="numeric"
-                  placeholder="10"
-                  value={percentOff}
-                  onChange={(e) => setPercentOff(e.target.value)}
-                  required
-                />
+                <FieldControl suffix="%">
+                  <input
+                    className="field pr-10"
+                    inputMode="numeric"
+                    placeholder="10"
+                    value={percentOff}
+                    onChange={(e) => setPercentOff(e.target.value)}
+                    required
+                  />
+                </FieldControl>
               </label>
               {kind === "PERCENT_OFF" ? (
                 <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
@@ -212,7 +243,9 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
             <>
               <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
                 Montant offert par ligne (€)
-                <input className="field" inputMode="decimal" value={fixedAmountEur} onChange={(e) => setFixedAmountEur(e.target.value)} required />
+                <FieldControl suffix="€">
+                  <input className="field pr-10" inputMode="decimal" value={fixedAmountEur} onChange={(e) => setFixedAmountEur(e.target.value)} required />
+                </FieldControl>
               </label>
               <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
                 Nombre maximum de lignes
@@ -224,7 +257,9 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
             <>
               <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
                 Prix total du forfait (€)
-                <input className="field" inputMode="decimal" value={bundlePrice} onChange={(e) => setBundlePrice(e.target.value)} required />
+                <FieldControl suffix="€">
+                  <input className="field pr-10" inputMode="decimal" value={bundlePrice} onChange={(e) => setBundlePrice(e.target.value)} required />
+                </FieldControl>
               </label>
               <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
                 Nombre minimum d&apos;inscriptions

@@ -56,7 +56,7 @@ export default async function EditSubscriptionPlanPage({
         description="Mettre à jour le tarif, la durée, les séances ou le statut d&apos;un forfait."
       />
 
-      <section className="panel panel-soft p-6">
+      <section className="panel p-4 sm:p-6">
         <SubscriptionPlanForm
           mode="edit"
           planId={plan.id}

@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { FieldControl } from "@/components/ui/field-control";
 import { FormActions } from "@/components/ui/form-layout";
 import { ReceptionInfoCard, SubscriptionBillingSummary } from "@/components/ui/reception-info-card";
 
@@ -263,14 +264,16 @@ export function SubscriptionAddForm({ membersOptions, plansOptions }: Subscripti
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Paiement initial (€)</label>
-          <input
-            type="text"
-            inputMode="decimal"
-            value={paymentCents}
-            onChange={(e) => setPaymentCents(e.target.value)}
-            className={`field ${paymentTooHigh ? "border-[var(--danger)] ring-1 ring-[var(--danger)]" : ""}`}
-            placeholder="0,00"
-          />
+          <FieldControl suffix="€">
+            <input
+              type="text"
+              inputMode="decimal"
+              value={paymentCents}
+              onChange={(e) => setPaymentCents(e.target.value)}
+              className={`field pr-10 ${paymentTooHigh ? "border-[var(--danger)] ring-1 ring-[var(--danger)]" : ""}`}
+              placeholder="0,00"
+            />
+          </FieldControl>
           {selectedPlan && (
             <p className="mt-1 text-xs text-[var(--muted-foreground)]">Maximum {formatEur(selectedPlan.price)}</p>
           )}

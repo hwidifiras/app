@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormField, FormGrid, FormSection } from "@/components/ui/form-layout";
+import { FieldControl } from "@/components/ui/field-control";
 import { cn } from "@/lib/utils";
 
 export type ClubSettingsFormData = {
@@ -336,7 +337,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
             htmlFor="debtThreshold"
             hint="Laissez vide ou saisissez 0 pour afficher toutes les dettes."
           >
-            <div className="relative">
+            <FieldControl suffix="€">
               <input
                 id="debtThreshold"
                 type="text"
@@ -346,15 +347,14 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
                 onChange={(e) => setDebtThresholdEuros(e.target.value)}
                 placeholder="0"
               />
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">€</span>
-            </div>
+            </FieldControl>
           </FormField>
           <FormField
             label="Réduction maximale de l'équipe"
             htmlFor="maxStaffDiscount"
             hint="Limite appliquée aux comptes non administrateurs."
           >
-            <div className="relative">
+            <FieldControl suffix="%">
               <input
                 id="maxStaffDiscount"
                 type="number"
@@ -366,8 +366,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
                 onChange={(e) => setMaxStaffDiscountPercent(e.target.value)}
                 required
               />
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
-            </div>
+            </FieldControl>
           </FormField>
         </FormGrid>
       </FormSection>

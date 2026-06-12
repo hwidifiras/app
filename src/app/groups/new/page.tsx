@@ -96,7 +96,7 @@ export default async function NewGroupPage() {
         description="Définir un nouveau groupe d'entraînement. Les créneaux seront planifiés ensuite."
       />
 
-      <section className="panel panel-soft p-6">
+      <section className="panel p-4 sm:p-6">
         <GroupAddForm sportsOptions={sportsOptions} coachesOptions={coachesOptions} membersOptions={membersOptions} />
       </section>
     </main>

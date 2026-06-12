@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { FieldControl } from "@/components/ui/field-control";
 import { FormActions, FormField } from "@/components/ui/form-layout";
 import { ReceptionInfoCard } from "@/components/ui/reception-info-card";
 import type { OfferLike } from "@/lib/offer-display";
@@ -303,13 +304,16 @@ export function EnrollmentWizard({
           return (
             <div
               key={label}
-              className={`rounded-xl px-2 py-2 text-center text-xs font-bold ${
-                active || done
-                  ? "bg-[var(--primary)] text-white"
-                  : "bg-[var(--surface-soft)] text-[var(--muted-foreground)]"
+              aria-current={active ? "step" : undefined}
+              className={`rounded-xl border px-2 py-2 text-center text-xs font-bold transition ${
+                active
+                  ? "border-[var(--primary)] bg-[var(--primary)] text-white shadow-sm"
+                  : done
+                    ? "border-[var(--primary)]/25 bg-[var(--primary)]/10 text-[var(--primary)]"
+                    : "border-transparent bg-[var(--surface-raised)] text-[var(--muted-foreground)]"
               }`}
             >
-              <span className="block text-[0.62rem] opacity-80">Étape {itemStep}</span>
+              <span className="block text-[0.62rem] opacity-80">{done ? "Terminée" : `Étape ${itemStep}`}</span>
               {label}
             </div>
           );
@@ -318,7 +322,12 @@ export function EnrollmentWizard({
 
       {step === 1 && (
         <section className="panel space-y-4 p-5">
-          <h2 className="text-lg font-semibold">Élèves et cours</h2>
+          <div>
+            <h2 className="text-lg font-semibold">Élèves et cours</h2>
+            <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+              Ajoutez une ligne par élève, puis choisissez son groupe et sa formule.
+            </p>
+          </div>
           {lines.map((line, idx) => (
             <fieldset key={line.key} className="enrollment-fieldset rounded-2xl border border-[var(--border)] p-3 sm:p-4">
               <legend className="px-1 text-sm font-medium">Ligne {idx + 1}</legend>
@@ -357,7 +366,7 @@ export function EnrollmentWizard({
 
       {step === 2 && (
         <section className="panel space-y-4 p-5">
-          <h2 className="text-lg font-semibold">Offre</h2>
+          <h2 className="text-lg font-semibold">Réduction éventuelle</h2>
           <p className="text-sm text-[var(--muted-foreground)]">
             {selectedCount >= 2
               ? "Plusieurs inscriptions dans ce devis — un forfait famille peut s'appliquer."
@@ -403,7 +412,12 @@ export function EnrollmentWizard({
 
       {step === 3 && quote && (
         <section className="panel space-y-4 p-5">
-          <h2 className="text-lg font-semibold">Confirmation</h2>
+          <div>
+            <h2 className="text-lg font-semibold">Vérification et paiement</h2>
+            <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+              Contrôlez chaque inscription et le montant initial avant de confirmer.
+            </p>
+          </div>
           {quote.offerName && <p className="text-sm text-green-700">Offre : {quote.offerName}</p>}
           <ul className="space-y-3 text-sm">
             {quote.lines.map((l) => (
@@ -448,19 +462,21 @@ export function EnrollmentWizard({
                   <span className="mt-0.5 block text-xs text-[var(--muted-foreground)]">
                     Max {formatEur(l.finalAmountCents)} pour cette période
                   </span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    className="field mt-1"
-                    value={lines[l.lineIndex]?.paymentCents ?? ""}
-                    onChange={(e) =>
-                      setLines((prev) =>
-                        prev.map((row, i) =>
-                          i === l.lineIndex ? { ...row, paymentCents: e.target.value } : row,
-                        ),
-                      )
-                    }
-                  />
+                  <FieldControl suffix="€" className="mt-1">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      className="field pr-10"
+                      value={lines[l.lineIndex]?.paymentCents ?? ""}
+                      onChange={(e) =>
+                        setLines((prev) =>
+                          prev.map((row, i) =>
+                            i === l.lineIndex ? { ...row, paymentCents: e.target.value } : row,
+                          ),
+                        )
+                      }
+                    />
+                  </FieldControl>
                 </label>
               </li>
             ))}
