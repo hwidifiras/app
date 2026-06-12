@@ -46,9 +46,12 @@ function KpiCard({ label, value, hint, icon, color, href }: KpiCardProps) {
   const content = (
     <Card
       size="sm"
-      className={cn("shadow-sm transition active:scale-[0.98]", href && "hover:border-primary/30 hover:shadow-md")}
+      className={cn(
+        "h-full min-h-[5.75rem] shadow-sm transition active:scale-[0.98]",
+        href && "hover:border-primary/30 hover:shadow-md",
+      )}
     >
-      <CardContent className="flex items-center gap-2 p-2.5 sm:gap-3 sm:p-3.5">
+      <CardContent className="flex h-full items-center gap-2 p-2.5 sm:gap-3 sm:p-3.5">
         <div className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg sm:size-9", color)}>
           {icon}
         </div>
@@ -64,7 +67,7 @@ function KpiCard({ label, value, hint, icon, color, href }: KpiCardProps) {
   if (!href) return content;
 
   return (
-    <Link href={href} className="block min-h-[2.85rem] touch-manipulation" aria-label={label}>
+    <Link href={href} className="block h-full touch-manipulation" aria-label={label}>
       {content}
     </Link>
   );
@@ -82,7 +85,7 @@ function QuickActionLink({ title, description, href, icon: Icon, tone }: QuickAc
   return (
     <Link
       href={href}
-      className="group flex min-h-14 items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 transition hover:border-[var(--primary)]/35 hover:bg-[var(--surface-soft)]"
+      className="group flex h-full min-h-[4.75rem] items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 transition hover:border-[var(--primary)]/35 hover:bg-[var(--surface-soft)]"
       aria-label={title}
     >
       <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", tone)}>
@@ -277,93 +280,101 @@ export default async function Home() {
         </div>
       </section>
 
-      <div className="mt-4 grid min-w-0 items-start gap-4 sm:mt-6 xl:grid-cols-12">
-        <section className="order-3 min-w-0 xl:order-1 xl:col-span-8 xl:row-span-2" aria-labelledby="dashboard-debts-title">
-          <Card size="sm">
-            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 border-b pb-3">
-              <div>
-                <CardTitle id="dashboard-debts-title" className="text-sm font-semibold sm:text-base">
-                  Impayés à traiter
-                </CardTitle>
-                <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
-                  {finance.debtorsCount === 0
-                    ? "Aucun membre à relancer."
-                    : `${finance.debtorsCount} membre${finance.debtorsCount > 1 ? "s" : ""} · ${finance.partialPayersCount} paiement${finance.partialPayersCount > 1 ? "s" : ""} partiel${finance.partialPayersCount > 1 ? "s" : ""}`}
+      <section className="mt-4 sm:mt-6" aria-labelledby="dashboard-operations-title">
+        <h2
+          id="dashboard-operations-title"
+          className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+        >
+          Opérations du jour
+        </h2>
+        <div className="grid items-stretch gap-4 xl:grid-cols-2">
+          <section className="min-w-0" aria-labelledby="dashboard-actions-title">
+            <Card size="sm" className="h-full">
+              <CardHeader className="border-b pb-3">
+                <CardTitle id="dashboard-actions-title">Actions rapides</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-2 pt-0 sm:grid-cols-2">
+                {receptionQuickLinks.map((item) => (
+                  <QuickActionLink key={item.href} {...item} />
+                ))}
+              </CardContent>
+            </Card>
+          </section>
+
+          <section className="min-w-0" aria-labelledby="dashboard-activity-title">
+            <Card size="sm" className="h-full">
+              <CardHeader className="border-b pb-3">
+                <CardTitle id="dashboard-activity-title">Activité et repères</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-2 pt-0">
+                <KpiCard
+                  label="Séances"
+                  value={sessionsToday}
+                  icon={<CalendarDays className="size-4 text-white" />}
+                  color="bg-violet-600"
+                  href="/attendance/today"
+                />
+                <KpiCard
+                  label="Présences"
+                  value={attendanceToday}
+                  icon={<BadgeCheck className="size-4 text-white" />}
+                  color="bg-sky-500"
+                  href="/attendance/today"
+                />
+                <KpiCard
+                  label="Encaissé aujourd'hui"
+                  value={formatMoney(revenueToday)}
+                  icon={<Wallet className="size-4 text-white" />}
+                  color="bg-emerald-600"
+                  href="/payments"
+                />
+                <KpiCard
+                  label="Membres actifs"
+                  value={activeMembers}
+                  icon={<Users className="size-4 text-white" />}
+                  color="bg-[var(--primary)]"
+                  href="/members"
+                />
+              </CardContent>
+            </Card>
+          </section>
+        </div>
+      </section>
+
+      <section className="mt-4 min-w-0 sm:mt-6" aria-labelledby="dashboard-debts-title">
+        <Card size="sm">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 border-b pb-3">
+            <div>
+              <CardTitle id="dashboard-debts-title" className="text-sm font-semibold sm:text-base">
+                Impayés à traiter
+              </CardTitle>
+              <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
+                {finance.debtorsCount === 0
+                  ? "Aucun membre à relancer."
+                  : `${finance.debtorsCount} membre${finance.debtorsCount > 1 ? "s" : ""} · ${finance.partialPayersCount} paiement${finance.partialPayersCount > 1 ? "s" : ""} partiel${finance.partialPayersCount > 1 ? "s" : ""}`}
+              </p>
+            </div>
+            {debts.length > 0 ? (
+              <Link href="/subscriptions" className="btn btn-ghost btn-sm">
+                Voir les abonnements
+              </Link>
+            ) : null}
+          </CardHeader>
+          <CardContent className="pt-0">
+            {debts.length === 0 ? (
+              <div className="flex min-h-28 flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-soft)]/45 px-4 text-center">
+                <BadgeCheck className="size-7 text-[var(--success)]" />
+                <p className="mt-2 text-sm font-semibold">Aucun impayé prioritaire</p>
+                <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                  Tous les soldes sont sous le seuil d&apos;alerte configuré.
                 </p>
               </div>
-              {debts.length > 0 ? (
-                <Link href="/subscriptions" className="btn btn-ghost btn-sm">
-                  Voir les abonnements
-                </Link>
-              ) : null}
-            </CardHeader>
-            <CardContent className="pt-0">
-              {debts.length === 0 ? (
-                <div className="flex min-h-32 flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-soft)]/45 px-4 text-center">
-                  <BadgeCheck className="size-7 text-[var(--success)]" />
-                  <p className="mt-2 text-sm font-semibold">Aucun impayé prioritaire</p>
-                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-                    Tous les soldes sont sous le seuil d&apos;alerte configuré.
-                  </p>
-                </div>
-              ) : (
-                <DashboardDebtsSection debts={debts} emailConfigured={emailConfigured} />
-              )}
-            </CardContent>
-          </Card>
-        </section>
-
-        <section className="order-1 xl:order-2 xl:col-span-4" aria-labelledby="dashboard-actions-title">
-          <Card size="sm">
-            <CardHeader className="border-b pb-3">
-              <CardTitle id="dashboard-actions-title">Actions rapides</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-2 pt-0 sm:grid-cols-2 xl:grid-cols-1">
-              {receptionQuickLinks.map((item) => (
-                <QuickActionLink key={item.href} {...item} />
-              ))}
-            </CardContent>
-          </Card>
-        </section>
-
-        <section className="order-2 xl:order-3 xl:col-span-4 xl:col-start-9" aria-labelledby="dashboard-activity-title">
-          <Card size="sm">
-            <CardHeader className="border-b pb-3">
-              <CardTitle id="dashboard-activity-title">Activité et repères</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-2 pt-0">
-              <KpiCard
-                label="Séances"
-                value={sessionsToday}
-                icon={<CalendarDays className="size-4 text-white" />}
-                color="bg-violet-600"
-                href="/attendance/today"
-              />
-              <KpiCard
-                label="Présences"
-                value={attendanceToday}
-                icon={<BadgeCheck className="size-4 text-white" />}
-                color="bg-sky-500"
-                href="/attendance/today"
-              />
-              <KpiCard
-                label="Encaissé"
-                value={formatMoney(revenueToday)}
-                icon={<Wallet className="size-4 text-white" />}
-                color="bg-emerald-600"
-                href="/payments"
-              />
-              <KpiCard
-                label="Membres actifs"
-                value={activeMembers}
-                icon={<Users className="size-4 text-white" />}
-                color="bg-[var(--primary)]"
-                href="/members"
-              />
-            </CardContent>
-          </Card>
-        </section>
-      </div>
+            ) : (
+              <DashboardDebtsSection debts={debts} emailConfigured={emailConfigured} />
+            )}
+          </CardContent>
+        </Card>
+      </section>
     </main>
   );
 }
