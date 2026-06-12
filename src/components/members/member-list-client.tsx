@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, RotateCcw, Search, SlidersHorizontal, X } from "lucide-react";
+import { ChevronDown, RotateCcw, SlidersHorizontal, X } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ListSearch } from "@/components/ui/list-controls";
 
 type GroupOption = {
   id: string;
@@ -293,33 +294,14 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           <div className="min-w-0 flex-1">
             <label className="mb-1 block text-xs font-medium text-muted-foreground">Recherche</label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
-              <input
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  resetPagingAndSelection();
-                }}
-                placeholder="Nom, téléphone ou email..."
-                className="field w-full pl-9 pr-9 text-sm"
-                type="search"
-                enterKeyHint="search"
-              />
-              {searchTerm ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchTerm("");
-                    resetPagingAndSelection();
-                  }}
-                  className="absolute right-2 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)]"
-                  aria-label="Effacer la recherche"
-                >
-                  <X className="size-4" />
-                </button>
-              ) : null}
-            </div>
+            <ListSearch
+              value={searchTerm}
+              onChange={(value) => {
+                setSearchTerm(value);
+                resetPagingAndSelection();
+              }}
+              placeholder="Nom, téléphone ou email..."
+            />
           </div>
           <button
             type="button"

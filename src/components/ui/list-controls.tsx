@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { RotateCcw, Search, SlidersHorizontal, X } from "lucide-react";
 
+import { FieldControl } from "@/components/ui/field-control";
 import { cn } from "@/lib/utils";
 
 export function ListSearch({
@@ -17,27 +18,31 @@ export function ListSearch({
   className?: string;
 }) {
   return (
-    <div className={cn("relative min-w-0 flex-1", className)}>
-      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
+    <FieldControl
+      className={cn("min-w-0 flex-1", className)}
+      icon={<Search className="size-4" />}
+      action={
+        value ? (
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="flex size-full items-center justify-center"
+            aria-label="Effacer la recherche"
+          >
+            <X className="size-4" />
+          </button>
+        ) : undefined
+      }
+    >
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="field w-full pl-9 pr-9 text-sm"
+        className={cn("field has-leading-icon w-full text-sm", value && "has-trailing-action")}
         type="search"
         enterKeyHint="search"
       />
-      {value ? (
-        <button
-          type="button"
-          onClick={() => onChange("")}
-          className="absolute right-2 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)]"
-          aria-label="Effacer la recherche"
-        >
-          <X className="size-4" />
-        </button>
-      ) : null}
-    </div>
+    </FieldControl>
   );
 }
 

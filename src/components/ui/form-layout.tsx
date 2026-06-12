@@ -12,7 +12,7 @@ export function FormSection({
   className?: string;
 }) {
   return (
-    <section className={cn("rounded-xl border border-border/80 bg-[var(--surface)] p-3.5 md:p-4", className)}>
+    <section className={cn("rounded-xl border border-border/80 bg-[var(--surface-raised)] p-3.5 md:p-4", className)}>
       {title ? <h3 className="text-sm font-semibold text-foreground">{title}</h3> : null}
       {description ? <p className="mt-0.5 text-xs text-muted-foreground">{description}</p> : null}
       <div className={cn(title || description ? "mt-3" : undefined)}>{children}</div>

@@ -6,7 +6,8 @@
 
 :root {
   --surface: #ffffff;
-  --surface-soft: #f4f8ff;
+  --surface-soft: #f3f6fb;
+  --surface-raised: #ffffff;
   --border: #d7e2f2;
   --primary: #1f5ea8;
   --primary-strong: #174a83;
@@ -15,9 +16,9 @@
   --muted: #53555862;
   --background: #f6f9ff;
   --foreground: #10243f;
-  --card: oklch(1 0 0);
+  --card: var(--surface);
   --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
+  --popover: var(--surface-raised);
   --popover-foreground: oklch(0.145 0 0);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: #eaf1fc;
@@ -94,10 +95,7 @@
 }
 
 body {
-  background:
-    radial-gradient(circle at 0% 0%, #d9eaff 0%, transparent 36%),
-    radial-gradient(circle at 100% 0%, #e3f6ef 0%, transparent 28%),
-    var(--background);
+  background: var(--background);
   font-family: var(--font-geist-sans), "Segoe UI", sans-serif;
   line-height: 1.45;
   color: var(--foreground);
@@ -142,7 +140,7 @@ a {
 
 .panel {
   background: var(--surface);
-  border: 1px solid color-mix(in srgb, var(--border) 84%, #ffffff 16%);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, var(--surface-raised) 12%);
   border-radius: 0.9rem;
   box-shadow: var(--shadow-panel);
   isolation: isolate;
@@ -162,7 +160,117 @@ a {
   color: var(--foreground);
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
-  background: #fff;
+  background-color: var(--surface-raised);
+  caret-color: var(--primary);
+}
+
+.field::placeholder {
+  color: var(--muted-foreground);
+  opacity: 0.78;
+}
+
+.field:disabled {
+  cursor: not-allowed;
+  background-color: var(--surface-soft);
+  color: var(--muted-foreground);
+  opacity: 0.78;
+}
+
+.field[readonly] {
+  background-color: var(--surface-soft);
+}
+
+select.field {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2.75rem;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%),
+    linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
+  background-position:
+    calc(100% - 1.15rem) calc(50% - 0.15rem),
+    calc(100% - 0.85rem) calc(50% - 0.15rem);
+  background-size: 0.32rem 0.32rem, 0.32rem 0.32rem;
+  background-repeat: no-repeat;
+}
+
+select.field:disabled {
+  background-image:
+    linear-gradient(45deg, transparent 50%, color-mix(in srgb, var(--muted-foreground) 65%, transparent) 50%),
+    linear-gradient(135deg, color-mix(in srgb, var(--muted-foreground) 65%, transparent) 50%, transparent 50%);
+}
+
+input.field[type="search"] {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+input.field[type="search"]::-webkit-search-decoration,
+input.field[type="search"]::-webkit-search-cancel-button,
+input.field[type="search"]::-webkit-search-results-button,
+input.field[type="search"]::-webkit-search-results-decoration {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.field-control {
+  position: relative;
+  min-width: 0;
+}
+
+.field-control > .field {
+  width: 100%;
+}
+
+.field-control-icon {
+  pointer-events: none;
+  position: absolute;
+  left: 0.85rem;
+  top: 50%;
+  z-index: 1;
+  width: 1rem;
+  height: 1rem;
+  transform: translateY(-50%);
+  color: var(--muted-foreground);
+}
+
+.field-control > .field.has-leading-icon {
+  padding-left: 2.6rem;
+}
+
+.field-control > .field.has-trailing-action {
+  padding-right: 3rem;
+}
+
+.field-control-action {
+  position: absolute;
+  right: 0.35rem;
+  top: 50%;
+  z-index: 2;
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  transform: translateY(-50%);
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.65rem;
+  color: var(--muted-foreground);
+}
+
+.field-control-action:hover {
+  background: var(--surface-soft);
+  color: var(--foreground);
+}
+
+.field-control-suffix {
+  pointer-events: none;
+  position: absolute;
+  right: 0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 .field:focus {
@@ -204,14 +312,14 @@ a {
 }
 
 .btn-ghost {
-  background: #fff;
+  background: var(--surface-raised);
   border-color: var(--border);
   color: var(--foreground);
 }
 
 .btn-ghost:hover:not(:disabled) {
-  background: #f8fbff;
-  border-color: #bfd1ea;
+  background: var(--surface-soft);
+  border-color: color-mix(in srgb, var(--border) 58%, var(--primary) 42%);
 }
 
 .btn-danger {
@@ -580,9 +688,7 @@ a {
 /* Below md (768px): card-style tables, full-width actions, larger touch targets */
 @media (max-width: 767px) {
   body {
-    background:
-      radial-gradient(circle at 10% -10%, #d9eaff 0%, transparent 38%),
-      var(--background);
+    background: var(--background);
   }
 
   .app-shell {
@@ -635,7 +741,7 @@ a {
     display: block;
     border: 1px solid var(--border);
     border-radius: 0.95rem;
-    background: linear-gradient(165deg, #ffffff 0%, #f9fcff 100%);
+    background: linear-gradient(165deg, var(--surface-raised) 0%, var(--surface-soft) 100%);
     box-shadow: 0 4px 14px rgba(16, 36, 63, 0.06);
     padding: 0.85rem 0.95rem;
   }
@@ -645,7 +751,7 @@ a {
     font-size: 0.95rem;
     font-weight: 650;
     padding-bottom: 0.5rem !important;
-    border-bottom: 1px dashed color-mix(in srgb, var(--border) 75%, #ffffff 25%);
+    border-bottom: 1px dashed color-mix(in srgb, var(--border) 82%, var(--surface-raised) 18%);
     margin-bottom: 0.15rem;
   }
 
@@ -866,7 +972,8 @@ a {
 
 .dark {
   --surface: #152238;
-  --surface-soft: #1a2a42;
+  --surface-soft: #19283d;
+  --surface-raised: #17263b;
   --background: #0c1526;
   --foreground: #e8f1fc;
   --border: #2a3f5c;
@@ -908,10 +1015,7 @@ a {
 }
 
 .dark body {
-  background:
-    radial-gradient(circle at 0% 0%, rgba(61, 132, 212, 0.14) 0%, transparent 36%),
-    radial-gradient(circle at 100% 0%, rgba(92, 184, 122, 0.08) 0%, transparent 28%),
-    var(--background);
+  background: var(--background);
 }
 
 .dark .panel {
@@ -927,7 +1031,7 @@ a {
 }
 
 .dark .field {
-  background: var(--surface-soft);
+  background-color: var(--surface-raised);
   color: var(--foreground);
 }
 
@@ -936,7 +1040,7 @@ a {
 }
 
 .dark .btn-ghost {
-  background: var(--surface-soft);
+  background: var(--surface-raised);
   border-color: var(--border);
   color: var(--foreground);
 }
