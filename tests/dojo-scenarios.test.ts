@@ -53,6 +53,13 @@ import {
   simulateWeeklyAllowanceRemaining,
 } from "@/lib/weekly-session-consumption";
 import { getGroupWeeklyScheduleCount } from "@/lib/sport-weekly-standard";
+import {
+  applyDataImport,
+  inspectDataImport,
+  rollbackDataImport,
+} from "@/lib/data-import-service";
+import type { DataImportPayload } from "@/lib/schemas/data-import";
+import { getWeekRangeUtc } from "@/lib/dates";
 
 async function resetData() {
   await prisma.$transaction([
@@ -400,10 +407,112 @@ async function weeklyAllowanceAfterWeek(
   });
 }
 
+function buildDataImportPayload(
+  fx: Awaited<ReturnType<typeof dojoFixture>>,
+  sessionId: string,
+  overrides: Partial<DataImportPayload> = {},
+): DataImportPayload {
+  const cutover = new Date();
+  const subscriptionStart = new Date(cutover);
+  subscriptionStart.setUTCDate(subscriptionStart.getUTCDate() - 10);
+  const subscriptionEnd = new Date(cutover);
+  subscriptionEnd.setUTCDate(subscriptionEnd.getUTCDate() + 20);
+
+  return {
+    cutoverDate: cutover.toISOString(),
+    member: {
+      firstName: "Mouna",
+      lastName: "Reprise",
+      phone: "import-unique-phone",
+      email: "mouna@example.com",
+      memberType: "ADULT",
+      birthDate: "",
+      address: "",
+      parentName: "",
+      parentPhone: "",
+      joinedAt: subscriptionStart.toISOString(),
+    },
+    groupId: fx.adultBjj.id,
+    planId: fx.bjjPlan.id,
+    assignmentStartDate: subscriptionStart.toISOString(),
+    subscriptionStartDate: subscriptionStart.toISOString(),
+    subscriptionEndDate: subscriptionEnd.toISOString(),
+    amountCents: 12000,
+    paidCents: 5000,
+    remainingSessions: 7,
+    paymentDate: cutover.toISOString(),
+    paymentMethod: "REPRISE_PAPIER",
+    note: "Reprise depuis le registre papier",
+    attendances: [{ sessionId, status: "PRESENT" }],
+    ...overrides,
+  };
+}
+
 beforeEach(async () => {
   authState.token = null;
   resetRateLimitsForTests();
   await resetData();
+});
+
+describe("temporary data import", () => {
+  it("imports the member state atomically without consuming the paper attendance twice", async () => {
+    const fx = await dojoFixture();
+    const { start } = getWeekRangeUtc(new Date());
+    const session = await createSessionForGroup(fx.adultBjj.id, { sessionDate: start });
+    const payload = buildDataImportPayload(fx, session.id);
+
+    const inspection = await inspectDataImport(payload);
+    const result = await applyDataImport(payload, "admin-import");
+
+    const member = await prisma.member.findUniqueOrThrow({
+      where: { id: result.memberId },
+      include: {
+        groups: true,
+        subscriptions: { include: { payments: true, attendances: true } },
+      },
+    });
+
+    expect(inspection.inspection.remainingBalanceCents).toBe(7000);
+    expect(member.groups).toHaveLength(1);
+    expect(member.subscriptions).toHaveLength(1);
+    expect(member.subscriptions[0].remainingSessions).toBe(7);
+    expect(member.subscriptions[0].payments[0].amount).toBe(5000);
+    expect(member.subscriptions[0].attendances[0].status).toBe("PRESENT");
+  });
+
+  it("rolls back a fresh import completely", async () => {
+    const fx = await dojoFixture();
+    const { start } = getWeekRangeUtc(new Date());
+    const session = await createSessionForGroup(fx.adultBjj.id, { sessionDate: start });
+    const result = await applyDataImport(buildDataImportPayload(fx, session.id), "admin-import");
+
+    await rollbackDataImport(result.auditLogId, "admin-import");
+
+    expect(await prisma.member.findUnique({ where: { id: result.memberId } })).toBeNull();
+    expect(
+      await prisma.auditLog.findFirst({
+        where: { action: "DATA_IMPORT_ROLLED_BACK", entityId: result.memberId },
+      }),
+    ).not.toBeNull();
+  });
+
+  it("refuses rollback after new activity is attached to the imported subscription", async () => {
+    const fx = await dojoFixture();
+    const { start } = getWeekRangeUtc(new Date());
+    const session = await createSessionForGroup(fx.adultBjj.id, { sessionDate: start });
+    const result = await applyDataImport(buildDataImportPayload(fx, session.id), "admin-import");
+    const subscription = await prisma.memberSubscription.findFirstOrThrow({
+      where: { memberId: result.memberId },
+    });
+    await prisma.payment.create({
+      data: { memberSubscriptionId: subscription.id, amount: 100, paymentMethod: "CASH" },
+    });
+
+    await expect(rollbackDataImport(result.auditLogId, "admin-import")).rejects.toThrow(
+      "IMPORT_HAS_NEW_ACTIVITY",
+    );
+    expect(await prisma.member.findUnique({ where: { id: result.memberId } })).not.toBeNull();
+  });
 });
 
 describe("schema guardrails", () => {

@@ -31,9 +31,11 @@ export const ROUTE_PERMISSION_RULES: Array<{ paths: string[]; permission: Permis
 export const ADMIN_ROUTE_PREFIXES = [
   "/settings/users",
   "/settings/club",
+  "/settings/data-import",
   "/logs",
   "/api/users",
   "/api/club-settings",
+  "/api/data-import",
 ] as const;
 
 export function requiredPermissionForPath(pathname: string): PermissionKey | null {

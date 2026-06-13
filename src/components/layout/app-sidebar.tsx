@@ -21,6 +21,7 @@ import {
   ChevronLeft,
   ChevronRight,
   SlidersHorizontal,
+  Import,
 } from "lucide-react";
 
 import { ClubBrandMark } from "@/components/layout/club-brand-mark";
@@ -78,6 +79,7 @@ export const clubConfigSection: NavSection = {
     { href: "/groups", label: "Cours & créneaux", icon: CalendarDays },
     { href: "/subscription-plans", label: "Formules & tarifs", icon: ClipboardCheck },
     { href: "/offers", label: "Offres", icon: CreditCard },
+    { href: "/settings/data-import", label: "Reprise d'activité", icon: Import },
   ],
 };
 
