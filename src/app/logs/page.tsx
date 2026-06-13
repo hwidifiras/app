@@ -26,10 +26,12 @@ export const revalidate = 0;
 export default async function LogsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, page: pageParam } = await searchParams;
   const query = q?.trim();
+  const requestedPage = Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1);
+  const pageSize = 30;
   const role = (await headers()).get("x-user-role");
 
   if (role !== "ADMIN") {
@@ -49,7 +51,6 @@ export default async function LogsPage({
 
   const allLogs = await prisma.auditLog.findMany({
     orderBy: { createdAt: "desc" },
-    take: 300,
   });
 
   const presented = allLogs.map((log) => ({
@@ -61,7 +62,10 @@ export default async function LogsPage({
     ? presented.filter(({ log, presentation }) => auditLogMatchesQuery(log, presentation, query))
     : presented;
 
-  const logs = filtered.slice(0, 200).map((p) => p.log);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(requestedPage, pageCount);
+  const startIndex = (currentPage - 1) * pageSize;
+  const logs = filtered.slice(startIndex, startIndex + pageSize).map((p) => p.log);
   const presentationById = await enrichAuditLogContexts(
     logs,
     new Map(filtered.map((p) => [p.log.id, p.presentation])),
@@ -174,7 +178,43 @@ export default async function LogsPage({
             ) : null}
           </DataTableBody>
         </DataTable>
+        {pageCount > 1 ? (
+          <nav
+            aria-label="Pagination"
+            className="mt-4 flex flex-col gap-3 border-t border-[var(--border)] pt-4 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <p className="text-center text-xs tabular-nums text-[var(--muted-foreground)] sm:text-left">
+              Éléments {startIndex + 1}–{Math.min(startIndex + pageSize, filtered.length)} sur {filtered.length}
+            </p>
+            <div className="flex items-center justify-center gap-2">
+              <Link
+                href={logPageHref(currentPage - 1, query)}
+                aria-disabled={currentPage === 1}
+                className={`btn btn-ghost min-h-10 px-3 text-xs ${currentPage === 1 ? "pointer-events-none opacity-40" : ""}`}
+              >
+                Précédent
+              </Link>
+              <span className="min-w-20 text-center text-xs font-semibold tabular-nums">
+                {currentPage} / {pageCount}
+              </span>
+              <Link
+                href={logPageHref(currentPage + 1, query)}
+                aria-disabled={currentPage === pageCount}
+                className={`btn btn-ghost min-h-10 px-3 text-xs ${currentPage === pageCount ? "pointer-events-none opacity-40" : ""}`}
+              >
+                Suivant
+              </Link>
+            </div>
+          </nav>
+        ) : null}
       </section>
     </main>
   );
+}
+
+function logPageHref(page: number, query?: string) {
+  const params = new URLSearchParams();
+  if (query) params.set("q", query);
+  params.set("page", String(Math.max(1, page)));
+  return `/logs?${params.toString()}`;
 }

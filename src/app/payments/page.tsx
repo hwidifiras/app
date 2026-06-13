@@ -50,7 +50,6 @@ export default async function PaymentsPage() {
   try {
     const rows = await prisma.payment.findMany({
       orderBy: { paymentDate: "desc" },
-      take: 200,
       include: {
         memberSubscription: {
           select: {

@@ -56,7 +56,6 @@ export async function GET(request: Request) {
       : undefined,
     include: { sport: { select: { id: true, name: true } } },
     orderBy: { createdAt: "desc" },
-    take: 50,
   });
 
   return NextResponse.json({ data: coaches.map(toCoachDto) });

@@ -13,6 +13,7 @@ import {
   MobileFiltersButton,
 } from "@/components/ui/list-controls";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { Pagination, usePagination } from "@/components/ui/pagination";
 
 export type AttendanceHistoryRow = {
   id: string;
@@ -57,6 +58,7 @@ export function AttendanceHistoryList({ rows }: { rows: AttendanceHistoryRow[] }
   }, [rows, searchTerm, statusFilter]);
 
   const activeFilterCount = statusFilter === "ALL" ? 0 : 1;
+  const pagination = usePagination(filteredRows, 20, `${searchTerm}|${statusFilter}`);
 
   function resetFilters() {
     setStatusFilter("ALL");
@@ -134,7 +136,7 @@ export function AttendanceHistoryList({ rows }: { rows: AttendanceHistoryRow[] }
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
-              {filteredRows.map((row) => (
+              {pagination.pageItems.map((row) => (
                 <tr key={row.id} className="transition-colors hover:bg-[var(--surface-soft)]">
                   <td className="data-table-primary px-4 py-3 font-medium text-[var(--foreground)]" data-label="Membre">
                     {row.memberName}
@@ -159,6 +161,13 @@ export function AttendanceHistoryList({ rows }: { rows: AttendanceHistoryRow[] }
           </table>
         </div>
       )}
+
+      <Pagination
+        currentPage={pagination.currentPage}
+        pageCount={pagination.pageCount}
+        totalItems={filteredRows.length}
+        onPageChange={pagination.setPage}
+      />
 
       <MobileFilterSheet
         open={filtersOpen}

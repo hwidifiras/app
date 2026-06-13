@@ -24,6 +24,7 @@ import {
   Th,
 } from "@/components/ui/responsive-table";
 import type { SubscriptionStatus } from "@prisma/client";
+import { Pagination, usePagination } from "@/components/ui/pagination";
 
 export type SubscriptionRow = {
   id: string;
@@ -104,6 +105,11 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
   }, [paymentFilter, searchTerm, statusFilter, subscriptions]);
 
   const activeFilterCount = [statusFilter !== "ALL", paymentFilter !== "ALL"].filter(Boolean).length;
+  const pagination = usePagination(
+    filteredSubscriptions,
+    20,
+    `${searchTerm}|${statusFilter}|${paymentFilter}`,
+  );
 
   function resetFilters() {
     setStatusFilter("ALL");
@@ -198,7 +204,7 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
         </tr>
       </DataTableHead>
       <DataTableBody>
-        {filteredSubscriptions.map((sub) => {
+        {pagination.pageItems.map((sub) => {
           const isExpanded = expandedIds.includes(sub.id);
           const billing = buildSubscriptionBillingView({
             amount: sub.amount,
@@ -280,6 +286,13 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
       </DataTableBody>
     </DataTable>
     )}
+
+    <Pagination
+      currentPage={pagination.currentPage}
+      pageCount={pagination.pageCount}
+      totalItems={filteredSubscriptions.length}
+      onPageChange={pagination.setPage}
+    />
 
     <MobileFilterSheet
       open={filtersOpen}

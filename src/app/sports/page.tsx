@@ -29,7 +29,6 @@ export default async function SportsPage() {
   try {
     const sports: SportRecord[] = await prisma.sport.findMany({
       orderBy: { createdAt: "desc" },
-      take: 50,
     });
 
     initialSports = sports.map((sport) => ({

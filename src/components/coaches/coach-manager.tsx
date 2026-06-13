@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormActions, FormField, FormGrid } from "@/components/ui/form-layout";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListSearch } from "@/components/ui/list-controls";
+import { Pagination, usePagination } from "@/components/ui/pagination";
 
 type CoachManagerProps = {
   initialCoaches: CoachDto[];
@@ -72,6 +73,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
       ].some((value) => value.toLocaleLowerCase("fr").includes(query)),
     );
   }, [coaches, searchTerm]);
+  const pagination = usePagination(filteredCoaches, 15, searchTerm);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -284,7 +286,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
           </div>
 
           <ul className="mt-4 space-y-2">
-            {filteredCoaches.map((coach) => (
+            {pagination.pageItems.map((coach) => (
               <li key={coach.id} className="rounded-xl border border-[var(--border)] px-3 py-2.5">
                 {editingId === coach.id ? (
                   <div className="space-y-2">
@@ -429,6 +431,13 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
               </li>
             ) : null}
           </ul>
+          <Pagination
+            currentPage={pagination.currentPage}
+            pageCount={pagination.pageCount}
+            totalItems={filteredCoaches.length}
+            pageSize={15}
+            onPageChange={pagination.setPage}
+          />
         </section>
       </div>
 

@@ -8,6 +8,7 @@ import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormField } from "@/components/ui/form-layout";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FULL_STAFF_PERMISSIONS, PERMISSION_LABELS, parsePermissions } from "@/lib/permission-definitions";
+import { Pagination, usePagination } from "@/components/ui/pagination";
 
 export type UserRow = {
   id: string;
@@ -33,6 +34,7 @@ export function UsersListClient({
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editActive, setEditActive] = useState(true);
+  const pagination = usePagination(users, 12);
 
   function startEdit(user: UserRow) {
     setEditingId(user.id);
@@ -95,7 +97,7 @@ export function UsersListClient({
         variant={message?.includes("envoyé") || message?.includes("mis à jour") ? "success" : undefined}
       />
 
-      {users.map((u) => {
+      {pagination.pageItems.map((u) => {
         const isEditing = editingId === u.id;
         const isSelf = u.id === currentUserId;
         const permKeys = u.permissions.map((p) => p.key);
@@ -184,6 +186,13 @@ export function UsersListClient({
           </article>
         );
       })}
+      <Pagination
+        currentPage={pagination.currentPage}
+        pageCount={pagination.pageCount}
+        totalItems={users.length}
+        pageSize={12}
+        onPageChange={pagination.setPage}
+      />
     </div>
   );
 }

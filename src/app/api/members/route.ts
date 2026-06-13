@@ -31,7 +31,7 @@ export async function GET(request: Request) {
         }
       : undefined,
     orderBy: { createdAt: "desc" },
-    take: query ? 300 : searchLimit,
+    take: query ? 300 : undefined,
     include: {
       groups: {
         where: { status: "ACTIVE" },

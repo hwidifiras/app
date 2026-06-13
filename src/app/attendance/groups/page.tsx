@@ -38,9 +38,11 @@ function sessionStatusLabel(status: string) {
 export default async function AttendanceByGroupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ groupId?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ groupId?: string; from?: string; to?: string; page?: string }>;
 }) {
-  const { groupId, from, to } = await searchParams;
+  const { groupId, from, to, page: pageParam } = await searchParams;
+  const requestedPage = Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1);
+  const pageSize = 50;
 
   const defaultTo = new Date();
   const defaultFrom = new Date();
@@ -74,8 +76,11 @@ export default async function AttendanceByGroupPage({
       attendances: { select: { status: true } },
     },
     orderBy: [{ group: { name: "asc" } }, { sessionDate: "desc" }, { startTime: "asc" }],
-    take: 500,
   });
+  const pageCount = Math.max(1, Math.ceil(sessions.length / pageSize));
+  const currentPage = Math.min(requestedPage, pageCount);
+  const startIndex = (currentPage - 1) * pageSize;
+  const pagedSessions = sessions.slice(startIndex, startIndex + pageSize);
 
   const grouped = new Map<
     string,
@@ -99,7 +104,7 @@ export default async function AttendanceByGroupPage({
     }
   >();
 
-  for (const session of sessions) {
+  for (const session of pagedSessions) {
     const present = session.attendances.filter((a) => a.status === "PRESENT").length;
     const absent = session.attendances.filter((a) => a.status === "ABSENT").length;
     const override = session.attendances.filter((a) => a.status === "OVERRIDE").length;
@@ -275,9 +280,50 @@ export default async function AttendanceByGroupPage({
                 </div>
               </details>
             ))}
+            {pageCount > 1 ? (
+              <nav
+                aria-label="Pagination"
+                className="flex flex-col gap-3 border-t border-[var(--border)] pt-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <p className="text-center text-xs tabular-nums text-[var(--muted-foreground)] sm:text-left">
+                  Séances {startIndex + 1}–{Math.min(startIndex + pageSize, sessions.length)} sur {sessions.length}
+                </p>
+                <div className="flex items-center justify-center gap-2">
+                  <Link
+                    href={attendanceReportPageHref(currentPage - 1, { groupId, from, to })}
+                    aria-disabled={currentPage === 1}
+                    className={`btn btn-ghost min-h-10 px-3 text-xs ${currentPage === 1 ? "pointer-events-none opacity-40" : ""}`}
+                  >
+                    Précédent
+                  </Link>
+                  <span className="min-w-20 text-center text-xs font-semibold tabular-nums">
+                    {currentPage} / {pageCount}
+                  </span>
+                  <Link
+                    href={attendanceReportPageHref(currentPage + 1, { groupId, from, to })}
+                    aria-disabled={currentPage === pageCount}
+                    className={`btn btn-ghost min-h-10 px-3 text-xs ${currentPage === pageCount ? "pointer-events-none opacity-40" : ""}`}
+                  >
+                    Suivant
+                  </Link>
+                </div>
+              </nav>
+            ) : null}
           </div>
         )}
       </section>
     </main>
   );
+}
+
+function attendanceReportPageHref(
+  page: number,
+  filters: { groupId?: string; from?: string; to?: string },
+) {
+  const params = new URLSearchParams();
+  if (filters.groupId) params.set("groupId", filters.groupId);
+  if (filters.from) params.set("from", filters.from);
+  if (filters.to) params.set("to", filters.to);
+  params.set("page", String(Math.max(1, page)));
+  return `/attendance/groups?${params.toString()}`;
 }

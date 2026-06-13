@@ -28,7 +28,6 @@ export async function GET(request: Request) {
         : {}),
     },
     orderBy: query ? { createdAt: "desc" } : { name: "asc" },
-    take: 50,
   });
 
   return NextResponse.json({ data: sports });

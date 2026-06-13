@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormActions } from "@/components/ui/form-layout";
 import { ListSearch } from "@/components/ui/list-controls";
+import { Pagination, usePagination } from "@/components/ui/pagination";
 import type { OfferLike } from "@/lib/offer-display";
 import {
   formatOfferRulesSummary,
@@ -70,6 +71,7 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
       formatOfferRulesSummary(offer).toLocaleLowerCase("fr").includes(query),
     );
   }, [offers, searchTerm]);
+  const pagination = usePagination(filteredOffers, 12, searchTerm);
 
   const offerPreview = useMemo(() => {
     if (kind === "PERCENT_OFF") {
@@ -319,7 +321,7 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
           />
         ) : (
           <ul className="mt-4 max-h-[65dvh] space-y-2 overflow-y-auto pr-1 text-sm">
-            {filteredOffers.map((offer) => (
+            {pagination.pageItems.map((offer) => (
               <li key={offer.id} className="rounded-xl border border-[var(--border)] bg-[var(--surface-soft)]/35 p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -346,6 +348,13 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
             ))}
           </ul>
         )}
+        <Pagination
+          currentPage={pagination.currentPage}
+          pageCount={pagination.pageCount}
+          totalItems={filteredOffers.length}
+          pageSize={12}
+          onPageChange={pagination.setPage}
+        />
       </section>
 
       <ConfirmDialog

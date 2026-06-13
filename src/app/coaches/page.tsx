@@ -35,7 +35,6 @@ export default async function CoachesPage() {
       prisma.coach.findMany({
         include: { sport: { select: { id: true, name: true } } },
         orderBy: { createdAt: "desc" },
-        take: 50,
       }),
       prisma.sport.findMany({ orderBy: { name: "asc" }, where: { isActive: true } }),
     ]);

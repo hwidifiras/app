@@ -36,7 +36,6 @@ export default async function MembersPage() {
     const [members, groups, sports] = await Promise.all([
       prisma.member.findMany({
         orderBy: { createdAt: "desc" },
-        take: 200,
         include: {
           groups: {
             where: { status: "ACTIVE" },

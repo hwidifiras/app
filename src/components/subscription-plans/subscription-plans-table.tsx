@@ -15,6 +15,7 @@ import {
   MobileFiltersButton,
 } from "@/components/ui/list-controls";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { Pagination, usePagination } from "@/components/ui/pagination";
 
 type PlanRow = {
   id: string;
@@ -56,6 +57,7 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
   }, [plans, searchTerm, statusFilter]);
 
   const activeFilterCount = statusFilter === "ALL" ? 0 : 1;
+  const pagination = usePagination(filteredPlans, 20, `${searchTerm}|${statusFilter}`);
 
   function toggleExpand(planId: string) {
     setExpandedPlanIds((current) =>
@@ -152,7 +154,7 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {filteredPlans.map((plan) => (
+            {pagination.pageItems.map((plan) => (
               <tr
                 key={plan.id}
                 className={`mobile-collapsible-row hover:bg-(--surface-soft) ${expandedPlanIds.includes(plan.id) ? "is-expanded" : ""}`}
@@ -200,6 +202,14 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
         </table>
       </div>
       )}
+
+      <Pagination
+        currentPage={pagination.currentPage}
+        pageCount={pagination.pageCount}
+        totalItems={filteredPlans.length}
+        onPageChange={pagination.setPage}
+        className="mx-3 mb-3"
+      />
 
       <MobileFilterSheet
         open={filtersOpen}

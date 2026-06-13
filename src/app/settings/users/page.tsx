@@ -39,7 +39,6 @@ export default async function SettingsUsersPage() {
       createdAt: true,
       permissions: { select: { key: true } },
     },
-    take: 200,
   });
 
   const rows = users.map((u) => ({

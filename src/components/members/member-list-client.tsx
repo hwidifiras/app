@@ -8,6 +8,7 @@ import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ListSearch } from "@/components/ui/list-controls";
+import { Pagination } from "@/components/ui/pagination";
 
 type GroupOption = {
   id: string;
@@ -444,43 +445,13 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
             </table>
           </div>
 
-          {pageCount > 1 ? (
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs text-muted-foreground">
-                Affichage {pageMembers.length === 0 ? 0 : pageStart + 1}-{Math.min(pageStart + PAGE_SIZE, filteredMembers.length)} sur {filteredMembers.length}
-              </p>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className="btn btn-ghost px-3 py-2 text-xs"
-                  onClick={() => setCurrentPage((current) => Math.max(1, current - 1))}
-                  disabled={currentPageSafe === 1}
-                >
-                  Précédent
-                </button>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: pageCount }, (_, index) => index + 1).map((pageNumber) => (
-                    <button
-                      key={pageNumber}
-                      type="button"
-                      onClick={() => setCurrentPage(pageNumber)}
-                      className={`rounded-lg px-3 py-2 text-xs font-medium transition ${pageNumber === currentPageSafe ? "bg-primary text-white" : "bg-(--surface-soft) text-foreground hover:bg-border"}`}
-                    >
-                      {pageNumber}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  className="btn btn-ghost px-3 py-2 text-xs"
-                  onClick={() => setCurrentPage((current) => Math.min(pageCount, current + 1))}
-                  disabled={currentPageSafe === pageCount}
-                >
-                  Suivant
-                </button>
-              </div>
-            </div>
-          ) : null}
+          <Pagination
+            currentPage={currentPageSafe}
+            pageCount={pageCount}
+            totalItems={filteredMembers.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={setCurrentPage}
+          />
         </div>
       ) : (
         <div className="space-y-4">

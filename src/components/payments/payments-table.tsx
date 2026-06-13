@@ -13,6 +13,7 @@ import {
   MobileFilterSheet,
   MobileFiltersButton,
 } from "@/components/ui/list-controls";
+import { Pagination, usePagination } from "@/components/ui/pagination";
 
 type PaymentGroup = {
   subscriptionId: string;
@@ -158,6 +159,7 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
   }, [groups, paymentFilter, searchTerm]);
 
   const activeFilterCount = paymentFilter === "ALL" ? 0 : 1;
+  const pagination = usePagination(filteredGroups, 20, `${searchTerm}|${paymentFilter}`);
 
   function resetFilters() {
     setPaymentFilter("ALL");
@@ -237,7 +239,7 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
       ) : (
       <>
       <ul className="space-y-2.5 md:hidden">
-        {filteredGroups.map((group) => {
+        {pagination.pageItems.map((group) => {
           const billing = buildSubscriptionBillingView({
             amount: group.totalDue,
             totalPaid: group.totalPaid,
@@ -355,7 +357,7 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border)]">
-            {filteredGroups.map((group) => {
+            {pagination.pageItems.map((group) => {
               const billing = buildSubscriptionBillingView({
                 amount: group.totalDue,
                 totalPaid: group.totalPaid,
@@ -454,6 +456,12 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
           </tbody>
         </table>
       </div>
+      <Pagination
+        currentPage={pagination.currentPage}
+        pageCount={pagination.pageCount}
+        totalItems={filteredGroups.length}
+        onPageChange={pagination.setPage}
+      />
       </>
       )}
 

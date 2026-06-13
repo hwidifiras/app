@@ -25,6 +25,7 @@ import {
   Td,
   Th,
 } from "@/components/ui/responsive-table";
+import { Pagination, usePagination } from "@/components/ui/pagination";
 
 export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }) {
   const [groups, setGroups] = useState<GroupDto[]>(initialGroups);
@@ -57,6 +58,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
   }), [groups, searchTerm, statusFilter]);
 
   const activeFilterCount = statusFilter === "ALL" ? 0 : 1;
+  const pagination = usePagination(filteredGroups, 20, `${searchTerm}|${statusFilter}`);
 
   async function deleteGroup(groupId: string) {
     setActionLoadingId(groupId);
@@ -170,7 +172,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
           </tr>
         </DataTableHead>
         <DataTableBody>
-          {filteredGroups.map((group) => {
+          {pagination.pageItems.map((group) => {
             const isExpanded = expandedGroupIds.includes(group.id);
             return (
               <DataTableRow key={group.id} expanded={isExpanded}>
@@ -231,6 +233,13 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
         </DataTableBody>
       </DataTable>
       )}
+
+      <Pagination
+        currentPage={pagination.currentPage}
+        pageCount={pagination.pageCount}
+        totalItems={filteredGroups.length}
+        onPageChange={pagination.setPage}
+      />
 
       <MobileFilterSheet
         open={filtersOpen}

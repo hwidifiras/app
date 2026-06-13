@@ -19,7 +19,6 @@ export default async function GroupsPage() {
         schedules: { orderBy: { createdAt: "asc" } },
       },
       orderBy: { createdAt: "desc" },
-      take: 50,
     });
 
     initialGroups = groups.map((group) => ({

@@ -16,7 +16,6 @@ export default async function AttendancePage() {
   try {
     const data = await prisma.attendance.findMany({
       orderBy: { checkedAt: "desc" },
-      take: 200,
       include: {
         session: { select: { sessionDate: true, startTime: true, group: { select: { name: true } } } },
         member: { select: { firstName: true, lastName: true } },

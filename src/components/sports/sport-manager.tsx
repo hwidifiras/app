@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormActions, FormField } from "@/components/ui/form-layout";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListSearch } from "@/components/ui/list-controls";
+import { Pagination, usePagination } from "@/components/ui/pagination";
 
 type SportManagerProps = {
   initialSports: SportDto[];
@@ -55,6 +56,7 @@ export function SportManager({ initialSports }: SportManagerProps) {
         (sport.description?.toLocaleLowerCase("fr").includes(query) ?? false),
     );
   }, [searchTerm, sports]);
+  const pagination = usePagination(filteredSports, 15, searchTerm);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -227,7 +229,7 @@ export function SportManager({ initialSports }: SportManagerProps) {
           </div>
 
           <ul className="mt-4 space-y-3">
-            {filteredSports.map((sport) => (
+            {pagination.pageItems.map((sport) => (
               <li key={sport.id} className="rounded-xl border border-[var(--border)] p-3">
                 {editingId === sport.id ? (
                   <div className="space-y-2">
@@ -328,6 +330,13 @@ export function SportManager({ initialSports }: SportManagerProps) {
               </li>
             ) : null}
           </ul>
+          <Pagination
+            currentPage={pagination.currentPage}
+            pageCount={pagination.pageCount}
+            totalItems={filteredSports.length}
+            pageSize={15}
+            onPageChange={pagination.setPage}
+          />
         </section>
       </div>
 
