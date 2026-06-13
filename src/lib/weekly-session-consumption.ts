@@ -158,17 +158,73 @@ export async function loadGroupWeekSessions(
 ): Promise<WeekSessionSlot[]> {
   const { start, end } = getWeekRangeUtc(sessionDate);
 
-  const sessions = await prisma.session.findMany({
-    where: {
-      groupId,
-      sessionDate: { gte: start, lt: end },
-      status: { not: "CANCELLED" },
-    },
-    select: { id: true, sessionDate: true, startTime: true },
-    orderBy: [{ sessionDate: "asc" }, { startTime: "asc" }],
-  });
+  const [sessions, schedules] = await Promise.all([
+    prisma.session.findMany({
+      where: {
+        groupId,
+        sessionDate: { gte: start, lt: end },
+      },
+      select: {
+        id: true,
+        scheduleId: true,
+        sessionDate: true,
+        startTime: true,
+        status: true,
+      },
+      orderBy: [{ sessionDate: "asc" }, { startTime: "asc" }],
+    }),
+    prisma.groupSchedule.findMany({
+      where: { groupId },
+      select: { id: true, dayOfWeek: true, startTime: true },
+    }),
+  ]);
 
-  return sessions.sort(compareSessionSlots);
+  const weekdayOffsets = {
+    MONDAY: 0,
+    TUESDAY: 1,
+    WEDNESDAY: 2,
+    THURSDAY: 3,
+    FRIDAY: 4,
+    SATURDAY: 5,
+    SUNDAY: 6,
+  } as const;
+  const unmatchedSessions = new Map(sessions.map((session) => [session.id, session]));
+  const slots: WeekSessionSlot[] = [];
+
+  for (const schedule of schedules) {
+    const expectedDate = new Date(start);
+    expectedDate.setUTCDate(expectedDate.getUTCDate() + weekdayOffsets[schedule.dayOfWeek]);
+
+    const matchingSession = sessions.find(
+      (session) =>
+        unmatchedSessions.has(session.id) &&
+        (session.scheduleId === schedule.id ||
+          (session.sessionDate.getTime() === expectedDate.getTime() &&
+            session.startTime === schedule.startTime)),
+    );
+
+    if (matchingSession) {
+      unmatchedSessions.delete(matchingSession.id);
+      if (matchingSession.status !== "CANCELLED") {
+        slots.push(matchingSession);
+      }
+      continue;
+    }
+
+    slots.push({
+      id: `schedule:${schedule.id}:${expectedDate.toISOString()}`,
+      sessionDate: expectedDate,
+      startTime: schedule.startTime,
+    });
+  }
+
+  for (const session of unmatchedSessions.values()) {
+    if (session.status !== "CANCELLED") {
+      slots.push(session);
+    }
+  }
+
+  return slots.sort(compareSessionSlots);
 }
 
 export async function loadWeekAttendanceStatuses(params: {

@@ -2033,6 +2033,43 @@ describe("payment corrections and member archive", () => {
 });
 
 describe("contextual weekly consumption (plan below group standard)", () => {
+  const completeWeekScenarios = [
+    ["PRESENT-PRESENT-PRESENT", ["PRESENT", "PRESENT", "PRESENT"], [201, 201, 403]],
+    ["PRESENT-PRESENT-ABSENT", ["PRESENT", "PRESENT", "ABSENT"], [201, 201, 201]],
+    ["PRESENT-ABSENT-PRESENT", ["PRESENT", "ABSENT", "PRESENT"], [201, 201, 201]],
+    ["PRESENT-ABSENT-ABSENT", ["PRESENT", "ABSENT", "ABSENT"], [201, 201, 201]],
+    ["ABSENT-PRESENT-PRESENT", ["ABSENT", "PRESENT", "PRESENT"], [201, 201, 201]],
+    ["ABSENT-PRESENT-ABSENT", ["ABSENT", "PRESENT", "ABSENT"], [201, 201, 201]],
+    ["ABSENT-ABSENT-PRESENT", ["ABSENT", "ABSENT", "PRESENT"], [201, 201, 201]],
+    ["ABSENT-ABSENT-ABSENT", ["ABSENT", "ABSENT", "ABSENT"], [201, 201, 201]],
+  ] as const;
+
+  it.each(completeWeekScenarios)(
+    "keeps the 2/3 weekly balance correct for %s",
+    async (_label, statuses, expectedHttpStatuses) => {
+      await signIn();
+      const fx = await dojoFixture();
+      const { plan, sessions } = await setupTwoPerWeekPlanWithThreeSessions(fx);
+      const sub = await enrollMemberForContextualPlan(fx, plan.id);
+
+      for (let index = 0; index < sessions.length; index++) {
+        const response = await createAttendance(
+          jsonRequest("POST", {
+            sessionId: sessions[index].id,
+            memberId: fx.adult.id,
+            status: statuses[index],
+          }),
+        );
+        expect(response.status).toBe(expectedHttpStatuses[index]);
+      }
+
+      const refreshed = await prisma.memberSubscription.findUniqueOrThrow({
+        where: { id: sub.id },
+      });
+      expect(refreshed.remainingSessions).toBe(6);
+    },
+  );
+
   it("rejects subscription plans above the sport weekly standard", async () => {
     await signIn();
     const fx = await dojoFixture();
@@ -2128,6 +2165,49 @@ describe("contextual weekly consumption (plan below group standard)", () => {
     ).toBe(0);
     const refreshed = await prisma.memberSubscription.findUniqueOrThrow({ where: { id: sub.id } });
     expect(refreshed.remainingSessions).toBe(6);
+  });
+
+  it("does not consume the first absence when a later configured session is not generated yet", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const { plan, sessions } = await setupTwoPerWeekPlanWithThreeSessions(fx);
+    const sub = await enrollMemberForContextualPlan(fx, plan.id);
+    await prisma.session.delete({ where: { id: sessions[2].id } });
+
+    const response = await createAttendance(
+      jsonRequest("POST", {
+        sessionId: sessions[0].id,
+        memberId: fx.adult.id,
+        status: "ABSENT",
+      }),
+    );
+    const refreshed = await prisma.memberSubscription.findUniqueOrThrow({ where: { id: sub.id } });
+
+    expect(response.status).toBe(201);
+    expect(refreshed.remainingSessions).toBe(8);
+  });
+
+  it("consumes the first absence when the third configured session is actually cancelled", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const { plan, sessions } = await setupTwoPerWeekPlanWithThreeSessions(fx);
+    const sub = await enrollMemberForContextualPlan(fx, plan.id);
+    await prisma.session.update({
+      where: { id: sessions[2].id },
+      data: { status: "CANCELLED" },
+    });
+
+    const response = await createAttendance(
+      jsonRequest("POST", {
+        sessionId: sessions[0].id,
+        memberId: fx.adult.id,
+        status: "ABSENT",
+      }),
+    );
+    const refreshed = await prisma.memberSubscription.findUniqueOrThrow({ where: { id: sub.id } });
+
+    expect(response.status).toBe(201);
+    expect(refreshed.remainingSessions).toBe(7);
   });
 
   it("scenario 4: absent, absent, present", async () => {
