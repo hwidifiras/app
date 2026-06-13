@@ -53,6 +53,7 @@ export function resolveSessionConsumptionUnits(params: {
   }
 
   if (status === "ABSENT") {
+    if (!absentConsumesSession) return 0;
     return weeklyAllowanceRemaining >= remainingGroupSlotsIncludingCurrent ? 1 : 0;
   }
 
@@ -234,24 +235,23 @@ export async function resolveCheckInConsumption(params: {
     sessionsInWeek,
     attendancesBySessionId,
     absentConsumesSession: params.absentConsumesSession,
-    beforeSessionId: params.sessionId,
   });
 
-  const units = consumptionUnitsForSessionSlot({
-    status: params.status,
-    mode,
+  const proposedAttendances = new Map(attendancesBySessionId);
+  proposedAttendances.set(params.sessionId, params.status);
+  const proposedAllowanceRemaining = simulateWeeklyAllowanceRemaining({
     planAllowance,
+    mode,
     sessionsInWeek,
-    attendancesBySessionId,
+    attendancesBySessionId: proposedAttendances,
     absentConsumesSession: params.absentConsumesSession,
-    sessionId: params.sessionId,
   });
 
   return {
-    units,
+    units: Math.max(0, weeklyAllowanceRemaining - proposedAllowanceRemaining),
     weeklyAllowanceRemaining,
     mode,
-    blockPresent: params.status === "PRESENT" && weeklyAllowanceRemaining <= 0,
+    blockPresent: params.status === "PRESENT" && proposedAllowanceRemaining < 0,
   };
 }
 
@@ -284,8 +284,73 @@ export async function computeWeeklyAllowanceRemainingForMember(params: {
     sessionsInWeek,
     attendancesBySessionId,
     absentConsumesSession: params.absentConsumesSession,
-    beforeSessionId: params.sessionId,
   });
+}
+
+export async function resolveAttendanceConsumptionChange(params: {
+  previousStatus: AttendanceStatus;
+  nextStatus: AttendanceStatus;
+  sessionId: string;
+  groupId: string;
+  sessionDate: Date;
+  memberId: string;
+  memberSubscriptionId: string | null;
+  planSessionsPerWeek: number | null;
+  absentConsumesSession: boolean;
+}): Promise<{ balanceDelta: number; blockPresent: boolean }> {
+  if (!params.memberSubscriptionId) {
+    const previousUnits =
+      params.previousStatus === "PRESENT" ||
+      (params.previousStatus === "ABSENT" && params.absentConsumesSession)
+        ? 1
+        : 0;
+    const nextUnits =
+      params.nextStatus === "PRESENT" ||
+      (params.nextStatus === "ABSENT" && params.absentConsumesSession)
+        ? 1
+        : 0;
+    return {
+      balanceDelta: previousUnits - nextUnits,
+      blockPresent: false,
+    };
+  }
+
+  const groupWeeklySessions = await getGroupWeeklyScheduleCount(params.groupId);
+  const planAllowance = params.planSessionsPerWeek ?? groupWeeklySessions;
+  const mode = getWeeklyConsumptionMode(params.planSessionsPerWeek, groupWeeklySessions);
+  const sessionsInWeek = await loadGroupWeekSessions(params.groupId, params.sessionDate);
+  const attendancesWithoutCurrent = await loadWeekAttendanceStatuses({
+    memberId: params.memberId,
+    memberSubscriptionId: params.memberSubscriptionId,
+    groupId: params.groupId,
+    sessionDate: params.sessionDate,
+    omitSessionId: params.sessionId,
+  });
+
+  const previousAttendances = new Map(attendancesWithoutCurrent);
+  previousAttendances.set(params.sessionId, params.previousStatus);
+  const nextAttendances = new Map(attendancesWithoutCurrent);
+  nextAttendances.set(params.sessionId, params.nextStatus);
+
+  const previousRemaining = simulateWeeklyAllowanceRemaining({
+    planAllowance,
+    mode,
+    sessionsInWeek,
+    attendancesBySessionId: previousAttendances,
+    absentConsumesSession: params.absentConsumesSession,
+  });
+  const nextRemaining = simulateWeeklyAllowanceRemaining({
+    planAllowance,
+    mode,
+    sessionsInWeek,
+    attendancesBySessionId: nextAttendances,
+    absentConsumesSession: params.absentConsumesSession,
+  });
+
+  return {
+    balanceDelta: nextRemaining - previousRemaining,
+    blockPresent: params.nextStatus === "PRESENT" && nextRemaining < 0,
+  };
 }
 
 export async function computeAttendanceConsumptionUnits(params: {
@@ -316,16 +381,25 @@ export async function computeAttendanceConsumptionUnits(params: {
     memberSubscriptionId: params.memberSubscriptionId,
     groupId: params.groupId,
     sessionDate: params.sessionDate,
-    omitSessionId: params.omitSessionId,
+    omitSessionId: params.omitSessionId ?? params.sessionId,
   });
 
-  return consumptionUnitsForSessionSlot({
-    status: params.status,
-    mode,
+  const allowanceWithoutCurrent = simulateWeeklyAllowanceRemaining({
     planAllowance,
+    mode,
     sessionsInWeek,
     attendancesBySessionId,
     absentConsumesSession: params.absentConsumesSession,
-    sessionId: params.sessionId,
   });
+  const attendancesWithCurrent = new Map(attendancesBySessionId);
+  attendancesWithCurrent.set(params.sessionId, params.status);
+  const allowanceWithCurrent = simulateWeeklyAllowanceRemaining({
+    planAllowance,
+    mode,
+    sessionsInWeek,
+    attendancesBySessionId: attendancesWithCurrent,
+    absentConsumesSession: params.absentConsumesSession,
+  });
+
+  return Math.max(0, allowanceWithoutCurrent - allowanceWithCurrent);
 }

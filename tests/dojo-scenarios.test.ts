@@ -2202,6 +2202,103 @@ describe("contextual weekly consumption (plan below group standard)", () => {
     expect(body.code).toBe("SUBSCRIPTION_WEEK_LIMIT_REACHED");
   });
 
+  it("respects disabled absence consumption in contextual mode", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const { plan, sessions } = await setupTwoPerWeekPlanWithThreeSessions(fx);
+    const sub = await enrollMemberForContextualPlan(fx, plan.id);
+    await prisma.clubSettings.update({
+      where: { id: "default" },
+      data: { absentConsumesSession: false },
+    });
+
+    for (const session of sessions) {
+      const response = await createAttendance(
+        jsonRequest("POST", {
+          sessionId: session.id,
+          memberId: fx.adult.id,
+          status: "ABSENT",
+        }),
+      );
+      expect(response.status).toBe(201);
+    }
+
+    const refreshed = await prisma.memberSubscription.findUniqueOrThrow({ where: { id: sub.id } });
+    expect(refreshed.remainingSessions).toBe(8);
+  });
+
+  it("blocks an out-of-order third present without over-consuming the subscription", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const { plan, sessions } = await setupTwoPerWeekPlanWithThreeSessions(fx);
+    const sub = await enrollMemberForContextualPlan(fx, plan.id);
+
+    for (const session of [sessions[2], sessions[1]]) {
+      const response = await createAttendance(
+        jsonRequest("POST", {
+          sessionId: session.id,
+          memberId: fx.adult.id,
+          status: "PRESENT",
+        }),
+      );
+      expect(response.status).toBe(201);
+    }
+
+    const blocked = await createAttendance(
+      jsonRequest("POST", {
+        sessionId: sessions[0].id,
+        memberId: fx.adult.id,
+        status: "PRESENT",
+      }),
+    );
+    const body = await responseJson(blocked);
+    const refreshed = await prisma.memberSubscription.findUniqueOrThrow({ where: { id: sub.id } });
+
+    expect(blocked.status).toBe(403);
+    expect(body.code).toBe("SUBSCRIPTION_WEEK_LIMIT_REACHED");
+    expect(refreshed.remainingSessions).toBe(6);
+  });
+
+  it("blocks correcting an earlier absence to a third present", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const { plan, sessions } = await setupTwoPerWeekPlanWithThreeSessions(fx);
+    const sub = await enrollMemberForContextualPlan(fx, plan.id);
+
+    const absentResponse = await createAttendance(
+      jsonRequest("POST", {
+        sessionId: sessions[0].id,
+        memberId: fx.adult.id,
+        status: "ABSENT",
+      }),
+    );
+    const attendanceId = ((await responseJson(absentResponse)).data as { id: string }).id;
+
+    for (const session of [sessions[2], sessions[1]]) {
+      const response = await createAttendance(
+        jsonRequest("POST", {
+          sessionId: session.id,
+          memberId: fx.adult.id,
+          status: "PRESENT",
+        }),
+      );
+      expect(response.status).toBe(201);
+    }
+
+    const blocked = await patchAttendance(
+      jsonRequest("PATCH", {
+        attendanceId,
+        payload: { status: "PRESENT" },
+      }),
+    );
+    const body = await responseJson(blocked);
+    const refreshed = await prisma.memberSubscription.findUniqueOrThrow({ where: { id: sub.id } });
+
+    expect(blocked.status).toBe(403);
+    expect(body.code).toBe("SUBSCRIPTION_WEEK_LIMIT_REACHED");
+    expect(refreshed.remainingSessions).toBe(6);
+  });
+
   it("matches the pure consumption algorithm for scenario 2", () => {
     const sessions = [
       { id: "s1", sessionDate: new Date("2026-05-18T00:00:00.000Z"), startTime: "18:00" },
@@ -2378,4 +2475,3 @@ describe("enrollment revert", () => {
     expect(revertResponse.status).toBe(409);
   });
 });
-

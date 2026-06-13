@@ -13,6 +13,7 @@ import {
 } from "@/lib/attendance-session-adjustment";
 import {
   computeAttendanceConsumptionUnits,
+  resolveAttendanceConsumptionChange,
   resolveCheckInConsumption,
 } from "@/lib/weekly-session-consumption";
 import {
@@ -102,7 +103,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { sessionId, memberId, status, overrideReason, checkedBy, overrideKind } = parsed.data;
+  const { sessionId, memberId, status, overrideReason, overrideKind } = parsed.data;
   const clubSettings = await getClubSettings();
   const isRecoveryOverride = status === "OVERRIDE" && overrideKind === "RECOVERY";
   const normalizedOverrideReason = isRecoveryOverride
@@ -275,12 +276,10 @@ export async function POST(request: Request) {
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      let activeSubscriptionId: string | null = null;
       let remainingSessionsBefore: number | null = null;
 
       if (consumptionUnits > 0) {
         if (isSubActive && activeSub) {
-          activeSubscriptionId = activeSub.id;
           remainingSessionsBefore = activeSub.remainingSessions;
 
           const updated = await tx.memberSubscription.updateMany({
@@ -470,10 +469,11 @@ export async function PATCH(request: Request) {
     }
 
     let delta = 0;
-    let newConsumptionUnits = 0;
 
     if (payload.status !== undefined) {
-      const consumptionBase = {
+      const consumptionChange = await resolveAttendanceConsumptionChange({
+        previousStatus: existing.status,
+        nextStatus,
         sessionId: existing.session.id,
         groupId: existing.session.groupId,
         sessionDate: existing.session.sessionDate,
@@ -481,18 +481,20 @@ export async function PATCH(request: Request) {
         memberSubscriptionId: subscriptionIdForConsumption,
         planSessionsPerWeek,
         absentConsumesSession: clubSettings.absentConsumesSession,
-      };
+      });
 
-      const oldUnits = await computeAttendanceConsumptionUnits({
-        ...consumptionBase,
-        status: existing.status,
-      });
-      newConsumptionUnits = await computeAttendanceConsumptionUnits({
-        ...consumptionBase,
-        status: nextStatus,
-        omitSessionId: existing.session.id,
-      });
-      delta = oldUnits - newConsumptionUnits;
+      if (consumptionChange.blockPresent) {
+        return NextResponse.json(
+          {
+            error: "Quota hebdomadaire atteint — passage exceptionnel requis",
+            code: "SUBSCRIPTION_WEEK_LIMIT_REACHED",
+            limit: planSessionsPerWeek,
+          },
+          { status: 403 },
+        );
+      }
+
+      delta = consumptionChange.balanceDelta;
     }
 
     const updated = await prisma.$transaction(async (tx) => {
@@ -513,7 +515,7 @@ export async function PATCH(request: Request) {
         data: {
           status: payload.status,
           memberSubscriptionId:
-            payload.status !== undefined && newConsumptionUnits > 0
+            payload.status !== undefined && nextStatus !== "OVERRIDE"
               ? memberSubscriptionId ?? subscriptionIdForConsumption
               : payload.status !== undefined
                 ? null
