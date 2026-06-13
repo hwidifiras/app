@@ -6,6 +6,11 @@ import { buildNotifications } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { jsonAuthFailureResponse } from "@/lib/permissions";
 import { requireAuth } from "@/lib/request-user";
+import { utcDateOnlyForTimeZone } from "@/lib/dates";
+import {
+  deriveSessionLifecycle,
+  expectedMemberIdsAtSession,
+} from "@/lib/session-lifecycle";
 
 export const dynamic = "force-dynamic";
 
@@ -29,12 +34,17 @@ export async function GET(request: Request) {
     const user = await requireAuth(request);
     const includePayments = hasAccess(user.role, user.permissions, "payments.manage");
     const includeExpirations = hasAccess(user.role, user.permissions, "catalog.manage");
+    const includeAttendance = hasAccess(user.role, user.permissions, "attendance.manage");
 
-    if (!includePayments && !includeExpirations) {
+    if (!includePayments && !includeExpirations && !includeAttendance) {
       return NextResponse.json({ data: { notifications: [], unreadCount: 0 } });
     }
 
-    const [settings, subscriptions, reads] = await Promise.all([
+    const today = utcDateOnlyForTimeZone(new Date());
+    const overdueSince = new Date(today);
+    overdueSince.setUTCDate(overdueSince.getUTCDate() - 30);
+
+    const [settings, subscriptions, sessions, reads] = await Promise.all([
       getClubSettings(),
       prisma.memberSubscription.findMany({
         where: { status: "ACTIVE" },
@@ -53,17 +63,60 @@ export async function GET(request: Request) {
           payments: { select: { amount: true } },
         },
       }),
+      includeAttendance
+        ? prisma.session.findMany({
+            where: {
+              status: { in: ["PLANNED", "RESCHEDULED"] },
+              sessionDate: { gte: overdueSince, lte: today },
+            },
+            select: {
+              id: true,
+              status: true,
+              sessionDate: true,
+              endTime: true,
+              group: {
+                select: {
+                  name: true,
+                  members: {
+                    select: { memberId: true, startDate: true, endDate: true },
+                  },
+                },
+              },
+              attendances: { select: { memberId: true } },
+            },
+          })
+        : Promise.resolve([]),
       prisma.notificationRead.findMany({
         where: { userId: user.id },
         select: { notificationKey: true },
       }),
     ]);
 
+    const overdueSessions = sessions.flatMap((session) => {
+      const lifecycle = deriveSessionLifecycle({
+        status: session.status,
+        sessionDate: session.sessionDate,
+        endTime: session.endTime,
+        expectedMemberIds: expectedMemberIdsAtSession(session.group.members, session.sessionDate),
+        attendanceMemberIds: session.attendances.map((attendance) => attendance.memberId),
+      });
+      return lifecycle.operationalStatus === "NEEDS_FINALIZATION"
+        ? [{
+            id: session.id,
+            groupName: session.group.name,
+            sessionDate: session.sessionDate,
+            endTime: session.endTime,
+            unmarkedCount: lifecycle.unmarkedCount,
+          }]
+        : [];
+    });
+
     const notifications = buildNotifications(subscriptions, {
       includePayments,
       includeExpirations,
       debtThresholdCents: settings.debtAlertThresholdCents,
       readKeys: new Set(reads.map((read) => read.notificationKey)),
+      overdueSessions,
     });
     const visibleNotifications = notifications.slice(0, 100);
 

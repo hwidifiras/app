@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import Link from "next/link";
-import { CalendarClock, Check, RotateCcw, Users, X, XIcon } from "lucide-react";
+import { CalendarClock, Check, CheckCircle2, LockOpen, RotateCcw, Users, X, XIcon } from "lucide-react";
 
 import { UndoButton } from "@/components/ui/undo-button";
 import type { SessionCardData } from "./session-card";
@@ -23,6 +23,9 @@ export function CheckInDrawer({
   undoCount = 0,
   undoLoading = false,
   onUndo,
+  finalizeLoading = false,
+  onFinalize,
+  onReopen,
   postponeHref,
 }: {
   session: SessionCardData;
@@ -42,6 +45,9 @@ export function CheckInDrawer({
   undoCount?: number;
   undoLoading?: boolean;
   onUndo?: () => void | Promise<void>;
+  finalizeLoading?: boolean;
+  onFinalize?: () => void | Promise<void>;
+  onReopen?: () => void | Promise<void>;
   postponeHref: string;
 }) {
   const [modalMember, setModalMember] = useState<{ memberId: string; name: string; status: string } | null>(null);
@@ -87,6 +93,8 @@ export function CheckInDrawer({
   const total = session.group.members.length;
   const checked = present + absent + override;
   const remaining = total - checked;
+  const isFinalized = session.status === "COMPLETED";
+  const needsFinalization = session.operationalStatus === "NEEDS_FINALIZATION";
 
   const unmarkedWithSub = session.group.members.filter((gm) => {
     const att = getAtt(gm.memberId);
@@ -205,6 +213,15 @@ export function CheckInDrawer({
               <span className="inline-flex items-center rounded-full bg-[var(--surface-soft)] px-2.5 py-1 text-xs font-medium text-[var(--muted-foreground)]">
                 {remaining > 0 ? `${remaining} à pointer` : "Complet"} · {total} élève{total !== 1 ? "s" : ""}
               </span>
+              {isFinalized ? (
+                <span className="inline-flex items-center rounded-full bg-[var(--success)]/12 px-2.5 py-1 text-xs font-semibold text-[var(--success)]">
+                  Séance finalisée
+                </span>
+              ) : needsFinalization ? (
+                <span className="inline-flex items-center rounded-full bg-[var(--warning)]/12 px-2.5 py-1 text-xs font-semibold text-[var(--warning)]">
+                  Séance passée · finalisation requise
+                </span>
+              ) : null}
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
@@ -221,7 +238,7 @@ export function CheckInDrawer({
 
         <div className="shrink-0 border-b border-[var(--border)] bg-[var(--surface-soft)]/55 px-4 py-3 sm:px-5">
           <div className="grid gap-2 sm:grid-cols-2">
-          {total <= MARK_ALL_MAX && unmarkedWithSub.length > 0 ? (
+          {!isFinalized && total <= MARK_ALL_MAX && unmarkedWithSub.length > 0 ? (
             <button
               type="button"
               onClick={markAllPresent}
@@ -235,7 +252,7 @@ export function CheckInDrawer({
           <button
             type="button"
             onClick={openRecoveryPanel}
-            disabled={loadingId !== null || markingAll}
+            disabled={isFinalized || loadingId !== null || markingAll}
             className="btn btn-secondary min-h-11 w-full text-sm"
           >
             Rattrapage d&apos;absence
@@ -312,7 +329,7 @@ export function CheckInDrawer({
                     <button
                       type="button"
                       onClick={() => handleClick(mid, "PRESENT")}
-                      disabled={loadingId === mid || markingAll}
+                      disabled={isFinalized || loadingId === mid || markingAll}
                       className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 sm:min-w-[7rem] ${
                         att?.status === "PRESENT"
                           ? "ring-2 ring-[var(--success)] ring-offset-2 ring-offset-[var(--surface)] bg-[var(--success)] text-white"
@@ -325,7 +342,7 @@ export function CheckInDrawer({
                     <button
                       type="button"
                       onClick={() => handleClick(mid, "ABSENT")}
-                      disabled={loadingId === mid || markingAll}
+                      disabled={isFinalized || loadingId === mid || markingAll}
                       className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 sm:min-w-[7rem] ${
                         att?.status === "ABSENT"
                           ? "ring-2 ring-[var(--danger)] ring-offset-2 ring-offset-[var(--surface)] bg-[var(--danger)] text-white"
@@ -345,9 +362,37 @@ export function CheckInDrawer({
 
         <div className="shrink-0 border-t border-[var(--border)] bg-[var(--surface)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(16,36,63,0.08)] sm:px-5">
           <div className="grid gap-2 sm:grid-cols-2">
+            {isFinalized ? (
+              <button
+                type="button"
+                onClick={onReopen}
+                disabled={!onReopen || finalizeLoading}
+                className="btn btn-secondary min-h-11 w-full"
+              >
+                <LockOpen className="size-4" />
+                {finalizeLoading ? "Réouverture…" : "Rouvrir pour corriger"}
+              </button>
+            ) : needsFinalization ? (
+              <button
+                type="button"
+                onClick={onFinalize}
+                disabled={!onFinalize || finalizeLoading || remaining > 0}
+                className="btn btn-primary min-h-11 w-full"
+                title={remaining > 0 ? `Il reste ${remaining} membre(s) à pointer` : undefined}
+              >
+                <CheckCircle2 className="size-4" />
+                {finalizeLoading
+                  ? "Finalisation…"
+                  : remaining > 0
+                    ? `Finaliser après ${remaining} pointage${remaining > 1 ? "s" : ""}`
+                    : "Finaliser la séance"}
+              </button>
+            ) : (
+              <div />
+            )}
             <UndoButton
               onClick={onUndo ?? (() => undefined)}
-              disabled={!canUndo || !onUndo || undoLoading || loadingId !== null}
+              disabled={isFinalized || !canUndo || !onUndo || undoLoading || loadingId !== null}
               label={
                 undoLoading
                   ? "Annulation…"
@@ -358,12 +403,12 @@ export function CheckInDrawer({
               title="Annuler les pointages un par un (Ctrl+Z)"
               className="min-h-11 w-full justify-center"
             />
-            {checked === 0 ? (
+            {!needsFinalization && !isFinalized && checked === 0 ? (
               <Link href={postponeHref} className="btn btn-secondary min-h-11 w-full">
                 <CalendarClock className="size-4" />
                 Reporter la séance
               </Link>
-            ) : (
+            ) : !needsFinalization && !isFinalized ? (
               <button
                 type="button"
                 disabled
@@ -373,9 +418,9 @@ export function CheckInDrawer({
                 <RotateCcw className="size-4" />
                 Reporter après annulation
               </button>
-            )}
+            ) : null}
           </div>
-          {checked > 0 ? (
+          {!needsFinalization && !isFinalized && checked > 0 ? (
             <p className="mt-2 text-center text-xs text-[var(--muted-foreground)]">
               Annulez les {checked} pointage{checked > 1 ? "s" : ""} un par un pour réactiver le report.
             </p>

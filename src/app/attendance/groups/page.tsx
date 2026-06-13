@@ -5,6 +5,10 @@ import { prisma } from "@/lib/prisma";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
+import {
+  deriveSessionLifecycle,
+  expectedMemberIdsAtSession,
+} from "@/lib/session-lifecycle";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -18,6 +22,7 @@ function formatDateInput(value: Date) {
 }
 
 function statusVariant(status: string) {
+  if (status === "NEEDS_FINALIZATION") return "warning";
   if (status === "PLANNED") return "info";
   if (status === "RESCHEDULED") return "warning";
   if (status === "COMPLETED") return "success";
@@ -31,6 +36,7 @@ function sessionStatusLabel(status: string) {
     RESCHEDULED: "Reportée",
     COMPLETED: "Terminée",
     CANCELLED: "Annulée",
+    NEEDS_FINALIZATION: "À finaliser",
   };
   return labels[status] ?? status;
 }
@@ -58,22 +64,23 @@ export default async function AttendanceByGroupPage({
     select: { id: true, name: true },
   });
 
-  const memberCounts = await prisma.groupMember.groupBy({
-    by: ["groupId"],
-    where: { status: "ACTIVE" },
-    _count: { _all: true },
-  });
-  const enrolledByGroup = new Map(memberCounts.map((r) => [r.groupId, r._count._all]));
-
   const sessions = await prisma.session.findMany({
     where: {
       ...(groupId ? { groupId } : {}),
       sessionDate: { gte: fromDate, lte: toDate },
     },
     include: {
-      group: { select: { id: true, name: true } },
+      group: {
+        select: {
+          id: true,
+          name: true,
+          members: {
+            select: { memberId: true, startDate: true, endDate: true },
+          },
+        },
+      },
       coach: { select: { firstName: true, lastName: true } },
-      attendances: { select: { status: true } },
+      attendances: { select: { memberId: true, status: true } },
     },
     orderBy: [{ group: { name: "asc" } }, { sessionDate: "desc" }, { startTime: "asc" }],
   });
@@ -109,7 +116,18 @@ export default async function AttendanceByGroupPage({
     const absent = session.attendances.filter((a) => a.status === "ABSENT").length;
     const override = session.attendances.filter((a) => a.status === "OVERRIDE").length;
     const checked = present + absent + override;
-    const enrolled = enrolledByGroup.get(session.groupId) ?? 0;
+    const expectedMemberIds = expectedMemberIdsAtSession(
+      session.group.members,
+      session.sessionDate,
+    );
+    const lifecycle = deriveSessionLifecycle({
+      status: session.status,
+      sessionDate: session.sessionDate,
+      endTime: session.endTime,
+      expectedMemberIds,
+      attendanceMemberIds: session.attendances.map((attendance) => attendance.memberId),
+    });
+    const enrolled = expectedMemberIds.length;
     const notMarked = Math.max(0, enrolled - checked);
     const coachName = session.coach ? `${session.coach.firstName} ${session.coach.lastName}` : "—";
 
@@ -126,7 +144,10 @@ export default async function AttendanceByGroupPage({
       date: session.sessionDate,
       startTime: session.startTime,
       endTime: session.endTime,
-      status: session.status,
+      status:
+        lifecycle.operationalStatus === "NEEDS_FINALIZATION"
+          ? "NEEDS_FINALIZATION"
+          : session.status,
       coachName,
       present,
       absent,

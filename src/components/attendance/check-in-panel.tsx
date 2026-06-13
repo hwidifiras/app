@@ -30,11 +30,37 @@ type AttendanceUndoMeta = {
   previous: AttendanceSnapshot | null;
 };
 
-export function CheckInPanel({ data }: { data: TodayData }) {
+function withPointingProgress(session: SessionCardData): SessionCardData {
+  const expectedIds = new Set(session.group.members.map((member) => member.memberId));
+  const checkedIds = new Set(
+    session.attendances
+      .map((attendance) => attendance.memberId)
+      .filter((memberId) => expectedIds.has(memberId)),
+  );
+  const unmarkedCount = Math.max(0, expectedIds.size - checkedIds.size);
+  return {
+    ...session,
+    expectedMemberCount: expectedIds.size,
+    checkedMemberCount: checkedIds.size,
+    unmarkedCount,
+    canFinalize: session.operationalStatus === "NEEDS_FINALIZATION" && unmarkedCount === 0,
+  };
+}
+
+export function CheckInPanel({
+  data,
+  initialSessionId,
+}: {
+  data: TodayData;
+  initialSessionId?: string;
+}) {
   const [sessions, setSessions] = useState(data.sessions);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(
+    data.sessions.some((session) => session.id === initialSessionId) ? initialSessionId ?? null : null,
+  );
   const [message, setMessage] = useState<string | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [finalizeLoading, setFinalizeLoading] = useState(false);
   const { push, undoLast, loading: undoLoading, countInScope } = useActionHistory<AttendanceUndoMeta["sessionId"]>({
     enableKeyboard: true,
   });
@@ -47,12 +73,12 @@ export function CheckInPanel({ data }: { data: TodayData }) {
       prev.map((session) => {
         if (session.id !== meta.sessionId) return session;
         if (meta.kind === "create" || !meta.previous) {
-          return {
+          return withPointingProgress({
             ...session,
             attendances: session.attendances.filter((attendance) => attendance.memberId !== meta.memberId),
-          };
+          });
         }
-        return {
+        return withPointingProgress({
           ...session,
           attendances: session.attendances.map((attendance) =>
             attendance.memberId === meta.memberId
@@ -64,7 +90,7 @@ export function CheckInPanel({ data }: { data: TodayData }) {
                 }
               : attendance,
           ),
-        };
+        });
       }),
     );
   }, []);
@@ -130,7 +156,7 @@ export function CheckInPanel({ data }: { data: TodayData }) {
       setSessions((prev) =>
         prev.map((s) =>
           s.id === sessionId
-            ? {
+            ? withPointingProgress({
                 ...s,
                 attendances: [
                   ...s.attendances.filter((a) => a.memberId !== mid),
@@ -141,7 +167,7 @@ export function CheckInPanel({ data }: { data: TodayData }) {
                     overrideReason: overrideReason?.trim() || existingAtt?.overrideReason || null,
                   },
                 ],
-              }
+              })
             : s,
         ),
       );
@@ -227,17 +253,56 @@ export function CheckInPanel({ data }: { data: TodayData }) {
     setSessions((current) =>
       current.map((item) =>
         item.id === selectedId
-          ? {
+          ? withPointingProgress({
               ...item,
               attendances: item.attendances.filter(
                 (attendance) => attendance.id !== latestAttendance.id,
               ),
-            }
+            })
           : item,
       ),
     );
     setMessage(result.warning ?? "Dernier pointage annulé");
     setLoadingId(null);
+  }
+
+  async function updateFinalization(action: "finalize" | "reopen") {
+    if (!selectedId || finalizeLoading) return;
+    setFinalizeLoading(true);
+    setMessage(null);
+    const response = await fetch(`/api/attendances/sessions/${selectedId}/finalize`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
+    });
+    const result = (await response.json()) as {
+      data?: { status: string };
+      error?: string;
+    };
+    setFinalizeLoading(false);
+    if (!response.ok) {
+      setMessage(result.error ?? "Impossible de modifier la finalisation.");
+      return;
+    }
+
+    setSessions((current) =>
+      current.map((session) =>
+        session.id === selectedId
+          ? {
+              ...session,
+              status:
+                result.data?.status === "RESCHEDULED"
+                  ? "RESCHEDULED"
+                  : action === "finalize"
+                    ? "COMPLETED"
+                    : "PLANNED",
+              operationalStatus: action === "finalize" ? "COMPLETED" : "NEEDS_FINALIZATION",
+              canFinalize: action === "reopen" && (session.unmarkedCount ?? 0) === 0,
+            }
+          : session,
+      ),
+    );
+    setMessage(action === "finalize" ? "Séance finalisée." : "Séance rouverte pour correction.");
   }
 
   if (sessions.length === 0) {
@@ -280,6 +345,9 @@ export function CheckInPanel({ data }: { data: TodayData }) {
           undoCount={effectiveSession.attendances.length}
           undoLoading={undoLoading}
           onUndo={undoLastForSession}
+          finalizeLoading={finalizeLoading}
+          onFinalize={() => updateFinalization("finalize")}
+          onReopen={() => updateFinalization("reopen")}
           postponeHref={`/sessions?week=${weekStartIsoForDate(new Date(effectiveSession.sessionDate))}&groupId=${effectiveSession.group.id}&sessionId=${effectiveSession.id}`}
         />
       )}

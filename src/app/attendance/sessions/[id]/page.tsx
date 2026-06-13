@@ -4,11 +4,16 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
+import {
+  deriveSessionLifecycle,
+  expectedMemberIdsAtSession,
+} from "@/lib/session-lifecycle";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 function statusVariant(status: string) {
+  if (status === "NEEDS_FINALIZATION") return "warning";
   if (status === "PLANNED") return "info";
   if (status === "RESCHEDULED") return "warning";
   if (status === "COMPLETED") return "success";
@@ -44,7 +49,6 @@ export default async function SessionAttendanceDetailPage({
         select: {
           name: true,
           members: {
-            where: { status: "ACTIVE" },
             include: {
               member: { select: { id: true, firstName: true, lastName: true } },
             },
@@ -64,8 +68,21 @@ export default async function SessionAttendanceDetailPage({
 
   if (!session) notFound();
 
+  const expectedIds = new Set(
+    expectedMemberIdsAtSession(session.group.members, session.sessionDate),
+  );
+  const expectedMembers = session.group.members.filter((member) =>
+    expectedIds.has(member.memberId),
+  );
+  const lifecycle = deriveSessionLifecycle({
+    status: session.status,
+    sessionDate: session.sessionDate,
+    endTime: session.endTime,
+    expectedMemberIds: [...expectedIds],
+    attendanceMemberIds: session.attendances.map((attendance) => attendance.memberId),
+  });
   const attByMember = new Map(session.attendances.map((a) => [a.memberId, a]));
-  const enrolled = session.group.members.length;
+  const enrolled = expectedMembers.length;
   const present = session.attendances.filter((a) => a.status === "PRESENT").length;
   const absent = session.attendances.filter((a) => a.status === "ABSENT").length;
   const override = session.attendances.filter((a) => a.status === "OVERRIDE").length;
@@ -94,6 +111,13 @@ export default async function SessionAttendanceDetailPage({
         overline="Détail séance"
         title={session.group.name}
         description={`${dateLabel} · ${session.startTime} – ${session.endTime} · ${session.room}`}
+        actions={
+          lifecycle.operationalStatus === "NEEDS_FINALIZATION" ? (
+            <Link href={`/attendance/today?sessionId=${session.id}`} className="btn btn-primary">
+              Reprendre le pointage
+            </Link>
+          ) : undefined
+        }
       />
 
       <section className="panel mb-4 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -123,14 +147,26 @@ export default async function SessionAttendanceDetailPage({
               : "Pas de coach assigné"}
             {override > 0 && ` · ${override} passage(s) exceptionnel(s)`}
           </p>
-          <StatusBadge variant={statusVariant(session.status)}>{session.status}</StatusBadge>
+          <StatusBadge
+            variant={statusVariant(
+              lifecycle.operationalStatus === "NEEDS_FINALIZATION"
+                ? "NEEDS_FINALIZATION"
+                : session.status,
+            )}
+          >
+            {lifecycle.operationalStatus === "NEEDS_FINALIZATION"
+              ? lifecycle.unmarkedCount > 0
+                ? `Pointage incomplet (${lifecycle.unmarkedCount})`
+                : "À finaliser"
+              : session.status}
+          </StatusBadge>
         </div>
 
         <div className="space-y-6">
           <div>
             <h2 className="mb-2 text-sm font-semibold text-[var(--foreground)]">Liste du cours</h2>
             <ul className="divide-y divide-[var(--border)] rounded-xl border border-[var(--border)]">
-              {session.group.members.map((gm) => {
+              {expectedMembers.map((gm) => {
                 const att = attByMember.get(gm.memberId);
                 return (
                   <li

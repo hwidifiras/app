@@ -1,4 +1,9 @@
 export type SessionStatusDto = "PLANNED" | "RESCHEDULED" | "CANCELLED" | "COMPLETED";
+export type SessionOperationalStatusDto =
+  | "UPCOMING"
+  | "NEEDS_FINALIZATION"
+  | "COMPLETED"
+  | "CANCELLED";
 
 export type SessionDto = {
   id: string;
@@ -17,6 +22,10 @@ export type SessionDto = {
   postponementReason: string | null;
   postponementDetails: string | null;
   attendanceCount: number;
+  operationalStatus?: SessionOperationalStatusDto;
+  expectedMemberCount?: number;
+  unmarkedCount?: number;
+  canFinalize?: boolean;
   createdAt: string;
   updatedAt: string;
 };

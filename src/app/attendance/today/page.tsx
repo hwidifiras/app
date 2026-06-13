@@ -5,16 +5,27 @@ import { getClubSettings } from "@/lib/club-settings";
 import { canCheckInWithPayment } from "@/lib/membership-rules";
 import { computeWeeklyAllowanceRemainingForMember } from "@/lib/weekly-session-consumption";
 import { utcDateOnlyForTimeZone } from "@/lib/dates";
+import {
+  deriveSessionLifecycle,
+  expectedMemberIdsAtSession,
+} from "@/lib/session-lifecycle";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function AttendanceTodayPage() {
+export default async function AttendanceTodayPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sessionId?: string }>;
+}) {
+  const { sessionId: requestedSessionId } = await searchParams;
   const today = utcDateOnlyForTimeZone(new Date());
   const tomorrow = new Date(today);
   tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+  const overdueSince = new Date(today);
+  overdueSince.setUTCDate(overdueSince.getUTCDate() - 30);
 
   let sessions = [] as Array<{
     id: string;
@@ -23,6 +34,12 @@ export default async function AttendanceTodayPage() {
     endTime: string;
     room: string;
     status: string;
+    operationalStatus: "UPCOMING" | "NEEDS_FINALIZATION" | "COMPLETED" | "CANCELLED";
+    expectedMemberCount: number;
+    checkedMemberCount: number;
+    unmarkedCount: number;
+    ended: boolean;
+    canFinalize: boolean;
     postponedTo: string | null;
     postponementDetails: string | null;
     group: {
@@ -51,7 +68,7 @@ export default async function AttendanceTodayPage() {
   try {
     const rawSessions = await prisma.session.findMany({
       where: {
-        sessionDate: { gte: today, lt: tomorrow },
+        sessionDate: { gte: overdueSince, lt: tomorrow },
         status: { in: ["PLANNED", "RESCHEDULED", "COMPLETED"] },
       },
       include: {
@@ -59,7 +76,6 @@ export default async function AttendanceTodayPage() {
           include: {
             sport: { select: { id: true } },
             members: {
-              where: { status: "ACTIVE" },
               include: {
                 member: { select: { id: true, firstName: true, lastName: true } },
               },
@@ -75,16 +91,43 @@ export default async function AttendanceTodayPage() {
       orderBy: { startTime: "asc" },
     });
 
-    sessions = rawSessions.map((s) => ({
-      ...s,
-      sessionDate: s.sessionDate.toISOString(),
-      postponedTo: s.postponedTo ? s.postponedTo.toISOString() : null,
-      postponementDetails: s.postponementDetails ?? null,
-      attendances: s.attendances.map((attendance) => ({
-        ...attendance,
-        checkedAt: attendance.checkedAt.toISOString(),
-      })),
-    }));
+    const visibleSessions = rawSessions.flatMap((session) => {
+      const expectedMemberIds = expectedMemberIdsAtSession(session.group.members, session.sessionDate);
+      const lifecycle = deriveSessionLifecycle({
+        status: session.status,
+        sessionDate: session.sessionDate,
+        endTime: session.endTime,
+        expectedMemberIds,
+        attendanceMemberIds: session.attendances.map((attendance) => attendance.memberId),
+      });
+      const isToday = session.sessionDate >= today && session.sessionDate < tomorrow;
+      const explicitlyRequested = requestedSessionId === session.id;
+      if (!isToday && lifecycle.operationalStatus !== "NEEDS_FINALIZATION" && !explicitlyRequested) {
+        return [];
+      }
+      const expectedIds = new Set(expectedMemberIds);
+      return [{
+        ...session,
+        ...lifecycle,
+        sessionDate: session.sessionDate.toISOString(),
+        postponedTo: session.postponedTo ? session.postponedTo.toISOString() : null,
+        postponementDetails: session.postponementDetails ?? null,
+        group: {
+          ...session.group,
+          members: session.group.members.filter((member) => expectedIds.has(member.memberId)),
+        },
+        attendances: session.attendances.map((attendance) => ({
+          ...attendance,
+          checkedAt: attendance.checkedAt.toISOString(),
+        })),
+      }];
+    });
+    sessions = visibleSessions.sort((left, right) => {
+      const leftPriority = left.operationalStatus === "NEEDS_FINALIZATION" ? 0 : 1;
+      const rightPriority = right.operationalStatus === "NEEDS_FINALIZATION" ? 0 : 1;
+      if (leftPriority !== rightPriority) return leftPriority - rightPriority;
+      return right.sessionDate.localeCompare(left.sessionDate) || left.startTime.localeCompare(right.startTime);
+    });
 
     // Collect all member IDs from sessions to check subscriptions
     const memberIds = Array.from(
@@ -92,18 +135,17 @@ export default async function AttendanceTodayPage() {
     );
 
     if (memberIds.length > 0) {
-      const now = new Date();
       const subs = await prisma.memberSubscription.findMany({
         where: {
           memberId: { in: memberIds },
-          status: "ACTIVE",
-          startDate: { lte: now },
-          OR: [{ endDate: null }, { endDate: { gte: now } }],
+          status: { in: ["ACTIVE", "EXPIRED"] },
           remainingSessions: { gt: 0 },
         },
         select: { 
           id: true,
           memberId: true,
+          startDate: true,
+          endDate: true,
           amount: true,
           remainingSessions: true,
           payments: { select: { amount: true } },
@@ -120,7 +162,12 @@ export default async function AttendanceTodayPage() {
         const sessionSportId = session.group.sportId;
 
         for (const member of session.group.members) {
-          const memberSubs = subs.filter((s) => s.memberId === member.memberId);
+          const memberSubs = subs.filter(
+            (s) =>
+              s.memberId === member.memberId &&
+              s.startDate <= session.sessionDate &&
+              (!s.endDate || s.endDate >= session.sessionDate),
+          );
 
           const matchedSub = await (async () => {
             for (const sub of memberSubs) {
@@ -202,11 +249,11 @@ export default async function AttendanceTodayPage() {
 
       <PageHeader
         overline="Suivi"
-        title="Pointage du jour"
+        title="Pointage et séances à finaliser"
         description={
           sessions.length === 0
-            ? "Aucune séance planifiée aujourd'hui. Les séances sont générées automatiquement depuis les créneaux récurrents du groupe."
-            : `${sessions.length} séance${sessions.length > 1 ? "s" : ""} planifiée${sessions.length > 1 ? "s" : ""} — sélectionnez une séance pour pointer les membres.`
+            ? "Aucune séance aujourd'hui et aucun pointage en retard."
+            : `${sessions.length} séance${sessions.length > 1 ? "s" : ""} disponible${sessions.length > 1 ? "s" : ""} — les séances passées restent accessibles jusqu'à leur finalisation.`
         }
       />
 
@@ -218,6 +265,7 @@ export default async function AttendanceTodayPage() {
             partialPaymentMemberIds,
             partialPaymentDebtsCents,
           }}
+          initialSessionId={requestedSessionId}
         />
       </section>
     </main>

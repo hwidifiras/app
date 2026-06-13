@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
 
 import { SessionDto, SessionStatusDto } from "@/types/session";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -40,6 +41,28 @@ const sessionStatusLabels: Record<SessionStatusDto, string> = {
   CANCELLED: "Annulée",
   COMPLETED: "Terminée",
 };
+
+function displayedSessionStatus(session: SessionDto) {
+  if (session.operationalStatus === "NEEDS_FINALIZATION") {
+    return {
+      label: session.unmarkedCount
+        ? `Pointage incomplet (${session.unmarkedCount})`
+        : "À finaliser",
+      variant: "warning" as const,
+    };
+  }
+  return {
+    label: sessionStatusLabels[session.status],
+    variant:
+      session.status === "CANCELLED"
+        ? ("danger" as const)
+        : session.status === "COMPLETED"
+          ? ("success" as const)
+          : session.status === "RESCHEDULED"
+            ? ("warning" as const)
+            : ("info" as const),
+  };
+}
 
 function formatDateFr(dateIso: string) {
   return new Date(dateIso).toLocaleDateString("fr-FR", {
@@ -493,17 +516,35 @@ export function SessionsPlanner({
                         ) : null}
                       </div>
                       <div className="mt-auto flex w-full items-center justify-between gap-2">
-                        <StatusBadge variant={item.status === "CANCELLED" ? "danger" : item.status === "COMPLETED" ? "success" : item.status === "RESCHEDULED" ? "warning" : "info"}>
-                          {sessionStatusLabels[item.status]}
+                        <StatusBadge variant={displayedSessionStatus(item).variant}>
+                          {displayedSessionStatus(item).label}
                         </StatusBadge>
                         <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => openEdit(item)}
-                            className="btn btn-ghost btn-sm"
-                          >
-                            Modifier
-                          </button>
+                          {item.operationalStatus === "NEEDS_FINALIZATION" ? (
+                            <Link
+                              href={`/attendance/today?sessionId=${item.id}`}
+                              className="btn btn-primary btn-sm"
+                            >
+                              <AlertTriangle className="size-3.5" />
+                              Finaliser
+                            </Link>
+                          ) : null}
+                          {item.status === "COMPLETED" ? (
+                            <Link
+                              href={`/attendance/today?sessionId=${item.id}`}
+                              className="btn btn-ghost btn-sm"
+                            >
+                              Consulter
+                            </Link>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => openEdit(item)}
+                              className="btn btn-ghost btn-sm"
+                            >
+                              Modifier
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => setPendingDeleteSession(item)}
@@ -663,8 +704,13 @@ export function SessionsPlanner({
                   <option value="PLANNED">Planifiée</option>
                   <option value="RESCHEDULED">Reportée</option>
                   <option value="CANCELLED">Annulée</option>
-                  <option value="COMPLETED">Terminée</option>
+                  {editingSession.status === "COMPLETED" ? (
+                    <option value="COMPLETED">Terminée</option>
+                  ) : null}
                 </select>
+                <p className="mt-1 text-[0.65rem] text-[var(--muted-foreground)]">
+                  Une séance terminée se finalise depuis son écran de pointage.
+                </p>
               </div>
               {editForm.status === "CANCELLED" ? (
                 <div className="sm:col-span-2">

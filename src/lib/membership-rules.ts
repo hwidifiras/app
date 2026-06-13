@@ -161,6 +161,44 @@ export async function resolveActiveSubscription(
   };
 }
 
+export async function resolveSubscriptionForAttendance(
+  memberId: string,
+  sportId: string,
+  sessionDate: Date,
+): Promise<ActiveSubscriptionView | null> {
+  const sub = await prisma.memberSubscription.findFirst({
+    where: {
+      memberId,
+      sportId,
+      status: { in: ["ACTIVE", "EXPIRED"] },
+      startDate: { lte: sessionDate },
+      OR: [{ endDate: null }, { endDate: { gte: sessionDate } }],
+      remainingSessions: { gt: 0 },
+    },
+    select: {
+      id: true,
+      sportId: true,
+      remainingSessions: true,
+      amount: true,
+      payments: { select: { amount: true } },
+      plan: { select: { sportId: true, sessionsPerWeek: true, name: true } },
+    },
+    orderBy: { endDate: "asc" },
+  });
+  if (!sub) {
+    // Compatibility for legacy records whose original subscription dates were not imported.
+    return resolveActiveSubscription(memberId, sportId);
+  }
+  return {
+    id: sub.id,
+    sportId: sub.sportId,
+    remainingSessions: sub.remainingSessions,
+    amount: sub.amount,
+    totalPaid: getTotalPaid(sub.payments),
+    plan: sub.plan,
+  };
+}
+
 export async function canCheckInWithPayment(
   sub: ActiveSubscriptionView,
 ): Promise<{ allowed: boolean; reason?: string }> {

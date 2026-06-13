@@ -19,6 +19,7 @@ import {
 import {
   canCheckInWithPayment,
   resolveActiveSubscription,
+  resolveSubscriptionForAttendance,
 } from "@/lib/membership-rules";
 
 export const runtime = "nodejs";
@@ -120,6 +121,18 @@ export async function POST(request: Request) {
     if (!sessionExists) {
       return NextResponse.json({ error: "Séance introuvable" }, { status: 404 });
     }
+    if (sessionExists.status === "CANCELLED") {
+      return NextResponse.json({ error: "Impossible de pointer une séance annulée" }, { status: 409 });
+    }
+    if (sessionExists.status === "COMPLETED") {
+      return NextResponse.json(
+        {
+          error: "Cette séance est finalisée. Rouvrez-la avant de corriger le pointage.",
+          code: "SESSION_REOPEN_REQUIRED",
+        },
+        { status: 409 },
+      );
+    }
 
     const memberExists = await prisma.member.findUnique({ where: { id: memberId } });
     if (!memberExists) {
@@ -131,7 +144,11 @@ export async function POST(request: Request) {
     }
 
     const sportId = sessionExists.group.sportId;
-    const activeSub = await resolveActiveSubscription(memberId, sportId);
+    const activeSub = await resolveSubscriptionForAttendance(
+      memberId,
+      sportId,
+      sessionExists.sessionDate,
+    );
     const isSubActive = !!activeSub;
     let consumptionUnits = 0;
 
@@ -436,6 +453,7 @@ export async function PATCH(request: Request) {
             id: true,
             sessionDate: true,
             groupId: true,
+            status: true,
             group: { select: { sportId: true } },
           },
         },
@@ -445,6 +463,15 @@ export async function PATCH(request: Request) {
 
     if (!existing) {
       return NextResponse.json({ error: "Présence introuvable" }, { status: 404 });
+    }
+    if (existing.session.status === "COMPLETED") {
+      return NextResponse.json(
+        {
+          error: "Cette séance est finalisée. Rouvrez-la avant de corriger le pointage.",
+          code: "SESSION_REOPEN_REQUIRED",
+        },
+        { status: 409 },
+      );
     }
 
     const activeSub = await resolveActiveSubscription(existing.memberId, existing.session.group.sportId);
@@ -628,6 +655,7 @@ export async function DELETE(request: Request) {
             id: true,
             sessionDate: true,
             groupId: true,
+            status: true,
             group: { select: { sportId: true } },
           },
         },
@@ -637,6 +665,15 @@ export async function DELETE(request: Request) {
 
     if (!existing) {
       return NextResponse.json({ error: "Présence introuvable" }, { status: 404 });
+    }
+    if (existing.session.status === "COMPLETED") {
+      return NextResponse.json(
+        {
+          error: "Cette séance est finalisée. Rouvrez-la avant d'annuler un pointage.",
+          code: "SESSION_REOPEN_REQUIRED",
+        },
+        { status: 409 },
+      );
     }
 
     const activeSub = await resolveActiveSubscription(existing.memberId, existing.session.group.sportId);

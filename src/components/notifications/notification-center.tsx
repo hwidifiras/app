@@ -8,6 +8,7 @@ import {
   CalendarClock,
   CheckCheck,
   CircleDollarSign,
+  ClipboardCheck,
   LoaderCircle,
 } from "lucide-react";
 
@@ -189,7 +190,7 @@ export function NotificationCenter({ className }: { className?: string }) {
                 </span>
                 <p className="mt-3 text-sm font-semibold text-[var(--foreground)]">Aucune alerte prioritaire</p>
                 <p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">
-                  Les impayés et échéances proches apparaîtront ici.
+                  Les impayés, échéances et séances à finaliser apparaîtront ici.
                 </p>
               </div>
             ) : (
@@ -221,7 +222,11 @@ function NotificationItem({
   onOpen: () => void;
 }) {
   const Icon =
-    notification.kind === "PAYMENT_DUE" ? CircleDollarSign : CalendarClock;
+    notification.kind === "PAYMENT_DUE"
+      ? CircleDollarSign
+      : notification.kind === "SESSION_FINALIZATION"
+        ? ClipboardCheck
+        : CalendarClock;
   const style = severityStyles[notification.severity];
 
   return (

@@ -5,6 +5,10 @@ import { utcDateOnlyForTimeZone } from "@/lib/dates";
 import { sessionRoomFromGroup } from "@/lib/group-room";
 import { generateSessionsSchema } from "@/lib/schemas/session";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
+import {
+  deriveSessionLifecycle,
+  expectedMemberIdsAtSession,
+} from "@/lib/session-lifecycle";
 
 export const runtime = "nodejs";
 
@@ -48,10 +52,22 @@ function toSessionDto(session: {
   postponementDetails: string | null;
   createdAt: Date;
   updatedAt: Date;
-  group: { name: string };
+  group: {
+    name: string;
+    members: Array<{ memberId: string; startDate: Date; endDate: Date | null }>;
+  };
   coach: { firstName: string; lastName: string } | null;
+  attendances: Array<{ memberId: string }>;
   _count: { attendances: number };
 }) {
+  const lifecycle = deriveSessionLifecycle({
+    status: session.status,
+    sessionDate: session.sessionDate,
+    endTime: session.endTime,
+    expectedMemberIds: expectedMemberIdsAtSession(session.group.members, session.sessionDate),
+    attendanceMemberIds: session.attendances.map((attendance) => attendance.memberId),
+  });
+
   return {
     id: session.id,
     groupId: session.groupId,
@@ -69,6 +85,7 @@ function toSessionDto(session: {
     postponementReason: session.postponementReason,
     postponementDetails: session.postponementDetails,
     attendanceCount: session._count.attendances,
+    ...lifecycle,
     createdAt: session.createdAt.toISOString(),
     updatedAt: session.updatedAt.toISOString(),
   };
@@ -103,8 +120,16 @@ export async function GET(request: Request) {
         : {}),
     },
     include: {
-      group: { select: { name: true } },
+      group: {
+        select: {
+          name: true,
+          members: {
+            select: { memberId: true, startDate: true, endDate: true },
+          },
+        },
+      },
       coach: { select: { firstName: true, lastName: true } },
+      attendances: { select: { memberId: true } },
       _count: { select: { attendances: true } },
     },
     orderBy: [{ sessionDate: "asc" }, { startTime: "asc" }],

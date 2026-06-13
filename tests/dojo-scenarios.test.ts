@@ -13,6 +13,7 @@ import { POST as createAttendance, PATCH as patchAttendance, DELETE as deleteAtt
 import { POST as createPayment, PATCH as patchPayment, DELETE as deletePayment } from "@/app/api/payments/route";
 import { DELETE as archiveMember } from "@/app/api/members/route";
 import { PATCH as postponeSession } from "@/app/api/sessions/[id]/postpone/route";
+import { POST as finalizeSession } from "@/app/api/attendances/sessions/[id]/finalize/route";
 import { PATCH as patchSession, DELETE as deleteSession } from "@/app/api/sessions/[id]/route";
 import { DELETE as deleteSport } from "@/app/api/sports/route";
 import { DELETE as deleteSubscriptionPlan, POST as createSubscriptionPlan } from "@/app/api/subscription-plans/route";
@@ -2082,6 +2083,129 @@ describe("session edit guard scenarios", () => {
 
     expect(patched.status).toBe(200);
     expect((body.data as { room: string }).room).toBe("Dojo B");
+  });
+});
+
+describe("session finalization", () => {
+  it("blocks incomplete finalization, then finalizes and reopens explicitly", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const session = await createSessionForGroup(fx.adultBjj.id, {
+      sessionDate: new Date("2026-06-11T00:00:00.000Z"),
+      startTime: "18:00",
+      endTime: "19:30",
+    });
+    await prisma.groupMember.create({
+      data: {
+        groupId: fx.adultBjj.id,
+        memberId: fx.adult.id,
+        startDate: new Date("2026-05-01T00:00:00.000Z"),
+      },
+    });
+
+    const incomplete = await routeWithSessionId(
+      finalizeSession,
+      session.id,
+      "POST",
+      { action: "finalize" },
+    );
+    expect(incomplete.status).toBe(409);
+
+    await prisma.attendance.create({
+      data: {
+        sessionId: session.id,
+        memberId: fx.adult.id,
+        status: "ABSENT",
+      },
+    });
+    const completed = await routeWithSessionId(
+      finalizeSession,
+      session.id,
+      "POST",
+      { action: "finalize" },
+    );
+    expect(completed.status).toBe(200);
+    expect(
+      (await prisma.session.findUniqueOrThrow({ where: { id: session.id } })).status,
+    ).toBe("COMPLETED");
+
+    const reopened = await routeWithSessionId(
+      finalizeSession,
+      session.id,
+      "POST",
+      { action: "reopen" },
+    );
+    expect(reopened.status).toBe(200);
+    expect(
+      (await prisma.session.findUniqueOrThrow({ where: { id: session.id } })).status,
+    ).toBe("PLANNED");
+  });
+
+  it("allows late check-in with the subscription that was valid on the session date", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const session = await createSessionForGroup(fx.adultBjj.id, {
+      sessionDate: new Date("2026-06-11T00:00:00.000Z"),
+    });
+    const subscription = await createActiveSubscription(fx, {
+      status: "EXPIRED",
+      startDate: new Date("2026-06-01T00:00:00.000Z"),
+      endDate: new Date("2026-06-12T00:00:00.000Z"),
+      remainingSessions: 4,
+    });
+    await prisma.payment.create({
+      data: { memberSubscriptionId: subscription.id, amount: subscription.amount },
+    });
+    await prisma.groupMember.create({
+      data: {
+        groupId: fx.adultBjj.id,
+        memberId: fx.adult.id,
+        startDate: new Date("2026-06-01T00:00:00.000Z"),
+      },
+    });
+
+    const response = await createAttendance(
+      jsonRequest("POST", {
+        sessionId: session.id,
+        memberId: fx.adult.id,
+        status: "PRESENT",
+      }),
+    );
+    const refreshed = await prisma.memberSubscription.findUniqueOrThrow({
+      where: { id: subscription.id },
+    });
+
+    expect(response.status).toBe(201);
+    expect(refreshed.remainingSessions).toBe(3);
+  });
+
+  it("requires reopening before changing a finalized attendance", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const session = await createSessionForGroup(fx.adultBjj.id, {
+      sessionDate: new Date("2026-06-11T00:00:00.000Z"),
+    });
+    const attendance = await prisma.attendance.create({
+      data: {
+        sessionId: session.id,
+        memberId: fx.adult.id,
+        status: "ABSENT",
+      },
+    });
+    await prisma.session.update({
+      where: { id: session.id },
+      data: { status: "COMPLETED" },
+    });
+
+    const response = await patchAttendance(
+      jsonRequest("PATCH", {
+        attendanceId: attendance.id,
+        payload: { status: "PRESENT" },
+      }),
+    );
+
+    expect(response.status).toBe(409);
+    expect((await responseJson(response)).code).toBe("SESSION_REOPEN_REQUIRED");
   });
 });
 

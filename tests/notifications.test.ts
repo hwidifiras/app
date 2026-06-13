@@ -95,4 +95,30 @@ describe("buildNotifications", () => {
     expect(today[0]?.key).toBe("subscription-expiry:sub-1:today");
     expect(today[0]?.severity).toBe("critical");
   });
+
+  it("prioritizes overdue sessions and links directly to late check-in", () => {
+    const notifications = buildNotifications([], {
+      now,
+      includePayments: false,
+      includeExpirations: false,
+      debtThresholdCents: 0,
+      overdueSessions: [
+        {
+          id: "session-1",
+          groupName: "BJJ Adultes",
+          sessionDate: new Date("2026-06-11T00:00:00.000Z"),
+          endTime: "19:30",
+          unmarkedCount: 2,
+        },
+      ],
+    });
+
+    expect(notifications).toEqual([
+      expect.objectContaining({
+        kind: "SESSION_FINALIZATION",
+        severity: "critical",
+        href: "/attendance/today?sessionId=session-1",
+      }),
+    ]);
+  });
 });

@@ -2,7 +2,10 @@ import { formatMoney } from "@/lib/subscription-billing";
 import { utcDateOnlyForTimeZone } from "@/lib/dates";
 
 export type NotificationSeverity = "critical" | "warning" | "info";
-export type NotificationKind = "PAYMENT_DUE" | "SUBSCRIPTION_EXPIRING";
+export type NotificationKind =
+  | "PAYMENT_DUE"
+  | "SUBSCRIPTION_EXPIRING"
+  | "SESSION_FINALIZATION";
 
 export type NotificationSubscriptionRow = {
   id: string;
@@ -36,6 +39,13 @@ type NotificationOptions = {
   includeExpirations: boolean;
   debtThresholdCents: number;
   readKeys?: Set<string>;
+  overdueSessions?: Array<{
+    id: string;
+    groupName: string;
+    sessionDate: Date;
+    endTime: string;
+    unmarkedCount: number;
+  }>;
 };
 
 function daysUntil(date: Date, now: Date) {
@@ -62,6 +72,23 @@ export function buildNotifications(
   const now = options.now ?? new Date();
   const readKeys = options.readKeys ?? new Set<string>();
   const notifications: AppNotification[] = [];
+
+  for (const session of options.overdueSessions ?? []) {
+    const key = `session-finalization:${session.id}:${session.unmarkedCount}`;
+    notifications.push({
+      key,
+      kind: "SESSION_FINALIZATION",
+      severity: session.unmarkedCount > 0 ? "critical" : "warning",
+      title: session.unmarkedCount > 0 ? "Pointage de séance incomplet" : "Séance à finaliser",
+      description:
+        session.unmarkedCount > 0
+          ? `${session.groupName} · ${session.unmarkedCount} membre${session.unmarkedCount > 1 ? "s" : ""} non pointé${session.unmarkedCount > 1 ? "s" : ""}`
+          : `${session.groupName} · pointage complet, validation finale requise`,
+      href: `/attendance/today?sessionId=${session.id}`,
+      occurredAt: session.sessionDate.toISOString(),
+      read: readKeys.has(key),
+    });
+  }
 
   for (const subscription of subscriptions) {
     const name = memberName(subscription);

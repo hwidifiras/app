@@ -4,6 +4,10 @@ import { SessionsPlanner } from "@/components/sessions/sessions-planner";
 import { getWeekRangeFromStartIso, getWeekRangeUtc, weekStartIsoForDate } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
+import {
+  deriveSessionLifecycle,
+  expectedMemberIdsAtSession,
+} from "@/lib/session-lifecycle";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -37,6 +41,12 @@ export default async function SessionsPage({
     postponementReason: string | null;
     postponementDetails: string | null;
     attendanceCount: number;
+    operationalStatus: "UPCOMING" | "NEEDS_FINALIZATION" | "COMPLETED" | "CANCELLED";
+    expectedMemberCount: number;
+    checkedMemberCount: number;
+    unmarkedCount: number;
+    ended: boolean;
+    canFinalize: boolean;
     createdAt: string;
     updatedAt: string;
   }> = [];
@@ -55,8 +65,16 @@ export default async function SessionsPage({
           ...(groupIdParam ? { groupId: groupIdParam } : {}),
         },
         include: {
-          group: { select: { name: true } },
+          group: {
+            select: {
+              name: true,
+              members: {
+                select: { memberId: true, startDate: true, endDate: true },
+              },
+            },
+          },
           coach: { select: { firstName: true, lastName: true } },
+          attendances: { select: { memberId: true } },
           _count: { select: { attendances: true } },
         },
         orderBy: [{ sessionDate: "asc" }, { startTime: "asc" }],
@@ -74,26 +92,36 @@ export default async function SessionsPage({
       }),
     ]);
 
-    initialSessions = sessions.map((session) => ({
-      id: session.id,
-      groupId: session.groupId,
-      groupName: session.group.name,
-      scheduleId: session.scheduleId,
-      sessionDate: session.sessionDate.toISOString(),
-      startTime: session.startTime,
-      endTime: session.endTime,
-      coachId: session.coachId,
-      coachName: session.coach ? `${session.coach.firstName} ${session.coach.lastName}` : null,
-      room: session.room,
-      status: session.status,
-      exceptionReason: session.exceptionReason,
-      postponedTo: session.postponedTo ? session.postponedTo.toISOString() : null,
-      postponementReason: session.postponementReason,
-      postponementDetails: session.postponementDetails,
-      attendanceCount: session._count.attendances,
-      createdAt: session.createdAt.toISOString(),
-      updatedAt: session.updatedAt.toISOString(),
-    }));
+    initialSessions = sessions.map((session) => {
+      const lifecycle = deriveSessionLifecycle({
+        status: session.status,
+        sessionDate: session.sessionDate,
+        endTime: session.endTime,
+        expectedMemberIds: expectedMemberIdsAtSession(session.group.members, session.sessionDate),
+        attendanceMemberIds: session.attendances.map((attendance) => attendance.memberId),
+      });
+      return {
+        id: session.id,
+        groupId: session.groupId,
+        groupName: session.group.name,
+        scheduleId: session.scheduleId,
+        sessionDate: session.sessionDate.toISOString(),
+        startTime: session.startTime,
+        endTime: session.endTime,
+        coachId: session.coachId,
+        coachName: session.coach ? `${session.coach.firstName} ${session.coach.lastName}` : null,
+        room: session.room,
+        status: session.status,
+        exceptionReason: session.exceptionReason,
+        postponedTo: session.postponedTo ? session.postponedTo.toISOString() : null,
+        postponementReason: session.postponementReason,
+        postponementDetails: session.postponementDetails,
+        attendanceCount: session._count.attendances,
+        ...lifecycle,
+        createdAt: session.createdAt.toISOString(),
+        updatedAt: session.updatedAt.toISOString(),
+      };
+    });
 
     groupsOptions = groups;
     coachesOptions = coaches;

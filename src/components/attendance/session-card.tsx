@@ -10,6 +10,11 @@ export type SessionCardData = {
   endTime: string;
   room: string;
   status: string;
+  operationalStatus?: "UPCOMING" | "NEEDS_FINALIZATION" | "COMPLETED" | "CANCELLED";
+  expectedMemberCount?: number;
+  checkedMemberCount?: number;
+  unmarkedCount?: number;
+  canFinalize?: boolean;
   postponedTo: string | null;
   postponementDetails: string | null;
   group: {
@@ -39,7 +44,13 @@ export function SessionCard({
   postponeHref: string;
   postponeDisabled?: boolean;
 }) {
-  const label = "Pointage disponible";
+  const needsFinalization = session.operationalStatus === "NEEDS_FINALIZATION";
+  const isFinalized = session.operationalStatus === "COMPLETED";
+  const label = isFinalized
+    ? "Consultation disponible"
+    : needsFinalization
+      ? "Séance passée · action requise"
+      : "Pointage disponible";
   const postponementInfo = (() => {
     if (!session.postponementDetails) return null;
     try {
@@ -60,14 +71,28 @@ export function SessionCard({
 
   const present = session.attendances.filter((a) => a.status === "PRESENT").length;
   const absent = session.attendances.filter((a) => a.status === "ABSENT").length;
+  const override = session.attendances.filter((a) => a.status === "OVERRIDE").length;
   const total = session.group.members.length;
-  const checked = present + absent;
+  const checked = present + absent + override;
   const remaining = total - checked;
-  const badge = {
-    text: "Pointage",
-    className: "bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/20",
-    icon: <CheckCircle2 className="size-3" />,
-  };
+  const badge = isFinalized
+    ? {
+        text: "Terminée",
+        className: "bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/20",
+        icon: <CheckCircle2 className="size-3" />,
+      }
+    : needsFinalization
+      ? {
+          text: remaining > 0 ? `${remaining} à pointer` : "À finaliser",
+          className: "bg-[var(--warning)]/10 text-[var(--warning)] border-[var(--warning)]/20",
+          icon: <CalendarClock className="size-3" />,
+        }
+      : {
+          text: "Pointage",
+          className: "bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/20",
+          icon: <CheckCircle2 className="size-3" />,
+        };
+  const cardTone = needsFinalization ? "var(--warning)" : "var(--success)";
 
   // Mini preview: first 3 checked-in members
   const checkedMembers = session.attendances
@@ -85,9 +110,10 @@ export function SessionCard({
       tabIndex={0}
       onClick={onSelect}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onSelect(); }}
-      className={`relative w-full overflow-hidden rounded-xl border border-[var(--success)] bg-[var(--success)]/[0.02] transition-all ${
+      style={{ borderColor: cardTone }}
+      className={`relative w-full overflow-hidden rounded-xl border bg-[var(--surface)] transition-all ${
         isSelected
-          ? "ring-2 ring-[var(--success)] shadow-lg shadow-[var(--success)]/10"
+          ? "ring-2 ring-[var(--primary)] shadow-lg"
           : ""
       } cursor-pointer hover:shadow-lg`}
     >
@@ -102,8 +128,8 @@ export function SessionCard({
           <span className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[0.65rem] font-semibold ${badge.className}`}>
             {!isSelected ? (
               <span className="relative flex size-2 shrink-0" aria-hidden>
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--success)] opacity-40" />
-                <span className="relative inline-flex size-2 rounded-full bg-[var(--success)]" />
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-30" />
+                <span className="relative inline-flex size-2 rounded-full bg-current" />
               </span>
             ) : (
               badge.icon
@@ -127,15 +153,21 @@ export function SessionCard({
 
         {/* OPEN click hint */}
         {!isSelected && (
-          <div className="mt-2 flex items-center gap-1.5 text-[0.65rem] font-medium text-[var(--success)]">
+          <div className={`mt-2 flex items-center gap-1.5 text-[0.65rem] font-medium ${needsFinalization ? "text-[var(--warning)]" : "text-[var(--success)]"}`}>
             <span className="inline-flex size-1.5 rounded-full bg-[var(--success)] animate-pulse" />
-            Cliquez pour pointer les membres
+            {needsFinalization
+              ? remaining > 0
+                ? "Ouvrir et terminer le pointage"
+                : "Ouvrir et finaliser la séance"
+              : isFinalized
+                ? "Ouvrir pour consulter"
+                : "Cliquez pour pointer les membres"}
           </div>
         )}
         {isSelected && (
           <div className="mt-2 flex items-center gap-1.5 text-[0.65rem] font-medium text-[var(--primary)]">
             <CheckCircle2 className="size-3" />
-            Pointage actif — sélectionnez un statut
+            {isFinalized ? "Consultation de la séance finalisée" : "Pointage actif — sélectionnez un statut"}
           </div>
         )}
 
@@ -148,6 +180,11 @@ export function SessionCard({
             {session.coach ? `${session.coach.firstName} ${session.coach.lastName}` : "Pas de coach"}
           </span>
         </div>
+        {needsFinalization ? (
+          <p className="mt-2 text-xs font-medium text-[var(--warning)]">
+            {new Date(session.sessionDate).toLocaleDateString("fr-FR")} · la séance a dépassé son heure de fin.
+          </p>
+        ) : null}
 
         {session.status === "RESCHEDULED" && postponementInfo ? (
           <div className="mt-2 text-[0.65rem] text-[var(--warning)]">

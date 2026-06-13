@@ -181,9 +181,26 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!existing) {
     return NextResponse.json({ error: "Séance introuvable" }, { status: 404 });
   }
+  if (existing.status === "COMPLETED") {
+    return NextResponse.json(
+      {
+        error: "Cette séance est finalisée. Rouvrez-la depuis le pointage avant toute modification.",
+      },
+      { status: 409 },
+    );
+  }
 
   const payload = parsed.data;
   const isPermanent = editMode === "permanent";
+
+  if (payload.status === "COMPLETED") {
+    return NextResponse.json(
+      {
+        error: "Finalisez la séance depuis l'écran de pointage après avoir renseigné tous les membres.",
+      },
+      { status: 409 },
+    );
+  }
 
   if (isPermanent && !existing.scheduleId) {
     return NextResponse.json(
