@@ -82,8 +82,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/register/") ||
     pathname === "/forgot-password" ||
     pathname === "/reset-password";
+  const isMarketingRoute =
+    pathname === "/accueil" ||
+    pathname.startsWith("/accueil/") ||
+    pathname === "/homepage" ||
+    pathname.startsWith("/homepage/");
 
-  if (isAuthRoute) {
+  if (isAuthRoute || isMarketingRoute) {
     return <div className="relative min-h-screen">{children}</div>;
   }
 

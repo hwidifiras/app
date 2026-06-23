@@ -1,0 +1,1139 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { motion, useInView, type Variants } from "framer-motion";
+import {
+  ArrowRight,
+  BarChart3,
+  Building2,
+  CalendarCheck,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  CircleDollarSign,
+  Clock3,
+  CreditCard,
+  Globe2,
+  Mail,
+  Medal,
+  Menu,
+  MessageCircle,
+  ShieldCheck,
+  Star,
+  Target,
+  Trophy,
+  Users,
+  X,
+  type LucideIcon,
+} from "lucide-react";
+
+import { cn } from "@/lib/utils";
+
+type HomepageProps = {
+  fontClassName: string;
+};
+
+type Feature = {
+  title: string;
+  description: string;
+  icon: LucideIcon;
+};
+
+type Stat = {
+  value: number;
+  suffix: string;
+  label: string;
+  icon: LucideIcon;
+};
+
+const assets = {
+  coach: "/we-discipline/coach-portrait.png",
+  dojo: "/we-discipline/wide-dojo-interior.png",
+  mentorship: "/we-discipline/coach-helping-child.png",
+  champion: "/we-discipline/champion-silhouette.png",
+  texture: "/we-discipline/dojo-texture.png",
+};
+
+const navItems = [
+  { label: "Fonctionnalités", href: "#fonctionnalites" },
+  { label: "Solutions", href: "#solutions" },
+  { label: "Tarifs", href: "#tarifs" },
+  { label: "À propos", href: "#valeurs" },
+];
+
+const trustItems = ["Sans carte bancaire", "Configuration en quelques minutes", "Annulation à tout moment"];
+
+const beltJourney = [
+  { name: "Ceinture blanche", image: "/we-discipline/white-belt.png", color: "#F8FAFC", count: "28 élèves" },
+  { name: "Ceinture jaune", image: "/we-discipline/yellow-belt.png", color: "#FACC15", count: "34 élèves" },
+  { name: "Ceinture orange", image: "/we-discipline/orange-belt.png", color: "#FB923C", count: "26 élèves" },
+  { name: "Ceinture verte", image: "/we-discipline/green-belt.png", color: "#22C55E", count: "30 élèves" },
+  { name: "Ceinture bleue", image: "/we-discipline/blue-belt.png", color: "#2563EB", count: "24 élèves" },
+  { name: "Ceinture marron", image: "/we-discipline/brown-belt.png", color: "#7C4A2D", count: "17 élèves" },
+  { name: "Ceinture noire", image: "/we-discipline/black-belt.png", color: "#111827", count: "28 élèves" },
+];
+
+const features: Feature[] = [
+  {
+    title: "Gestion des élèves",
+    description: "Dossiers, contacts, historique, niveau et responsables réunis dans un espace clair.",
+    icon: Users,
+  },
+  {
+    title: "Suivi des présences",
+    description: "Pointage rapide, cours du jour, absences et engagement par groupe.",
+    icon: CalendarCheck,
+  },
+  {
+    title: "Paiements & abonnements",
+    description: "Cotisations, relances, renouvellements et reçus suivis sans friction.",
+    icon: CreditCard,
+  },
+  {
+    title: "Progression des grades",
+    description: "Préparation aux passages, ceintures, examens et objectifs par pratiquant.",
+    icon: Medal,
+  },
+  {
+    title: "Communication",
+    description: "Messages ciblés aux élèves, parents, coaches et groupes de compétition.",
+    icon: MessageCircle,
+  },
+  {
+    title: "Analytique",
+    description: "Décisions nettes sur la rétention, l'assiduité, le revenu et la croissance.",
+    icon: BarChart3,
+  },
+];
+
+const dashboardStats = [
+  { label: "Élèves", value: "187", icon: Users, change: "+12 ce mois" },
+  { label: "Présence", value: "92%", icon: CalendarCheck, change: "+4% vs semaine" },
+  { label: "Revenus", value: "18 450€", icon: CircleDollarSign, change: "+14% ce mois" },
+  { label: "Compétitions", value: "8", icon: Trophy, change: "3 à venir" },
+  { label: "Examens de grade", value: "42", icon: Medal, change: "Mai - juin" },
+];
+
+const values = [
+  {
+    title: "Discipline",
+    description: "La constance crée l'excellence.",
+    icon: ShieldCheck,
+  },
+  {
+    title: "Respect",
+    description: "Bâtissez des communautés plus fortes.",
+    icon: Users,
+  },
+  {
+    title: "Progrès",
+    description: "Suivez chaque étape du parcours.",
+    icon: Target,
+  },
+];
+
+const socialStats: Stat[] = [
+  { value: 18450, suffix: "+", label: "Élèves gérés", icon: Users },
+  { value: 320, suffix: "+", label: "Académies", icon: Building2 },
+  { value: 98, suffix: "%", label: "Satisfaction client", icon: Trophy },
+  { value: 25, suffix: "+", label: "Pays", icon: Globe2 },
+];
+
+const pricingPlans = [
+  {
+    name: "Starter",
+    price: "29€",
+    description: "Pour lancer une petite académie avec des bases solides.",
+    features: ["Jusqu'à 100 élèves", "Présences & fiches élèves", "Paiements simples", "Support email"],
+    highlighted: false,
+  },
+  {
+    name: "Professional",
+    price: "79€",
+    description: "Pour les dojos en croissance qui veulent piloter comme une équipe d'élite.",
+    features: [
+      "Élèves illimités",
+      "Grades & examens",
+      "Relances automatiques",
+      "Statistiques avancées",
+      "Communication groupes",
+    ],
+    highlighted: true,
+  },
+  {
+    name: "Enterprise",
+    price: "Sur mesure",
+    description: "Pour réseaux, fédérations et clubs multisites.",
+    features: ["Multi-académies", "Rôles avancés", "Onboarding dédié", "Tableaux de bord réseau"],
+    highlighted: false,
+  },
+];
+
+const faqs = [
+  {
+    question: "We Discipline convient-il à toutes les disciplines martiales ?",
+    answer:
+      "Oui. Karaté, judo, taekwondo, jiu-jitsu, MMA, boxe ou disciplines hybrides: la structure s'adapte aux groupes, grades, cours, familles et compétitions de votre académie.",
+  },
+  {
+    question: "Puis-je suivre les passages de ceinture ?",
+    answer:
+      "Oui. Vous pouvez organiser les ceintures, préparer les examens, repérer les élèves prêts et garder l'historique de progression de chaque pratiquant.",
+  },
+  {
+    question: "Les parents peuvent-ils recevoir des communications ?",
+    answer:
+      "Oui. La plateforme centralise les contacts et permet de communiquer avec les élèves, les parents, les coaches ou des groupes précis.",
+  },
+  {
+    question: "Combien de temps faut-il pour démarrer ?",
+    answer:
+      "La configuration initiale prend quelques minutes. Vous pouvez ensuite importer vos élèves, créer vos groupes et commencer à pointer les cours.",
+  },
+  {
+    question: "Puis-je demander une démonstration ?",
+    answer:
+      "Oui. La démo montre comment gérer une vraie semaine de dojo: inscriptions, présences, paiements, grades et suivi de la progression.",
+  },
+];
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+    },
+  },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 24 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const },
+  },
+};
+
+function LogoLockup({ dark = false, variant = "footer" }: { dark?: boolean; variant?: "navbar" | "footer" }) {
+  if (variant === "navbar") {
+    return (
+      <Link href="/accueil" className="relative block h-12 w-[150px]" aria-label="Accueil We Discipline">
+        <Image
+          src="/we-discipline/navbar-logo.svg"
+          alt="We Discipline"
+          fill
+          sizes="150px"
+          className="object-contain"
+          priority
+          unoptimized
+        />
+      </Link>
+    );
+  }
+
+  return (
+    <Link href="/accueil" className="flex items-center gap-3" aria-label="Accueil We Discipline">
+      <span
+        className={cn(
+          "relative flex size-11 items-center justify-center overflow-hidden rounded-md border shadow-sm",
+          dark ? "border-white/20 bg-white/10" : "border-slate-200 bg-white",
+        )}
+      >
+        <Image
+          src="/we-discipline/footer-logo.png"
+          alt=""
+          fill
+          sizes="44px"
+          className="object-cover"
+          style={{ transform: "scale(2.25)", transformOrigin: "50% 38%" }}
+          aria-hidden="true"
+        />
+      </span>
+      <span className={cn("leading-none", dark ? "text-white" : "text-[#111827]")}>
+        <span className="block text-sm font-black uppercase tracking-[0.02em]">
+          <span className="text-[#2563EB]">We</span> Discipline
+        </span>
+        <span
+          className={cn(
+            "mt-1 block text-[0.58rem] font-bold uppercase tracking-[0.22em]",
+            dark ? "text-white/50" : "text-slate-500",
+          )}
+        >
+          Arts martiaux
+        </span>
+      </span>
+    </Link>
+  );
+}
+
+function CtaButton({
+  children,
+  href,
+  variant = "primary",
+  icon: Icon,
+}: {
+  children: React.ReactNode;
+  href: string;
+  variant?: "primary" | "secondary" | "dark";
+  icon?: LucideIcon;
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "group inline-flex min-h-12 items-center justify-center gap-2 rounded-md px-5 text-sm font-bold transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#38BDF8]",
+        variant === "primary" && "bg-[#2563EB] text-white shadow-[0_18px_45px_rgba(37,99,235,0.28)] hover:bg-[#1D4ED8]",
+        variant === "secondary" && "border border-slate-300 bg-white text-[#111827] hover:border-[#2563EB] hover:text-[#2563EB]",
+        variant === "dark" && "border border-white/18 bg-white/10 text-white hover:bg-white hover:text-[#111827]",
+      )}
+    >
+      {children}
+      {Icon ? <Icon className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" /> : null}
+    </Link>
+  );
+}
+
+function SectionHeading({
+  eyebrow,
+  title,
+  description,
+  align = "left",
+  dark = false,
+}: {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+  align?: "left" | "center";
+  dark?: boolean;
+}) {
+  return (
+    <div className={cn("max-w-3xl", align === "center" && "mx-auto text-center")}>
+      {eyebrow ? (
+        <p className={cn("text-xs font-extrabold uppercase tracking-[0.18em]", dark ? "text-[#38BDF8]" : "text-[#2563EB]")}>
+          {eyebrow}
+        </p>
+      ) : null}
+      <h2 className={cn("mt-3 text-3xl font-black tracking-tight sm:text-4xl lg:text-5xl", dark ? "text-white" : "text-[#111827]")}>
+        {title}
+      </h2>
+      {description ? (
+        <p className={cn("mt-4 text-base leading-7 sm:text-lg", dark ? "text-slate-300" : "text-slate-600")}>{description}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function AnimatedCounter({ value, suffix }: { value: number; suffix: string }) {
+  const ref = useRef<HTMLSpanElement | null>(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (!inView) return;
+
+    let frame = 0;
+    const totalFrames = 72;
+    const timer = window.setInterval(() => {
+      frame += 1;
+      const progress = 1 - Math.pow(1 - frame / totalFrames, 3);
+      setCount(Math.round(value * progress));
+      if (frame >= totalFrames) {
+        window.clearInterval(timer);
+        setCount(value);
+      }
+    }, 18);
+
+    return () => window.clearInterval(timer);
+  }, [inView, value]);
+
+  return (
+    <span ref={ref}>
+      {new Intl.NumberFormat("fr-FR").format(count)}
+      {suffix}
+    </span>
+  );
+}
+
+function DashboardMockup({ compact = false }: { compact?: boolean }) {
+  const rows = [
+    { name: "Liam Johnson", belt: "Bleue", age: 12, attendance: "93%" },
+    { name: "Emma Williams", belt: "Jaune", age: 10, attendance: "88%" },
+    { name: "Noah Brown", belt: "Verte", age: 14, attendance: "95%" },
+    { name: "Olivia Davis", belt: "Blanche", age: 8, attendance: "85%" },
+  ];
+
+  return (
+    <div
+      className={cn(
+        "overflow-hidden rounded-lg border border-slate-200 bg-white text-[#111827] shadow-[0_28px_80px_rgba(15,23,42,0.22)]",
+        compact ? "w-[min(100%,34rem)]" : "w-full",
+      )}
+    >
+      <div className={cn("flex", compact ? "min-h-[17rem]" : "min-h-[21rem]")}>
+        <aside className={cn("hidden shrink-0 bg-[#0B1220] text-white sm:block", compact ? "w-28 p-3" : "w-36 p-4")}>
+          <Link href="/accueil" className={cn("relative block", compact ? "h-7 w-20" : "h-8 w-24")} aria-label="Accueil We Discipline">
+            <Image
+              src="/we-discipline/navbar-logo.svg"
+              alt="We Discipline"
+              fill
+              sizes={compact ? "80px" : "96px"}
+              className="object-contain object-left"
+              unoptimized
+            />
+          </Link>
+          <nav className={cn("space-y-1 font-semibold text-slate-400", compact ? "mt-4 text-[0.65rem]" : "mt-5 text-[0.7rem]")}>
+            {["Vue globale", "Élèves", "Présences", "Cours", "Grades", "Paiements"].map((item, index) => (
+              <div
+                key={item}
+                className={cn(
+                  "flex items-center gap-2 rounded-md px-2 py-2",
+                  index === 1 ? "bg-[#2563EB] text-white" : "hover:bg-white/5",
+                )}
+              >
+                <span className="size-1.5 rounded-full bg-current" />
+                {item}
+              </div>
+            ))}
+          </nav>
+        </aside>
+        <div className={cn("min-w-0 flex-1", compact ? "p-3" : "p-4 sm:p-5")}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className={cn("font-bold uppercase tracking-[0.16em] text-[#2563EB]", compact ? "text-[0.68rem]" : "text-xs")}>Tableau de bord</p>
+              <h3 className="mt-1 text-xl font-black">Académie principale</h3>
+            </div>
+            <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+              <Clock3 className="size-3.5" aria-hidden="true" />
+              Aujourd’hui
+            </div>
+          </div>
+
+          <div className={cn("grid sm:grid-cols-3", compact ? "mt-4 gap-2" : "mt-5 gap-3")}>
+            {dashboardStats.slice(0, 3).map((stat) => {
+              const Icon = stat.icon;
+              return (
+                <div key={stat.label} className={cn("rounded-md border border-slate-200 bg-white shadow-sm", compact ? "p-2.5" : "p-3")}>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[0.68rem] font-bold uppercase tracking-[0.12em] text-slate-500">{stat.label}</p>
+                    <Icon className="size-4 text-[#2563EB]" aria-hidden="true" />
+                  </div>
+                  <p className={cn("mt-2 font-black", compact ? "text-xl" : "text-2xl")}>{stat.value}</p>
+                  <p className="mt-1 text-xs font-semibold text-[#10B981]">{stat.change}</p>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className={cn("grid lg:grid-cols-[0.8fr_1.2fr]", compact ? "mt-4 gap-3" : "mt-5 gap-4")}>
+            <div className={cn("rounded-md border border-slate-200 bg-slate-50", compact ? "p-3" : "p-4")}>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-black">Progression</p>
+                <span className="text-xs font-bold text-slate-500">187 élèves</span>
+              </div>
+              <div className={cn("mt-4 rounded-full bg-[conic-gradient(#2563EB_0_26%,#FACC15_26%_44%,#FB923C_44%_61%,#22C55E_61%_76%,#7C4A2D_76%_88%,#111827_88%_100%)]", compact ? "mx-auto size-28 p-3" : "aspect-square p-4")}>
+                <div className="flex h-full flex-col items-center justify-center rounded-full bg-white">
+                  <span className={cn("font-black", compact ? "text-2xl" : "text-3xl")}>187</span>
+                  <span className="text-xs font-bold text-slate-500">élèves</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-md border border-slate-200">
+              <div className="grid grid-cols-[1.4fr_0.7fr_0.6fr] bg-slate-50 px-3 py-2 text-[0.68rem] font-bold uppercase tracking-[0.12em] text-slate-500 sm:grid-cols-[1.5fr_0.8fr_0.6fr_1fr]">
+                <span>Élève</span>
+                <span>Ceinture</span>
+                <span>Âge</span>
+                <span className="hidden sm:block">Présence</span>
+              </div>
+              {rows.slice(0, compact ? 3 : rows.length).map((row) => (
+                <div
+                  key={row.name}
+                  className={cn("grid grid-cols-[1.4fr_0.7fr_0.6fr] items-center border-t border-slate-100 px-3 text-xs sm:grid-cols-[1.5fr_0.8fr_0.6fr_1fr]", compact ? "py-2" : "py-3")}
+                >
+                  <span className="font-bold">{row.name}</span>
+                  <span>{row.belt}</span>
+                  <span>{row.age}</span>
+                  <span className="hidden items-center gap-2 sm:flex">
+                    <span className="h-1.5 w-16 rounded-full bg-slate-200">
+                      <span className="block h-full rounded-full bg-[#10B981]" style={{ width: row.attendance }} />
+                    </span>
+                    {row.attendance}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Navbar() {
+  const [scrolled, setScrolled] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return (
+    <header
+      className={cn(
+        "fixed inset-x-0 top-0 z-50 border-b border-slate-200/70 bg-white/88 backdrop-blur-xl transition-all duration-300",
+        scrolled ? "shadow-[0_12px_35px_rgba(15,23,42,0.08)]" : "shadow-none",
+      )}
+    >
+      <nav className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 lg:px-8" aria-label="Navigation principale">
+        <LogoLockup variant="navbar" />
+        <div className="hidden items-center gap-8 lg:flex">
+          {navItems.map((item) => (
+            <a key={item.href} href={item.href} className="text-sm font-bold text-slate-700 transition hover:text-[#2563EB]">
+              {item.label}
+            </a>
+          ))}
+        </div>
+        <div className="hidden items-center gap-3 lg:flex">
+          <Link href="/login" className="text-sm font-bold text-[#111827] transition hover:text-[#2563EB]">
+            Connexion
+          </Link>
+          <CtaButton href="#tarifs" icon={ArrowRight}>
+            Démarrer l’essai gratuit
+          </CtaButton>
+        </div>
+        <button
+          type="button"
+          className="inline-flex size-11 items-center justify-center rounded-md border border-slate-200 bg-white text-[#111827] lg:hidden"
+          aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+        >
+          {open ? <X className="size-5" aria-hidden="true" /> : <Menu className="size-5" aria-hidden="true" />}
+        </button>
+      </nav>
+
+      {open ? (
+        <div className="border-t border-slate-200 bg-white px-5 py-5 shadow-xl lg:hidden">
+          <div className="mx-auto flex max-w-7xl flex-col gap-2">
+            {navItems.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                className="rounded-md px-3 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                onClick={() => setOpen(false)}
+              >
+                {item.label}
+              </a>
+            ))}
+            <Link href="/login" className="rounded-md px-3 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50">
+              Connexion
+            </Link>
+            <CtaButton href="#tarifs" icon={ArrowRight}>
+              Démarrer l’essai gratuit
+            </CtaButton>
+          </div>
+        </div>
+      ) : null}
+    </header>
+  );
+}
+
+function HeroSection() {
+  return (
+    <section className="relative overflow-hidden bg-[radial-gradient(circle_at_12%_18%,rgba(56,189,248,0.16),transparent_28%),linear-gradient(180deg,#FFFFFF_0%,#F7FAFF_58%,#FFFFFF_100%)] pt-24 lg:pt-28">
+      <div className="absolute right-[8%] top-24 hidden text-[18rem] font-black leading-none text-[#2563EB]/[0.035] lg:block">WD</div>
+      <div className="relative mx-auto grid min-h-[690px] max-w-7xl items-center gap-12 px-5 pb-12 lg:grid-cols-[0.92fr_1.08fr] lg:px-8">
+        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-2xl">
+          <motion.div variants={itemVariants} className="inline-flex max-w-full items-center gap-2 rounded-full border border-[#2563EB]/15 bg-[#2563EB]/8 px-3 py-2 text-[0.62rem] font-black uppercase tracking-[0.12em] text-[#2563EB] sm:text-xs sm:tracking-[0.16em]">
+            <ShieldCheck className="size-4" aria-hidden="true" />
+            Plateforme de gestion pour arts martiaux
+          </motion.div>
+          <motion.h1 variants={itemVariants} className="mt-7 text-5xl font-black leading-[0.95] tracking-tight text-[#111827] sm:text-6xl lg:text-[4.3rem] xl:text-[4.85rem]">
+            Bâtissez des champions.
+            <span className="block text-[#2563EB]">Gérez votre académie.</span>
+          </motion.h1>
+          <motion.p variants={itemVariants} className="mt-7 max-w-2xl text-lg leading-8 text-slate-600 sm:text-xl">
+            De la ceinture blanche à la ceinture noire, gérez élèves, coaches, abonnements, présences, compétitions et paiements depuis une seule plateforme puissante.
+          </motion.p>
+          <motion.div variants={itemVariants} className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <CtaButton href="#tarifs" icon={ArrowRight}>
+              Démarrer l’essai gratuit
+            </CtaButton>
+            <CtaButton href="#demo" variant="secondary" icon={CalendarCheck}>
+              Réserver une démo
+            </CtaButton>
+          </motion.div>
+          <motion.div variants={itemVariants} className="mt-8 grid gap-3 text-sm font-semibold text-slate-600 sm:grid-cols-3">
+            {trustItems.map((item) => (
+              <div key={item} className="flex items-center gap-2">
+                <CheckCircle2 className="size-4 text-[#2563EB]" aria-hidden="true" />
+                {item}
+              </div>
+            ))}
+          </motion.div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, x: 40 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          className="relative mt-12 min-h-[440px] overflow-visible lg:mt-0 lg:min-h-[570px]"
+        >
+          <div className="absolute right-0 top-0 h-[390px] w-full overflow-hidden rounded-lg bg-[#111827] shadow-[0_35px_90px_rgba(17,24,39,0.24)] sm:h-[430px] lg:h-[455px] lg:w-[88%]">
+          <Image
+            src={assets.coach}
+            alt="Coach d'arts martiaux en kimono, symbole de leadership et d'autorité"
+            fill
+            priority
+            sizes="(min-width: 1024px) 46vw, 100vw"
+            className="object-cover object-[62%_center]"
+          />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#111827]/35 via-transparent to-[#111827]/10" />
+          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 26 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35, duration: 0.65 }}
+            className="absolute bottom-0 left-1/2 hidden w-[94%] max-w-[36rem] -translate-x-1/2 lg:block lg:left-0 lg:translate-x-0 xl:left-4"
+          >
+            <DashboardMockup compact />
+          </motion.div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+function DojoAtmosphere() {
+  return (
+    <section id="solutions" className="relative min-h-[420px] overflow-hidden bg-[#111827]">
+      <Image src={assets.dojo} alt="Dojo moderne avec élèves alignés pendant l'entraînement" fill sizes="100vw" className="object-cover" />
+      <div className="absolute inset-0 bg-[#111827]/62" />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#111827] via-[#111827]/48 to-transparent" />
+      <div className="relative mx-auto flex min-h-[420px] max-w-7xl items-center px-5 py-20 lg:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-120px" }}
+          transition={{ duration: 0.6 }}
+          className="max-w-2xl"
+        >
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-[#38BDF8]">Pensé pour le dojo</p>
+          <h2 className="mt-4 text-4xl font-black tracking-tight text-white sm:text-5xl">Chaque cours, chaque grade, chaque progrès mérite un système à la hauteur.</h2>
+          <p className="mt-5 text-lg leading-8 text-slate-300">
+            We Discipline respecte la logique d’une académie: transmission, assiduité, familles, compétitions et progression sur le long terme.
+          </p>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+function BeltProgression() {
+  return (
+    <section className="relative overflow-hidden bg-[#070B12] py-24 text-white">
+      <Image src={assets.texture} alt="" fill sizes="100vw" className="object-cover opacity-[0.16]" aria-hidden="true" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#070B12]/70 via-[#111827]/94 to-[#070B12]" />
+      <div className="relative mx-auto max-w-7xl px-5 lg:px-8">
+        <SectionHeading
+          eyebrow="Progression"
+          title="Chaque champion commence quelque part"
+          description="Visualisez le parcours complet de vos pratiquants, du premier salut à la maîtrise."
+          align="center"
+          dark
+        />
+        <div className="relative mt-14">
+          <div className="absolute left-8 right-8 top-[6.25rem] hidden h-px bg-white/18 lg:block" />
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-7">
+            {beltJourney.map((belt, index) => (
+              <motion.div
+                key={belt.name}
+                initial={{ opacity: 0, y: 18 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.06, duration: 0.45 }}
+                className="group relative overflow-hidden rounded-md border border-white/10 bg-white/[0.045] p-4 shadow-[0_18px_55px_rgba(0,0,0,0.18)]"
+              >
+                <div className="relative z-10 flex h-36 items-center justify-center rounded-md bg-white/[0.035]">
+                  <Image
+                    src={belt.image}
+                    alt={belt.name}
+                    width={220}
+                    height={140}
+                    sizes="(min-width: 1024px) 150px, (min-width: 768px) 45vw, 90vw"
+                    className="h-auto max-h-32 w-full object-contain drop-shadow-[0_18px_22px_rgba(0,0,0,0.35)] transition duration-300 group-hover:scale-105"
+                  />
+                </div>
+                <span
+                  className="mt-4 block h-1.5 rounded-full"
+                  style={{ backgroundColor: belt.color }}
+                  aria-hidden="true"
+                />
+                <p className="mt-4 text-sm font-black uppercase tracking-[0.08em]">{belt.name}</p>
+                <p className="mt-1 text-xs font-semibold text-slate-400">{belt.count}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FeaturesSection() {
+  return (
+    <section id="fonctionnalites" className="bg-white py-24">
+      <div className="mx-auto max-w-7xl px-5 lg:px-8">
+        <SectionHeading
+          eyebrow="Fonctionnalités puissantes"
+          title="Tout ce dont votre académie a besoin."
+          description="Un système clair pour gérer l'administratif sans perdre l'esprit du tatami."
+          align="center"
+        />
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-120px" }}
+          className="mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-3"
+        >
+          {features.map((feature) => {
+            const Icon = feature.icon;
+            return (
+              <motion.article
+                key={feature.title}
+                variants={itemVariants}
+                className="group rounded-md border border-slate-200 bg-white p-7 shadow-[0_18px_45px_rgba(15,23,42,0.06)] transition hover:-translate-y-1 hover:border-[#2563EB]/35 hover:shadow-[0_24px_60px_rgba(37,99,235,0.12)]"
+              >
+                <div className="flex size-12 items-center justify-center rounded-md bg-[#2563EB]/10 text-[#2563EB] transition group-hover:bg-[#2563EB] group-hover:text-white">
+                  <Icon className="size-6" aria-hidden="true" />
+                </div>
+                <h3 className="mt-6 text-xl font-black text-[#111827]">{feature.title}</h3>
+                <p className="mt-3 leading-7 text-slate-600">{feature.description}</p>
+              </motion.article>
+            );
+          })}
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+function AcademyDashboard() {
+  return (
+    <section className="overflow-hidden bg-[#F6F9FF] py-24">
+      <div className="mx-auto max-w-7xl px-5 lg:px-8">
+        <div className="grid items-center gap-12 lg:grid-cols-[0.82fr_1.18fr]">
+          <motion.div
+            initial={{ opacity: 0, x: -28 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-120px" }}
+            transition={{ duration: 0.65 }}
+          >
+            <SectionHeading
+              eyebrow="Votre académie en un coup d'oeil"
+              title="Toutes vos données. Un seul tableau de bord."
+              description="Gardez le contrôle sur l'énergie du club: élèves, cours, finances, compétitions et examens."
+            />
+            <div className="mt-8 grid gap-3">
+              {[
+                "Vue temps réel de l'activité de votre académie",
+                "Suivi des élèves, groupes, coaches et familles",
+                "Pilotage des paiements, renouvellements et relances",
+                "Mesure de la performance et de la progression",
+              ].map((item) => (
+                <div key={item} className="flex items-center gap-3 text-sm font-bold text-slate-700">
+                  <CheckCircle2 className="size-5 text-[#2563EB]" aria-hidden="true" />
+                  {item}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, x: 28 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-120px" }}
+            transition={{ duration: 0.65 }}
+            className="relative"
+          >
+            <div className="absolute -inset-6 rounded-lg bg-[#2563EB]/10 blur-3xl" />
+            <div className="relative">
+              <DashboardMockup />
+            </div>
+          </motion.div>
+        </div>
+        <div className="mt-12 grid gap-4 md:grid-cols-5">
+          {dashboardStats.map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <div key={stat.label} className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
+                <Icon className="size-5 text-[#2563EB]" aria-hidden="true" />
+                <p className="mt-4 text-2xl font-black text-[#111827]">{stat.value}</p>
+                <p className="mt-1 text-sm font-bold text-slate-500">{stat.label}</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CommunitySection() {
+  return (
+    <section id="demo" className="bg-white py-24">
+      <div className="mx-auto grid max-w-7xl items-center gap-12 px-5 lg:grid-cols-2 lg:px-8">
+        <motion.div
+          initial={{ opacity: 0, x: -28 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true, margin: "-120px" }}
+          transition={{ duration: 0.65 }}
+          className="relative overflow-hidden rounded-lg"
+        >
+          <div className="relative aspect-[4/3]">
+            <Image
+              src={assets.mentorship}
+              alt="Coach aidant un enfant pendant un cours d'arts martiaux"
+              fill
+              sizes="(min-width: 1024px) 50vw, 100vw"
+              className="object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#111827]/55 via-transparent to-transparent" />
+          </div>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, x: 28 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true, margin: "-120px" }}
+          transition={{ duration: 0.65 }}
+        >
+          <SectionHeading
+            eyebrow="Communauté & mentorat"
+            title="Plus qu'un logiciel. Une plateforme qui aide les coaches à bâtir des communautés plus fortes."
+            description="Le coeur d'un dojo, ce n'est pas la base de données. Ce sont les relations. We Discipline libère du temps pour enseigner, transmettre et élever le niveau du groupe."
+          />
+          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            {["Transmission coach-élève", "Suivi familial clair", "Groupes et niveaux structurés", "Culture du progrès visible"].map((item) => (
+              <div key={item} className="rounded-md border border-slate-200 bg-[#F8FAFC] p-4">
+                <Check className="size-5 text-[#10B981]" aria-hidden="true" />
+                <p className="mt-3 text-sm font-black text-[#111827]">{item}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+function ValuesSection() {
+  return (
+    <section id="valeurs" className="relative overflow-hidden bg-[#070B12] py-24 text-white">
+      <Image src={assets.texture} alt="" fill sizes="100vw" className="object-cover opacity-[0.11]" aria-hidden="true" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,rgba(37,99,235,0.22),transparent_32%)]" />
+      <div className="relative mx-auto max-w-7xl px-5 lg:px-8">
+        <SectionHeading
+          eyebrow="Valeurs"
+          title="Le logiciel doit servir la culture du dojo."
+          description="Discipline, respect et progression ne sont pas des slogans: ce sont les repères qui structurent toute l'expérience."
+          align="center"
+          dark
+        />
+        <div className="mt-14 grid items-center gap-8 lg:grid-cols-[0.95fr_1.1fr_0.95fr]">
+          <div className="grid gap-5">
+            {values.slice(0, 2).map((value) => {
+              const Icon = value.icon;
+              return (
+                <motion.article
+                  key={value.title}
+                  initial={{ opacity: 0, x: -24 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  className="rounded-md border border-white/10 bg-white/[0.055] p-6 backdrop-blur"
+                >
+                  <Icon className="size-8 text-[#38BDF8]" aria-hidden="true" />
+                  <h3 className="mt-5 text-2xl font-black">{value.title}</h3>
+                  <p className="mt-2 text-slate-300">{value.description}</p>
+                </motion.article>
+              );
+            })}
+          </div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true, margin: "-120px" }}
+            transition={{ duration: 0.75 }}
+            className="relative mx-auto w-full max-w-[31rem] overflow-hidden rounded-lg border border-white/10 shadow-[0_28px_90px_rgba(0,0,0,0.45)]"
+          >
+            <div className="relative aspect-[2/3]">
+              <Image
+                src={assets.champion}
+                alt="Silhouette de champions d'arts martiaux dans un dojo sombre"
+                fill
+                sizes="(min-width: 1024px) 34vw, 100vw"
+                className="object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#070B12] via-transparent to-transparent" />
+            </div>
+          </motion.div>
+          <div className="grid gap-5">
+            {values.slice(2).map((value) => {
+              const Icon = value.icon;
+              return (
+                <motion.article
+                  key={value.title}
+                  initial={{ opacity: 0, x: 24 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  className="rounded-md border border-white/10 bg-white/[0.055] p-6 backdrop-blur"
+                >
+                  <Icon className="size-8 text-[#38BDF8]" aria-hidden="true" />
+                  <h3 className="mt-5 text-2xl font-black">{value.title}</h3>
+                  <p className="mt-2 text-slate-300">{value.description}</p>
+                </motion.article>
+              );
+            })}
+            <div className="rounded-md border border-[#2563EB]/30 bg-[#2563EB]/12 p-6">
+              <p className="text-sm font-black uppercase tracking-[0.16em] text-[#38BDF8]">Mentalité championnat</p>
+              <p className="mt-3 text-xl font-black">Des habitudes mesurables. Une culture qui monte en grade.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SocialProofSection() {
+  return (
+    <section className="bg-[#0B1220] py-14 text-white">
+      <div className="mx-auto grid max-w-7xl gap-5 px-5 sm:grid-cols-2 lg:grid-cols-4 lg:px-8">
+        {socialStats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <div key={stat.label} className="flex items-center gap-5 border-white/10 py-5 lg:border-r last:border-r-0">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/[0.06]">
+                <Icon className="size-6 text-[#38BDF8]" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-4xl font-black tracking-tight">
+                  <AnimatedCounter value={stat.value} suffix={stat.suffix} />
+                </p>
+                <p className="mt-1 text-sm font-semibold text-slate-300">{stat.label}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function PricingSection() {
+  return (
+    <section id="tarifs" className="bg-white py-24">
+      <div className="mx-auto max-w-7xl px-5 lg:px-8">
+        <SectionHeading
+          eyebrow="Tarifs"
+          title="Choisissez le rythme adapté à votre académie."
+          description="Commencez simple, puis ajoutez la puissance dont votre dojo a besoin."
+          align="center"
+        />
+        <div className="mt-14 grid gap-6 lg:grid-cols-3">
+          {pricingPlans.map((plan) => (
+            <motion.article
+              key={plan.name}
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className={cn(
+                "relative rounded-md border p-7 shadow-[0_18px_45px_rgba(15,23,42,0.06)]",
+                plan.highlighted
+                  ? "border-[#2563EB] bg-[#111827] text-white shadow-[0_30px_90px_rgba(37,99,235,0.24)]"
+                  : "border-slate-200 bg-white text-[#111827]",
+              )}
+            >
+              {plan.highlighted ? (
+                <span className="absolute right-5 top-5 rounded-full bg-[#38BDF8] px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-[#111827]">
+                  Recommandé
+                </span>
+              ) : null}
+              <h3 className="text-2xl font-black">{plan.name}</h3>
+              <p className={cn("mt-3 min-h-14 leading-7", plan.highlighted ? "text-slate-300" : "text-slate-600")}>{plan.description}</p>
+              <div className="mt-8 flex items-end gap-2">
+                <span className="text-5xl font-black tracking-tight">{plan.price}</span>
+                {plan.price !== "Sur mesure" ? (
+                  <span className={cn("pb-2 text-sm font-bold", plan.highlighted ? "text-slate-400" : "text-slate-500")}>/mois</span>
+                ) : null}
+              </div>
+              <ul className="mt-8 space-y-3">
+                {plan.features.map((feature) => (
+                  <li key={feature} className="flex gap-3 text-sm font-semibold">
+                    <CheckCircle2 className={cn("mt-0.5 size-5 shrink-0", plan.highlighted ? "text-[#38BDF8]" : "text-[#10B981]")} aria-hidden="true" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-8">
+                <CtaButton href="#demo" variant={plan.highlighted ? "dark" : "secondary"} icon={ArrowRight}>
+                  {plan.highlighted ? "Démarrer Professional" : "Choisir ce plan"}
+                </CtaButton>
+              </div>
+            </motion.article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FaqSection() {
+  const [openIndex, setOpenIndex] = useState(0);
+
+  return (
+    <section className="bg-[#F6F9FF] py-24">
+      <div className="mx-auto grid max-w-7xl gap-12 px-5 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
+        <SectionHeading
+          eyebrow="FAQ"
+          title="Questions fréquentes des clubs."
+          description="Des réponses directes pour les propriétaires d'académies, coaches et managers qui veulent avancer vite."
+        />
+        <div className="space-y-3">
+          {faqs.map((item, index) => {
+            const isOpen = index === openIndex;
+            return (
+              <div key={item.question} className="rounded-md border border-slate-200 bg-white">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-5 px-5 py-5 text-left text-base font-black text-[#111827] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#38BDF8]"
+                  aria-expanded={isOpen}
+                  onClick={() => setOpenIndex(isOpen ? -1 : index)}
+                >
+                  {item.question}
+                  <ChevronDown className={cn("size-5 shrink-0 text-[#2563EB] transition-transform", isOpen && "rotate-180")} aria-hidden="true" />
+                </button>
+                <motion.div initial={false} animate={{ height: isOpen ? "auto" : 0, opacity: isOpen ? 1 : 0 }} className="overflow-hidden">
+                  <p className="px-5 pb-5 leading-7 text-slate-600">{item.answer}</p>
+                </motion.div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FinalCta() {
+  return (
+    <section className="relative overflow-hidden bg-[#070B12] py-24 text-white">
+      <Image src={assets.texture} alt="" fill sizes="100vw" className="object-cover opacity-[0.13]" aria-hidden="true" />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#070B12] via-[#111827]/94 to-[#070B12]" />
+      <div className="absolute right-[-2rem] top-1/2 -translate-y-1/2 text-[18rem] font-black leading-none text-white/[0.035] sm:text-[25rem]">
+        WD
+      </div>
+      <div className="relative mx-auto max-w-7xl px-5 lg:px-8">
+        <div className="max-w-4xl">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-[#38BDF8]">Passez au niveau supérieur</p>
+          <h2 className="mt-4 text-4xl font-black tracking-tight sm:text-6xl">
+            Concentrez-vous sur l’enseignement.
+            <span className="block text-[#38BDF8]">We Discipline gère le reste.</span>
+          </h2>
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
+            Rejoignez les académies qui structurent leur croissance sans perdre leur exigence, leur culture et leur esprit de communauté.
+          </p>
+          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+            <CtaButton href="#tarifs" icon={ArrowRight}>
+              Démarrer l’essai gratuit
+            </CtaButton>
+            <CtaButton href="#demo" variant="dark" icon={CalendarCheck}>
+              Planifier une démo
+            </CtaButton>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="bg-[#05070B] py-12 text-white">
+      <div className="mx-auto max-w-7xl px-5 lg:px-8">
+        <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr_0.8fr_0.8fr]">
+          <div>
+            <LogoLockup dark variant="footer" />
+            <p className="mt-5 max-w-sm text-sm leading-7 text-slate-400">
+              Plateforme de gestion premium pour les clubs d’arts martiaux qui veulent bâtir des champions et piloter avec excellence.
+            </p>
+          </div>
+          {[
+            { title: "Produit", links: ["Fonctionnalités", "Tableau de bord", "Progression", "Communication"] },
+            { title: "Académies", links: ["Karaté", "Judo", "Jiu-jitsu", "MMA"] },
+            { title: "Entreprise", links: ["À propos", "Tarifs", "Confidentialité", "Conditions"] },
+          ].map((group) => (
+            <div key={group.title}>
+              <p className="text-sm font-black uppercase tracking-[0.16em] text-slate-300">{group.title}</p>
+              <ul className="mt-4 space-y-3 text-sm text-slate-400">
+                {group.links.map((link) => (
+                  <li key={link}>
+                    <a href="#fonctionnalites" className="transition hover:text-white">
+                      {link}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+        <div className="mt-10 flex flex-col justify-between gap-5 border-t border-white/10 pt-6 text-sm text-slate-500 sm:flex-row">
+          <p>© 2026 We Discipline. Tous droits réservés.</p>
+          <div className="flex gap-4">
+            <a href="mailto:contact@wediscipline.com" className="inline-flex items-center gap-2 transition hover:text-white">
+              <Mail className="size-4" aria-hidden="true" />
+              Contact
+            </a>
+            <a href="#demo" className="inline-flex items-center gap-2 transition hover:text-white">
+              <Star className="size-4" aria-hidden="true" />
+              Réserver une démo
+            </a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+export function WeDisciplineHomepage({ fontClassName }: HomepageProps) {
+  const pageSections = useMemo(
+    () => [
+      <HeroSection key="hero" />,
+      <DojoAtmosphere key="dojo" />,
+      <BeltProgression key="belts" />,
+      <FeaturesSection key="features" />,
+      <AcademyDashboard key="dashboard" />,
+      <CommunitySection key="community" />,
+      <ValuesSection key="values" />,
+      <SocialProofSection key="proof" />,
+      <PricingSection key="pricing" />,
+      <FaqSection key="faq" />,
+      <FinalCta key="cta" />,
+    ],
+    [],
+  );
+
+  return (
+    <div className={cn(fontClassName, "min-h-screen bg-white text-[#111827]")}>
+      <Navbar />
+      <main>{pageSections}</main>
+      <Footer />
+    </div>
+  );
+}
