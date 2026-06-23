@@ -254,7 +254,7 @@ const itemVariants: Variants = {
   },
 };
 
-function LogoLockup({ dark = false, variant = "footer" }: { dark?: boolean; variant?: "navbar" | "footer" }) {
+function LogoLockup({ variant = "footer" }: { dark?: boolean; variant?: "navbar" | "footer" }) {
   if (variant === "navbar") {
     return (
       <Link href="/accueil" className="relative block h-12 w-[150px]" aria-label="Accueil We Discipline">
@@ -272,36 +272,15 @@ function LogoLockup({ dark = false, variant = "footer" }: { dark?: boolean; vari
   }
 
   return (
-    <Link href="/accueil" className="flex items-center gap-3" aria-label="Accueil We Discipline">
-      <span
-        className={cn(
-          "relative flex size-11 items-center justify-center overflow-hidden rounded-md border shadow-sm",
-          dark ? "border-white/20 bg-white/10" : "border-slate-200 bg-white",
-        )}
-      >
-        <Image
-          src="/we-discipline/footer-logo.png"
-          alt=""
-          fill
-          sizes="44px"
-          className="object-cover"
-          style={{ transform: "scale(2.25)", transformOrigin: "50% 38%" }}
-          aria-hidden="true"
-        />
-      </span>
-      <span className={cn("leading-none", dark ? "text-white" : "text-[#111827]")}>
-        <span className="block text-sm font-black uppercase tracking-[0.02em]">
-          <span className="text-[#2563EB]">We</span> Discipline
-        </span>
-        <span
-          className={cn(
-            "mt-1 block text-[0.58rem] font-bold uppercase tracking-[0.22em]",
-            dark ? "text-white/50" : "text-slate-500",
-          )}
-        >
-          Arts martiaux
-        </span>
-      </span>
+    <Link href="/accueil" className="relative block h-28 w-48" aria-label="Accueil We Discipline">
+      <Image
+        src="/we-discipline/footer-logo.png"
+        alt="We Discipline"
+        fill
+        sizes="192px"
+        className="object-contain object-left"
+        priority
+      />
     </Link>
   );
 }
