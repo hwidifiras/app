@@ -63,6 +63,36 @@ const navItems = [
   { label: "À propos", href: "#valeurs" },
 ];
 
+const footerGroups = [
+  {
+    title: "Navigation",
+    links: [
+      { label: "Fonctionnalités", href: "#fonctionnalites" },
+      { label: "Solutions", href: "#solutions" },
+      { label: "Tarifs", href: "#tarifs" },
+      { label: "À propos", href: "#valeurs" },
+    ],
+  },
+  {
+    title: "Produit",
+    links: [
+      { label: "Tableau de bord", href: "#tableau-de-bord" },
+      { label: "Progression", href: "#progression" },
+      { label: "Communauté", href: "#demo" },
+      { label: "FAQ", href: "#faq" },
+    ],
+  },
+  {
+    title: "Contact",
+    links: [
+      { label: "Réserver une démo", href: "#demo" },
+      { label: "Démarrer l'essai", href: "#tarifs" },
+      { label: "Nous écrire", href: "mailto:contact@wediscipline.com" },
+      { label: "Connexion", href: "/login" },
+    ],
+  },
+];
+
 const trustItems = ["Sans carte bancaire", "Configuration en quelques minutes", "Annulation à tout moment"];
 
 const beltJourney = [
@@ -687,7 +717,7 @@ function DojoAtmosphere() {
 
 function BeltProgression() {
   return (
-    <section className="relative overflow-hidden bg-[#070B12] py-20 text-white">
+    <section id="progression" className="relative overflow-hidden bg-[#070B12] py-20 text-white">
       <Image src={assets.texture} alt="" fill sizes="100vw" className="object-cover opacity-[0.16]" aria-hidden="true" />
       <div className="absolute inset-0 bg-gradient-to-b from-[#070B12]/70 via-[#111827]/94 to-[#070B12]" />
       <div className="relative mx-auto max-w-7xl px-5 lg:px-8">
@@ -777,7 +807,7 @@ function FeaturesSection() {
 
 function AcademyDashboard() {
   return (
-    <section className="overflow-hidden bg-[#F6F9FF] py-24">
+    <section id="tableau-de-bord" className="overflow-hidden bg-[#F6F9FF] py-24">
       <div className="mx-auto max-w-7xl px-5 lg:px-8">
         <div className="grid items-center gap-12 lg:grid-cols-[0.82fr_1.18fr]">
           <motion.div
@@ -1061,7 +1091,7 @@ function FaqSection() {
   const [openIndex, setOpenIndex] = useState(0);
 
   return (
-    <section className="bg-[#F6F9FF] py-24">
+    <section id="faq" className="bg-[#F6F9FF] py-24">
       <div className="mx-auto grid max-w-7xl gap-12 px-5 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
         <SectionHeading
           eyebrow="FAQ"
@@ -1137,18 +1167,14 @@ function Footer() {
               Plateforme de gestion premium pour les clubs d’arts martiaux qui veulent bâtir des champions et piloter avec excellence.
             </p>
           </div>
-          {[
-            { title: "Produit", links: ["Fonctionnalités", "Tableau de bord", "Progression", "Communication"] },
-            { title: "Académies", links: ["Karaté", "Judo", "Jiu-jitsu", "MMA"] },
-            { title: "Entreprise", links: ["À propos", "Tarifs", "Confidentialité", "Conditions"] },
-          ].map((group) => (
+          {footerGroups.map((group) => (
             <div key={group.title}>
               <p className="text-sm font-black uppercase tracking-[0.16em] text-slate-300">{group.title}</p>
               <ul className="mt-4 space-y-3 text-sm text-slate-400">
                 {group.links.map((link) => (
-                  <li key={link}>
-                    <a href="#fonctionnalites" className="transition hover:text-white">
-                      {link}
+                  <li key={link.label}>
+                    <a href={link.href} className="transition hover:text-white">
+                      {link.label}
                     </a>
                   </li>
                 ))}
