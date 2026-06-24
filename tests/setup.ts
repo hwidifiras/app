@@ -18,6 +18,8 @@ const { prisma } = await import("@/lib/prisma");
 setFallbackTenantContext({ tenantId: TEST_TENANT_ID, tenantSlug: TEST_TENANT_SLUG, host: "test.local" });
 
 beforeEach(async () => {
+  setFallbackTenantContext({ tenantId: TEST_TENANT_ID, tenantSlug: TEST_TENANT_SLUG, host: "test.local" });
+
   await prisma.tenant.upsert({
     where: { slug: TEST_TENANT_SLUG },
     create: {

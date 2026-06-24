@@ -334,6 +334,7 @@ async function createActiveSubscription(
 ) {
   return prisma.memberSubscription.create({
     data: {
+      tenantId: TEST_TENANT_ID,
       memberId: overrides.memberId ?? fx.adult.id,
       planId: overrides.planId ?? fx.bjjPlan.id,
       sportId: overrides.sportId ?? fx.bjj.id,
@@ -360,6 +361,7 @@ async function createSessionForGroup(
 
   return prisma.session.create({
     data: {
+      tenantId: TEST_TENANT_ID,
       groupId,
       sessionDate: overrides.sessionDate ?? new Date("2026-05-18T18:00:00.000Z"),
       startTime: overrides.startTime ?? "18:00",
@@ -374,13 +376,14 @@ async function createSessionForGroup(
 async function setupTwoPerWeekPlanWithThreeSessions(fx: Awaited<ReturnType<typeof dojoFixture>>) {
   await prisma.groupSchedule.createMany({
     data: [
-      { groupId: fx.adultBjj.id, dayOfWeek: "WEDNESDAY", startTime: "18:00", durationMinutes: 90 },
-      { groupId: fx.adultBjj.id, dayOfWeek: "FRIDAY", startTime: "18:00", durationMinutes: 90 },
+      { tenantId: TEST_TENANT_ID, groupId: fx.adultBjj.id, dayOfWeek: "WEDNESDAY", startTime: "18:00", durationMinutes: 90 },
+      { tenantId: TEST_TENANT_ID, groupId: fx.adultBjj.id, dayOfWeek: "FRIDAY", startTime: "18:00", durationMinutes: 90 },
     ],
   });
 
   const plan = await prisma.subscriptionPlan.create({
     data: {
+      tenantId: TEST_TENANT_ID,
       name: "BJJ 2/sem",
       price: 3500,
       sessionsPerWeek: 2,
@@ -411,9 +414,14 @@ async function enrollMemberForContextualPlan(
   remainingSessions = 8,
 ) {
   const sub = await createActiveSubscription(fx, { planId, remainingSessions, amount: 3500 });
-  await prisma.payment.create({ data: { memberSubscriptionId: sub.id, amount: sub.amount } });
+  await prisma.payment.create({ data: { tenantId: TEST_TENANT_ID, memberSubscriptionId: sub.id, amount: sub.amount } });
   await prisma.groupMember.create({
-    data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date("2026-05-01T00:00:00.000Z") },
+    data: {
+      tenantId: TEST_TENANT_ID,
+      groupId: fx.adultBjj.id,
+      memberId: fx.adult.id,
+      startDate: new Date("2026-05-01T00:00:00.000Z"),
+    },
   });
   return sub;
 }
