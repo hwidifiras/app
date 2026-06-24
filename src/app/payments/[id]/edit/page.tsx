@@ -51,14 +51,12 @@ export default async function EditPaymentPage({ params }: { params: Promise<{ id
         description="Créer une correction tracée avec le motif et le nouveau montant."
       />
 
-      <section className="panel p-4 sm:p-6">
-        <PaymentEditForm
-          payment={{
-            ...payment,
-            paymentDate: payment.paymentDate.toISOString(),
-          }}
-        />
-      </section>
+      <PaymentEditForm
+        payment={{
+          ...payment,
+          paymentDate: payment.paymentDate.toISOString(),
+        }}
+      />
     </main>
   );
 }

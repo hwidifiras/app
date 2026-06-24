@@ -64,9 +64,7 @@ export default async function NewSubscriptionPage() {
         description="Créer un nouvel abonnement sans perdre l'historique du membre."
       />
 
-      <section className="panel p-4 sm:p-6">
-        <SubscriptionAddForm membersOptions={membersOptions} plansOptions={plansOptions} />
-      </section>
+      <SubscriptionAddForm membersOptions={membersOptions} plansOptions={plansOptions} />
     </main>
   );
 }

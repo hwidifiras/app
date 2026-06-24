@@ -87,16 +87,14 @@ export default async function NewPaymentPage({
         description="Choisir le membre, vérifier l'abonnement et confirmer le montant reçu."
       />
 
-      <section className="panel p-3.5 sm:p-5">
-        <PaymentAddForm
-          subscriptions={payableSubscriptions}
-          defaultSubscriptionId={
-            payableSubscriptions.some((subscription) => subscription.id === defaultSubscriptionId)
-              ? defaultSubscriptionId
-              : payableSubscriptions[0]?.id
-          }
-        />
-      </section>
+      <PaymentAddForm
+        subscriptions={payableSubscriptions}
+        defaultSubscriptionId={
+          payableSubscriptions.some((subscription) => subscription.id === defaultSubscriptionId)
+            ? defaultSubscriptionId
+            : payableSubscriptions[0]?.id
+        }
+      />
     </main>
   );
 }

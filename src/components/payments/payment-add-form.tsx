@@ -213,7 +213,7 @@ export function PaymentAddForm({
       ) : null}
 
       {subscriptions.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-5 py-10 text-center">
+        <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface)] px-5 py-10 text-center shadow-[var(--shadow-panel)]">
           <CheckCircle2 className="mx-auto size-9 text-[var(--success)]" />
           <h2 className="mt-3 text-base font-semibold">Aucun solde à encaisser</h2>
           <p className="mx-auto mt-1 max-w-md text-sm text-[var(--muted-foreground)]">
@@ -227,8 +227,8 @@ export function PaymentAddForm({
         <div className="grid min-w-0 items-start gap-4 lg:grid-cols-12">
           <div className="space-y-4 lg:col-span-8">
             <FormSection
-              title="1. Membre et abonnement"
-              description="Identifiez d'abord le dossier concerné, puis la formule à régler."
+              title="1. Dossier"
+              description="Choisissez le membre et le solde à régler."
             >
               <FormGrid>
                 <FormField label="Membre *" htmlFor="member">
@@ -280,8 +280,8 @@ export function PaymentAddForm({
             </FormSection>
 
             <FormSection
-              title="2. Montant reçu"
-              description="Saisissez le versement remis par le membre, sans dépasser le reste dû."
+              title="2. Montant"
+              description="Saisissez le versement remis, sans dépasser le reste dû."
             >
               <FormField label="Montant encaissé (€) *" htmlFor="amount">
                 <div className="flex flex-col gap-2 sm:flex-row">
@@ -327,7 +327,7 @@ export function PaymentAddForm({
             </FormSection>
 
             <FormSection
-              title="3. Détails du règlement"
+              title="3. Règlement"
               description="La date et le moyen de paiement apparaîtront dans l'historique."
             >
               <FormField label="Moyen de paiement *">
@@ -338,7 +338,7 @@ export function PaymentAddForm({
                       type="button"
                       onClick={() => setMethod(paymentMethod.value)}
                       className={cn(
-                        "relative flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-xs font-semibold transition",
+                        "relative flex min-h-16 flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2 text-xs font-semibold transition",
                         method === paymentMethod.value
                           ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)] ring-1 ring-[var(--primary)]/20"
                           : "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-soft)]",
@@ -383,14 +383,14 @@ export function PaymentAddForm({
           </div>
 
           <aside className="lg:sticky lg:top-20 lg:col-span-4">
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
               <div className="flex items-center gap-2">
-                <span className="flex size-9 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">
+                <span className="flex size-9 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-[var(--primary)]">
                   <ReceiptText className="size-4" />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold">Récapitulatif</p>
-                  <p className="text-xs text-[var(--muted-foreground)]">À vérifier avant validation</p>
+                  <p className="text-sm font-semibold">À encaisser</p>
+                  <p className="text-xs text-[var(--muted-foreground)]">Vérification avant validation</p>
                 </div>
               </div>
 
@@ -434,8 +434,8 @@ export function PaymentAddForm({
                 </div>
               </dl>
 
-              <p className="mt-3 rounded-xl bg-[var(--surface-soft)] px-3 py-2 text-xs leading-relaxed text-[var(--muted-foreground)]">
-                Cet encaissement réduit uniquement le solde de l&apos;abonnement. Il n&apos;ajoute pas de séances.
+              <p className="mt-3 rounded-lg bg-[var(--surface-soft)] px-3 py-2 text-xs leading-relaxed text-[var(--muted-foreground)]">
+                Cet encaissement réduit le solde de l&apos;abonnement. Il n&apos;ajoute pas de séances.
               </p>
             </div>
           </aside>

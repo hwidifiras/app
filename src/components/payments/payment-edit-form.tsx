@@ -7,13 +7,13 @@ import { ArrowLeft, CheckCircle2, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FieldControl } from "@/components/ui/field-control";
-import { FormActions } from "@/components/ui/form-layout";
+import { FormActions, FormField, FormGrid, FormSection } from "@/components/ui/form-layout";
 
 const METHODS = [
-  { value: "CASH", label: "Especes" },
+  { value: "CASH", label: "Espèces" },
   { value: "CARD", label: "Carte bancaire" },
   { value: "TRANSFER", label: "Virement" },
-  { value: "CHECK", label: "Cheque" },
+  { value: "CHECK", label: "Chèque" },
 ];
 
 function formatCurrency(cents: number) {
@@ -72,7 +72,7 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
       return;
     }
     if (wouldExceed) {
-      setMessage("Le montant depasse le solde restant du.");
+      setMessage("Le montant dépasse le solde restant dû.");
       return;
     }
 
@@ -136,112 +136,147 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
   const busy = loading || deleting;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-5 pb-4 lg:pb-0">
       {message && <FeedbackMessage message={message} />}
 
-      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-3 text-sm">
-        <p className="text-[var(--muted-foreground)]">
-          Abonnement:{" "}
-          <span className="font-medium text-[var(--foreground)]">
-            {subscription.member.firstName} {subscription.member.lastName}
-          </span>{" "}
-          - {subscription.plan?.name ?? "-"}
-        </p>
-        <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-          Montant du: {formatCurrency(subscription.amount)} - Autres paiements: {formatCurrency(otherPaid)} -
-          Reste: {formatCurrency(remaining)}
-        </p>
-      </div>
-
-      {!canMutate && (
-        <FeedbackMessage message="Cette ligne est deja une correction ou une annulation. Seul le paiement original peut etre corrige." />
-      )}
-
-      <div className="space-y-1.5">
-        <label htmlFor="amount" className="text-sm font-semibold text-[var(--foreground)]">
-          Montant corrige (EUR) <span className="text-[var(--danger)]">*</span>
-        </label>
-        <FieldControl suffix="EUR">
-          <input
-            id="amount"
-            type="number"
-            step="0.01"
-            min="0"
-            required
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className={`field pr-10 ${wouldExceed ? "border-[var(--danger)] ring-1 ring-[var(--danger)]" : ""}`}
-            placeholder="Ex: 49.90"
-            disabled={!canMutate}
-          />
-        </FieldControl>
-        {wouldExceed && (
-          <p className="text-xs font-medium text-[var(--danger)]">Depassement du solde restant du.</p>
-        )}
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <label htmlFor="paymentDate" className="text-sm font-semibold text-[var(--foreground)]">
-            Date de correction
-          </label>
-          <input
-            id="paymentDate"
-            type="date"
-            value={paymentDate}
-            onChange={(e) => setPaymentDate(e.target.value)}
-            className="field"
-            disabled={!canMutate}
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <label htmlFor="method" className="text-sm font-semibold text-[var(--foreground)]">
-            Methode
-          </label>
-          <select
-            id="method"
-            value={method}
-            onChange={(e) => setMethod(e.target.value)}
-            className="field"
-            disabled={!canMutate}
+      <div className="grid min-w-0 items-start gap-4 lg:grid-cols-12">
+        <div className="space-y-4 lg:col-span-8">
+          <FormSection
+            title="Paiement original"
+            description="Le paiement d'origine reste visible. Une correction ajoute une nouvelle ligne au grand livre."
           >
-            {METHODS.map((m) => (
-              <option key={m.value} value={m.value}>
-                {m.label}
-              </option>
-            ))}
-          </select>
+            <dl className="grid gap-3 text-sm sm:grid-cols-2">
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Membre</dt>
+                <dd className="mt-1 font-medium">
+                  {subscription.member.firstName} {subscription.member.lastName}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Formule</dt>
+                <dd className="mt-1 font-medium">{subscription.plan?.name ?? "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Montant dû</dt>
+                <dd className="mt-1 font-semibold">{formatCurrency(subscription.amount)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Reste autorisé</dt>
+                <dd className="mt-1 font-semibold">{formatCurrency(remaining)}</dd>
+              </div>
+            </dl>
+          </FormSection>
+
+          {!canMutate && (
+            <FeedbackMessage message="Cette ligne est déjà une correction ou une annulation. Seul le paiement original peut être corrigé." />
+          )}
+
+          <FormSection title="Correction tracée" description="Saisissez le nouveau montant et le motif visible dans l'audit.">
+            <FormGrid>
+              <FormField label="Nouveau montant (€) *" htmlFor="amount">
+                <FieldControl suffix="€">
+                  <input
+                    id="amount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    required
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className={`field pr-10 ${wouldExceed ? "border-[var(--danger)] ring-1 ring-[var(--danger)]" : ""}`}
+                    placeholder="Ex: 49.90"
+                    disabled={!canMutate}
+                  />
+                </FieldControl>
+                {wouldExceed && (
+                  <p className="mt-1 text-xs font-medium text-[var(--danger)]">Dépassement du solde restant dû.</p>
+                )}
+              </FormField>
+
+              <FormField label="Date de correction" htmlFor="paymentDate">
+                <input
+                  id="paymentDate"
+                  type="date"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                  className="field"
+                  disabled={!canMutate}
+                />
+              </FormField>
+
+              <FormField label="Méthode" htmlFor="method">
+                <select
+                  id="method"
+                  value={method}
+                  onChange={(e) => setMethod(e.target.value)}
+                  className="field"
+                  disabled={!canMutate}
+                >
+                  {METHODS.map((m) => (
+                    <option key={m.value} value={m.value}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+
+              <FormField label="Notes" htmlFor="notes" hint="Facultatif: numéro de chèque, référence ou remarque.">
+                <textarea
+                  id="notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="field min-h-[80px]"
+                  placeholder="Ex: chèque n° 1234"
+                  disabled={!canMutate}
+                />
+              </FormField>
+            </FormGrid>
+
+            <FormField label="Motif de correction *" htmlFor="correctionReason" className="mt-4">
+              <textarea
+                id="correctionReason"
+                value={correctionReason}
+                onChange={(e) => setCorrectionReason(e.target.value)}
+                className="field min-h-[72px]"
+                placeholder="Ex: erreur de saisie du montant"
+                required
+                disabled={!canMutate}
+              />
+            </FormField>
+          </FormSection>
         </div>
-      </div>
 
-      <div className="space-y-1.5">
-        <label htmlFor="notes" className="text-sm font-semibold text-[var(--foreground)]">
-          Notes
-        </label>
-        <textarea
-          id="notes"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          className="field min-h-[80px]"
-          placeholder="Numero de cheque, remarque..."
-          disabled={!canMutate}
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <label htmlFor="correctionReason" className="text-sm font-semibold text-[var(--foreground)]">
-          Motif de correction <span className="text-[var(--danger)]">*</span>
-        </label>
-        <textarea
-          id="correctionReason"
-          value={correctionReason}
-          onChange={(e) => setCorrectionReason(e.target.value)}
-          className="field min-h-[72px]"
-          placeholder="Ex: erreur de saisie du montant"
-          required
-          disabled={!canMutate}
-        />
+        <aside className="lg:sticky lg:top-20 lg:col-span-4">
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
+            <p className="text-sm font-semibold">Impact grand livre</p>
+            <p className="text-xs text-[var(--muted-foreground)]">Correction sans perte d&apos;historique</p>
+            <dl className="mt-4 divide-y divide-[var(--border)] text-sm">
+              <div className="flex items-start justify-between gap-3 py-2.5">
+                <dt className="text-[var(--muted-foreground)]">Paiement original</dt>
+                <dd className="text-right font-semibold">{formatCurrency(payment.amount)}</dd>
+              </div>
+              <div className="flex items-start justify-between gap-3 py-2.5">
+                <dt className="text-[var(--muted-foreground)]">Déjà corrigé</dt>
+                <dd className="text-right font-semibold">{formatCurrency(effectiveAmount - payment.amount)}</dd>
+              </div>
+              <div className="flex items-start justify-between gap-3 py-2.5">
+                <dt className="text-[var(--muted-foreground)]">Autres paiements</dt>
+                <dd className="text-right font-semibold">{formatCurrency(otherPaid)}</dd>
+              </div>
+              <div className="flex items-start justify-between gap-3 py-2.5">
+                <dt className="text-[var(--muted-foreground)]">Nouveau montant</dt>
+                <dd className="text-right text-base font-bold text-[var(--primary)]">{formatCurrency(amountNum)}</dd>
+              </div>
+              <div className="flex items-start justify-between gap-3 py-2.5">
+                <dt className="text-[var(--muted-foreground)]">Maximum</dt>
+                <dd className="text-right font-bold">{formatCurrency(remaining)}</dd>
+              </div>
+            </dl>
+            <p className="mt-3 rounded-lg bg-[var(--surface-soft)] px-3 py-2 text-xs leading-relaxed text-[var(--muted-foreground)]">
+              Le système crée une ligne de correction signée. Le paiement initial n&apos;est jamais supprimé.
+            </p>
+          </div>
+        </aside>
       </div>
 
       <FormActions sticky>
@@ -267,11 +302,11 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
         </button>
       </FormActions>
 
-      <section className="rounded-lg border border-[var(--danger)]/25 bg-[var(--surface-soft)] p-4">
-        <h2 className="text-sm font-semibold text-[var(--foreground)]">Zone sensible</h2>
-        <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-          L&apos;annulation garde le paiement original et ajoute une ligne de reversal au grand livre.
-        </p>
+      <FormSection
+        title="Annulation"
+        description="L'annulation garde le paiement original et ajoute une ligne de reversal au grand livre."
+        className="border-[var(--danger)]/25"
+      >
         <div className="mt-3 space-y-1.5">
           <label htmlFor="deleteReason" className="text-sm font-semibold text-[var(--foreground)]">
             Motif d&apos;annulation
@@ -298,12 +333,12 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
           )}
           Annuler ce paiement
         </button>
-      </section>
+      </FormSection>
 
       <ConfirmDialog
         open={deleteOpen}
         title="Annuler ce paiement ?"
-        description={`Une ligne de reversal de ${formatCurrency(effectiveAmount)} sera ajoutee au grand livre. Le paiement original restera visible.`}
+        description={`Une ligne de reversal de ${formatCurrency(effectiveAmount)} sera ajoutée au grand livre. Le paiement original restera visible.`}
         confirmLabel="Annuler le paiement"
         loading={deleting}
         onCancel={() => setDeleteOpen(false)}
