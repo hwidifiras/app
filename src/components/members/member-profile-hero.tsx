@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Banknote, Phone, Mail, User } from "lucide-react";
+import { Banknote, Phone, Mail, User, UserPlus, UsersRound } from "lucide-react";
 
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getMemberAvatarStyle, getMemberInitials } from "@/lib/member-avatar";
@@ -44,10 +44,10 @@ export function MemberProfileHero({
 
   return (
     <section className="panel overflow-hidden">
-      <div className="flex flex-col gap-5 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex min-w-0 items-center gap-4">
+      <div className="flex flex-col gap-5 p-4 sm:p-5 xl:flex-row xl:items-start xl:justify-between">
+        <div className="flex min-w-0 items-start gap-4">
           <div
-            className="flex size-14 shrink-0 items-center justify-center rounded-2xl text-lg font-bold shadow-sm sm:size-16 sm:text-xl"
+            className="flex size-14 shrink-0 items-center justify-center rounded-lg text-lg font-bold shadow-sm sm:size-16 sm:text-xl"
             style={avatarStyle}
             aria-hidden
           >
@@ -80,24 +80,48 @@ export function MemberProfileHero({
               {member.memberType === "KID" && member.parentName ? (
                 <span className="inline-flex items-center gap-1.5">
                   <User className="size-3.5 shrink-0" />
-                  Parent : {member.parentName}
+                  Parent: {member.parentName}
                 </span>
+              ) : null}
+            </div>
+
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <Link
+                href={`/payments/new?memberId=${member.id}`}
+                className={`btn btn-block-mobile min-h-11 sm:w-auto ${
+                  totalDebtCents > 0 ? "btn-primary" : "btn-ghost"
+                }`}
+              >
+                <Banknote className="size-4" />
+                Encaisser
+              </Link>
+              {member.status === "ACTIVE" ? (
+                <>
+                  <Link href={`/enrollment?memberId=${member.id}`} className="btn btn-ghost btn-block-mobile min-h-11 sm:w-auto">
+                    <UserPlus className="size-4" />
+                    Inscrire
+                  </Link>
+                  <Link href={`/members/${member.id}/add-to-group`} className="btn btn-ghost btn-block-mobile min-h-11 sm:w-auto">
+                    <UsersRound className="size-4" />
+                    Affecter
+                  </Link>
+                </>
               ) : null}
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 lg:flex lg:justify-end">
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-center min-w-[5.5rem]">
+        <div className="grid grid-cols-3 gap-2 xl:flex xl:justify-end">
+          <div className="min-w-[5.5rem] rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-center">
             <p className="text-[0.65rem] uppercase tracking-wide text-[var(--muted-foreground)]">Abos</p>
             <p className="text-lg font-bold text-[var(--foreground)]">{activeSubscriptionsCount}</p>
           </div>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-center min-w-[5.5rem]">
-            <p className="text-[0.65rem] uppercase tracking-wide text-[var(--muted-foreground)]">Groupes</p>
+          <div className="min-w-[5.5rem] rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-center">
+            <p className="text-[0.65rem] uppercase tracking-wide text-[var(--muted-foreground)]">Cours</p>
             <p className="text-lg font-bold text-[var(--foreground)]">{activeGroupsCount}</p>
           </div>
           <div
-            className={`rounded-xl border px-3 py-2 text-center min-w-[6.5rem] ${
+            className={`min-w-[6.5rem] rounded-lg border px-3 py-2 text-center ${
               totalDebtCents > 0
                 ? "border-[var(--warning)]/30 bg-[var(--warning)]/10"
                 : "border-[var(--border)] bg-[var(--surface-soft)]"
@@ -112,15 +136,6 @@ export function MemberProfileHero({
               {totalDebtCents > 0 ? formatMoney(totalDebtCents) : "Soldé"}
             </p>
           </div>
-          {totalDebtCents > 0 ? (
-            <Link
-              href={`/payments/new?memberId=${member.id}`}
-              className="btn btn-primary col-span-3 inline-flex items-center gap-2 lg:col-span-1 lg:self-center"
-            >
-              <Banknote className="size-4" />
-              Encaisser
-            </Link>
-          ) : null}
         </div>
       </div>
     </section>

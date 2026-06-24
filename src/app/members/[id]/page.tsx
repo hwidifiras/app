@@ -1,17 +1,25 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
-import { prisma } from "@/lib/prisma";
-import { StatusBadge } from "@/components/ui/status-badge";
+import { ArrowLeft, CalendarCheck2, Clock3, CreditCard, UsersRound } from "lucide-react";
+
+import { MemberDangerActions } from "@/components/members/member-danger-actions";
+import { MemberEditCard } from "@/components/members/member-edit-card";
+import { MemberOffersSection } from "@/components/members/member-offers-section";
 import { MemberProfileHero } from "@/components/members/member-profile-hero";
 import { MemberSubscriptionCards } from "@/components/members/member-subscription-cards";
-import { formatGroupRoomLabel } from "@/lib/group-room";
-import { MemberEditCard } from "@/components/members/member-edit-card";
-import { MemberDangerActions } from "@/components/members/member-danger-actions";
-import { MemberOffersSection } from "@/components/members/member-offers-section";
 import { HouseholdCard } from "@/components/members/household-card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { CalendarCheck2, UsersRound } from "lucide-react";
+import {
+  DataTable,
+  DataTableBody,
+  DataTableHead,
+  DataTableRow,
+  Td,
+  Th,
+} from "@/components/ui/responsive-table";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { formatGroupRoomLabel } from "@/lib/group-room";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -20,6 +28,11 @@ function formatDate(date: Date | string) {
   return new Date(date).toLocaleDateString("fr-FR");
 }
 
+function attendanceStatus(status: string) {
+  if (status === "PRESENT") return { label: "Présent", variant: "success" as const };
+  if (status === "ABSENT") return { label: "Absent", variant: "danger" as const };
+  return { label: "Exception", variant: "warning" as const };
+}
 
 export default async function MemberDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -71,25 +84,25 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
     notFound();
   }
 
-  const activeGroups = member.groups.filter((g) => g.status === "ACTIVE");
-  const inactiveGroups = member.groups.filter((g) => g.status === "INACTIVE");
-  const activeSubsBySport = member.subscriptions.filter((s) => s.status === "ACTIVE");
-  const totalDebt = member.subscriptions.reduce((sum, sub) => {
-    const totalPaid = sub.payments.reduce((acc, payment) => acc + payment.amount, 0);
-    return sum + Math.max(0, sub.amount - totalPaid);
+  const activeGroups = member.groups.filter((assignment) => assignment.status === "ACTIVE");
+  const inactiveGroups = member.groups.filter((assignment) => assignment.status === "INACTIVE");
+  const activeSubscriptions = member.subscriptions.filter((subscription) => subscription.status === "ACTIVE");
+  const totalDebt = member.subscriptions.reduce((sum, subscription) => {
+    const totalPaid = subscription.payments.reduce((acc, payment) => acc + payment.amount, 0);
+    return sum + Math.max(0, subscription.amount - totalPaid);
   }, 0);
 
-  const subscriptionCards = member.subscriptions.map((sub) => ({
-    id: sub.id,
-    planName: sub.plan.name,
-    sportName: sub.sport.name,
-    status: sub.status,
-    startDate: sub.startDate,
-    endDate: sub.endDate,
-    amount: sub.amount,
-    paidCents: sub.payments.reduce((sum, payment) => sum + payment.amount, 0),
-    remainingSessions: sub.remainingSessions,
-    totalSessions: sub.plan.totalSessions,
+  const subscriptionCards = member.subscriptions.map((subscription) => ({
+    id: subscription.id,
+    planName: subscription.plan.name,
+    sportName: subscription.sport.name,
+    status: subscription.status,
+    startDate: subscription.startDate,
+    endDate: subscription.endDate,
+    amount: subscription.amount,
+    paidCents: subscription.payments.reduce((sum, payment) => sum + payment.amount, 0),
+    remainingSessions: subscription.remainingSessions,
+    totalSessions: subscription.plan.totalSessions,
   }));
 
   return (
@@ -98,7 +111,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
         href="/members"
         className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--primary)] hover:underline"
       >
-        <ArrowLeft className="size-3.5" /> Retour à la liste
+        <ArrowLeft className="size-3.5" /> Retour aux membres
       </Link>
 
       <div className="grid min-w-0 gap-4 sm:gap-5">
@@ -116,146 +129,166 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
             parentPhone: member.parentPhone,
           }}
           totalDebtCents={totalDebt}
-          activeSubscriptionsCount={activeSubsBySport.length}
+          activeSubscriptionsCount={activeSubscriptions.length}
           activeGroupsCount={activeGroups.length}
         />
 
-        <div className="grid min-w-0 items-start gap-4 sm:gap-5 lg:grid-cols-12">
-          <div className="contents">
-            <section className="panel order-2 min-w-0 p-4 sm:p-5 lg:col-span-8 lg:row-start-1">
-              <div className="mb-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                  Groupes actifs ({activeGroups.length})
-                </h2>
-                {member.status === "ACTIVE" && (
-                  <Link
-                    href={`/members/${member.id}/add-to-group`}
-                    className="btn btn-primary btn-block-mobile btn-sm sm:w-auto"
-                  >
-                    + Ajouter au groupe
+        <div className="grid min-w-0 items-start gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="grid min-w-0 gap-4 sm:gap-5">
+            <section className="panel min-w-0 p-4 sm:p-5">
+              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-[var(--primary)]">
+                    Cours
+                  </p>
+                  <h2 className="text-lg font-semibold text-[var(--foreground)]">
+                    Actifs ({activeGroups.length})
+                  </h2>
+                </div>
+                {member.status === "ACTIVE" ? (
+                  <Link href={`/members/${member.id}/add-to-group`} className="btn btn-primary btn-block-mobile btn-sm sm:w-auto">
+                    + Affecter
                   </Link>
-                )}
+                ) : null}
               </div>
+
               {activeGroups.length === 0 ? (
                 <EmptyState
                   icon={<UsersRound className="size-8 opacity-45" />}
-                  title="Aucun groupe actif"
-                  message="Affectez ce membre à un groupe pour planifier ses séances."
+                  title="Aucun cours actif"
+                  message="Affectez ce membre à un cours pour le retrouver dans le pointage."
                   action={
                     member.status === "ACTIVE" ? (
                       <Link href={`/members/${member.id}/add-to-group`} className="btn btn-primary">
-                        Ajouter au groupe
+                        Affecter
                       </Link>
                     ) : undefined
                   }
                   className="py-8"
                 />
               ) : (
-                <ul className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr))]">
-                  {activeGroups.map((gm) => (
-                    <li key={gm.id} className="rounded-xl border border-[var(--border)] bg-[var(--surface-soft)]/35 p-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold">{gm.group.name}</p>
-                          <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-                            {gm.group.sport?.name ?? "-"} ·{" "}
-                            {gm.group.coach ? `${gm.group.coach.firstName} ${gm.group.coach.lastName}` : "Sans coach"}
-                          </p>
-                          <p className="text-xs text-[var(--muted-foreground)]">
-                            Salle {formatGroupRoomLabel(gm.group.room)}
-                            {gm.group.schedules[0]
-                              ? ` · ${gm.group.schedules[0].dayOfWeek} ${gm.group.schedules[0].startTime}`
-                              : ""}
-                          </p>
+                <ul className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr))]">
+                  {activeGroups.map((assignment) => {
+                    const schedule = assignment.group.schedules[0];
+                    const coach = assignment.group.coach
+                      ? `${assignment.group.coach.firstName} ${assignment.group.coach.lastName}`
+                      : "Sans coach";
+
+                    return (
+                      <li key={assignment.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-[var(--foreground)]">
+                              {assignment.group.name}
+                            </p>
+                            <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                              {assignment.group.sport?.name ?? "-"} · {coach}
+                            </p>
+                          </div>
+                          <StatusBadge variant="success">Actif</StatusBadge>
                         </div>
-                        <StatusBadge variant="success">Actif</StatusBadge>
-                      </div>
-                      <p className="mt-2 text-[0.7rem] text-[var(--muted-foreground)]">
-                        Depuis le {new Date(gm.startDate).toLocaleDateString("fr-FR")}
-                      </p>
-                    </li>
-                  ))}
+                        <div className="mt-3 grid gap-2 text-xs text-[var(--muted-foreground)] sm:grid-cols-2">
+                          <span>Salle {formatGroupRoomLabel(assignment.group.room)}</span>
+                          <span>{schedule ? `${schedule.dayOfWeek} ${schedule.startTime}` : "Créneau à planifier"}</span>
+                          <span className="sm:col-span-2">Depuis le {formatDate(assignment.startDate)}</span>
+                        </div>
+                        <div className="mt-3">
+                          <Link href={`/sessions?groupId=${assignment.group.id}`} className="btn btn-ghost btn-sm w-full">
+                            Voir planning
+                          </Link>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </section>
 
-            <section className="panel order-3 min-w-0 p-4 sm:p-5 lg:col-span-8 lg:row-start-2">
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                Abonnements ({member.subscriptions.length})
-              </h2>
-              <div className="mt-3">
-                <MemberSubscriptionCards subscriptions={subscriptionCards} />
+            <section className="panel min-w-0 p-4 sm:p-5">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-[var(--primary)]">
+                    Abonnements
+                  </p>
+                  <h2 className="text-lg font-semibold text-[var(--foreground)]">
+                    Formules ({member.subscriptions.length})
+                  </h2>
+                </div>
+                <CreditCard className="size-5 text-[var(--muted-foreground)]" />
               </div>
+              <MemberSubscriptionCards subscriptions={subscriptionCards} />
             </section>
 
-            <section className="panel order-6 min-w-0 p-4 sm:p-5 lg:col-span-8 lg:row-start-3">
-          <h2 className="text-lg font-semibold text-[var(--foreground)]">
-            Présences récentes ({member.attendances.length})
-          </h2>
-          {member.attendances.length === 0 ? (
-            <EmptyState
-              icon={<CalendarCheck2 className="size-8 opacity-45" />}
-              title="Aucun pointage"
-              message="Les présences et absences apparaîtront ici après le premier pointage."
-              className="mt-3 py-8"
-            />
-          ) : (
-            <div className="mt-3 data-table overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-semibold">Date</th>
-                    <th className="px-3 py-2 text-left font-semibold">Groupe</th>
-                    <th className="px-3 py-2 text-left font-semibold">Statut</th>
-                    <th className="px-3 py-2 text-left font-semibold hidden sm:table-cell">Pointage</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border)]">
-                  {member.attendances.map((a) => (
-                    <tr key={a.id} className="hover:bg-[var(--surface-soft)]">
-                      <td className="data-table-primary px-3 py-2" data-label="Date">
-                        {formatDate(a.session.sessionDate)} {a.session.startTime}
-                      </td>
-                      <td className="px-3 py-2" data-label="Groupe">{a.session.group?.name ?? "—"}</td>
-                      <td className="px-3 py-2" data-label="Statut">
-                        <StatusBadge
-                          variant={
-                            a.status === "PRESENT"
-                              ? "success"
-                              : a.status === "ABSENT"
-                                ? "danger"
-                                : "warning"
-                          }
-                        >
-                          {a.status === "PRESENT" ? "Présent" : a.status === "ABSENT" ? "Absent" : "Exception"}
-                        </StatusBadge>
-                      </td>
-                      <td className="px-3 py-2 hidden sm:table-cell text-[var(--muted-foreground)] text-xs" data-label="Pointage">
-                        {formatDate(a.checkedAt)}
-                      </td>
+            <section className="panel min-w-0 p-4 sm:p-5">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-[var(--primary)]">
+                    Présences
+                  </p>
+                  <h2 className="text-lg font-semibold text-[var(--foreground)]">
+                    Récentes ({member.attendances.length})
+                  </h2>
+                </div>
+                <CalendarCheck2 className="size-5 text-[var(--muted-foreground)]" />
+              </div>
+
+              {member.attendances.length === 0 ? (
+                <EmptyState
+                  icon={<CalendarCheck2 className="size-8 opacity-45" />}
+                  title="Aucun pointage"
+                  message="Les présences et absences apparaîtront ici après le premier pointage."
+                  className="py-8"
+                />
+              ) : (
+                <DataTable>
+                  <DataTableHead>
+                    <tr>
+                      <Th>Date</Th>
+                      <Th>Cours</Th>
+                      <Th>Statut</Th>
+                      <Th className="hidden sm:table-cell">Pointage</Th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </DataTableHead>
+                  <DataTableBody>
+                    {member.attendances.map((attendance) => {
+                      const status = attendanceStatus(attendance.status);
+                      return (
+                        <DataTableRow key={attendance.id}>
+                          <Td label="Date" primary>
+                            {formatDate(attendance.session.sessionDate)} {attendance.session.startTime}
+                          </Td>
+                          <Td label="Cours">{attendance.session.group?.name ?? "-"}</Td>
+                          <Td label="Statut">
+                            <StatusBadge variant={status.variant}>{status.label}</StatusBadge>
+                          </Td>
+                          <Td label="Pointage" className="hidden text-xs text-[var(--muted-foreground)] sm:table-cell">
+                            {formatDate(attendance.checkedAt)}
+                          </Td>
+                        </DataTableRow>
+                      );
+                    })}
+                  </DataTableBody>
+                </DataTable>
+              )}
             </section>
+
+            <MemberOffersSection memberId={member.id} memberName={`${member.firstName} ${member.lastName}`} wide />
 
             {inactiveGroups.length > 0 ? (
-              <details className="panel order-7 min-w-0 p-4 sm:p-5 lg:col-span-12 lg:row-start-5">
+              <details className="panel min-w-0 p-4 sm:p-5">
                 <summary className="cursor-pointer text-sm font-semibold text-[var(--foreground)]">
                   Anciennes affectations ({inactiveGroups.length})
                 </summary>
                 <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-                  {inactiveGroups.map((gm) => (
-                    <li key={gm.id} className="rounded-xl border border-[var(--border)] p-3 opacity-75">
-                      <p className="text-sm font-medium">{gm.group.name}</p>
+                  {inactiveGroups.map((assignment) => (
+                    <li key={assignment.id} className="rounded-lg border border-[var(--border)] p-3 opacity-75">
+                      <p className="text-sm font-medium">{assignment.group.name}</p>
                       <p className="text-xs text-[var(--muted-foreground)]">
-                        {gm.group.sport?.name ?? "-"} · Salle {formatGroupRoomLabel(gm.group.room)}
+                        {assignment.group.sport?.name ?? "-"} · Salle {formatGroupRoomLabel(assignment.group.room)}
                       </p>
                       <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-                        {formatDate(gm.startDate)}
-                        {gm.endDate ? ` → ${formatDate(gm.endDate)}` : ""}
+                        {formatDate(assignment.startDate)}
+                        {assignment.endDate ? ` → ${formatDate(assignment.endDate)}` : ""}
                       </p>
                     </li>
                   ))}
@@ -264,44 +297,40 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
             ) : null}
           </div>
 
-          <aside className="contents">
-            <div className="order-1 min-w-0 lg:col-span-4 lg:row-start-1">
-              <MemberEditCard
-                member={{
-                  id: member.id,
-                  firstName: member.firstName,
-                  lastName: member.lastName,
-                  phone: member.phone,
-                  email: member.email,
-                  memberType: member.memberType,
-                  birthDate: member.birthDate?.toISOString() ?? null,
-                  address: member.address,
-                  parentName: member.parentName,
-                  parentPhone: member.parentPhone,
-                  parentAddress: member.parentAddress,
-                  status: member.status,
-                  joinedAt: member.joinedAt.toISOString(),
-                  archivedAt: member.archivedAt?.toISOString() ?? null,
-                }}
-              />
+          <aside className="grid min-w-0 gap-4 sm:gap-5">
+            <MemberEditCard
+              member={{
+                id: member.id,
+                firstName: member.firstName,
+                lastName: member.lastName,
+                phone: member.phone,
+                email: member.email,
+                memberType: member.memberType,
+                birthDate: member.birthDate?.toISOString() ?? null,
+                address: member.address,
+                parentName: member.parentName,
+                parentPhone: member.parentPhone,
+                parentAddress: member.parentAddress,
+                status: member.status,
+                joinedAt: member.joinedAt.toISOString(),
+                archivedAt: member.archivedAt?.toISOString() ?? null,
+              }}
+            />
+            <HouseholdCard memberId={member.id} />
+            <div className="panel panel-soft p-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
+                <Clock3 className="size-4 text-[var(--primary)]" />
+                Prochain réflexe
+              </div>
+              <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+                Vérifiez le solde, puis affectez le membre au bon cours avant le prochain pointage.
+              </p>
             </div>
-            <div className="order-4 min-w-0 lg:col-span-4 lg:row-start-2">
-              <HouseholdCard memberId={member.id} />
-            </div>
-            <div className="order-5 min-w-0 lg:col-span-12 lg:row-start-4">
-              <MemberOffersSection
-                memberId={member.id}
-                memberName={`${member.firstName} ${member.lastName}`}
-                wide
-              />
-            </div>
-            <div className="order-8 min-w-0 lg:col-span-4 lg:row-start-3">
-              <MemberDangerActions
-                memberId={member.id}
-                memberName={`${member.firstName} ${member.lastName}`}
-                status={member.status}
-              />
-            </div>
+            <MemberDangerActions
+              memberId={member.id}
+              memberName={`${member.firstName} ${member.lastName}`}
+              status={member.status}
+            />
           </aside>
         </div>
       </div>

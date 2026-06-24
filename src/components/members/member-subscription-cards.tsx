@@ -29,8 +29,8 @@ export function MemberSubscriptionCards({ subscriptions }: { subscriptions: Subs
       <EmptyState
         icon={<CreditCard className="size-8 opacity-45" />}
         title="Aucun abonnement"
-        message="Ajoutez une formule pour suivre les séances et les paiements de ce membre."
-        action={<Link href="/subscriptions/new" className="btn btn-primary">Ajouter un abonnement</Link>}
+        message="Ajoutez une formule pour suivre les séances, les dates et les paiements."
+        action={<Link href="/subscriptions/new" className="btn btn-primary">Renouveler</Link>}
         className="py-8"
       />
     );
@@ -46,7 +46,7 @@ export function MemberSubscriptionCards({ subscriptions }: { subscriptions: Subs
         return (
           <article
             key={sub.id}
-            className="flex flex-col rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"
+            className="flex flex-col rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -100,14 +100,24 @@ export function MemberSubscriptionCards({ subscriptions }: { subscriptions: Subs
               </p>
             ) : null}
 
-            {!isPaid ? (
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {!isPaid ? (
+                <Link
+                  href={`/payments/new?memberSubscriptionId=${sub.id}`}
+                  className="btn btn-primary btn-sm inline-flex w-full justify-center text-xs"
+                >
+                  Encaisser
+                </Link>
+              ) : null}
               <Link
-                href={`/payments/new?memberSubscriptionId=${sub.id}`}
-                className="btn btn-ghost btn-sm mt-3 inline-flex w-full justify-center text-xs"
+                href={`/subscriptions/${sub.id}/edit`}
+                className={`btn btn-ghost btn-sm inline-flex w-full justify-center text-xs ${
+                  isPaid ? "sm:col-span-2" : ""
+                }`}
               >
-                Encaisser le solde
+                Voir
               </Link>
-            ) : null}
+            </div>
           </article>
         );
       })}
