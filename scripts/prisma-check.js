@@ -8,28 +8,25 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("DATABASE_URL:", process.env.DATABASE_URL);
 
-  const tables = await prisma.$queryRawUnsafe(
-    "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;",
-  );
+  const tables = await prisma.$queryRaw`
+    SELECT table_name
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+    ORDER BY table_name
+  `;
   console.log("Tables:", tables);
 
-  try {
-    const users = await prisma.$queryRawUnsafe(
-      "SELECT id, email, role, isActive FROM User;",
-    );
-    console.log("Users (raw):", users);
-  } catch (err) {
-    console.error("User query failed:", err.message || err);
-  }
+  const tenants = await prisma.tenant.findMany({
+    select: { id: true, slug: true, name: true, status: true },
+    orderBy: { createdAt: "asc" },
+  });
+  console.log("Tenants:", tenants);
 
-  try {
-    const users = await prisma.user.findMany({
-      select: { email: true, isActive: true, role: true },
-    });
-    console.log("Users (client):", users);
-  } catch (err) {
-    console.error("Prisma client error:", err.message || err);
-  }
+  const users = await prisma.user.findMany({
+    select: { tenantId: true, email: true, isActive: true, role: true },
+    orderBy: { createdAt: "asc" },
+  });
+  console.log("Users:", users);
 }
 
 main()

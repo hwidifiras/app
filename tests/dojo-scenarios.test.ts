@@ -67,6 +67,12 @@ import {
 } from "@/lib/data-import-service";
 import type { DataImportPayload } from "@/lib/schemas/data-import";
 import { getWeekRangeUtc } from "@/lib/dates";
+import { setFallbackTenantContext } from "@/lib/tenant-context";
+
+const TEST_TENANT_ID = "tenant_test";
+const TEST_TENANT_SLUG = "we-discipline";
+
+setFallbackTenantContext({ tenantId: TEST_TENANT_ID, tenantSlug: TEST_TENANT_SLUG, host: "test.local" });
 
 async function resetData() {
   await prisma.$transaction([
@@ -91,9 +97,20 @@ async function resetData() {
     prisma.user.deleteMany(),
     prisma.clubSettings.deleteMany(),
   ]);
+  await prisma.tenant.upsert({
+    where: { slug: TEST_TENANT_SLUG },
+    create: {
+      id: TEST_TENANT_ID,
+      slug: TEST_TENANT_SLUG,
+      name: "Test Tenant",
+      rootDomainAlias: "test.local",
+    },
+    update: { status: "ACTIVE" },
+  });
   await prisma.clubSettings.create({
     data: {
       id: "default",
+      tenantId: TEST_TENANT_ID,
       allowCheckInWithPartialPayment: true,
       allowCheckInWithoutSubscription: false,
       absentConsumesSession: true,
@@ -246,7 +263,7 @@ async function signIn(role: AuthRole = "ADMIN") {
   const name = `${role} Test`;
   const permissions = role === "STAFF" ? FULL_STAFF_PERMISSIONS : [];
   const user = await prisma.user.upsert({
-    where: { email },
+    where: { tenantId_email: { tenantId: TEST_TENANT_ID, email } },
     update: {
       name,
       role,
@@ -254,23 +271,26 @@ async function signIn(role: AuthRole = "ADMIN") {
       passwordHash: await hashPassword("password123"),
       permissions: {
         deleteMany: {},
-        create: permissions.map((key) => ({ key })),
+        create: permissions.map((key) => ({ tenantId: TEST_TENANT_ID, key })),
       },
     },
     create: {
       id: userId,
+      tenantId: TEST_TENANT_ID,
       email,
       name,
       role,
       passwordHash: await hashPassword("password123"),
       permissions: {
-        create: permissions.map((key) => ({ key })),
+        create: permissions.map((key) => ({ tenantId: TEST_TENANT_ID, key })),
       },
     },
   });
 
   authState.token = await signAuthToken({
     userId: user.id,
+    tenantId: TEST_TENANT_ID,
+    tenantSlug: TEST_TENANT_SLUG,
     email: user.email,
     name: user.name,
     role: user.role,
@@ -1717,15 +1737,18 @@ describe("admin permissions and password reset", () => {
   it("blocks staff without payments.manage from recording payments", async () => {
     const staff = await prisma.user.create({
       data: {
+        tenantId: TEST_TENANT_ID,
         name: "Members Only",
         email: "members-only@test.local",
         role: "STAFF",
         passwordHash: await hashPassword("password123"),
-        permissions: { create: [{ key: "members.manage" }] },
+        permissions: { create: [{ tenantId: TEST_TENANT_ID, key: "members.manage" }] },
       },
     });
     authState.token = await signAuthToken({
       userId: staff.id,
+      tenantId: TEST_TENANT_ID,
+      tenantSlug: TEST_TENANT_SLUG,
       email: staff.email,
       name: staff.name,
       role: "STAFF",
@@ -2354,6 +2377,7 @@ describe("payment corrections and member archive", () => {
   it("rejects disabled and demoted users from fresh database auth state", async () => {
     const disabled = await prisma.user.create({
       data: {
+        tenantId: TEST_TENANT_ID,
         name: "Disabled Admin",
         email: "disabled-admin@test.local",
         role: "ADMIN",
@@ -2363,6 +2387,8 @@ describe("payment corrections and member archive", () => {
     });
     authState.token = await signAuthToken({
       userId: disabled.id,
+      tenantId: TEST_TENANT_ID,
+      tenantSlug: TEST_TENANT_SLUG,
       email: disabled.email,
       name: disabled.name,
       role: "ADMIN",
@@ -2375,16 +2401,19 @@ describe("payment corrections and member archive", () => {
 
     const demoted = await prisma.user.create({
       data: {
+        tenantId: TEST_TENANT_ID,
         name: "Demoted Admin",
         email: "demoted-admin@test.local",
         role: "STAFF",
         isActive: true,
         passwordHash: await hashPassword("password123"),
-        permissions: { create: [{ key: "payments.manage" }] },
+        permissions: { create: [{ tenantId: TEST_TENANT_ID, key: "payments.manage" }] },
       },
     });
     authState.token = await signAuthToken({
       userId: demoted.id,
+      tenantId: TEST_TENANT_ID,
+      tenantSlug: TEST_TENANT_SLUG,
       email: demoted.email,
       name: demoted.name,
       role: "ADMIN",
@@ -2467,7 +2496,7 @@ describe("payment corrections and member archive", () => {
     );
     const body = await responseJson(response);
     const assignment = await prisma.groupMember.findUniqueOrThrow({
-      where: { groupId_memberId: { groupId: fx.adultBjj.id, memberId: fx.adult.id } },
+      where: { tenantId_groupId_memberId: { tenantId: TEST_TENANT_ID, groupId: fx.adultBjj.id, memberId: fx.adult.id } },
     });
 
     expect(response.status).toBe(200);
@@ -3233,7 +3262,7 @@ describe("enrollment revert", () => {
     expect(activeSubs).toHaveLength(0);
 
     const groupMember = await prisma.groupMember.findUnique({
-      where: { groupId_memberId: { groupId: fx.adultBjj.id, memberId: fx.adult.id } },
+      where: { tenantId_groupId_memberId: { tenantId: TEST_TENANT_ID, groupId: fx.adultBjj.id, memberId: fx.adult.id } },
     });
     expect(groupMember).toBeNull();
   });
