@@ -57,7 +57,7 @@ export function GroupMemberSelector({
   }
 
   return (
-    <section className="rounded-xl border border-[var(--border)] p-3 sm:p-4">
+    <section className="rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] p-3.5 shadow-[var(--shadow-panel)] sm:p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-sm font-semibold text-[var(--foreground)]">{title}</h2>
@@ -110,14 +110,14 @@ export function GroupMemberSelector({
                 onClick={() => toggleMember(member.id)}
                 aria-pressed={selected}
                 className={cn(
-                  "flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition",
+                  "flex min-w-0 items-center gap-3 rounded-lg border p-3 text-left transition",
                   selected
                     ? "border-[var(--primary)] bg-[var(--primary)]/5"
                     : "border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-soft)]",
                 )}
               >
                 <span
-                  className="flex size-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold"
+                  className="flex size-10 shrink-0 items-center justify-center rounded-lg text-xs font-bold"
                   style={getMemberAvatarStyle(member.id)}
                   aria-hidden="true"
                 >

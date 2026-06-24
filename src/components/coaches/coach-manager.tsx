@@ -225,9 +225,9 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
 
   return (
     <div>
-      <div className="grid w-full gap-6 md:grid-cols-2">
-        <section className="panel panel-soft p-4 sm:p-6">
-          <h2 className="text-lg font-semibold text-[var(--foreground)]">Ajouter un coach</h2>
+      <div className="grid w-full items-start gap-4 lg:grid-cols-[minmax(20rem,0.85fr)_minmax(0,1.25fr)]">
+        <section className="panel p-4 sm:p-5">
+          <h2 className="text-base font-semibold text-[var(--foreground)]">Ajouter un coach</h2>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">
             Créer un nouveau coach avec sa spécialité sportive.
           </p>
@@ -325,10 +325,10 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
           <FeedbackMessage message={message} className="mt-4" />
         </section>
 
-        <section className="panel p-4 sm:p-6">
+        <section className="panel p-4 sm:p-5">
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-xl font-semibold text-[var(--foreground)]">Coachs enregistrés</h2>
+              <h2 className="text-base font-semibold text-[var(--foreground)]">Coachs enregistrés</h2>
               <span className="text-xs text-[var(--muted-foreground)]">
                 {filteredCoaches.length} coach{filteredCoaches.length > 1 ? "s" : ""}
               </span>
@@ -342,7 +342,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
 
           <ul className="mt-4 space-y-2">
             {pagination.pageItems.map((coach) => (
-              <li key={coach.id} className="rounded-xl border border-[var(--border)] px-3 py-2.5">
+              <li key={coach.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5">
                 {editingId === coach.id ? (
                   <div className="space-y-2">
                     <input
@@ -439,7 +439,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                 ) : (
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                     <div className="flex min-w-0 flex-1 items-center gap-3">
-                      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-soft)] text-xs font-bold text-[var(--primary)]">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-xs font-bold text-[var(--primary)]">
                         {coach.firstName[0]}
                         {coach.lastName[0]}
                       </div>
@@ -520,7 +520,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
 
       {blockedCoach ? (
         <div className="mobile-modal-overlay fixed inset-0 z-50 flex justify-center bg-black/40">
-          <div className="mobile-modal-panel border border-[var(--border)] bg-[var(--card)] p-5 shadow-lg md:rounded-xl">
+          <div className="mobile-modal-panel border border-[var(--border)] bg-[var(--card)] p-5 shadow-lg md:rounded-lg">
             <h3 className="text-base font-semibold text-[var(--foreground)]">Suppression impossible</h3>
             <p className="mt-2 text-sm text-[var(--muted-foreground)]">
               Le coach <span className="font-medium text-[var(--foreground)]">{blockedCoach.name}</span> est assigne aux groupes suivants :

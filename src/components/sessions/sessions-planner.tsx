@@ -552,12 +552,12 @@ export function SessionsPlanner({
 
         <div className="mt-5 space-y-4">
           {sessionsByDay.map(([dayKey, daySessions]) => (
-            <section key={dayKey} className="rounded-xl border border-[var(--border)] p-4">
+            <section key={dayKey} className="rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] p-3.5 shadow-[var(--shadow-panel)] sm:p-4">
               <h3 className="text-sm font-semibold capitalize text-[var(--foreground)]">{formatDateFr(`${dayKey}T00:00:00`)}</h3>
 
               <ul className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                 {daySessions.map((item) => (
-                  <li key={item.id} className="rounded-lg border border-[var(--border)] p-3">
+                  <li key={item.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
                     <div className="flex h-full flex-col gap-3">
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-[var(--foreground)]">{item.groupName}</p>
@@ -669,7 +669,7 @@ export function SessionsPlanner({
       {/* Modal d'édition de séance */}
       {editingSession ? (
         <div className="mobile-modal-overlay fixed inset-0 z-50 flex justify-center bg-black/40">
-          <div className="mobile-modal-panel border border-[var(--border)] bg-[var(--card)] p-5 shadow-xl md:max-w-lg md:rounded-xl">
+          <div className="mobile-modal-panel border border-[var(--border)] bg-[var(--card)] p-5 shadow-xl md:max-w-2xl md:rounded-lg">
             <h3 className="text-lg font-semibold text-[var(--foreground)]">
               Modifier la séance
             </h3>

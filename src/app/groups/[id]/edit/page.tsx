@@ -130,24 +130,22 @@ export default async function EditGroupPage({ params }: { params: Promise<{ id: 
         description={group.name}
       />
 
-      <section className="panel p-4 sm:p-6">
-        <GroupEditForm
-          groupId={group.id}
-          initialData={{
-            name: group.name,
-            groupType: group.groupType,
-            sportId: group.sportId,
-            coachId: group.coachId,
-            capacity: group.capacity,
-            room: group.room,
-            isActive: group.isActive,
-          }}
-          sportsOptions={sportsOptions}
-          coachesOptions={coachesOptions}
-          membersOptions={membersOptions}
-          initialMemberIds={initialMemberIds}
-        />
-      </section>
+      <GroupEditForm
+        groupId={group.id}
+        initialData={{
+          name: group.name,
+          groupType: group.groupType,
+          sportId: group.sportId,
+          coachId: group.coachId,
+          capacity: group.capacity,
+          room: group.room,
+          isActive: group.isActive,
+        }}
+        sportsOptions={sportsOptions}
+        coachesOptions={coachesOptions}
+        membersOptions={membersOptions}
+        initialMemberIds={initialMemberIds}
+      />
     </main>
   );
 }

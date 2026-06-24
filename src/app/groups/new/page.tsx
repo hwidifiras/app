@@ -127,9 +127,7 @@ export default async function NewGroupPage() {
         description="Créer le groupe, puis planifier ses créneaux."
       />
 
-      <section className="panel p-4 sm:p-6">
-        <GroupAddForm sportsOptions={sportsOptions} coachesOptions={coachesOptions} membersOptions={membersOptions} />
-      </section>
+      <GroupAddForm sportsOptions={sportsOptions} coachesOptions={coachesOptions} membersOptions={membersOptions} />
     </main>
   );
 }
