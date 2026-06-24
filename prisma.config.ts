@@ -10,7 +10,7 @@ if (!process.env.DATABASE_URL && existsSync(".env.development")) {
   config({ path: ".env.development" });
 }
 if (!process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = "file:./prisma/dev.db";
+  process.env.DATABASE_URL = "postgresql://gymday:gymday@localhost:5432/gymday_dev?schema=public";
 }
 
 export default defineConfig({

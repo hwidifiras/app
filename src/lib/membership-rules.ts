@@ -6,6 +6,7 @@ import { businessDayWindow } from "@/lib/assignment-policy";
 import { resolveOfferRules } from "@/lib/offer-rules";
 import type { EnrollmentLineInput } from "@/lib/schemas/enrollment";
 import { prisma } from "@/lib/prisma";
+import { getRequiredTenantId } from "@/lib/tenant-context";
 
 export type ActiveSubscriptionView = {
   id: string;
@@ -459,6 +460,7 @@ export async function buildEnrollmentQuote(
   offerId?: string,
   startDateInput?: string,
 ): Promise<QuoteResult> {
+  const tenantId = getRequiredTenantId();
   const resolved = await resolveEnrollmentLines(lines, startDateInput);
 
   const memberIds = [...new Set(resolved.map((r) => r.memberId).filter(Boolean))];
@@ -504,7 +506,7 @@ export async function buildEnrollmentQuote(
   for (const r of resolved) {
     const existingAssignment = r.memberId
       ? await prisma.groupMember.findUnique({
-          where: { groupId_memberId: { groupId: r.group.id, memberId: r.memberId } },
+          where: { tenantId_groupId_memberId: { tenantId, groupId: r.group.id, memberId: r.memberId } },
           select: { status: true },
         })
       : null;
@@ -592,6 +594,7 @@ export async function ensureSharedHouseholdForMembers(
   memberIds: string[],
 ): Promise<void> {
   if (memberIds.length < 2) return;
+  const tenantId = getRequiredTenantId();
 
   const links = await tx.householdMember.findMany({
     where: { memberId: { in: memberIds } },
@@ -610,7 +613,7 @@ export async function ensureSharedHouseholdForMembers(
   }
 
   if (!targetHouseholdId) {
-    const created = await tx.household.create({ data: { label: null } });
+    const created = await tx.household.create({ data: { tenantId, label: null } });
     targetHouseholdId = created.id;
   }
 
@@ -619,7 +622,7 @@ export async function ensureSharedHouseholdForMembers(
     const taken = await tx.householdMember.findUnique({ where: { memberId: id } });
     if (taken) throw new Error("HOUSEHOLD_MEMBER_TAKEN");
     await tx.householdMember.create({
-      data: { householdId: targetHouseholdId, memberId: id, relationship: "OTHER" },
+      data: { tenantId, householdId: targetHouseholdId, memberId: id, relationship: "OTHER" },
     });
   }
 }

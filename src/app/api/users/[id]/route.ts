@@ -45,8 +45,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Aucune modification fournie" }, { status: 400 });
   }
 
-  const target = await prisma.user.findUnique({
-    where: { id },
+  const target = await prisma.user.findFirst({
+    where: { id, tenantId: admin.tenantId },
     select: { id: true, email: true, name: true, role: true, isActive: true },
   });
 
@@ -60,7 +60,10 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const nextEmail = email ? email.toLowerCase() : target.email;
   if (nextEmail !== target.email) {
-    const existing = await prisma.user.findUnique({ where: { email: nextEmail }, select: { id: true } });
+    const existing = await prisma.user.findFirst({
+      where: { tenantId: admin.tenantId, email: nextEmail },
+      select: { id: true },
+    });
     if (existing && existing.id !== target.id) {
       return NextResponse.json({ error: "Cet email est déjà utilisé" }, { status: 409 });
     }
@@ -86,6 +89,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   await prisma.auditLog.create({
     data: {
+      tenantId: admin.tenantId,
       action: "USER_UPDATED",
       entityType: "User",
       entityId: updated.id,

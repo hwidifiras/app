@@ -5,8 +5,10 @@ import Link from "next/link";
 import { ChevronDown, Mail, Wallet } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
-import type { DashboardDebtReminderRow } from "@/lib/payment-reminders";
-import { PAYMENT_REMINDER_COOLDOWN_DAYS } from "@/lib/payment-reminders";
+import {
+  PAYMENT_REMINDER_COOLDOWN_DAYS,
+  type DashboardDebtReminderRow,
+} from "@/lib/payment-reminder-types";
 import { formatMoney } from "@/lib/subscription-billing";
 
 export function DashboardDebtsSection({

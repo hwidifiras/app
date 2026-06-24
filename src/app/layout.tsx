@@ -12,6 +12,8 @@ import { getClubSettings } from "@/lib/club-settings";
 import { isPublicPath } from "@/lib/public-paths";
 import { getAuthUser } from "@/lib/request-user";
 import { isAdminOnlyPath, requiredPermissionForPath } from "@/lib/route-permissions";
+import { enterTenantContext, getTenantContext } from "@/lib/tenant-context";
+import { resolveTenantFromHost } from "@/lib/tenant-resolver";
 import { THEME_INIT_SCRIPT } from "@/lib/theme-init-script";
 import "./globals.css";
 
@@ -54,6 +56,13 @@ export default async function RootLayout({
 }>) {
   const requestHeaders = await headers();
   const pathname = requestHeaders.get("x-pathname");
+  const resolvedTenant = await resolveTenantFromHost(
+    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host"),
+  );
+
+  if (resolvedTenant.ok) {
+    enterTenantContext(resolvedTenant.context);
+  }
 
   if (pathname && !isPublicPath(pathname)) {
     const user = await getAuthUser();
@@ -71,8 +80,8 @@ export default async function RootLayout({
     }
   }
 
-  const settings = await getClubSettings();
-  const branding = resolveClubBranding(settings);
+  const settings = getTenantContext() ? await getClubSettings() : null;
+  const branding = resolveClubBranding(settings ?? {});
 
   return (
     <html

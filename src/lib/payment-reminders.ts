@@ -2,9 +2,13 @@ import { prisma } from "@/lib/prisma";
 import { getClubSettings } from "@/lib/club-settings";
 import { computeMemberDebts, type MemberDebtRow } from "@/lib/dashboard-finance";
 import { isPaymentReminderEmailConfigured, sendPaymentReminderEmail } from "@/lib/email";
+import {
+  PAYMENT_REMINDER_COOLDOWN_DAYS,
+  type DashboardDebtReminderRow,
+} from "@/lib/payment-reminder-types";
 
 export const PAYMENT_REMINDER_AUDIT_ACTION = "PAYMENT_REMINDER_SENT";
-export const PAYMENT_REMINDER_COOLDOWN_DAYS = 7;
+export { PAYMENT_REMINDER_COOLDOWN_DAYS, type DashboardDebtReminderRow };
 
 export type PaymentReminderSkipReason =
   | "NO_EMAIL"
@@ -48,12 +52,6 @@ export async function getLastReminderDatesByMemberIds(
   }
   return map;
 }
-
-export type DashboardDebtReminderRow = MemberDebtRow & {
-  email: string | null;
-  lastReminderAt: string | null;
-  reminderBlocked: boolean;
-};
 
 export async function enrichDebtsWithReminderMeta(
   debts: MemberDebtRow[],

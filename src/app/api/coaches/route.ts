@@ -100,8 +100,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -143,6 +144,7 @@ export async function POST(request: Request) {
   try {
     const coach = await prisma.coach.create({
       data: {
+        tenantId: actor.tenantId,
         firstName: parsed.data.firstName,
         lastName: parsed.data.lastName,
         phone: parsed.data.phone,
@@ -150,6 +152,7 @@ export async function POST(request: Request) {
         sportId: sportIdValue,
         qualifications: {
           create: qualifiedSportIds.map((qualifiedSportId) => ({
+            tenantId: actor.tenantId,
             sportId: qualifiedSportId,
             isPrimary: qualifiedSportId === sportIdValue,
           })),
@@ -181,8 +184,9 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -263,6 +267,7 @@ export async function PATCH(request: Request) {
         if (qualificationReplacementIds.length > 0) {
           await tx.coachSportQualification.createMany({
             data: qualificationReplacementIds.map((qualifiedSportId) => ({
+              tenantId: actor.tenantId,
               coachId,
               sportId: qualifiedSportId,
               isPrimary: qualifiedSportId === sportIdValue,
@@ -276,8 +281,8 @@ export async function PATCH(request: Request) {
         });
         if (sportIdValue) {
           await tx.coachSportQualification.upsert({
-            where: { coachId_sportId: { coachId, sportId: sportIdValue } },
-            create: { coachId, sportId: sportIdValue, isPrimary: true },
+            where: { tenantId_coachId_sportId: { tenantId: actor.tenantId, coachId, sportId: sportIdValue } },
+            create: { tenantId: actor.tenantId, coachId, sportId: sportIdValue, isPrimary: true },
             update: { isPrimary: true },
           });
         }

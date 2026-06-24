@@ -6,6 +6,7 @@ import { resolveMemberPhone } from "@/lib/member-phone";
 import { prisma } from "@/lib/prisma";
 import type { DataImportPayload } from "@/lib/schemas/data-import";
 import { getGroupWeeklyScheduleCount } from "@/lib/sport-weekly-standard";
+import { getRequiredTenantId } from "@/lib/tenant-context";
 import {
   getWeeklyConsumptionMode,
   loadGroupWeekSessions,
@@ -45,6 +46,7 @@ type ImportContext = {
 };
 
 export async function inspectDataImport(payload: DataImportPayload): Promise<ImportContext> {
+  const tenantId = getRequiredTenantId();
   const cutoverDate = new Date(payload.cutoverDate);
   const { start: weekStart, end: weekEnd } = getWeekRangeUtc(cutoverDate);
   const memberPhone = resolveMemberPhone({
@@ -56,7 +58,7 @@ export async function inspectDataImport(payload: DataImportPayload): Promise<Imp
   });
 
   const [duplicateMember, group, plan, sessions, settings] = await Promise.all([
-    prisma.member.findUnique({ where: { phone: memberPhone }, select: { id: true } }),
+    prisma.member.findUnique({ where: { tenantId_phone: { tenantId, phone: memberPhone } }, select: { id: true } }),
     prisma.group.findUnique({
       where: { id: payload.groupId },
       select: {
@@ -175,6 +177,7 @@ export async function applyDataImport(
   payload: DataImportPayload,
   actorId: string,
 ): Promise<{ auditLogId: string; memberId: string }> {
+  const tenantId = getRequiredTenantId();
   const context = await inspectDataImport(payload);
 
   return prisma.$transaction(async (tx) => {
@@ -191,6 +194,7 @@ export async function applyDataImport(
 
     const member = await tx.member.create({
       data: {
+        tenantId,
         firstName: payload.member.firstName,
         lastName: payload.member.lastName,
         phone: context.memberPhone,
@@ -206,6 +210,7 @@ export async function applyDataImport(
 
     const subscription = await tx.memberSubscription.create({
       data: {
+        tenantId,
         memberId: member.id,
         planId: context.plan.id,
         sportId: context.plan.sportId,
@@ -218,6 +223,7 @@ export async function applyDataImport(
     });
     const assignment = await tx.groupMember.create({
       data: {
+        tenantId,
         memberId: member.id,
         groupId: context.group.id,
         startDate: new Date(payload.assignmentStartDate),
@@ -228,6 +234,7 @@ export async function applyDataImport(
       payload.paidCents > 0
         ? await tx.payment.create({
             data: {
+              tenantId,
               memberSubscriptionId: subscription.id,
               amount: payload.paidCents,
               createdById: actorId,
@@ -242,6 +249,7 @@ export async function applyDataImport(
     for (const attendance of payload.attendances) {
       const created = await tx.attendance.create({
         data: {
+          tenantId,
           sessionId: attendance.sessionId,
           memberId: member.id,
           memberSubscriptionId: subscription.id,
@@ -256,6 +264,7 @@ export async function applyDataImport(
 
     const audit = await tx.auditLog.create({
       data: {
+        tenantId,
         action: "DATA_IMPORT_APPLIED",
         entityType: "DataImport",
         entityId: member.id,
@@ -285,6 +294,7 @@ type ImportAuditDetails = {
 };
 
 export async function rollbackDataImport(auditLogId: string, actorId: string) {
+  const tenantId = getRequiredTenantId();
   const audit = await prisma.auditLog.findUnique({ where: { id: auditLogId } });
   if (!audit || audit.action !== "DATA_IMPORT_APPLIED" || !audit.details) {
     throw new Error("IMPORT_NOT_FOUND");
@@ -330,6 +340,7 @@ export async function rollbackDataImport(auditLogId: string, actorId: string) {
     await tx.member.delete({ where: { id: details.memberId } });
     await tx.auditLog.create({
       data: {
+        tenantId,
         action: "DATA_IMPORT_ROLLED_BACK",
         entityType: "DataImport",
         entityId: details.memberId,

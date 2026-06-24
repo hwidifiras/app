@@ -74,7 +74,7 @@ export async function POST(request: Request) {
 
   const email = parsed.data.email.toLowerCase();
 
-  const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  const existing = await prisma.user.findFirst({ where: { tenantId: admin.tenantId, email }, select: { id: true } });
   if (existing) {
     return NextResponse.json({ error: "Email déjà utilisé" }, { status: 409 });
   }
@@ -89,12 +89,13 @@ export async function POST(request: Request) {
 
   const user = await prisma.user.create({
     data: {
+      tenantId: admin.tenantId,
       email,
       name: parsed.data.name,
       role: parsed.data.role,
       passwordHash,
       permissions: {
-        create: permissions.map((key) => ({ key })),
+        create: permissions.map((key) => ({ tenantId: admin.tenantId, key })),
       },
     },
     select: {
@@ -110,6 +111,7 @@ export async function POST(request: Request) {
 
   await prisma.auditLog.create({
     data: {
+      tenantId: admin.tenantId,
       action: "USER_CREATED",
       entityType: "User",
       entityId: user.id,

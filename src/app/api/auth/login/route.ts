@@ -1,11 +1,13 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { cookies } from "next/headers";
 
-import { prisma } from "@/lib/prisma";
 import { AUTH_COOKIE_NAME, signAuthToken } from "@/lib/auth";
 import { verifyPassword } from "@/lib/password";
+import { prisma } from "@/lib/prisma";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { enterTenantContext } from "@/lib/tenant-context";
+import { resolveTenantFromRequest } from "@/lib/tenant-resolver";
 
 export const runtime = "nodejs";
 
@@ -18,13 +20,20 @@ const LOGIN_LIMIT = 10;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 
 export async function POST(request: Request) {
-  const rateLimit = checkRateLimit(`login:${getClientIp(request)}`, LOGIN_LIMIT, LOGIN_WINDOW_MS);
+  const tenant = await resolveTenantFromRequest(request);
+  const tenantRateKey = tenant.ok ? tenant.context.tenantSlug : "unknown";
+  const rateLimit = checkRateLimit(`login:${tenantRateKey}:${getClientIp(request)}`, LOGIN_LIMIT, LOGIN_WINDOW_MS);
   if (!rateLimit.allowed) {
     return NextResponse.json(
-      { error: "Trop de tentatives. Réessayez dans quelques minutes." },
+      { error: "Trop de tentatives. Reessayez dans quelques minutes." },
       { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } },
     );
   }
+
+  if (!tenant.ok) {
+    return NextResponse.json({ error: "Espace club introuvable" }, { status: 404 });
+  }
+  enterTenantContext(tenant.context);
 
   let body: unknown;
 
@@ -36,15 +45,16 @@ export async function POST(request: Request) {
 
   const parsed = loginSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Validation échouée", details: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: "Validation echouee", details: parsed.error.flatten() }, { status: 400 });
   }
 
   const { email, password } = parsed.data;
 
-  const user = await prisma.user.findUnique({
-    where: { email: email.toLowerCase() },
+  const user = await prisma.user.findFirst({
+    where: { tenantId: tenant.context.tenantId, email: email.toLowerCase() },
     select: {
       id: true,
+      tenantId: true,
       email: true,
       name: true,
       role: true,
@@ -65,6 +75,8 @@ export async function POST(request: Request) {
 
   const token = await signAuthToken({
     userId: user.id,
+    tenantId: tenant.context.tenantId,
+    tenantSlug: tenant.context.tenantSlug,
     email: user.email,
     name: user.name,
     role: user.role,
@@ -83,6 +95,8 @@ export async function POST(request: Request) {
   return NextResponse.json({
     data: {
       id: user.id,
+      tenantId: tenant.context.tenantId,
+      tenantSlug: tenant.context.tenantSlug,
       email: user.email,
       name: user.name,
       role: user.role,

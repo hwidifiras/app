@@ -26,8 +26,8 @@ export async function POST(request: Request, context: RouteContext) {
 
   const { id } = await context.params;
 
-  const user = await prisma.user.findUnique({
-    where: { id },
+  const user = await prisma.user.findFirst({
+    where: { id, tenantId: admin.tenantId },
     select: { id: true, email: true, isActive: true },
   });
 
@@ -46,6 +46,7 @@ export async function POST(request: Request, context: RouteContext) {
 
   await prisma.auditLog.create({
     data: {
+      tenantId: admin.tenantId,
       action: "PASSWORD_RESET_SENT_BY_ADMIN",
       entityType: "User",
       entityId: user.id,

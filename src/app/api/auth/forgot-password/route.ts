@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { prisma } from "@/lib/prisma";
 import {
   buildResetUrl,
   createPasswordResetToken,
   sendPasswordResetEmail,
 } from "@/lib/password-reset";
+import { prisma } from "@/lib/prisma";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { enterTenantContext } from "@/lib/tenant-context";
+import { resolveTenantFromRequest } from "@/lib/tenant-resolver";
 
 export const runtime = "nodejs";
 
@@ -19,17 +21,24 @@ const FORGOT_PASSWORD_LIMIT = 5;
 const FORGOT_PASSWORD_WINDOW_MS = 15 * 60 * 1000;
 
 export async function POST(request: Request) {
+  const tenant = await resolveTenantFromRequest(request);
+  const tenantRateKey = tenant.ok ? tenant.context.tenantSlug : "unknown";
   const rateLimit = checkRateLimit(
-    `forgot-password:${getClientIp(request)}`,
+    `forgot-password:${tenantRateKey}:${getClientIp(request)}`,
     FORGOT_PASSWORD_LIMIT,
     FORGOT_PASSWORD_WINDOW_MS,
   );
   if (!rateLimit.allowed) {
     return NextResponse.json(
-      { error: "Trop de demandes. Réessayez dans quelques minutes." },
+      { error: "Trop de demandes. Reessayez dans quelques minutes." },
       { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } },
     );
   }
+
+  if (!tenant.ok) {
+    return NextResponse.json({ data: { ok: true } });
+  }
+  enterTenantContext(tenant.context);
 
   let body: unknown;
   try {
@@ -40,11 +49,11 @@ export async function POST(request: Request) {
 
   const parsed = forgotPasswordSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Validation échouée", details: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: "Validation echouee", details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: parsed.data.email.toLowerCase() },
+  const user = await prisma.user.findFirst({
+    where: { tenantId: tenant.context.tenantId, email: parsed.data.email.toLowerCase() },
     select: { id: true, email: true, isActive: true },
   });
 
@@ -59,6 +68,7 @@ export async function POST(request: Request) {
 
   await prisma.auditLog.create({
     data: {
+      tenantId: tenant.context.tenantId,
       action: "PASSWORD_RESET_REQUESTED",
       entityType: "User",
       entityId: user.id,

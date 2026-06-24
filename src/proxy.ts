@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { AUTH_COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 import { isPublicPath } from "@/lib/public-paths";
+import { tenantSlugFromHost } from "@/lib/tenant-host";
 
 function nextWithPathHeader(request: NextRequest, headers = new Headers(request.headers)) {
   headers.set("x-pathname", request.nextUrl.pathname);
@@ -33,9 +34,13 @@ function loginRedirect(request: NextRequest, reason: "missing" | "invalid") {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const tenantSlug = tenantSlugFromHost(request.headers.get("x-forwarded-host") ?? request.headers.get("host"));
 
   if (isPublicPath(pathname)) {
-    return nextWithPathHeader(request);
+    const headers = new Headers(request.headers);
+    headers.set("x-pathname", pathname);
+    if (tenantSlug) headers.set("x-tenant-slug", tenantSlug);
+    return nextWithPathHeader(request, headers);
   }
 
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
@@ -48,8 +53,14 @@ export async function proxy(request: NextRequest) {
     return loginRedirect(request, "invalid");
   }
 
+  if (!payload.tenantId || !payload.tenantSlug || (tenantSlug && payload.tenantSlug !== tenantSlug)) {
+    return loginRedirect(request, "invalid");
+  }
+
   const headers = new Headers(request.headers);
   headers.set("x-pathname", pathname);
+  headers.set("x-tenant-id", payload.tenantId);
+  headers.set("x-tenant-slug", payload.tenantSlug);
   headers.set("x-user-id", payload.userId);
   headers.set("x-user-role", payload.role);
   headers.set("x-user-email", payload.email);

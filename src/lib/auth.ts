@@ -6,6 +6,8 @@ export type AuthRole = "ADMIN" | "STAFF";
 
 export type AuthTokenPayload = {
   userId: string;
+  tenantId: string;
+  tenantSlug: string;
   email: string;
   name: string;
   role: AuthRole;
@@ -42,6 +44,8 @@ export async function verifyAuthToken(token: string): Promise<AuthTokenPayload |
 
     if (
       typeof payload.userId !== "string" ||
+      typeof payload.tenantId !== "string" ||
+      typeof payload.tenantSlug !== "string" ||
       typeof payload.email !== "string" ||
       typeof payload.name !== "string" ||
       typeof payload.role !== "string"
@@ -56,6 +60,8 @@ export async function verifyAuthToken(token: string): Promise<AuthTokenPayload |
 
     return {
       userId: payload.userId,
+      tenantId: payload.tenantId,
+      tenantSlug: payload.tenantSlug,
       email: payload.email,
       name: payload.name,
       role,

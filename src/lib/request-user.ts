@@ -3,9 +3,12 @@ import { cookies } from "next/headers";
 import { AUTH_COOKIE_NAME, verifyAuthToken, type AuthRole } from "@/lib/auth";
 import { parsePermissions } from "@/lib/permission-definitions";
 import { prisma } from "@/lib/prisma";
+import { enterTenantContext } from "@/lib/tenant-context";
 
 export type RequestUser = {
   id: string;
+  tenantId: string;
+  tenantSlug: string;
   role: AuthRole;
   email: string;
   name: string;
@@ -22,22 +25,33 @@ export async function getAuthUser(_request?: Request): Promise<RequestUser | nul
   const payload = await verifyAuthToken(token);
   if (!payload) return null;
 
-  const user = await prisma.user.findUnique({
-    where: { id: payload.userId },
+  if (!payload.tenantId || !payload.tenantSlug) return null;
+
+  enterTenantContext({
+    tenantId: payload.tenantId,
+    tenantSlug: payload.tenantSlug,
+  });
+
+  const user = await prisma.user.findFirst({
+    where: { id: payload.userId, tenantId: payload.tenantId },
     select: {
       id: true,
+      tenantId: true,
       role: true,
       email: true,
       name: true,
       isActive: true,
+      tenant: { select: { slug: true, status: true } },
       permissions: { select: { key: true } },
     },
   });
 
-  if (!user || !user.isActive) return null;
+  if (!user || !user.isActive || user.tenant?.status !== "ACTIVE") return null;
 
   return {
     id: user.id,
+    tenantId: user.tenantId ?? payload.tenantId,
+    tenantSlug: user.tenant?.slug ?? payload.tenantSlug,
     role: user.role,
     email: user.email,
     name: user.name,

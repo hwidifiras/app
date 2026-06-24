@@ -79,6 +79,7 @@ export async function POST(request: Request) {
           });
           const created = await tx.member.create({
             data: {
+              tenantId: actor.tenantId,
               firstName: line.newMember.firstName,
               lastName: line.newMember.lastName,
               phone: memberPhone,
@@ -120,7 +121,7 @@ export async function POST(request: Request) {
         }
 
         const existingAssign = await tx.groupMember.findUnique({
-          where: { groupId_memberId: { groupId: line.groupId, memberId } },
+          where: { tenantId_groupId_memberId: { tenantId: actor.tenantId, groupId: line.groupId, memberId } },
         });
 
         const addsSeat = !existingAssign || existingAssign.status !== "ACTIVE";
@@ -151,6 +152,7 @@ export async function POST(request: Request) {
           const endDate = computeEndDate(startDate, plan.validityDays);
           const sub = await tx.memberSubscription.create({
             data: {
+              tenantId: actor.tenantId,
               memberId,
               planId: plan.id,
               sportId: plan.sportId,
@@ -174,6 +176,7 @@ export async function POST(request: Request) {
             }
             const payment = await tx.payment.create({
               data: {
+                tenantId: actor.tenantId,
                 memberSubscriptionId: sub.id,
                 amount: payCents,
                 createdById: actor.id,
@@ -203,6 +206,7 @@ export async function POST(request: Request) {
             }
             const payment = await tx.payment.create({
               data: {
+                tenantId: actor.tenantId,
                 memberSubscriptionId: existing.id,
                 amount: payCents,
                 createdById: actor.id,
@@ -228,6 +232,7 @@ export async function POST(request: Request) {
         } else {
           const groupMember = await tx.groupMember.create({
             data: {
+              tenantId: actor.tenantId,
               groupId: line.groupId,
               memberId,
               startDate,
@@ -252,6 +257,7 @@ export async function POST(request: Request) {
       if (parsed.data.offerId) {
         const app = await tx.offerApplication.create({
           data: {
+            tenantId: actor.tenantId,
             offerId: parsed.data.offerId,
             memberIds: JSON.stringify(memberIds),
             subscriptionIds: JSON.stringify(subscriptionIds),
@@ -272,6 +278,7 @@ export async function POST(request: Request) {
 
       await tx.auditLog.create({
         data: {
+          tenantId: actor.tenantId,
           action: "ENROLLMENT_APPLIED",
           entityType: "Enrollment",
           entityId: offerApplicationId ?? memberIds[0] ?? "batch",

@@ -4,6 +4,8 @@ import { AUTH_COOKIE_NAME, signAuthToken, type AuthRole } from "@/lib/auth";
 
 export async function setAuthSessionCookie(user: {
   id: string;
+  tenantId: string;
+  tenantSlug: string;
   email: string;
   name: string;
   role: AuthRole;
@@ -11,6 +13,8 @@ export async function setAuthSessionCookie(user: {
 }) {
   const token = await signAuthToken({
     userId: user.id,
+    tenantId: user.tenantId,
+    tenantSlug: user.tenantSlug,
     email: user.email,
     name: user.name,
     role: user.role,
