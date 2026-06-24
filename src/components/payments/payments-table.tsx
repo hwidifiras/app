@@ -29,7 +29,11 @@ type PaymentGroup = {
     id: string;
     amount: number;
     paymentDate: string;
+    createdAt: string;
     paymentMethod: string | null;
+    entryType: "PAYMENT" | "CORRECTION" | "REVERSAL";
+    correctionReason: string | null;
+    sequence: number;
     status: string;
   }>;
 };
@@ -100,10 +104,19 @@ function PaymentInstallmentStatus({ status }: { status: string }) {
   if (status === "Paiement complet") {
     return <span className="text-[0.65rem] font-medium text-emerald-700">{status}</span>;
   }
+  if (status.startsWith("Correction") || status.startsWith("Annulation")) {
+    return <span className="text-[0.65rem] font-medium text-violet-700">{status}</span>;
+  }
   if (status.startsWith("Avance")) {
     return <span className="text-[0.65rem] font-medium text-sky-700">{status}</span>;
   }
   return <span className="text-[0.65rem] font-medium text-amber-700">{status}</span>;
+}
+
+function ledgerTypeLabel(entryType: PaymentGroup["payments"][number]["entryType"]) {
+  if (entryType === "CORRECTION") return "Correction";
+  if (entryType === "REVERSAL") return "Annulation";
+  return "Paiement";
 }
 
 function AmountSummary({ group }: { group: PaymentGroup }) {
@@ -297,7 +310,7 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
               {isOpen ? (
                 <div className="border-t border-[var(--border)] bg-[var(--surface-soft)] px-3 pb-3 pt-2">
                   <ul className="space-y-1.5 border-l-2 border-[var(--primary)]/25 pl-3">
-                    {group.payments.map((p, index) => (
+                    {group.payments.map((p) => (
                       <li key={p.id}>
                         <button
                           type="button"
@@ -306,13 +319,18 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
                         >
                           <span className="min-w-0">
                             <span className="block text-xs font-semibold text-[var(--foreground)]">
-                              Versement {group.payments.length - index}
+                              {ledgerTypeLabel(p.entryType)} {p.entryType === "PAYMENT" ? p.sequence : ""}
                               <span className="font-normal text-[var(--muted-foreground)]">
                                 {" "}
                                 · {new Date(p.paymentDate).toLocaleDateString("fr-FR")}
                               </span>
                             </span>
                             <PaymentInstallmentStatus status={p.status} />
+                            {p.correctionReason ? (
+                              <span className="mt-0.5 block text-[0.6rem] text-[var(--muted-foreground)]">
+                                Motif: {p.correctionReason}
+                              </span>
+                            ) : null}
                           </span>
                           <span className="shrink-0 text-sm font-bold text-[var(--foreground)]">
                             {formatMoney(p.amount)}
@@ -366,7 +384,8 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
                 offerName: group.offerName,
               });
               const isOpen = expandedId === group.subscriptionId;
-              const hasMultiple = group.payments.length > 1;
+              const hasLedgerRows = group.payments.length > 0;
+              const latestPayment = group.payments[0];
 
               return (
                 <Fragment key={group.subscriptionId}>
@@ -375,10 +394,10 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
                       "cursor-pointer transition-colors",
                       isOpen ? "bg-[var(--surface-soft)]" : "hover:bg-[var(--surface-soft)]",
                     )}
-                    onClick={() => goToAddPayment(group.subscriptionId)}
+                    onClick={() => toggleExpand(group.subscriptionId)}
                   >
                     <td className="px-4 py-3">
-                      {hasMultiple ? (
+                      {hasLedgerRows ? (
                         <button
                           type="button"
                           className="inline-flex items-center justify-center rounded p-0.5 hover:bg-[var(--border)]"
@@ -418,12 +437,27 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
                       </span>
                       <OfferRemark remark={billing.offerRemark} />
                     </td>
-                    <td className="hidden px-4 py-3 sm:table-cell">—</td>
-                    <td className="hidden px-4 py-3 md:table-cell">—</td>
+                    <td className="hidden px-4 py-3 sm:table-cell">
+                      {latestPayment ? new Date(latestPayment.paymentDate).toLocaleDateString("fr-FR") : "—"}
+                    </td>
+                    <td className="hidden px-4 py-3 md:table-cell">{latestPayment?.paymentMethod ?? "—"}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <StatusChip statusLabel={billing.statusLabel} statusTone={billing.statusTone} />
-                        {!billing.isComplete ? <Plus className="size-3.5 text-[var(--primary)]" /> : null}
+                        {!billing.isComplete ? (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              goToAddPayment(group.subscriptionId);
+                            }}
+                            className="inline-flex size-7 items-center justify-center rounded-md text-[var(--primary)] hover:bg-[var(--surface-soft)]"
+                            title="Ajouter un versement"
+                            aria-label="Ajouter un versement"
+                          >
+                            <Plus className="size-3.5" />
+                          </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -437,7 +471,10 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
                         >
                           <td className="px-4 py-2" />
                           <td className="px-4 py-2 pl-8 text-xs text-[var(--muted-foreground)]" colSpan={2}>
-                            ↳ Versement · {new Date(p.paymentDate).toLocaleDateString("fr-FR")}
+                            ↳ {ledgerTypeLabel(p.entryType)} {p.entryType === "PAYMENT" ? p.sequence : ""} · {new Date(p.paymentDate).toLocaleDateString("fr-FR")}
+                            {p.correctionReason ? (
+                              <span className="mt-0.5 block">Motif: {p.correctionReason}</span>
+                            ) : null}
                           </td>
                           <td className="px-4 py-2 font-medium text-[var(--foreground)]">{formatMoney(p.amount)}</td>
                           <td className="hidden px-4 py-2 sm:table-cell">

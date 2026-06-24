@@ -21,6 +21,14 @@ import {
   resolveActiveSubscription,
   resolveSubscriptionForAttendance,
 } from "@/lib/membership-rules";
+import {
+  activeMemberFailure,
+  assignmentFailure,
+  overrideReasonFailure,
+  paidSubscriptionFailure,
+  sessionMutationFailure,
+  type AttendancePolicyFailure,
+} from "@/lib/attendance-policy";
 
 export const runtime = "nodejs";
 
@@ -40,6 +48,10 @@ async function countOverrides(memberId: string): Promise<number> {
       checkedAt: { gte: thirtyDaysAgo },
     },
   });
+}
+
+function policyResponse(failure: AttendancePolicyFailure) {
+  return NextResponse.json(failure.body, { status: failure.status });
 }
 
 export async function GET(request: Request) {
@@ -121,6 +133,10 @@ export async function POST(request: Request) {
     if (!sessionExists) {
       return NextResponse.json({ error: "Séance introuvable" }, { status: 404 });
     }
+    const sessionFailure = sessionMutationFailure(sessionExists.status, "pointer");
+    if (sessionFailure) {
+      return policyResponse(sessionFailure);
+    }
     if (sessionExists.status === "CANCELLED") {
       return NextResponse.json({ error: "Impossible de pointer une séance annulée" }, { status: 409 });
     }
@@ -141,6 +157,11 @@ export async function POST(request: Request) {
 
     if (memberExists.status === "ARCHIVED") {
       return NextResponse.json({ error: "Impossible de pointer un membre résilié" }, { status: 403 });
+    }
+
+    const memberFailure = await activeMemberFailure(memberId);
+    if (memberFailure) {
+      return policyResponse(memberFailure);
     }
 
     const sportId = sessionExists.group.sportId;
@@ -190,39 +211,14 @@ export async function POST(request: Request) {
         );
       }
     } else if (status === "PRESENT" || status === "ABSENT") {
-      const assignment = await prisma.groupMember.findFirst({
-        where: { groupId: sessionExists.group.id, memberId, status: "ACTIVE" }
-      });
-
-      if (!assignment) {
-        return NextResponse.json(
-          {
-            error: "Le membre n'est pas assigné à ce groupe — passage exceptionnel requis",
-            code: "NOT_ASSIGNED_TO_GROUP",
-          },
-          { status: 403 }
-        );
+      const assignmentCheck = await assignmentFailure(sessionExists.group.id, memberId, sessionExists.sessionDate);
+      if (assignmentCheck) {
+        return policyResponse(assignmentCheck);
       }
 
-      if (!isSubActive) {
-        return NextResponse.json(
-          {
-            error: "Abonnement inactif — passage exceptionnel requis",
-            code: "SUBSCRIPTION_INACTIVE",
-          },
-          { status: 403 },
-        );
-      }
-
-      const payCheck = await canCheckInWithPayment(activeSub);
-      if (!payCheck.allowed) {
-        return NextResponse.json(
-          {
-            error: payCheck.reason ?? "Abonnement non payé — passage exceptionnel requis",
-            code: "SUBSCRIPTION_UNPAID",
-          },
-          { status: 403 },
-        );
+      const subscriptionCheck = await paidSubscriptionFailure(memberId, sportId, sessionExists.sessionDate);
+      if ("failure" in subscriptionCheck) {
+        return policyResponse(subscriptionCheck.failure);
       }
 
       let checkInConsumption = null as Awaited<ReturnType<typeof resolveCheckInConsumption>> | null;
@@ -464,6 +460,10 @@ export async function PATCH(request: Request) {
     if (!existing) {
       return NextResponse.json({ error: "Présence introuvable" }, { status: 404 });
     }
+    const sessionFailure = sessionMutationFailure(existing.session.status, "corriger");
+    if (sessionFailure) {
+      return policyResponse(sessionFailure);
+    }
     if (existing.session.status === "COMPLETED") {
       return NextResponse.json(
         {
@@ -474,12 +474,48 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const activeSub = await resolveActiveSubscription(existing.memberId, existing.session.group.sportId);
+    const activeSub = await resolveSubscriptionForAttendance(
+      existing.memberId,
+      existing.session.group.sportId,
+      existing.session.sessionDate,
+    );
     const planSessionsPerWeek =
       existing.memberSubscription?.plan.sessionsPerWeek ?? activeSub?.plan.sessionsPerWeek ?? null;
     const subscriptionIdForConsumption = existing.memberSubscriptionId ?? activeSub?.id ?? null;
 
     const nextStatus = payload.status ?? existing.status;
+
+    if (payload.status !== undefined && nextStatus === "OVERRIDE" && nextStatus !== existing.status) {
+      const reasonFailure = overrideReasonFailure(nextStatus, payload.overrideReason);
+      if (reasonFailure) {
+        return policyResponse(reasonFailure);
+      }
+    }
+
+    if (payload.status !== undefined && (nextStatus === "PRESENT" || nextStatus === "ABSENT")) {
+      const memberFailure = await activeMemberFailure(existing.memberId);
+      if (memberFailure) {
+        return policyResponse(memberFailure);
+      }
+
+      const assignmentCheck = await assignmentFailure(
+        existing.session.groupId,
+        existing.memberId,
+        existing.session.sessionDate,
+      );
+      if (assignmentCheck) {
+        return policyResponse(assignmentCheck);
+      }
+
+      const subscriptionCheck = await paidSubscriptionFailure(
+        existing.memberId,
+        existing.session.group.sportId,
+        existing.session.sessionDate,
+      );
+      if ("failure" in subscriptionCheck) {
+        return policyResponse(subscriptionCheck.failure);
+      }
+    }
 
     if (nextStatus === "OVERRIDE" && nextStatus !== existing.status) {
       const overrideCount = await countOverrides(existing.memberId);
@@ -674,6 +710,11 @@ export async function DELETE(request: Request) {
         },
         { status: 409 },
       );
+    }
+
+    const deleteSessionFailure = sessionMutationFailure(existing.session.status, "annuler");
+    if (deleteSessionFailure) {
+      return policyResponse(deleteSessionFailure);
     }
 
     const activeSub = await resolveActiveSubscription(existing.memberId, existing.session.group.sportId);

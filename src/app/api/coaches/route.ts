@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createCoachSchema, updateCoachSchema } from "@/lib/schemas/coach";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
+import { normalizeCoachSportIds } from "@/lib/coach-qualification-policy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,7 +19,35 @@ function toCoachDto(coach: {
   createdAt: Date;
   updatedAt: Date;
   sport: { id: string; name: string } | null;
+  qualifications: Array<{
+    sportId: string;
+    isPrimary: boolean;
+    sport: { id: string; name: string };
+  }>;
 }) {
+  const qualifiedSportsById = new Map<string, { id: string; name: string; isPrimary: boolean }>();
+
+  for (const qualification of coach.qualifications) {
+    qualifiedSportsById.set(qualification.sport.id, {
+      id: qualification.sport.id,
+      name: qualification.sport.name,
+      isPrimary: qualification.isPrimary,
+    });
+  }
+
+  if (coach.sport) {
+    qualifiedSportsById.set(coach.sport.id, {
+      id: coach.sport.id,
+      name: coach.sport.name,
+      isPrimary: true,
+    });
+  }
+
+  const qualifiedSports = Array.from(qualifiedSportsById.values()).sort((a, b) => {
+    if (a.isPrimary !== b.isPrimary) return a.isPrimary ? -1 : 1;
+    return a.name.localeCompare(b.name, "fr");
+  });
+
   return {
     id: coach.id,
     firstName: coach.firstName,
@@ -28,6 +57,8 @@ function toCoachDto(coach: {
     isActive: coach.isActive,
     sportId: coach.sportId,
     sportName: coach.sport?.name ?? null,
+    qualifiedSportIds: qualifiedSports.map((sport) => sport.id),
+    qualifiedSports,
     createdAt: coach.createdAt.toISOString(),
     updatedAt: coach.updatedAt.toISOString(),
   };
@@ -51,10 +82,17 @@ export async function GET(request: Request) {
             { lastName: { contains: query } },
             { phone: { contains: query } },
             { sport: { is: { name: { contains: query } } } },
+            { qualifications: { some: { sport: { name: { contains: query } } } } },
           ],
         }
       : undefined,
-    include: { sport: { select: { id: true, name: true } } },
+    include: {
+      sport: { select: { id: true, name: true } },
+      qualifications: {
+        include: { sport: { select: { id: true, name: true } } },
+        orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+      },
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -90,10 +128,14 @@ export async function POST(request: Request) {
 
   const emailValue = parsed.data.email?.trim() || null;
   const sportIdValue = parsed.data.sportId && parsed.data.sportId.trim().length > 0 ? parsed.data.sportId : null;
+  const qualifiedSportIds = normalizeCoachSportIds(parsed.data.qualifiedSportIds, sportIdValue);
 
-  if (sportIdValue) {
-    const sportExists = await prisma.sport.findUnique({ where: { id: sportIdValue }, select: { id: true } });
-    if (!sportExists) {
+  if (qualifiedSportIds.length > 0) {
+    const foundSports = await prisma.sport.findMany({
+      where: { id: { in: qualifiedSportIds } },
+      select: { id: true },
+    });
+    if (foundSports.length !== qualifiedSportIds.length) {
       return NextResponse.json({ error: "Sport de spécialité introuvable" }, { status: 404 });
     }
   }
@@ -106,8 +148,20 @@ export async function POST(request: Request) {
         phone: parsed.data.phone,
         email: emailValue,
         sportId: sportIdValue,
+        qualifications: {
+          create: qualifiedSportIds.map((qualifiedSportId) => ({
+            sportId: qualifiedSportId,
+            isPrimary: qualifiedSportId === sportIdValue,
+          })),
+        },
       },
-      include: { sport: { select: { id: true, name: true } } },
+      include: {
+        sport: { select: { id: true, name: true } },
+        qualifications: {
+          include: { sport: { select: { id: true, name: true } } },
+          orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+        },
+      },
     });
 
     return NextResponse.json({ data: toCoachDto(coach) }, { status: 201 });
@@ -166,31 +220,79 @@ export async function PATCH(request: Request) {
   const payload = updatePayload.data;
   const sportIdValue =
     payload.sportId === undefined ? undefined : payload.sportId && payload.sportId.trim().length > 0 ? payload.sportId : null;
+  const qualificationReplacementIds =
+    payload.qualifiedSportIds === undefined
+      ? undefined
+      : normalizeCoachSportIds(payload.qualifiedSportIds, sportIdValue === undefined ? undefined : sportIdValue);
+  const sportIdsToValidate = normalizeCoachSportIds(
+    qualificationReplacementIds,
+    sportIdValue === undefined ? undefined : sportIdValue,
+  );
 
-  if (sportIdValue) {
-    const sportExists = await prisma.sport.findUnique({ where: { id: sportIdValue }, select: { id: true } });
-    if (!sportExists) {
+  if (sportIdsToValidate.length > 0) {
+    const foundSports = await prisma.sport.findMany({
+      where: { id: { in: sportIdsToValidate } },
+      select: { id: true },
+    });
+    if (foundSports.length !== sportIdsToValidate.length) {
       return NextResponse.json({ error: "Sport de spécialité introuvable" }, { status: 404 });
     }
   }
 
   try {
-    const updated = await prisma.coach.update({
-      where: { id: coachId },
-      data: {
-        firstName: payload.firstName,
-        lastName: payload.lastName,
-        phone: payload.phone,
-        email:
-          payload.email === undefined
-            ? undefined
-            : payload.email === "" || payload.email === null
-              ? null
-              : payload.email,
-        sportId: sportIdValue,
-        isActive: payload.isActive,
-      },
-      include: { sport: { select: { id: true, name: true } } },
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.coach.update({
+        where: { id: coachId },
+        data: {
+          firstName: payload.firstName,
+          lastName: payload.lastName,
+          phone: payload.phone,
+          email:
+            payload.email === undefined
+              ? undefined
+              : payload.email === "" || payload.email === null
+                ? null
+                : payload.email,
+          sportId: sportIdValue,
+          isActive: payload.isActive,
+        },
+      });
+
+      if (qualificationReplacementIds !== undefined) {
+        await tx.coachSportQualification.deleteMany({ where: { coachId } });
+        if (qualificationReplacementIds.length > 0) {
+          await tx.coachSportQualification.createMany({
+            data: qualificationReplacementIds.map((qualifiedSportId) => ({
+              coachId,
+              sportId: qualifiedSportId,
+              isPrimary: qualifiedSportId === sportIdValue,
+            })),
+          });
+        }
+      } else if (sportIdValue !== undefined) {
+        await tx.coachSportQualification.updateMany({
+          where: { coachId },
+          data: { isPrimary: false },
+        });
+        if (sportIdValue) {
+          await tx.coachSportQualification.upsert({
+            where: { coachId_sportId: { coachId, sportId: sportIdValue } },
+            create: { coachId, sportId: sportIdValue, isPrimary: true },
+            update: { isPrimary: true },
+          });
+        }
+      }
+
+      return tx.coach.findUniqueOrThrow({
+        where: { id: coachId },
+        include: {
+          sport: { select: { id: true, name: true } },
+          qualifications: {
+            include: { sport: { select: { id: true, name: true } } },
+            orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+          },
+        },
+      });
     });
 
     return NextResponse.json({ data: toCoachDto(updated) });

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { config } from "dotenv";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -79,6 +79,16 @@ async function main() {
       isActive: true,
     },
     update: {},
+  });
+
+  await prisma.coachSportQualification.upsert({
+    where: { coachId_sportId: { coachId: coach.id, sportId: bjj.id } },
+    create: {
+      coachId: coach.id,
+      sportId: bjj.id,
+      isPrimary: true,
+    },
+    update: { isPrimary: true },
   });
 
   const group = await prisma.group.upsert({

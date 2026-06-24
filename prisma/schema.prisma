@@ -61,6 +61,12 @@ enum AttendanceStatus {
   OVERRIDE
 }
 
+enum PaymentEntryType {
+  PAYMENT
+  CORRECTION
+  REVERSAL
+}
+
 enum UserRole {
   ADMIN
   STAFF
@@ -195,6 +201,7 @@ model Sport {
   description       String?
   isActive          Boolean              @default(true)
   coaches           Coach[]
+  coachQualifications CoachSportQualification[]
   groups            Group[]
   subscriptionPlans SubscriptionPlan[]
   memberSubscriptions MemberSubscription[]
@@ -212,10 +219,26 @@ model Coach {
   isActive  Boolean  @default(true)
   sportId   String?
   sport     Sport?   @relation(fields: [sportId], references: [id], onDelete: SetNull)
+  qualifications CoachSportQualification[]
   groups    Group[]
   sessions  Session[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model CoachSportQualification {
+  id        String   @id @default(cuid())
+  coachId   String
+  coach     Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  sportId   String
+  sport     Sport    @relation(fields: [sportId], references: [id], onDelete: Restrict)
+  isPrimary Boolean  @default(false)
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([coachId, sportId])
+  @@index([sportId])
 }
 
 model Group {
@@ -336,11 +359,18 @@ model Payment {
   memberSubscriptionId String
   memberSubscription   MemberSubscription @relation(fields: [memberSubscriptionId], references: [id], onDelete: Cascade)
   amount               Int
+  entryType            PaymentEntryType   @default(PAYMENT)
+  correctsPaymentId    String?
+  correctionReason     String?
+  createdById          String?
   paymentDate          DateTime           @default(now())
   paymentMethod        String?
   notes                String?
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
+
+  @@index([correctsPaymentId])
+  @@index([createdById])
 }
 
 model Offer {

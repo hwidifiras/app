@@ -66,8 +66,9 @@ export function PaymentAddForm({
   const selected = subscriptions.find((s) => s.id === subscriptionId);
   const remaining = selected ? selected.amount - selected.totalPaid : 0;
   const amountNum = Math.round(parseFloat(amount.replace(",", ".")) * 100) || 0;
-  const wouldExceed = selected && amountNum > remaining;
-  const balanceAfter = Math.max(0, remaining - amountNum);
+  const wouldExceed = Boolean(selected && amountNum > remaining);
+  const balanceAfter = remaining - amountNum;
+  const displayBalanceAfter = Math.max(0, balanceAfter);
   const members = useMemo(
     () =>
       Array.from(
@@ -141,7 +142,7 @@ export function PaymentAddForm({
           const deleteRes = await fetch("/api/payments", {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ paymentId }),
+            body: JSON.stringify({ paymentId, correctionReason: "Annulation immediate apres encaissement" }),
           });
           const deleteJson = (await deleteRes.json()) as { error?: string };
           if (!deleteRes.ok) {
@@ -317,7 +318,7 @@ export function PaymentAddForm({
                       <span className="font-semibold text-[var(--danger)]">Le montant dépasse le reste dû.</span>
                     ) : amountNum > 0 ? (
                       <span className="font-medium text-[var(--success)]">
-                        Solde après paiement: {formatCurrency(balanceAfter)}
+                        Solde après paiement: {formatCurrency(displayBalanceAfter)}
                       </span>
                     ) : null}
                   </div>
@@ -414,8 +415,21 @@ export function PaymentAddForm({
                 </div>
                 <div className="flex items-start justify-between gap-3 py-2.5">
                   <dt className="text-[var(--muted-foreground)]">Solde après</dt>
-                  <dd className={cn("text-right font-bold", balanceAfter > 0 ? "text-[var(--danger)]" : "text-[var(--success)]")}>
-                    {selected && amountNum > 0 ? formatCurrency(balanceAfter) : "—"}
+                  <dd
+                    className={cn(
+                      "text-right font-bold",
+                      wouldExceed
+                        ? "text-[var(--danger)]"
+                        : displayBalanceAfter > 0
+                          ? "text-[var(--danger)]"
+                          : "text-[var(--success)]",
+                    )}
+                  >
+                    {wouldExceed
+                      ? "Montant invalide"
+                      : selected && amountNum > 0
+                        ? formatCurrency(displayBalanceAfter)
+                        : "—"}
                   </dd>
                 </div>
               </dl>

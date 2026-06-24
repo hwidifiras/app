@@ -224,7 +224,7 @@ export function AddMemberToGroupForm({
       {selectedGroup && (
         <div>
           <label className="mb-2 block text-xs font-medium text-muted-foreground">
-            Plan d'abonnement *
+            Plan d&apos;abonnement *
           </label>
           <select
             value={selectedPlanId}

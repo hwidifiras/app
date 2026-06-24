@@ -21,7 +21,10 @@ type PaymentRow = {
   planName: string;
   amount: number;
   paymentDate: string;
+  createdAt: string;
   paymentMethod: string | null;
+  entryType: "PAYMENT" | "CORRECTION" | "REVERSAL";
+  correctionReason: string | null;
 };
 
 type PaymentGroup = {
@@ -38,7 +41,11 @@ type PaymentGroup = {
     id: string;
     amount: number;
     paymentDate: string;
+    createdAt: string;
     paymentMethod: string | null;
+    entryType: "PAYMENT" | "CORRECTION" | "REVERSAL";
+    correctionReason: string | null;
+    sequence: number;
     status: string;
   }>;
 };
@@ -49,7 +56,7 @@ export default async function PaymentsPage() {
 
   try {
     const rows = await prisma.payment.findMany({
-      orderBy: { paymentDate: "desc" },
+      orderBy: [{ paymentDate: "desc" }, { createdAt: "desc" }],
       include: {
         memberSubscription: {
           select: {
@@ -78,7 +85,10 @@ export default async function PaymentsPage() {
       planName: p.memberSubscription.plan?.name ?? "—",
       amount: p.amount,
       paymentDate: p.paymentDate.toISOString(),
+      createdAt: p.createdAt.toISOString(),
       paymentMethod: p.paymentMethod,
+      entryType: p.entryType,
+      correctionReason: p.correctionReason,
     }));
 
     // Regrouper par abonnement
@@ -93,7 +103,10 @@ export default async function PaymentsPage() {
     paymentGroups = Array.from(grouped.entries()).map(([subscriptionId, items]) => {
       // Trier par date croissante pour calculer les cumuls dans l'ordre chronologique
       const sorted = [...items].sort(
-        (a, b) => new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime()
+        (a, b) =>
+          new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime() ||
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() ||
+          a.id.localeCompare(b.id),
       );
 
       const totalDue = sorted[0].totalDue;
@@ -109,7 +122,11 @@ export default async function PaymentsPage() {
         const isSingle = sorted.length === 1;
 
         let status: string;
-        if (isSingle && remainingAfter === 0) {
+        if (p.entryType === "REVERSAL") {
+          status = `Annulation — reste : ${formatCurrency(remainingAfter)}`;
+        } else if (p.entryType === "CORRECTION") {
+          status = `Correction — reste : ${formatCurrency(remainingAfter)}`;
+        } else if (isSingle && remainingAfter === 0) {
           status = "Paiement complet";
         } else if (isFirst) {
           status = `Avance — reste : ${formatCurrency(remainingAfter)}`;
@@ -123,7 +140,11 @@ export default async function PaymentsPage() {
           id: p.id,
           amount: p.amount,
           paymentDate: p.paymentDate,
+          createdAt: p.createdAt,
           paymentMethod: p.paymentMethod,
+          entryType: p.entryType,
+          correctionReason: p.correctionReason,
+          sequence: index + 1,
           status,
         };
       });
@@ -172,12 +193,12 @@ export default async function PaymentsPage() {
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Abonnements & Finance"
+        overline="Finance"
         title="Paiements"
-        description={`${totalCount} versement(s) enregistré(s) — total ${formatCurrency(totalPayments)}.`}
+        description={`${totalCount} versement(s) enregistrés, total ${formatCurrency(totalPayments)}.`}
         actions={
           <Link href="/payments/new" className="btn btn-primary btn-block-mobile">
-            + Nouveau paiement
+            + Encaisser
           </Link>
         }
       />

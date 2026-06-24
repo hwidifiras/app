@@ -59,9 +59,9 @@ export default async function NewSubscriptionPage() {
       </Link>
 
       <PageHeader
-        overline="Abonnements & Finance"
-        title="Renouvellement d'abonnement"
-        description="Créer un nouvel abonnement pour un membre existant sans perdre l'historique. Le dernier abonnement est affiché avant validation."
+        overline="Membres"
+        title="Renouveler"
+        description="Créer un nouvel abonnement sans perdre l'historique du membre."
       />
 
       <section className="panel p-4 sm:p-6">

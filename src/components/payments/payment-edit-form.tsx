@@ -4,16 +4,16 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Trash2 } from "lucide-react";
 
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FieldControl } from "@/components/ui/field-control";
 import { FormActions } from "@/components/ui/form-layout";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const METHODS = [
-  { value: "CASH", label: "Espèces" },
+  { value: "CASH", label: "Especes" },
   { value: "CARD", label: "Carte bancaire" },
   { value: "TRANSFER", label: "Virement" },
-  { value: "CHECK", label: "Chèque" },
+  { value: "CHECK", label: "Cheque" },
 ];
 
 function formatCurrency(cents: number) {
@@ -24,6 +24,7 @@ type PaymentEditFormProps = {
   payment: {
     id: string;
     amount: number;
+    entryType: string;
     paymentDate: string;
     paymentMethod: string | null;
     notes: string | null;
@@ -32,7 +33,7 @@ type PaymentEditFormProps = {
       amount: number;
       member: { firstName: string; lastName: string };
       plan: { name: string } | null;
-      payments: Array<{ id: string; amount: number }>;
+      payments: Array<{ id: string; amount: number; correctsPaymentId: string | null }>;
     };
   };
 };
@@ -40,29 +41,38 @@ type PaymentEditFormProps = {
 export function PaymentEditForm({ payment }: PaymentEditFormProps) {
   const router = useRouter();
   const [amount, setAmount] = useState((payment.amount / 100).toFixed(2).replace(".", ","));
-  const [paymentDate, setPaymentDate] = useState(() =>
-    new Date(payment.paymentDate).toISOString().split("T")[0]
-  );
+  const [paymentDate, setPaymentDate] = useState(() => new Date(payment.paymentDate).toISOString().split("T")[0]);
   const [method, setMethod] = useState(payment.paymentMethod ?? "CASH");
   const [notes, setNotes] = useState(payment.notes ?? "");
+  const [correctionReason, setCorrectionReason] = useState("");
+  const [deleteReason, setDeleteReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const subscription = payment.memberSubscription;
-  const otherPaid = subscription.payments
-    .filter((p) => p.id !== payment.id)
-    .reduce((sum, p) => sum + p.amount, 0);
+  const effectiveAmount =
+    payment.amount +
+    subscription.payments
+      .filter((row) => row.correctsPaymentId === payment.id)
+      .reduce((sum, row) => sum + row.amount, 0);
+  const totalPaid = subscription.payments.reduce((sum, row) => sum + row.amount, 0);
+  const otherPaid = totalPaid - effectiveAmount;
   const remaining = subscription.amount - otherPaid;
   const amountNum = Math.round(parseFloat(amount.replace(",", ".")) * 100) || 0;
   const wouldExceed = amountNum > remaining;
+  const canMutate = payment.entryType === "PAYMENT";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (amountNum <= 0) return;
+    if (!canMutate || amountNum < 0) return;
+    if (correctionReason.trim().length < 3) {
+      setMessage("Motif obligatoire pour corriger un paiement.");
+      return;
+    }
     if (wouldExceed) {
-      setMessage("Le montant dépasse le solde restant dû.");
+      setMessage("Le montant depasse le solde restant du.");
       return;
     }
 
@@ -79,6 +89,7 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
           paymentDate: paymentDate ? new Date(paymentDate).toISOString() : undefined,
           paymentMethod: method,
           notes: notes.trim() || undefined,
+          correctionReason: correctionReason.trim(),
         },
       }),
     });
@@ -87,7 +98,7 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
     setLoading(false);
 
     if (!res.ok) {
-      setMessage(json.error ?? "Erreur lors de la modification du paiement.");
+      setMessage(json.error ?? "Erreur lors de la correction du paiement.");
       return;
     }
 
@@ -96,20 +107,25 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
   }
 
   async function handleDelete() {
+    if (!canMutate || deleteReason.trim().length < 3) {
+      setMessage("Motif obligatoire pour annuler un paiement.");
+      return;
+    }
+
     setDeleting(true);
     setMessage(null);
 
     const res = await fetch("/api/payments", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ paymentId: payment.id }),
+      body: JSON.stringify({ paymentId: payment.id, correctionReason: deleteReason.trim() }),
     });
 
     const json = await res.json();
     setDeleting(false);
 
     if (!res.ok) {
-      setMessage(json.error ?? "Erreur lors de la suppression du paiement.");
+      setMessage(json.error ?? "Erreur lors de l'annulation du paiement.");
       return;
     }
 
@@ -125,45 +141,49 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
 
       <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-3 text-sm">
         <p className="text-[var(--muted-foreground)]">
-          Abonnement :{" "}
+          Abonnement:{" "}
           <span className="font-medium text-[var(--foreground)]">
             {subscription.member.firstName} {subscription.member.lastName}
           </span>{" "}
-          — {subscription.plan?.name ?? "—"}
+          - {subscription.plan?.name ?? "-"}
         </p>
         <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-          Montant dû: {formatCurrency(subscription.amount)} — Autres paiements: {formatCurrency(otherPaid)} — Reste: {formatCurrency(remaining)}
+          Montant du: {formatCurrency(subscription.amount)} - Autres paiements: {formatCurrency(otherPaid)} -
+          Reste: {formatCurrency(remaining)}
         </p>
       </div>
 
-      {/* Amount */}
+      {!canMutate && (
+        <FeedbackMessage message="Cette ligne est deja une correction ou une annulation. Seul le paiement original peut etre corrige." />
+      )}
+
       <div className="space-y-1.5">
         <label htmlFor="amount" className="text-sm font-semibold text-[var(--foreground)]">
-          Montant (€) <span className="text-[var(--danger)]">*</span>
+          Montant corrige (EUR) <span className="text-[var(--danger)]">*</span>
         </label>
-        <FieldControl suffix="€">
+        <FieldControl suffix="EUR">
           <input
             id="amount"
             type="number"
             step="0.01"
-            min="0.01"
+            min="0"
             required
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             className={`field pr-10 ${wouldExceed ? "border-[var(--danger)] ring-1 ring-[var(--danger)]" : ""}`}
             placeholder="Ex: 49.90"
+            disabled={!canMutate}
           />
         </FieldControl>
         {wouldExceed && (
-          <p className="text-xs text-[var(--danger)] font-medium">Dépassement du solde restant dû !</p>
+          <p className="text-xs font-medium text-[var(--danger)]">Depassement du solde restant du.</p>
         )}
       </div>
 
-      {/* Date + Method row */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <label htmlFor="paymentDate" className="text-sm font-semibold text-[var(--foreground)]">
-            Date de paiement
+            Date de correction
           </label>
           <input
             id="paymentDate"
@@ -171,27 +191,30 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
             value={paymentDate}
             onChange={(e) => setPaymentDate(e.target.value)}
             className="field"
+            disabled={!canMutate}
           />
         </div>
 
         <div className="space-y-1.5">
           <label htmlFor="method" className="text-sm font-semibold text-[var(--foreground)]">
-            Méthode
+            Methode
           </label>
           <select
             id="method"
             value={method}
             onChange={(e) => setMethod(e.target.value)}
             className="field"
+            disabled={!canMutate}
           >
             {METHODS.map((m) => (
-              <option key={m.value} value={m.value}>{m.label}</option>
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
             ))}
           </select>
         </div>
       </div>
 
-      {/* Notes */}
       <div className="space-y-1.5">
         <label htmlFor="notes" className="text-sm font-semibold text-[var(--foreground)]">
           Notes
@@ -201,7 +224,23 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           className="field min-h-[80px]"
-          placeholder="Numéro de chèque, remarque..."
+          placeholder="Numero de cheque, remarque..."
+          disabled={!canMutate}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <label htmlFor="correctionReason" className="text-sm font-semibold text-[var(--foreground)]">
+          Motif de correction <span className="text-[var(--danger)]">*</span>
+        </label>
+        <textarea
+          id="correctionReason"
+          value={correctionReason}
+          onChange={(e) => setCorrectionReason(e.target.value)}
+          className="field min-h-[72px]"
+          placeholder="Ex: erreur de saisie du montant"
+          required
+          disabled={!canMutate}
         />
       </div>
 
@@ -216,7 +255,7 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
         </button>
         <button
           type="submit"
-          disabled={busy || amountNum <= 0 || wouldExceed}
+          disabled={busy || !canMutate || amountNum < 0 || wouldExceed || correctionReason.trim().length < 3}
           className="btn btn-primary btn-block-mobile inline-flex items-center justify-center gap-1.5"
         >
           {loading ? (
@@ -224,19 +263,32 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
           ) : (
             <CheckCircle2 className="size-4" />
           )}
-          Enregistrer la modification
+          Enregistrer la correction
         </button>
       </FormActions>
 
       <section className="rounded-lg border border-[var(--danger)]/25 bg-[var(--surface-soft)] p-4">
         <h2 className="text-sm font-semibold text-[var(--foreground)]">Zone sensible</h2>
         <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-          La suppression retire ce paiement de l&apos;historique et augmente le solde restant dû.
+          L&apos;annulation garde le paiement original et ajoute une ligne de reversal au grand livre.
         </p>
+        <div className="mt-3 space-y-1.5">
+          <label htmlFor="deleteReason" className="text-sm font-semibold text-[var(--foreground)]">
+            Motif d&apos;annulation
+          </label>
+          <textarea
+            id="deleteReason"
+            value={deleteReason}
+            onChange={(e) => setDeleteReason(e.target.value)}
+            className="field min-h-[72px]"
+            placeholder="Ex: paiement saisi en double"
+            disabled={!canMutate}
+          />
+        </div>
         <button
           type="button"
           onClick={() => setDeleteOpen(true)}
-          disabled={busy}
+          disabled={busy || !canMutate || deleteReason.trim().length < 3}
           className="btn btn-ghost btn-block-mobile mt-3 min-h-11 inline-flex items-center justify-center gap-1.5 border border-[var(--danger)]/40 text-[var(--danger)] hover:bg-[var(--danger)]/10 sm:w-auto"
         >
           {deleting ? (
@@ -244,15 +296,15 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
           ) : (
             <Trash2 className="size-4" />
           )}
-          Supprimer ce paiement
+          Annuler ce paiement
         </button>
       </section>
 
       <ConfirmDialog
         open={deleteOpen}
-        title="Supprimer ce paiement ?"
-        description={`Le paiement de ${formatCurrency(payment.amount)} sera retiré de l'historique et le solde de l'abonnement sera recalculé.`}
-        confirmLabel="Supprimer le paiement"
+        title="Annuler ce paiement ?"
+        description={`Une ligne de reversal de ${formatCurrency(effectiveAmount)} sera ajoutee au grand livre. Le paiement original restera visible.`}
+        confirmLabel="Annuler le paiement"
         loading={deleting}
         onCancel={() => setDeleteOpen(false)}
         onConfirm={handleDelete}

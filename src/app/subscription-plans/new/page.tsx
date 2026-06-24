@@ -11,9 +11,9 @@ export default function NewPlanPage() {
       </Link>
 
       <PageHeader
-        overline="Abonnements & Finance"
-        title="Nouveau plan"
-        description="Créer un forfait d'abonnement avec tarif et durée."
+        overline="Configuration"
+        title="Nouvelle formule"
+        description="Créer une formule avec tarif, durée et nombre de séances."
       />
 
       <section className="panel p-4 sm:p-6">

@@ -53,15 +53,6 @@ async function loadMembers(ids: string[]) {
   return new Map(rows.map((m) => [m.id, m]));
 }
 
-async function loadUsers(ids: string[]) {
-  if (ids.length === 0) return new Map<string, { name: string; email: string }>();
-  const rows = await prisma.user.findMany({
-    where: { id: { in: ids } },
-    select: { id: true, name: true, email: true },
-  });
-  return new Map(rows.map((u) => [u.id, u]));
-}
-
 const STATUS_LABELS: Record<string, string> = {
   PRESENT: "Présent",
   ABSENT: "Absent",

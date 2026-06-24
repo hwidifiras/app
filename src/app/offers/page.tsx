@@ -17,8 +17,8 @@ export default async function OffersPage() {
     <main className="app-shell py-4 md:py-8">
       <PageHeader
         overline="Réception"
-        title="Offres promotionnelles"
-        description="Réductions famille, 2e discipline, ou offre rapide en %."
+        title="Offres"
+        description="Gérer les réductions famille, deuxième discipline et offres rapides."
       />
       <Suspense fallback={<p className="text-sm text-[var(--muted-foreground)]">Chargement…</p>}>
         <OffersManager sportsOptions={sports} />

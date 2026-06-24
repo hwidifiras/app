@@ -39,7 +39,7 @@ export default async function LogsPage({
       <main className="app-shell py-4 md:py-8">
         <PageHeader
           overline="Administration"
-          title="Historique des actions"
+          title="Journal actions"
           description="Seul un administrateur peut consulter le journal."
         />
         <section className="panel panel-soft p-5">
@@ -95,8 +95,8 @@ export default async function LogsPage({
 
       <PageHeader
         overline="Administration"
-        title="Historique des actions"
-        description="Qui a fait quoi dans l'application — libellés en français."
+        title="Journal actions"
+        description="Voir qui a fait quoi dans l'application."
       />
 
       <section className="panel p-4 sm:p-5">

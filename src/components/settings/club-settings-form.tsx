@@ -154,7 +154,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
     setAbsentConsumesSession(json.data.absentConsumesSession);
     setMaxStaffDiscountPercent(String(json.data.maxStaffDiscountPercent));
     setDebtThresholdEuros(centsToEurosInput(json.data.debtAlertThresholdCents));
-    setMessage("Règles du club enregistrées");
+    setMessage("Club enregistré");
     router.refresh();
   }
 

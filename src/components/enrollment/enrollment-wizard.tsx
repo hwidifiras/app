@@ -17,12 +17,15 @@ import {
 import { formatPaymentPrefill } from "@/lib/subscription-billing";
 import type { OfferKind } from "@prisma/client";
 
-type MemberOption = { id: string; firstName: string; lastName: string; phone: string };
+type MemberType = "ADULT" | "KID" | "NOT_SPECIFIED";
+type GroupType = "KIDS" | "ADULTS";
+type MemberOption = { id: string; firstName: string; lastName: string; phone: string; memberType: MemberType };
 type GroupOption = {
   id: string;
   name: string;
   sportId: string;
   sportName: string;
+  groupType: GroupType;
   capacity: number;
   activeMembers: number;
 };
@@ -42,7 +45,7 @@ type LineState = {
   newFirstName: string;
   newLastName: string;
   newPhone: string;
-  memberType: "ADULT" | "KID" | "NOT_SPECIFIED";
+  memberType: MemberType;
   parentName: string;
   parentPhone: string;
   parentAddress: string;
@@ -75,6 +78,37 @@ type QuoteData = {
 
 function formatEur(cents: number) {
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
+}
+
+function isMemberAllowedInGroupType(groupType: GroupType, memberType: MemberType) {
+  if (memberType === "NOT_SPECIFIED") return true;
+  return groupType === "KIDS" ? memberType === "KID" : memberType === "ADULT";
+}
+
+function memberTypeLabel(memberType: MemberType) {
+  if (memberType === "KID") return "enfant";
+  if (memberType === "ADULT") return "adulte";
+  return "non precise";
+}
+
+function groupTypeLabel(groupType: GroupType) {
+  return groupType === "KIDS" ? "enfants" : "adultes";
+}
+
+function lineMemberType(line: LineState, members: MemberOption[]): MemberType | null {
+  if (line.mode === "new") return line.memberType;
+  if (!line.memberId) return null;
+  return members.find((member) => member.id === line.memberId)?.memberType ?? null;
+}
+
+function lineCompatibilityIssue(line: LineState, members: MemberOption[], groups: GroupOption[]) {
+  if (!line.groupId) return null;
+  const group = groups.find((item) => item.id === line.groupId);
+  const memberType = lineMemberType(line, members);
+  if (!group || !memberType || isMemberAllowedInGroupType(group.groupType, memberType)) {
+    return null;
+  }
+  return `Type incompatible: membre ${memberTypeLabel(memberType)} avec groupe ${groupTypeLabel(group.groupType)}.`;
 }
 
 function newLine(memberId = ""): LineState {
@@ -116,6 +150,7 @@ export function EnrollmentWizard({
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [completed, setCompleted] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -124,13 +159,22 @@ export function EnrollmentWizard({
       fetch("/api/subscription-plans").then((r) => r.json()),
       fetch("/api/offers").then((r) => r.json()),
     ]).then(([m, g, p, o]) => {
-      setMembers(m.data ?? []);
+      setMembers(
+        (m.data ?? []).map((x: Record<string, unknown>) => ({
+          id: x.id as string,
+          firstName: x.firstName as string,
+          lastName: x.lastName as string,
+          phone: x.phone as string,
+          memberType: (x.memberType as MemberType | undefined) ?? "NOT_SPECIFIED",
+        })),
+      );
       setGroups(
         (g.data ?? []).map((x: Record<string, unknown>) => ({
           id: x.id as string,
           name: x.name as string,
           sportId: x.sportId as string,
           sportName: (x.sport as { name: string })?.name ?? "",
+          groupType: (x.groupType as GroupType | undefined) ?? "ADULTS",
           capacity: x.capacity as number,
           activeMembers: (x.activeMembers as number) ?? (x._count as { members: number })?.members ?? 0,
         })),
@@ -187,6 +231,13 @@ export function EnrollmentWizard({
   }, [lines, offerId]);
 
   async function fetchQuote() {
+    const firstIssue = lines
+      .map((line) => lineCompatibilityIssue(line, members, groups))
+      .find(Boolean);
+    if (firstIssue) {
+      setMessage(firstIssue);
+      return;
+    }
     setLoading(true);
     setMessage(null);
     const payload = buildPayload();
@@ -218,6 +269,7 @@ export function EnrollmentWizard({
 
   async function applyEnrollment(e: FormEvent) {
     e.preventDefault();
+    if (completed) return;
     setLoading(true);
     setMessage(null);
     const res = await fetch("/api/enrollment/apply", {
@@ -238,9 +290,26 @@ export function EnrollmentWizard({
     }
 
     const memberIds = data.data?.memberIds ?? [];
+    setCompleted(true);
     setMessage("Inscription confirmée.");
-    router.push(memberIds[0] ? `/members/${memberIds[0]}` : "/members");
+    router.replace(memberIds[0] ? `/members/${memberIds[0]}` : "/members");
     router.refresh();
+  }
+
+  function resetTransientState() {
+    setMessage(null);
+    setQuote(null);
+    setCompleted(false);
+  }
+
+  function updateLine(lineKey: string, next: LineState) {
+    resetTransientState();
+    setLines((prev) => prev.map((line) => (line.key === lineKey ? next : line)));
+  }
+
+  function removeLine(lineKey: string) {
+    resetTransientState();
+    setLines((prev) => prev.filter((line) => line.key !== lineKey));
   }
 
   function plansForGroup(groupId: string) {
@@ -264,7 +333,12 @@ export function EnrollmentWizard({
     [lines],
   );
 
-  const linesValid = lines.every(
+  const lineIssues = useMemo(
+    () => lines.map((line) => lineCompatibilityIssue(line, members, groups)),
+    [groups, lines, members],
+  );
+
+  const linesComplete = lines.every(
     (l) =>
       l.groupId &&
       l.planId &&
@@ -275,6 +349,7 @@ export function EnrollmentWizard({
           l.newPhone &&
           (l.memberType !== "KID" || (l.parentName && l.parentPhone)))),
   );
+  const linesValid = linesComplete && lineIssues.every((issue) => !issue);
 
   return (
     <form onSubmit={applyEnrollment} className="space-y-6 pb-4 lg:pb-0">
@@ -282,7 +357,7 @@ export function EnrollmentWizard({
         <FeedbackMessage
           message={message}
           variant={
-            message === "Inscription confirmée."
+            completed
               ? "success"
               : message.startsWith("Impossible") || message.includes("Erreur")
                 ? "error"
@@ -336,10 +411,9 @@ export function EnrollmentWizard({
                 members={members}
                 groups={groups}
                 plans={plansForGroup(line.groupId)}
-                onChange={(next) =>
-                  setLines((prev) => prev.map((l) => (l.key === line.key ? next : l)))
-                }
-                onRemove={() => setLines((prev) => prev.filter((l) => l.key !== line.key))}
+                lineIssue={lineIssues[idx]}
+                onChange={(next) => updateLine(line.key, next)}
+                onRemove={() => removeLine(line.key)}
                 canRemove={lines.length > 1}
               />
             </fieldset>
@@ -347,7 +421,10 @@ export function EnrollmentWizard({
           <button
             type="button"
             className="btn btn-ghost btn-block-mobile"
-            onClick={() => setLines((p) => [...p, newLine()])}
+            onClick={() => {
+              resetTransientState();
+              setLines((p) => [...p, newLine()]);
+            }}
           >
             + Ajouter un élève
           </button>
@@ -356,7 +433,10 @@ export function EnrollmentWizard({
               type="button"
               className="btn btn-primary btn-block-mobile sm:ml-auto"
               disabled={!linesValid}
-              onClick={() => setStep(2)}
+              onClick={() => {
+                setMessage(null);
+                setStep(2);
+              }}
             >
               Suivant : offres
             </button>
@@ -375,7 +455,10 @@ export function EnrollmentWizard({
           <select
             className="field"
             value={offerId}
-            onChange={(e) => setOfferId(e.target.value)}
+            onChange={(e) => {
+              resetTransientState();
+              setOfferId(e.target.value);
+            }}
           >
             <option value="">Aucune offre</option>
             {offers.map((o) => (
@@ -400,7 +483,14 @@ export function EnrollmentWizard({
             Gérer les offres
           </Link>
           <FormActions sticky>
-            <button type="button" className="btn btn-ghost btn-block-mobile" onClick={() => setStep(1)}>
+            <button
+              type="button"
+              className="btn btn-ghost btn-block-mobile"
+              onClick={() => {
+                setMessage(null);
+                setStep(1);
+              }}
+            >
               Retour
             </button>
             <button type="button" className="btn btn-primary btn-block-mobile" disabled={loading} onClick={fetchQuote}>
@@ -468,13 +558,14 @@ export function EnrollmentWizard({
                       inputMode="decimal"
                       className="field pr-10"
                       value={lines[l.lineIndex]?.paymentCents ?? ""}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        setMessage(null);
                         setLines((prev) =>
                           prev.map((row, i) =>
                             i === l.lineIndex ? { ...row, paymentCents: e.target.value } : row,
                           ),
-                        )
-                      }
+                        );
+                      }}
                     />
                   </FieldControl>
                 </label>
@@ -486,10 +577,17 @@ export function EnrollmentWizard({
             <FeedbackMessage variant="error" message={quote.warnings.join(" • ")} />
           )}
           <FormActions sticky>
-            <button type="button" className="btn btn-ghost btn-block-mobile" onClick={() => setStep(2)}>
+            <button
+              type="button"
+              className="btn btn-ghost btn-block-mobile"
+              onClick={() => {
+                setMessage(null);
+                setStep(2);
+              }}
+            >
               Retour
             </button>
-            <button type="submit" className="btn btn-primary btn-block-mobile" disabled={loading || quote.blocked}>
+            <button type="submit" className="btn btn-primary btn-block-mobile" disabled={loading || completed || quote.blocked}>
               {loading ? "Inscription…" : "Confirmer"}
             </button>
           </FormActions>
@@ -504,6 +602,7 @@ function LineEditor({
   members,
   groups,
   plans,
+  lineIssue,
   onChange,
   onRemove,
   canRemove,
@@ -512,6 +611,7 @@ function LineEditor({
   members: MemberOption[];
   groups: GroupOption[];
   plans: PlanOption[];
+  lineIssue?: string | null;
   onChange: (l: LineState) => void;
   onRemove: () => void;
   canRemove: boolean;
@@ -648,11 +748,12 @@ function LineEditor({
           <option value="">Sélectionner un groupe</option>
           {groups.map((g) => (
             <option key={g.id} value={g.id}>
-              {g.name} — {g.sportName} ({g.activeMembers}/{g.capacity})
+              {g.name} — {g.sportName} · {groupTypeLabel(g.groupType)} ({g.activeMembers}/{g.capacity})
             </option>
           ))}
         </select>
       </FormField>
+      {lineIssue ? <FeedbackMessage variant="error" message={lineIssue} /> : null}
       <FormField label="Formule" htmlFor={`${line.key}-plan`}>
         <select
           id={`${line.key}-plan`}

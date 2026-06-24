@@ -46,9 +46,9 @@ export default async function EditPaymentPage({ params }: { params: Promise<{ id
       </Link>
 
       <PageHeader
-        overline="Abonnements & Finance"
-        title="Modifier un paiement"
-        description="Modifier le montant, la date, la méthode ou les notes d’un versement existant."
+        overline="Finance"
+        title="Correction paiement"
+        description="Créer une correction tracée avec le motif et le nouveau montant."
       />
 
       <section className="panel p-4 sm:p-6">
@@ -73,7 +73,7 @@ async function getPayment(id: string) {
           amount: true,
           member: { select: { firstName: true, lastName: true } },
           plan: { select: { name: true } },
-          payments: { select: { id: true, amount: true } },
+          payments: { select: { id: true, amount: true, correctsPaymentId: true } },
         },
       },
     },

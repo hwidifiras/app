@@ -5,6 +5,7 @@ import { getClubSettings } from "@/lib/club-settings";
 import { canCheckInWithPayment } from "@/lib/membership-rules";
 import { computeWeeklyAllowanceRemainingForMember } from "@/lib/weekly-session-consumption";
 import { utcDateOnlyForTimeZone } from "@/lib/dates";
+import { isDateWithinBusinessDayWindow } from "@/lib/assignment-policy";
 import {
   deriveSessionLifecycle,
   expectedMemberIdsAtSession,
@@ -165,8 +166,7 @@ export default async function AttendanceTodayPage({
           const memberSubs = subs.filter(
             (s) =>
               s.memberId === member.memberId &&
-              s.startDate <= session.sessionDate &&
-              (!s.endDate || s.endDate >= session.sessionDate),
+              isDateWithinBusinessDayWindow(s.startDate, s.endDate, session.sessionDate),
           );
 
           const matchedSub = await (async () => {
@@ -248,12 +248,12 @@ export default async function AttendanceTodayPage({
       </Link>
 
       <PageHeader
-        overline="Suivi"
-        title="Pointage et séances à finaliser"
+        overline="Réception"
+        title="Pointage"
         description={
           sessions.length === 0
             ? "Aucune séance aujourd'hui et aucun pointage en retard."
-            : `${sessions.length} séance${sessions.length > 1 ? "s" : ""} disponible${sessions.length > 1 ? "s" : ""} — les séances passées restent accessibles jusqu'à leur finalisation.`
+            : `${sessions.length} séance${sessions.length > 1 ? "s" : ""} disponible${sessions.length > 1 ? "s" : ""}. Les séances passées restent ouvertes jusqu'à finalisation.`
         }
       />
 

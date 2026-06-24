@@ -51,9 +51,9 @@ export default async function EditSubscriptionPlanPage({
       </Link>
 
       <PageHeader
-        overline="Abonnements & Finance"
-        title="Modifier un plan"
-        description="Mettre à jour le tarif, la durée, les séances ou le statut d&apos;un forfait."
+        overline="Configuration"
+        title="Modifier la formule"
+        description="Mettre à jour le tarif, la durée, les séances ou le statut."
       />
 
       <section className="panel p-4 sm:p-6">

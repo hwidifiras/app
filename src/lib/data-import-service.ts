@@ -230,6 +230,7 @@ export async function applyDataImport(
             data: {
               memberSubscriptionId: subscription.id,
               amount: payload.paidCents,
+              createdById: actorId,
               paymentDate: payload.paymentDate ? new Date(payload.paymentDate) : new Date(payload.cutoverDate),
               paymentMethod: payload.paymentMethod || "REPRISE_PAPIER",
               notes: payload.note,

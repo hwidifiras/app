@@ -100,13 +100,9 @@ export function MobileFilterSheet({
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[70] flex items-end bg-black/40 md:hidden"
-      onClick={onClose}
-      role="presentation"
-    >
+    <div className="fixed inset-0 z-[70] flex items-end bg-black/40 md:hidden" onClick={onClose} role="presentation">
       <div
-        className="max-h-[86dvh] w-full overflow-y-auto rounded-t-3xl border border-[var(--border)] bg-[var(--surface)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[var(--shadow-floating)]"
+        className="max-h-[86dvh] w-full overflow-y-auto rounded-t-lg border border-[var(--border)] bg-[var(--surface)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[var(--shadow-floating)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="mobile-filter-title"
@@ -114,12 +110,14 @@ export function MobileFilterSheet({
       >
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h2 id="mobile-filter-title" className="text-lg font-semibold">{title}</h2>
+            <h2 id="mobile-filter-title" className="text-lg font-semibold">
+              {title}
+            </h2>
             <p className="text-xs text-[var(--muted-foreground)]">
               {activeCount > 0 ? `${activeCount} filtre(s) actif(s)` : "Aucun filtre actif"}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="btn btn-ghost min-h-11 min-w-11 rounded-full p-2">
+          <button type="button" onClick={onClose} className="btn btn-ghost min-h-11 min-w-11 p-2">
             <X className="size-5" />
             <span className="sr-only">Fermer</span>
           </button>
@@ -149,7 +147,7 @@ export function FilterField({
   children: React.ReactNode;
 }) {
   return (
-    <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
+    <label className="grid gap-1 text-xs font-semibold text-[var(--foreground)]">
       {label}
       {children}
     </label>

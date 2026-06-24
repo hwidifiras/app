@@ -12,6 +12,7 @@ import {
   expireStaleSubscriptions,
 } from "@/lib/membership-rules";
 import { createSubscriptionFromPlan } from "@/lib/subscription-service";
+import { sumLedgerRows } from "@/lib/payment-ledger";
 
 export const runtime = "nodejs";
 
@@ -97,6 +98,9 @@ export async function POST(request: Request) {
     if (!memberExists) {
       return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
     }
+    if (memberExists.status !== "ACTIVE") {
+      return NextResponse.json({ error: "Impossible de creer un abonnement pour un membre archive" }, { status: 409 });
+    }
 
     const plan = await prisma.subscriptionPlan.findUnique({ where: { id: planId } });
     if (!plan) {
@@ -142,6 +146,7 @@ export async function POST(request: Request) {
           data: {
             memberSubscriptionId: created.id,
             amount: payCents,
+            createdById: actor.id,
             paymentMethod: paymentMethod?.trim() || "CASH",
           },
         });
@@ -239,13 +244,41 @@ export async function PATCH(request: Request) {
       where: { id: subscriptionId },
       select: {
         id: true,
+        memberId: true,
+        planId: true,
+        sportId: true,
+        startDate: true,
+        endDate: true,
+        status: true,
         amount: true,
         remainingSessions: true,
+        member: { select: { status: true } },
+        payments: { select: { amount: true } },
       },
     });
 
     if (!existing) {
       return NextResponse.json({ error: "Abonnement introuvable" }, { status: 404 });
+    }
+
+    if (existing.member.status !== "ACTIVE") {
+      return NextResponse.json({ error: "Impossible de modifier l'abonnement d'un membre archive" }, { status: 409 });
+    }
+
+    const nextStartDate = payload.startDate ? new Date(payload.startDate) : existing.startDate;
+    const nextEndDate =
+      payload.endDate === undefined ? existing.endDate : payload.endDate === null ? null : new Date(payload.endDate);
+
+    if (nextEndDate && nextEndDate.getTime() < nextStartDate.getTime()) {
+      return NextResponse.json({ error: "La date de fin doit etre >= date de debut" }, { status: 400 });
+    }
+
+    const totalPaid = sumLedgerRows(existing.payments);
+    if (payload.amount !== undefined && payload.amount < totalPaid) {
+      return NextResponse.json(
+        { error: "Le montant de l'abonnement ne peut pas etre inferieur au total deja paye" },
+        { status: 409 },
+      );
     }
 
     const sensitiveChange =
@@ -266,10 +299,33 @@ export async function PATCH(request: Request) {
       );
     }
 
+    let nextSportId = existing.sportId;
     if (payload.planId) {
-      const planExists = await prisma.subscriptionPlan.findUnique({ where: { id: payload.planId } });
+      const planExists = await prisma.subscriptionPlan.findUnique({
+        where: { id: payload.planId },
+        select: { id: true, sportId: true },
+      });
       if (!planExists) {
         return NextResponse.json({ error: "Plan introuvable" }, { status: 404 });
+      }
+      nextSportId = planExists.sportId;
+    }
+
+    if (payload.planId && nextSportId !== existing.sportId) {
+      const incompatibleAssignment = await prisma.groupMember.findFirst({
+        where: {
+          memberId: existing.memberId,
+          status: "ACTIVE",
+          group: { sportId: { not: nextSportId } },
+        },
+        select: { group: { select: { name: true } } },
+      });
+
+      if (incompatibleAssignment) {
+        return NextResponse.json(
+          { error: `Changement de discipline impossible avec l'affectation active "${incompatibleAssignment.group.name}"` },
+          { status: 409 },
+        );
       }
     }
 
@@ -277,21 +333,12 @@ export async function PATCH(request: Request) {
       where: { id: subscriptionId },
       data: {
         planId: payload.planId,
-        startDate: payload.startDate ? new Date(payload.startDate) : undefined,
-        endDate: payload.endDate === null ? null : payload.endDate ? new Date(payload.endDate) : undefined,
+        startDate: payload.startDate ? nextStartDate : undefined,
+        endDate: payload.endDate === undefined ? undefined : nextEndDate,
         amount: payload.amount,
         remainingSessions: payload.remainingSessions,
         status: payload.status,
-        ...(payload.planId
-          ? {
-              sportId: (
-                await prisma.subscriptionPlan.findUnique({
-                  where: { id: payload.planId },
-                  select: { sportId: true },
-                })
-              )?.sportId,
-            }
-          : {}),
+        ...(payload.planId ? { sportId: nextSportId } : {}),
       },
       include: {
         member: { select: { id: true, firstName: true, lastName: true } },
@@ -327,8 +374,9 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  let actor;
   try {
-    await requireAdmin(request);
+    actor = await requireAdmin(request);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
     if (msg === "FORBIDDEN") {
@@ -356,8 +404,27 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    await prisma.memberSubscription.delete({ where: { id: subscriptionId } });
-    return NextResponse.json({ data: { id: subscriptionId } });
+    const now = new Date();
+    const cancelled = await prisma.$transaction(async (tx) => {
+      const subscription = await tx.memberSubscription.update({
+        where: { id: subscriptionId },
+        data: { status: "CANCELLED" },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          action: "MEMBER_SUBSCRIPTION_CANCELLED",
+          entityType: "MemberSubscription",
+          entityId: subscriptionId,
+          userId: actor.id,
+          details: JSON.stringify({ cancelledAt: now.toISOString() }),
+        },
+      });
+
+      return subscription;
+    });
+
+    return NextResponse.json({ data: cancelled });
   } catch (error) {
     const isNotFound =
       typeof error === "object" &&

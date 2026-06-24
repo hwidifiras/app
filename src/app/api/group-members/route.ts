@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { createGroupMemberSchema, updateGroupMemberSchema } from "@/lib/schemas/group-member";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { resolveActiveSubscription } from "@/lib/membership-rules";
+import { checkScheduleConflictOnDate, ensureGroupCapacityOnDate } from "@/lib/assignment-policy";
 
 export const runtime = "nodejs";
 
@@ -50,6 +51,7 @@ function intervalsOverlap(start1: number, end1: number, start2: number, end2: nu
   return start1 < end2 && start2 < end1;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function checkScheduleConflict(groupId: string, memberId: string) {
   const newGroupSchedules = await prisma.groupSchedule.findMany({
     where: { groupId },
@@ -97,6 +99,7 @@ async function checkScheduleConflict(groupId: string, memberId: string) {
   return { ok: true as const };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function ensureCapacity(groupId: string, ignoredAssignmentId?: string) {
   const group = await prisma.group.findUnique({
     where: { id: groupId },
@@ -230,12 +233,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Le plan choisi n'est pas compatible avec le sport de ce groupe" }, { status: 403 });
   }
 
-  const capacityCheck = await ensureCapacity(parsed.data.groupId);
+  const assignmentStartDate = new Date(parsed.data.startDate);
+  const capacityCheck = await ensureGroupCapacityOnDate(parsed.data.groupId, assignmentStartDate);
   if (!capacityCheck.ok) {
     return NextResponse.json({ error: capacityCheck.error }, { status: capacityCheck.status });
   }
 
-  const scheduleCheck = await checkScheduleConflict(parsed.data.groupId, parsed.data.memberId);
+  const scheduleCheck = await checkScheduleConflictOnDate(
+    parsed.data.groupId,
+    parsed.data.memberId,
+    assignmentStartDate,
+  );
   if (!scheduleCheck.ok) {
     return NextResponse.json({ error: scheduleCheck.error }, { status: 409 });
   }
@@ -247,7 +255,17 @@ export async function POST(request: Request) {
         where: { id: parsed.data.groupId },
         select: {
           capacity: true,
-          _count: { select: { members: { where: { status: "ACTIVE" } } } },
+          _count: {
+            select: {
+              members: {
+                where: {
+                  status: "ACTIVE",
+                  startDate: { lte: assignmentStartDate },
+                  OR: [{ endDate: null }, { endDate: { gte: assignmentStartDate } }],
+                },
+              },
+            },
+          },
         },
       });
 
@@ -384,14 +402,16 @@ export async function PATCH(request: Request) {
   try {
     const existing = await prisma.groupMember.findUnique({ 
       where: { id: groupMemberId }, 
-      select: { id: true, groupId: true, memberId: true, group: { select: { sportId: true } } } 
+      select: { id: true, groupId: true, memberId: true, startDate: true, group: { select: { sportId: true } } }
     });
     if (!existing) {
       return NextResponse.json({ error: "Affectation introuvable" }, { status: 404 });
     }
 
+    const targetStartDate = payload.startDate ? new Date(payload.startDate) : existing.startDate;
+
     if (payload.status === "ACTIVE") {
-      const capacityCheck = await ensureCapacity(existing.groupId, groupMemberId);
+      const capacityCheck = await ensureGroupCapacityOnDate(existing.groupId, targetStartDate, groupMemberId);
       if (!capacityCheck.ok) {
         return NextResponse.json({ error: capacityCheck.error }, { status: capacityCheck.status });
       }
@@ -411,19 +431,18 @@ export async function PATCH(request: Request) {
         return NextResponse.json({ error: "Le membre doit solder son abonnement avant d'être réaffecté à un cours" }, { status: 403 });
       }
 
-      const existingMember = await prisma.groupMember.findUnique({
-        where: { id: groupMemberId },
-        select: { memberId: true },
-      });
-      if (existingMember) {
-        const scheduleCheck = await checkScheduleConflict(existing.groupId, existingMember.memberId);
-        if (!scheduleCheck.ok) {
-          return NextResponse.json({ error: scheduleCheck.error }, { status: 409 });
-        }
+      const scheduleCheck = await checkScheduleConflictOnDate(
+        existing.groupId,
+        existing.memberId,
+        targetStartDate,
+        groupMemberId,
+      );
+      if (!scheduleCheck.ok) {
+        return NextResponse.json({ error: scheduleCheck.error }, { status: 409 });
       }
     }
 
-    const startDate = payload.startDate ? new Date(payload.startDate) : undefined;
+    const startDate = payload.startDate ? targetStartDate : undefined;
     const endDate =
       payload.endDate === undefined ? undefined : payload.endDate === null ? null : new Date(payload.endDate);
 
@@ -451,8 +470,9 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "enrollment.manage");
+    actor = await requirePermission(request, "enrollment.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -476,8 +496,30 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    await prisma.groupMember.delete({ where: { id: groupMemberId } });
-    return NextResponse.json({ data: { id: groupMemberId } });
+    const now = new Date();
+    const closed = await prisma.$transaction(async (tx) => {
+      const assignment = await tx.groupMember.update({
+        where: { id: groupMemberId },
+        data: {
+          status: "INACTIVE",
+          endDate: now,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          action: "GROUP_MEMBER_CLOSED",
+          entityType: "GroupMember",
+          entityId: groupMemberId,
+          userId: actor.id,
+          details: JSON.stringify({ closedAt: now.toISOString() }),
+        },
+      });
+
+      return assignment;
+    });
+
+    return NextResponse.json({ data: { id: closed.id, status: closed.status, endDate: closed.endDate?.toISOString() ?? null } });
   } catch {
     return NextResponse.json({ error: "Erreur serveur lors de la suppression" }, { status: 500 });
   }

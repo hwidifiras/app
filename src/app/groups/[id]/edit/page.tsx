@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { GroupEditForm } from "@/components/groups/group-edit-form";
 import { PageHeader } from "@/components/ui/page-header";
+import type { CoachDto } from "@/types/coach";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -33,7 +34,13 @@ export default async function EditGroupPage({ params }: { params: Promise<{ id: 
     prisma.sport.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
     prisma.coach.findMany({
       where: { isActive: true },
-      include: { sport: { select: { name: true } } },
+      include: {
+        sport: { select: { id: true, name: true } },
+        qualifications: {
+          include: { sport: { select: { id: true, name: true } } },
+          orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+        },
+      },
       orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
     }),
     prisma.member.findMany({
@@ -48,18 +55,42 @@ export default async function EditGroupPage({ params }: { params: Promise<{ id: 
     updatedAt: s.updatedAt.toISOString(),
   }));
 
-  const coachesOptions = coaches.map((c) => ({
-    id: c.id,
-    firstName: c.firstName,
-    lastName: c.lastName,
-    phone: c.phone,
-    email: c.email,
-    isActive: c.isActive,
-    sportId: c.sportId,
-    sportName: c.sport?.name ?? null,
-    createdAt: c.createdAt.toISOString(),
-    updatedAt: c.updatedAt.toISOString(),
-  }));
+  const coachesOptions: CoachDto[] = coaches.map((c) => {
+    const qualifiedSportsById = new Map<string, { id: string; name: string; isPrimary: boolean }>();
+    for (const qualification of c.qualifications) {
+      qualifiedSportsById.set(qualification.sport.id, {
+        id: qualification.sport.id,
+        name: qualification.sport.name,
+        isPrimary: qualification.isPrimary,
+      });
+    }
+    if (c.sport) {
+      qualifiedSportsById.set(c.sport.id, {
+        id: c.sport.id,
+        name: c.sport.name,
+        isPrimary: true,
+      });
+    }
+    const qualifiedSports = Array.from(qualifiedSportsById.values()).sort((a, b) => {
+      if (a.isPrimary !== b.isPrimary) return a.isPrimary ? -1 : 1;
+      return a.name.localeCompare(b.name, "fr");
+    });
+
+    return {
+      id: c.id,
+      firstName: c.firstName,
+      lastName: c.lastName,
+      phone: c.phone,
+      email: c.email,
+      isActive: c.isActive,
+      sportId: c.sportId,
+      sportName: c.sport?.name ?? null,
+      qualifiedSportIds: qualifiedSports.map((sport) => sport.id),
+      qualifiedSports,
+      createdAt: c.createdAt.toISOString(),
+      updatedAt: c.updatedAt.toISOString(),
+    };
+  });
 
   const membersOptions = members.map((m) => ({
     id: m.id,
@@ -94,8 +125,8 @@ export default async function EditGroupPage({ params }: { params: Promise<{ id: 
       </Link>
 
       <PageHeader
-        overline="Référentiels"
-        title="Modifier le groupe"
+        overline="Configuration"
+        title="Modifier le cours"
         description={group.name}
       />
 

@@ -16,9 +16,9 @@ export default async function SettingsClubPage() {
     return (
       <main className="app-shell py-4 md:py-8">
         <PageHeader
-          overline="Paramètres"
-          title="Règles du club"
-          description="Seul un administrateur peut modifier les règles métier."
+          overline="Configuration"
+          title="Club"
+          description="Seul un administrateur peut modifier ces réglages."
         />
         <section className="panel panel-soft p-5">
           <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
@@ -32,9 +32,9 @@ export default async function SettingsClubPage() {
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Paramètres"
-        title="Règles du club"
-        description="Personnalisez l'identité du club et les règles appliquées à la réception."
+        overline="Configuration"
+        title="Club"
+        description="Personnaliser l'identité du club et les règles appliquées à la réception."
       />
 
       <div className="mx-auto w-full max-w-5xl">

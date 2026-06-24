@@ -3,6 +3,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createPaymentSchema, updatePaymentSchema } from "@/lib/schemas/payment";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
+import {
+  getEffectivePaymentAmount,
+  getSubscriptionLedgerTotal,
+  validateLedgerTotal,
+} from "@/lib/payment-ledger";
 
 export const runtime = "nodejs";
 
@@ -46,8 +51,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "payments.manage");
+    actor = await requirePermission(request, "payments.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -65,7 +71,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       {
-        error: "Validation échouée",
+        error: "Validation echouee",
         details: parsed.error.flatten(),
       },
       { status: 400 },
@@ -78,17 +84,18 @@ export async function POST(request: Request) {
     const payment = await prisma.$transaction(async (tx) => {
       const subscription = await tx.memberSubscription.findUnique({
         where: { id: memberSubscriptionId },
-        include: { payments: { select: { amount: true } } },
+        select: { id: true, amount: true },
       });
 
       if (!subscription) {
         throw new Error("SUB_NOT_FOUND");
       }
 
-      const totalPaid = subscription.payments.reduce((sum, p) => sum + p.amount, 0);
+      const totalPaid = await getSubscriptionLedgerTotal(tx, memberSubscriptionId);
       const newTotal = totalPaid + amount;
+      const totalCheck = validateLedgerTotal(newTotal, subscription.amount);
 
-      if (newTotal > subscription.amount) {
+      if (!totalCheck.ok) {
         throw new Error("OVERPAY");
       }
 
@@ -96,6 +103,8 @@ export async function POST(request: Request) {
         data: {
           memberSubscriptionId,
           amount,
+          entryType: "PAYMENT",
+          createdById: actor.id,
           paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
           paymentMethod: paymentMethod?.trim() || null,
           notes: notes?.trim() || null,
@@ -116,7 +125,13 @@ export async function POST(request: Request) {
           action: "PAYMENT_CREATED",
           entityType: "Payment",
           entityId: created.id,
-          details: JSON.stringify({ amount, memberSubscriptionId }),
+          userId: actor.id,
+          details: JSON.stringify({
+            amount,
+            memberSubscriptionId,
+            totalBefore: totalPaid,
+            totalAfter: newTotal,
+          }),
         },
       });
 
@@ -130,19 +145,24 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Abonnement introuvable" }, { status: 404 });
       }
       if (error.message === "OVERPAY") {
-        return NextResponse.json({ error: "Dépassement du montant dû" }, { status: 409 });
+        return NextResponse.json({ error: "Depassement du montant du" }, { status: 409 });
       }
     }
     console.error("[POST /api/payments] error:", error);
-    return NextResponse.json({ error: "Erreur serveur lors de la création du paiement" }, { status: 500 });
+    return NextResponse.json({ error: "Erreur serveur lors de la creation du paiement" }, { status: 500 });
   }
 }
 
 export async function PATCH(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "payments.manage");
+    actor = await requirePermission(request, "payments.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
+  }
+
+  if (actor.role !== "ADMIN") {
+    return NextResponse.json({ error: "Seul un administrateur peut corriger un paiement" }, { status: 403 });
   }
 
   let body: unknown;
@@ -167,7 +187,7 @@ export async function PATCH(request: Request) {
 
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Validation échouée", details: parsed.error.flatten() },
+      { error: "Validation echouee", details: parsed.error.flatten() },
       { status: 400 },
     );
   }
@@ -175,65 +195,96 @@ export async function PATCH(request: Request) {
   const payload = parsed.data;
 
   try {
-    const existing = await prisma.payment.findUnique({
-      where: { id: paymentId },
-      include: { memberSubscription: { include: { payments: { select: { id: true, amount: true } } } } },
-    });
-
-    if (!existing) {
-      return NextResponse.json({ error: "Paiement introuvable" }, { status: 404 });
-    }
-
-    if (payload.amount !== undefined) {
-      const subscription = existing.memberSubscription;
-      const otherPayments = subscription.payments.filter((p) => p.id !== paymentId);
-      const totalOther = otherPayments.reduce((sum, p) => sum + p.amount, 0);
-      if (totalOther + payload.amount > subscription.amount) {
-        return NextResponse.json(
-          { error: "Dépassement du montant dû", details: { amountDue: subscription.amount, otherPaid: totalOther, attempted: payload.amount } },
-          { status: 409 },
-        );
-      }
-    }
-
-    const updated = await prisma.payment.update({
-      where: { id: paymentId },
-      data: {
-        amount: payload.amount,
-        paymentDate: payload.paymentDate ? new Date(payload.paymentDate) : undefined,
-        paymentMethod: payload.paymentMethod?.trim() || null,
-        notes: payload.notes?.trim() || null,
-      },
-      include: {
-        memberSubscription: {
-          select: {
-            id: true,
-            member: { select: { id: true, firstName: true, lastName: true } },
-            plan: { select: { id: true, name: true } },
+    const correction = await prisma.$transaction(async (tx) => {
+      const existing = await tx.payment.findUnique({
+        where: { id: paymentId },
+        include: {
+          memberSubscription: {
+            select: {
+              id: true,
+              amount: true,
+              member: { select: { id: true, firstName: true, lastName: true } },
+              plan: { select: { id: true, name: true } },
+            },
           },
         },
-      },
+      });
+
+      if (!existing) throw new Error("PAYMENT_NOT_FOUND");
+      if (existing.entryType !== "PAYMENT") throw new Error("LEDGER_ENTRY_IMMUTABLE");
+
+      const effectiveBefore = await getEffectivePaymentAmount(tx, paymentId);
+      const correctedAmount = payload.amount ?? effectiveBefore;
+      const delta = correctedAmount - effectiveBefore;
+      const totalBefore = await getSubscriptionLedgerTotal(tx, existing.memberSubscriptionId);
+      const totalAfter = totalBefore + delta;
+      const totalCheck = validateLedgerTotal(totalAfter, existing.memberSubscription.amount);
+
+      if (!totalCheck.ok) {
+        throw new Error(totalAfter < 0 ? "NEGATIVE_TOTAL" : "OVERPAY");
+      }
+
+      const created = await tx.payment.create({
+        data: {
+          memberSubscriptionId: existing.memberSubscriptionId,
+          amount: delta,
+          entryType: "CORRECTION",
+          correctsPaymentId: existing.id,
+          correctionReason: payload.correctionReason.trim(),
+          createdById: actor.id,
+          paymentDate: payload.paymentDate ? new Date(payload.paymentDate) : new Date(),
+          paymentMethod:
+            payload.paymentMethod === undefined ? existing.paymentMethod : payload.paymentMethod.trim() || null,
+          notes: payload.notes === undefined ? existing.notes : payload.notes.trim() || null,
+        },
+        include: {
+          memberSubscription: {
+            select: {
+              id: true,
+              member: { select: { id: true, firstName: true, lastName: true } },
+              plan: { select: { id: true, name: true } },
+            },
+          },
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          action: "PAYMENT_CORRECTED",
+          entityType: "Payment",
+          entityId: created.id,
+          userId: actor.id,
+          details: JSON.stringify({
+            originalPaymentId: paymentId,
+            reason: payload.correctionReason.trim(),
+            amountBefore: effectiveBefore,
+            amountAfter: correctedAmount,
+            delta,
+            totalBefore,
+            totalAfter,
+            payload,
+          }),
+        },
+      });
+
+      return created;
     });
 
-    await prisma.auditLog.create({
-      data: {
-        action: "PAYMENT_UPDATED",
-        entityType: "Payment",
-        entityId: paymentId,
-        details: JSON.stringify({ payload }),
-      },
-    });
-
-    return NextResponse.json({ data: updated });
+    return NextResponse.json({ data: correction });
   } catch (error) {
-    const isNotFound =
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      (error as { code?: string }).code === "P2025";
-
-    if (isNotFound) {
-      return NextResponse.json({ error: "Paiement introuvable" }, { status: 404 });
+    if (error instanceof Error) {
+      if (error.message === "PAYMENT_NOT_FOUND") {
+        return NextResponse.json({ error: "Paiement introuvable" }, { status: 404 });
+      }
+      if (error.message === "LEDGER_ENTRY_IMMUTABLE") {
+        return NextResponse.json({ error: "Seul un paiement original peut etre corrige" }, { status: 409 });
+      }
+      if (error.message === "OVERPAY") {
+        return NextResponse.json({ error: "Depassement du montant du" }, { status: 409 });
+      }
+      if (error.message === "NEGATIVE_TOTAL") {
+        return NextResponse.json({ error: "Le total des paiements ne peut pas devenir negatif" }, { status: 409 });
+      }
     }
 
     console.error("[PATCH /api/payments] error:", error);
@@ -242,10 +293,15 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "payments.manage");
+    actor = await requirePermission(request, "payments.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
+  }
+
+  if (actor.role !== "ADMIN") {
+    return NextResponse.json({ error: "Seul un administrateur peut annuler un paiement" }, { status: 403 });
   }
 
   let body: unknown;
@@ -261,37 +317,108 @@ export async function DELETE(request: Request) {
   }
 
   const paymentId = (body as { paymentId?: unknown }).paymentId;
+  const correctionReason = (body as { correctionReason?: unknown }).correctionReason;
 
   if (typeof paymentId !== "string" || paymentId.trim().length === 0) {
     return NextResponse.json({ error: "paymentId invalide" }, { status: 400 });
   }
 
+  if (typeof correctionReason !== "string" || correctionReason.trim().length < 3) {
+    return NextResponse.json({ error: "Motif obligatoire pour annuler un paiement" }, { status: 400 });
+  }
+
   try {
-    await prisma.payment.delete({
-      where: { id: paymentId },
+    const reversal = await prisma.$transaction(async (tx) => {
+      const existing = await tx.payment.findUnique({
+        where: { id: paymentId },
+        include: {
+          memberSubscription: {
+            select: {
+              id: true,
+              amount: true,
+              member: { select: { id: true, firstName: true, lastName: true } },
+              plan: { select: { id: true, name: true } },
+            },
+          },
+        },
+      });
+
+      if (!existing) throw new Error("PAYMENT_NOT_FOUND");
+      if (existing.entryType !== "PAYMENT") throw new Error("LEDGER_ENTRY_IMMUTABLE");
+
+      const effectiveAmount = await getEffectivePaymentAmount(tx, paymentId);
+      if (effectiveAmount <= 0) {
+        throw new Error("PAYMENT_ALREADY_REVERSED");
+      }
+
+      const totalBefore = await getSubscriptionLedgerTotal(tx, existing.memberSubscriptionId);
+      const totalAfter = totalBefore - effectiveAmount;
+      const totalCheck = validateLedgerTotal(totalAfter, existing.memberSubscription.amount);
+
+      if (!totalCheck.ok) {
+        throw new Error(totalAfter < 0 ? "NEGATIVE_TOTAL" : "OVERPAY");
+      }
+
+      const created = await tx.payment.create({
+        data: {
+          memberSubscriptionId: existing.memberSubscriptionId,
+          amount: -effectiveAmount,
+          entryType: "REVERSAL",
+          correctsPaymentId: existing.id,
+          correctionReason: correctionReason.trim(),
+          createdById: actor.id,
+          paymentDate: new Date(),
+          paymentMethod: existing.paymentMethod,
+          notes: existing.notes,
+        },
+        include: {
+          memberSubscription: {
+            select: {
+              id: true,
+              member: { select: { id: true, firstName: true, lastName: true } },
+              plan: { select: { id: true, name: true } },
+            },
+          },
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          action: "PAYMENT_REVERSED",
+          entityType: "Payment",
+          entityId: created.id,
+          userId: actor.id,
+          details: JSON.stringify({
+            originalPaymentId: paymentId,
+            reason: correctionReason.trim(),
+            reversedAmount: effectiveAmount,
+            totalBefore,
+            totalAfter,
+          }),
+        },
+      });
+
+      return created;
     });
 
-    await prisma.auditLog.create({
-      data: {
-        action: "PAYMENT_DELETED",
-        entityType: "Payment",
-        entityId: paymentId,
-        details: JSON.stringify({ deletedAt: new Date().toISOString() }),
-      },
-    });
-
-    return NextResponse.json({ data: { id: paymentId } });
+    return NextResponse.json({ data: reversal });
   } catch (error) {
-    const isNotFound =
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      (error as { code?: string }).code === "P2025";
-
-    if (isNotFound) {
-      return NextResponse.json({ error: "Paiement introuvable" }, { status: 404 });
+    if (error instanceof Error) {
+      if (error.message === "PAYMENT_NOT_FOUND") {
+        return NextResponse.json({ error: "Paiement introuvable" }, { status: 404 });
+      }
+      if (error.message === "LEDGER_ENTRY_IMMUTABLE") {
+        return NextResponse.json({ error: "Seul un paiement original peut etre annule" }, { status: 409 });
+      }
+      if (error.message === "PAYMENT_ALREADY_REVERSED") {
+        return NextResponse.json({ error: "Ce paiement est deja annule" }, { status: 409 });
+      }
+      if (error.message === "NEGATIVE_TOTAL") {
+        return NextResponse.json({ error: "Le total des paiements ne peut pas devenir negatif" }, { status: 409 });
+      }
     }
 
+    console.error("[DELETE /api/payments] error:", error);
     return NextResponse.json({ error: "Erreur serveur lors de la suppression" }, { status: 500 });
   }
 }

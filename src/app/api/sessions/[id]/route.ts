@@ -20,6 +20,10 @@ import {
   getSessionAttendanceCount,
   SessionEditBlockedError,
 } from "@/lib/session-attendance-guard";
+import {
+  coachSportOverrideAuditDetails,
+  validateCoachSportEligibility,
+} from "@/lib/coach-qualification-policy";
 
 export const runtime = "nodejs";
 
@@ -43,7 +47,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const session = await prisma.session.findUnique({
     where: { id },
     include: {
-      group: { select: { name: true } },
+      group: { select: { name: true, sportId: true } },
       coach: { select: { firstName: true, lastName: true } },
       schedule: {
         select: {
@@ -65,6 +69,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       id: session.id,
       groupId: session.groupId,
       groupName: session.group.name,
+      groupSportId: session.group.sportId,
       scheduleId: session.scheduleId,
       sessionDate: session.sessionDate.toISOString(),
       startTime: session.startTime,
@@ -102,7 +107,7 @@ function sessionResponsePayload(
     postponementDetails: string | null;
     createdAt: Date;
     updatedAt: Date;
-    group: { name: string };
+    group: { name: string; sportId: string };
     coach: { firstName: string; lastName: string } | null;
   },
 ) {
@@ -110,6 +115,7 @@ function sessionResponsePayload(
     id: updated.id,
     groupId: updated.groupId,
     groupName: updated.group.name,
+    groupSportId: updated.group.sportId,
     scheduleId: updated.scheduleId,
     sessionDate: updated.sessionDate.toISOString(),
     startTime: updated.startTime,
@@ -128,8 +134,9 @@ function sessionResponsePayload(
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  let actor;
   try {
-    await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -174,7 +181,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       coachId: true,
       room: true,
       status: true,
-      group: { select: { name: true } },
+      group: { select: { name: true, sportId: true } },
     },
   });
 
@@ -228,6 +235,23 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const timeChanged = payload.startTime !== undefined && payload.startTime !== existing.startTime;
   const coachChanged = payload.coachId !== undefined && payload.coachId !== existing.coachId;
   const roomChanged = payload.room !== undefined && payload.room !== existing.room;
+  let eligibility: Awaited<ReturnType<typeof validateCoachSportEligibility>> | null = null;
+
+  if (coachChanged && targetCoachId) {
+    eligibility = await validateCoachSportEligibility({
+      coachId: targetCoachId,
+      sportId: existing.group.sportId,
+      actor,
+      overrideReason: payload.coachSportOverrideReason,
+    });
+
+    if (!eligibility.ok) {
+      return NextResponse.json(
+        { error: eligibility.error, code: eligibility.code },
+        { status: eligibility.status },
+      );
+    }
+  }
 
   if (dateChanged || timeChanged || coachChanged || roomChanged) {
     const conflictError = await validateSessionSlot({
@@ -385,12 +409,35 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         );
       }
 
+      const details = eligibility?.ok
+        ? coachSportOverrideAuditDetails(eligibility, {
+            sessionId: id,
+            groupId: existing.groupId,
+            groupName: existing.group.name,
+            operation: "SESSION_UPDATE_PERMANENT",
+          })
+        : null;
+
+      if (details) {
+        ops.push(
+          prisma.auditLog.create({
+            data: {
+              action: "COACH_SPORT_OVERRIDE_USED",
+              entityType: "Session",
+              entityId: id,
+              userId: actor.id,
+              details,
+            },
+          }),
+        );
+      }
+
       await prisma.$transaction(ops);
 
       const updated = await prisma.session.findUnique({
         where: { id },
         include: {
-          group: { select: { name: true } },
+          group: { select: { name: true, sportId: true } },
           coach: { select: { firstName: true, lastName: true } },
         },
       });
@@ -416,10 +463,31 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       where: { id },
       data: sessionData,
       include: {
-        group: { select: { name: true } },
+        group: { select: { name: true, sportId: true } },
         coach: { select: { firstName: true, lastName: true } },
       },
     });
+
+    const details = eligibility?.ok
+      ? coachSportOverrideAuditDetails(eligibility, {
+          sessionId: id,
+          groupId: existing.groupId,
+          groupName: existing.group.name,
+          operation: "SESSION_UPDATE_EXCEPTION",
+        })
+      : null;
+
+    if (details) {
+      await prisma.auditLog.create({
+        data: {
+          action: "COACH_SPORT_OVERRIDE_USED",
+          entityType: "Session",
+          entityId: id,
+          userId: actor.id,
+          details,
+        },
+      });
+    }
 
     return NextResponse.json({ data: sessionResponsePayload(updated) });
   } catch (error) {
@@ -451,11 +519,18 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 
   const existing = await prisma.session.findUnique({
     where: { id },
-    select: { id: true },
+    select: { id: true, status: true },
   });
 
   if (!existing) {
     return NextResponse.json({ error: "Séance introuvable" }, { status: 404 });
+  }
+
+  if (existing.status === "COMPLETED") {
+    return NextResponse.json(
+      { error: "Cette séance est finalisée. Rouvrez-la avant de l'annuler." },
+      { status: 409 },
+    );
   }
 
   try {
@@ -467,9 +542,17 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     throw error;
   }
 
-  await prisma.session.delete({
+  const cancelled = await prisma.session.update({
     where: { id },
+    data: {
+      status: "CANCELLED",
+      exceptionReason: "Annulation depuis le planning",
+      postponedTo: null,
+      postponementReason: null,
+      postponementDetails: null,
+    },
+    select: { id: true, status: true, exceptionReason: true, updatedAt: true },
   });
 
-  return NextResponse.json({ data: { deleted: true } });
+  return NextResponse.json({ data: cancelled });
 }

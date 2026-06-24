@@ -31,8 +31,14 @@ type SessionsPlannerProps = {
   initialWeekStart: string;
   initialGroupId?: string;
   initialSessionId?: string;
-  groupsOptions: Array<{ id: string; name: string }>;
-  coachesOptions: Array<{ id: string; firstName: string; lastName: string }>;
+  groupsOptions: Array<{ id: string; name: string; sportId: string }>;
+  coachesOptions: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    qualifiedSportIds: string[];
+    qualifiedSports: Array<{ id: string; name: string; isPrimary: boolean }>;
+  }>;
 };
 
 const sessionStatusLabels: Record<SessionStatusDto, string> = {
@@ -73,6 +79,20 @@ function formatDateFr(dateIso: string) {
   });
 }
 
+function coachOptionLabel(coach: SessionsPlannerProps["coachesOptions"][number]) {
+  const qualified = coach.qualifiedSports.map((sport) => sport.name).join(", ");
+  const name = `${coach.firstName} ${coach.lastName}`;
+  return qualified ? `${name} - ${qualified}` : name;
+}
+
+function coachIsQualifiedForSport(
+  coach: SessionsPlannerProps["coachesOptions"][number] | undefined,
+  sportId?: string,
+) {
+  if (!coach || !sportId) return true;
+  return coach.qualifiedSportIds.includes(sportId);
+}
+
 export function SessionsPlanner({
   initialSessions,
   initialWeekStart,
@@ -101,6 +121,7 @@ export function SessionsPlanner({
     endTime: "",
     status: "" as SessionStatusDto | "",
     exceptionReason: "",
+    coachSportOverrideReason: "",
   });
   const [editMode, setEditMode] = useState<"exception" | "permanent" | null>(null);
   const [editLoading, setEditLoading] = useState(false);
@@ -111,6 +132,14 @@ export function SessionsPlanner({
 
   const weekEnd = useMemo(() => weekEndIsoFromStartIso(weekStart), [weekStart]);
   const editingHasAttendances = (editingSession?.attendanceCount ?? 0) > 0;
+  const selectedEditCoach = coachesOptions.find((coach) => coach.id === editForm.coachId);
+  const editCoachChanged = Boolean(editingSession && editForm.coachId !== (editingSession.coachId ?? ""));
+  const needsCoachSportOverride = Boolean(
+    editingSession &&
+      editForm.coachId &&
+      editCoachChanged &&
+      !coachIsQualifiedForSport(selectedEditCoach, editingSession.groupSportId),
+  );
 
   useEffect(() => {
     if (deepLinkHandled.current || !initialSessionId) return;
@@ -177,6 +206,7 @@ export function SessionsPlanner({
       endTime: session.endTime,
       status: session.status,
       exceptionReason: session.exceptionReason ?? "",
+      coachSportOverrideReason: "",
     });
     setEditMode("exception");
     setEditMessage(null);
@@ -209,6 +239,9 @@ export function SessionsPlanner({
       if (editForm.status === "CANCELLED" && editForm.exceptionReason.trim()) {
         body.exceptionReason = editForm.exceptionReason.trim();
       }
+      if (needsCoachSportOverride) {
+        body.coachSportOverrideReason = editForm.coachSportOverrideReason.trim();
+      }
     } else {
       if (editForm.sessionDate && editForm.sessionDate !== originalDateIso) {
         body.sessionDate = new Date(`${editForm.sessionDate}T12:00:00`).toISOString();
@@ -230,6 +263,9 @@ export function SessionsPlanner({
       }
       if (editForm.exceptionReason !== (editingSession.exceptionReason ?? "")) {
         body.exceptionReason = editForm.exceptionReason;
+      }
+      if (needsCoachSportOverride) {
+        body.coachSportOverrideReason = editForm.coachSportOverrideReason.trim();
       }
     }
 
@@ -350,16 +386,32 @@ export function SessionsPlanner({
       method: "DELETE",
     });
 
+    const result = await parseApiResponse<{
+      data?: { id: string; status: SessionStatusDto; exceptionReason: string | null; updatedAt: string };
+      error?: string;
+    }>(response);
+
     if (!response.ok) {
-      const result = await parseApiResponse<{ error?: string }>(response);
-      setMessage(result.error ?? "Erreur lors de la suppression");
+      setMessage(result.error ?? "Erreur lors de l'annulation");
       setLoading(false);
       return;
     }
 
-    setSessions((current) => current.filter((s) => s.id !== sessionId));
+    setSessions((current) =>
+      current.map((session) =>
+        session.id === sessionId
+          ? {
+              ...session,
+              status: result.data?.status ?? "CANCELLED",
+              operationalStatus: "CANCELLED",
+              exceptionReason: result.data?.exceptionReason ?? "Annulation depuis le planning",
+              updatedAt: result.data?.updatedAt ?? new Date().toISOString(),
+            }
+          : session,
+      ),
+    );
     setPendingDeleteSession(null);
-    setMessage("Séance supprimée avec succès");
+    setMessage("Séance annulée avec succès");
     setLoading(false);
   }
 
@@ -548,15 +600,17 @@ export function SessionsPlanner({
                           <button
                             type="button"
                             onClick={() => setPendingDeleteSession(item)}
-                            disabled={(item.attendanceCount ?? 0) > 0}
+                            disabled={(item.attendanceCount ?? 0) > 0 || item.status === "CANCELLED"}
                             title={
-                              (item.attendanceCount ?? 0) > 0
-                                ? "Annulez les pointages depuis le pointage du jour avant de supprimer"
+                              item.status === "CANCELLED"
+                                ? "Séance déjà annulée"
+                                : (item.attendanceCount ?? 0) > 0
+                                ? "Annulez les pointages depuis le pointage du jour avant d'annuler la séance"
                                 : undefined
                             }
                             className="btn btn-ghost btn-sm border-[var(--danger)]/30 text-[var(--danger)] disabled:opacity-50"
                           >
-                            Supprimer
+                            Annuler
                           </button>
                         </div>
                       </div>
@@ -660,9 +714,14 @@ export function SessionsPlanner({
                 >
                   <option value="">Aucun</option>
                   {coachesOptions.map((coach) => (
-                    <option key={coach.id} value={coach.id}>{coach.firstName} {coach.lastName}</option>
+                    <option key={coach.id} value={coach.id}>{coachOptionLabel(coach)}</option>
                   ))}
                 </select>
+                {needsCoachSportOverride ? (
+                  <p className="mt-1 text-xs text-[var(--danger)]">
+                    Coach hors qualification pour le sport du groupe. Motif admin obligatoire.
+                  </p>
+                ) : null}
               </div>
               <div>
                 <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Salle</label>
@@ -725,6 +784,21 @@ export function SessionsPlanner({
                   />
                 </div>
               ) : null}
+              {needsCoachSportOverride ? (
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">
+                    Motif admin d&apos;exception
+                  </label>
+                  <textarea
+                    value={editForm.coachSportOverrideReason}
+                    onChange={(e) => setEditForm((f) => ({ ...f, coachSportOverrideReason: e.target.value }))}
+                    maxLength={500}
+                    disabled={editingHasAttendances}
+                    className="field min-h-20 text-sm"
+                    required
+                  />
+                </div>
+              ) : null}
             </div>
 
             <FeedbackMessage message={editMessage} className="mt-3" />
@@ -768,7 +842,8 @@ export function SessionsPlanner({
                   disabled={
                     editLoading ||
                     editingHasAttendances ||
-                    (editForm.status === "CANCELLED" && !editForm.exceptionReason.trim())
+                    (editForm.status === "CANCELLED" && !editForm.exceptionReason.trim()) ||
+                    (needsCoachSportOverride && !editForm.coachSportOverrideReason.trim())
                   }
                   className="btn btn-primary btn-block-mobile"
                 >
@@ -782,13 +857,13 @@ export function SessionsPlanner({
 
       <ConfirmDialog
         open={pendingDeleteSession !== null}
-        title="Supprimer cette séance ?"
+        title="Annuler cette séance ?"
         description={
           pendingDeleteSession
-            ? `${pendingDeleteSession.groupName}, le ${formatDateFr(pendingDeleteSession.sessionDate)}. Cette action est irréversible.`
+            ? `${pendingDeleteSession.groupName}, le ${formatDateFr(pendingDeleteSession.sessionDate)}. La séance restera dans l'historique avec le statut annulé.`
             : ""
         }
-        confirmLabel="Supprimer la séance"
+        confirmLabel="Annuler la séance"
         loading={loading}
         onCancel={() => setPendingDeleteSession(null)}
         onConfirm={() => pendingDeleteSession ? deleteSession(pendingDeleteSession.id) : undefined}

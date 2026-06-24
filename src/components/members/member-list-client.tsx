@@ -218,6 +218,11 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
 
   function renderMemberRow(member: MemberWithGroups, selectable = false) {
     const isExpanded = expandedMemberIds.includes(member.id);
+    const payment = paymentBadge(member.paymentStatus);
+    const firstGroupName =
+      member.groupIds.length > 0
+        ? groupsOptions.find((group) => group.id === member.groupIds[0])?.name ?? "Groupe"
+        : "Sans groupe";
 
     return (
       <tr
@@ -241,6 +246,19 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
           >
             {member.firstName} {member.lastName}
           </Link>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 md:hidden">
+            <span className="chip chip-muted px-1.5 py-0.5 text-[10px]">{member.phone}</span>
+            <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${payment.className}`}>
+              {payment.label}
+            </span>
+            <StatusBadge
+              variant={member.status === "ACTIVE" ? "success" : "muted"}
+              className="px-1.5 py-0.5 text-[10px]"
+            >
+              {member.status === "ACTIVE" ? "Actif" : "Résilié"}
+            </StatusBadge>
+            <span className="chip chip-muted max-w-full truncate px-1.5 py-0.5 text-[10px]">{firstGroupName}</span>
+          </div>
         </td>
         <td className="px-4 py-3 mobile-detail-cell" data-label="Téléphone">{member.phone}</td>
         <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell mobile-detail-cell" data-label="Email">{member.email ?? "-"}</td>

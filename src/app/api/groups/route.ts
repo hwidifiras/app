@@ -4,6 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { createGroupSchema, updateGroupSchema } from "@/lib/schemas/group";
 import { normalizeGroupRoomInput } from "@/lib/group-room";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
+import {
+  coachSportOverrideAuditDetails,
+  validateCoachSportEligibility,
+} from "@/lib/coach-qualification-policy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -103,8 +107,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -139,28 +144,65 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Coach introuvable" }, { status: 404 });
   }
 
-  const created = await prisma.group.create({
-    data: {
-      name: parsed.data.name,
-      groupType: parsed.data.groupType,
-      sportId: parsed.data.sportId,
-      coachId: parsed.data.coachId,
-      capacity: parsed.data.capacity,
-      room: normalizeGroupRoomInput(parsed.data.room),
-    },
-    include: {
-      sport: { select: { name: true } },
-      coach: { select: { firstName: true, lastName: true } },
-      schedules: { orderBy: { createdAt: "asc" } },
-    },
+  const eligibility = await validateCoachSportEligibility({
+    coachId: parsed.data.coachId,
+    sportId: parsed.data.sportId,
+    actor,
+    overrideReason: parsed.data.coachSportOverrideReason,
+  });
+
+  if (!eligibility.ok) {
+    return NextResponse.json(
+      { error: eligibility.error, code: eligibility.code },
+      { status: eligibility.status },
+    );
+  }
+
+  const created = await prisma.$transaction(async (tx) => {
+    const group = await tx.group.create({
+      data: {
+        name: parsed.data.name,
+        groupType: parsed.data.groupType,
+        sportId: parsed.data.sportId,
+        coachId: parsed.data.coachId,
+        capacity: parsed.data.capacity,
+        room: normalizeGroupRoomInput(parsed.data.room),
+      },
+      include: {
+        sport: { select: { name: true } },
+        coach: { select: { firstName: true, lastName: true } },
+        schedules: { orderBy: { createdAt: "asc" } },
+      },
+    });
+
+    const details = coachSportOverrideAuditDetails(eligibility, {
+      groupId: group.id,
+      groupName: group.name,
+      operation: "GROUP_CREATE",
+    });
+
+    if (details) {
+      await tx.auditLog.create({
+        data: {
+          action: "COACH_SPORT_OVERRIDE_USED",
+          entityType: "Group",
+          entityId: group.id,
+          userId: actor.id,
+          details,
+        },
+      });
+    }
+
+    return group;
   });
 
   return NextResponse.json({ data: toGroupDto(created) }, { status: 201 });
 }
 
 export async function PATCH(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -196,6 +238,14 @@ export async function PATCH(request: Request) {
   }
 
   const payload = updatePayload.data;
+  const existingGroup = await prisma.group.findUnique({
+    where: { id: groupId },
+    select: { id: true, name: true, sportId: true, coachId: true },
+  });
+
+  if (!existingGroup) {
+    return NextResponse.json({ error: "Groupe introuvable" }, { status: 404 });
+  }
 
   if (payload.sportId) {
     const sportExists = await prisma.sport.findUnique({ where: { id: payload.sportId }, select: { id: true } });
@@ -211,23 +261,71 @@ export async function PATCH(request: Request) {
     }
   }
 
+  const targetSportId = payload.sportId ?? existingGroup.sportId;
+  const targetCoachId = payload.coachId ?? existingGroup.coachId;
+  const coachSportPairChanged =
+    targetSportId !== existingGroup.sportId || targetCoachId !== existingGroup.coachId;
+  let eligibility: Awaited<ReturnType<typeof validateCoachSportEligibility>> | null = null;
+
+  if (coachSportPairChanged) {
+    eligibility = await validateCoachSportEligibility({
+      coachId: targetCoachId,
+      sportId: targetSportId,
+      actor,
+      overrideReason: payload.coachSportOverrideReason,
+    });
+
+    if (!eligibility.ok) {
+      return NextResponse.json(
+        { error: eligibility.error, code: eligibility.code },
+        { status: eligibility.status },
+      );
+    }
+  }
+
   try {
-    const updatedGroup = await prisma.group.update({
-      where: { id: groupId },
-      data: {
-        name: payload.name,
-        groupType: payload.groupType,
-        sportId: payload.sportId,
-        coachId: payload.coachId,
-        capacity: payload.capacity,
-        room: payload.room === undefined ? undefined : normalizeGroupRoomInput(payload.room),
-        isActive: payload.isActive,
-      },
-      include: {
-        sport: { select: { name: true } },
-        coach: { select: { firstName: true, lastName: true } },
-        schedules: { orderBy: { createdAt: "asc" } },
-      },
+    const updatedGroup = await prisma.$transaction(async (tx) => {
+      const group = await tx.group.update({
+        where: { id: groupId },
+        data: {
+          name: payload.name,
+          groupType: payload.groupType,
+          sportId: payload.sportId,
+          coachId: payload.coachId,
+          capacity: payload.capacity,
+          room: payload.room === undefined ? undefined : normalizeGroupRoomInput(payload.room),
+          isActive: payload.isActive,
+        },
+        include: {
+          sport: { select: { name: true } },
+          coach: { select: { firstName: true, lastName: true } },
+          schedules: { orderBy: { createdAt: "asc" } },
+        },
+      });
+
+      const details = eligibility?.ok
+        ? coachSportOverrideAuditDetails(eligibility, {
+            groupId: group.id,
+            groupName: group.name,
+            previousSportId: existingGroup.sportId,
+            previousCoachId: existingGroup.coachId,
+            operation: "GROUP_UPDATE",
+          })
+        : null;
+
+      if (details) {
+        await tx.auditLog.create({
+          data: {
+            action: "COACH_SPORT_OVERRIDE_USED",
+            entityType: "Group",
+            entityId: group.id,
+            userId: actor.id,
+            details,
+          },
+        });
+      }
+
+      return group;
     });
 
     return NextResponse.json({ data: toGroupDto(updatedGroup) });
@@ -237,8 +335,9 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -262,16 +361,33 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    const result = await prisma.$transaction([
-      prisma.session.deleteMany({ where: { groupId } }),
-      prisma.group.delete({ where: { id: groupId } }),
-    ]);
+    const deactivated = await prisma.$transaction(async (tx) => {
+      const group = await tx.group.update({
+        where: { id: groupId },
+        data: { isActive: false },
+        include: {
+          sport: { select: { name: true } },
+          coach: { select: { firstName: true, lastName: true } },
+          schedules: { orderBy: { createdAt: "asc" } },
+          _count: { select: { members: { where: { status: "ACTIVE" } } } },
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          action: "GROUP_DEACTIVATED",
+          entityType: "Group",
+          entityId: groupId,
+          userId: actor.id,
+          details: JSON.stringify({ deactivatedAt: new Date().toISOString() }),
+        },
+      });
+
+      return group;
+    });
 
     return NextResponse.json({
-      data: {
-        id: groupId,
-        deletedSessions: result[0].count,
-      },
+      data: toGroupDto(deactivated),
     });
   } catch {
     return NextResponse.json({ error: "Erreur serveur lors de la suppression" }, { status: 500 });

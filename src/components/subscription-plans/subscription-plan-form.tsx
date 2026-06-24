@@ -29,7 +29,7 @@ type SubscriptionPlanFormProps = {
 export function SubscriptionPlanForm({ mode, planId, initialValues }: SubscriptionPlanFormProps) {
   const router = useRouter();
   const [name, setName] = useState(initialValues?.name ?? "");
-  const [description, setDescription] = useState(initialValues?.description ?? "");
+  const description = initialValues?.description ?? "";
   const [price, setPrice] = useState(
     initialValues ? (initialValues.price / 100).toFixed(2) : "",
   );

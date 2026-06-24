@@ -18,6 +18,8 @@ export default async function CoachesPage() {
     isActive: boolean;
     sportId: string | null;
     sportName: string | null;
+    qualifiedSportIds: string[];
+    qualifiedSports: Array<{ id: string; name: string; isPrimary: boolean }>;
     createdAt: string;
     updatedAt: string;
   }> = [];
@@ -33,24 +35,54 @@ export default async function CoachesPage() {
   try {
     const [coaches, sports] = await Promise.all([
       prisma.coach.findMany({
-        include: { sport: { select: { id: true, name: true } } },
+        include: {
+          sport: { select: { id: true, name: true } },
+          qualifications: {
+            include: { sport: { select: { id: true, name: true } } },
+            orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+          },
+        },
         orderBy: { createdAt: "desc" },
       }),
       prisma.sport.findMany({ orderBy: { name: "asc" }, where: { isActive: true } }),
     ]);
 
-    initialCoaches = coaches.map((coach) => ({
-      id: coach.id,
-      firstName: coach.firstName,
-      lastName: coach.lastName,
-      phone: coach.phone,
-      email: coach.email,
-      isActive: coach.isActive,
-      sportId: coach.sportId,
-      sportName: coach.sport?.name ?? null,
-      createdAt: coach.createdAt.toISOString(),
-      updatedAt: coach.updatedAt.toISOString(),
-    }));
+    initialCoaches = coaches.map((coach) => {
+      const qualifiedSportsById = new Map<string, { id: string; name: string; isPrimary: boolean }>();
+      for (const qualification of coach.qualifications) {
+        qualifiedSportsById.set(qualification.sport.id, {
+          id: qualification.sport.id,
+          name: qualification.sport.name,
+          isPrimary: qualification.isPrimary,
+        });
+      }
+      if (coach.sport) {
+        qualifiedSportsById.set(coach.sport.id, {
+          id: coach.sport.id,
+          name: coach.sport.name,
+          isPrimary: true,
+        });
+      }
+      const qualifiedSports = Array.from(qualifiedSportsById.values()).sort((a, b) => {
+        if (a.isPrimary !== b.isPrimary) return a.isPrimary ? -1 : 1;
+        return a.name.localeCompare(b.name, "fr");
+      });
+
+      return {
+        id: coach.id,
+        firstName: coach.firstName,
+        lastName: coach.lastName,
+        phone: coach.phone,
+        email: coach.email,
+        isActive: coach.isActive,
+        sportId: coach.sportId,
+        sportName: coach.sport?.name ?? null,
+        qualifiedSportIds: qualifiedSports.map((sport) => sport.id),
+        qualifiedSports,
+        createdAt: coach.createdAt.toISOString(),
+        updatedAt: coach.updatedAt.toISOString(),
+      };
+    });
 
     sportsOptions = sports.map((sport) => ({
       ...sport,
@@ -85,9 +117,9 @@ export default async function CoachesPage() {
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Référentiels"
-        title="Gestion des coachs"
-        description="Référentiel des coachs avec spécialité sportive, activation et maintenance rapide."
+        overline="Configuration"
+        title="Coachs"
+        description="Gérer les coachs, leurs spécialités et leur disponibilité."
       />
       <CoachManager initialCoaches={initialCoaches} sportsOptions={sportsOptions} />
     </main>

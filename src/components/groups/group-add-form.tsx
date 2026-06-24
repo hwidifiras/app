@@ -11,7 +11,13 @@ import { SportDto } from "@/types/sport";
 
 function formatCoachOptionLabel(coach: CoachDto) {
   const name = `${coach.firstName} ${coach.lastName}`;
-  return coach.sportName ? `${name} - ${coach.sportName}` : name;
+  const qualified = coach.qualifiedSports.map((sport) => sport.name).join(", ");
+  return qualified ? `${name} - ${qualified}` : coach.sportName ? `${name} - ${coach.sportName}` : name;
+}
+
+function coachIsQualifiedForSport(coach: CoachDto | undefined, sportId: string) {
+  if (!coach || !sportId) return true;
+  return coach.qualifiedSportIds.includes(sportId);
 }
 
 export function GroupAddForm({
@@ -29,6 +35,7 @@ export function GroupAddForm({
   const [groupType, setGroupType] = useState<"KIDS" | "ADULTS">("ADULTS");
   const [sportId, setSportId] = useState("");
   const [coachId, setCoachId] = useState("");
+  const [coachSportOverrideReason, setCoachSportOverrideReason] = useState("");
   const [capacity, setCapacity] = useState(20);
   const [room, setRoom] = useState("");
   const [membersSearch, setMembersSearch] = useState("");
@@ -57,6 +64,8 @@ export function GroupAddForm({
     const matchesQuery = `${member.firstName} ${member.lastName}`.toLowerCase().includes(query) || member.phone.toLowerCase().includes(query);
     return matchesQuery;
   }).filter((member) => isMemberAllowed(member.memberType));
+  const selectedCoach = coachesOptions.find((coach) => coach.id === coachId);
+  const needsCoachSportOverride = !coachIsQualifiedForSport(selectedCoach, sportId);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -73,6 +82,7 @@ export function GroupAddForm({
         coachId,
         capacity,
         room,
+        coachSportOverrideReason: needsCoachSportOverride ? coachSportOverrideReason : "",
       }),
     });
 
@@ -161,6 +171,11 @@ export function GroupAddForm({
                 <option key={coach.id} value={coach.id}>{formatCoachOptionLabel(coach)}</option>
               ))}
             </select>
+            {needsCoachSportOverride ? (
+              <p className="mt-1 text-xs text-[var(--danger)]">
+                Coach hors qualification pour ce sport. Validation admin avec motif obligatoire.
+              </p>
+            ) : null}
           </div>
           <div>
             <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Salle par défaut</label>
@@ -179,6 +194,20 @@ export function GroupAddForm({
             <input type="number" min={1} max={200} value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} className="field text-sm" required />
           </div>
         </div>
+        {needsCoachSportOverride ? (
+          <div className="mt-3">
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">
+              Motif admin d&apos;exception
+            </label>
+            <textarea
+              value={coachSportOverrideReason}
+              onChange={(e) => setCoachSportOverrideReason(e.target.value)}
+              maxLength={500}
+              className="field min-h-20 text-sm"
+              required
+            />
+          </div>
+        ) : null}
       </div>
 
       <GroupMemberSelector
@@ -198,7 +227,7 @@ export function GroupAddForm({
         <button type="button" onClick={() => router.push("/groups")} className="btn btn-ghost btn-block-mobile">
           Annuler
         </button>
-        <button type="submit" disabled={loading} className="btn btn-primary btn-block-mobile">
+        <button type="submit" disabled={loading || (needsCoachSportOverride && !coachSportOverrideReason.trim())} className="btn btn-primary btn-block-mobile">
           {loading ? "Enregistrement…" : "Créer le groupe"}
         </button>
       </FormActions>

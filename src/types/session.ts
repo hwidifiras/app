@@ -9,6 +9,7 @@ export type SessionDto = {
   id: string;
   groupId: string;
   groupName: string;
+  groupSportId?: string;
   scheduleId: string | null;
   sessionDate: string;
   startTime: string;

@@ -23,8 +23,7 @@ export async function getUserPermissions(userId: string): Promise<PermissionKey[
 
 export async function userHasPermission(user: RequestUser, permission: PermissionKey): Promise<boolean> {
   if (user.role === "ADMIN") return true;
-  const permissions = await getUserPermissions(user.id);
-  return permissions.includes(permission);
+  return parsePermissions(user.permissions).includes(permission);
 }
 
 export async function requirePermission(

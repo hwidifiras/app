@@ -10,6 +10,11 @@ import { cn } from "@/lib/utils";
 
 const DISMISS_KEY = "gymday-setup-guide-dismissed";
 
+function readDismissedState() {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(DISMISS_KEY) === "1";
+}
+
 type SetupGuideProps = {
   variant: "bar" | "header";
   className?: string;
@@ -91,7 +96,7 @@ export function SetupGuide({ variant, className }: SetupGuideProps) {
   const pathname = usePathname();
   const [progress, setProgress] = useState<SetupGuideProgress | null>(null);
   const [open, setOpen] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(readDismissedState);
 
   const load = useCallback(async () => {
     try {
@@ -109,10 +114,8 @@ export function SetupGuide({ variant, className }: SetupGuideProps) {
   }, []);
 
   useEffect(() => {
-    setDismissed(typeof window !== "undefined" && localStorage.getItem(DISMISS_KEY) === "1");
-  }, []);
-
-  useEffect(() => {
+    // The setup guide is a small client-side synchronization surface.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load, pathname]);
 

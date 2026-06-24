@@ -88,7 +88,7 @@ export default async function GroupSchedulesPage({ params }: { params: Promise<{
       </Link>
 
       <PageHeader
-        overline="Planification"
+        overline="Planning"
         title={group.name}
         description={`${group.sport.name} — Coach ${group.coach.firstName} ${group.coach.lastName} — Salle ${formatGroupRoomLabel(group.room)}`}
         actions={

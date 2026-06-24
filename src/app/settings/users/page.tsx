@@ -17,9 +17,9 @@ export default async function SettingsUsersPage() {
     return (
       <main className="app-shell py-4 md:py-8">
         <PageHeader
-          overline="Paramètres"
+          overline="Administration"
           title="Utilisateurs"
-          description="Seul un ADMIN peut gérer les comptes."
+          description="Seul un administrateur peut gérer les comptes."
         />
         <section className="panel panel-soft p-5">
           <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
@@ -49,9 +49,9 @@ export default async function SettingsUsersPage() {
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Paramètres"
+        overline="Administration"
         title="Utilisateurs"
-        description="Créez et gérez les comptes du staff : nom, email, activation et réinitialisation du mot de passe."
+        description="Créer, activer et réinitialiser les comptes du staff."
       />
 
       <section className="panel panel-soft p-5 md:p-6">

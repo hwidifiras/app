@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
 
 import { AUTH_COOKIE_NAME, verifyAuthToken, type AuthRole } from "@/lib/auth";
+import { parsePermissions } from "@/lib/permission-definitions";
+import { prisma } from "@/lib/prisma";
 
 export type RequestUser = {
   id: string;
@@ -10,8 +12,9 @@ export type RequestUser = {
   permissions: string[];
 };
 
-export async function getAuthUser(request: Request): Promise<RequestUser | null> {
-  void request;
+export async function getAuthUser(_request?: Request): Promise<RequestUser | null> {
+  void _request;
+
   const cookieStore = await cookies();
   const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
   if (!token) return null;
@@ -19,12 +22,26 @@ export async function getAuthUser(request: Request): Promise<RequestUser | null>
   const payload = await verifyAuthToken(token);
   if (!payload) return null;
 
+  const user = await prisma.user.findUnique({
+    where: { id: payload.userId },
+    select: {
+      id: true,
+      role: true,
+      email: true,
+      name: true,
+      isActive: true,
+      permissions: { select: { key: true } },
+    },
+  });
+
+  if (!user || !user.isActive) return null;
+
   return {
-    id: payload.userId,
-    role: payload.role,
-    email: payload.email,
-    name: payload.name,
-    permissions: payload.permissions ?? [],
+    id: user.id,
+    role: user.role,
+    email: user.email,
+    name: user.name,
+    permissions: user.role === "ADMIN" ? [] : parsePermissions(user.permissions.map((permission) => permission.key)),
   };
 }
 

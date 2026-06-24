@@ -169,8 +169,8 @@ export default async function AttendanceByGroupPage({
 
       <PageHeader
         overline="Suivi"
-        title="Présences par groupe"
-        description="Rapport par séance : pointages, effectif du cours et détail par élève."
+        title="Rapports groupes"
+        description="Lire les présences par cours, séance et élève sans quitter le planning."
       />
 
       <section className="panel p-3 sm:p-5">

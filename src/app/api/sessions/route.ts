@@ -54,6 +54,7 @@ function toSessionDto(session: {
   updatedAt: Date;
   group: {
     name: string;
+    sportId: string;
     members: Array<{ memberId: string; startDate: Date; endDate: Date | null }>;
   };
   coach: { firstName: string; lastName: string } | null;
@@ -72,6 +73,7 @@ function toSessionDto(session: {
     id: session.id,
     groupId: session.groupId,
     groupName: session.group.name,
+    groupSportId: session.group.sportId,
     scheduleId: session.scheduleId,
     sessionDate: session.sessionDate.toISOString(),
     startTime: session.startTime,
@@ -123,6 +125,7 @@ export async function GET(request: Request) {
       group: {
         select: {
           name: true,
+          sportId: true,
           members: {
             select: { memberId: true, startDate: true, endDate: true },
           },

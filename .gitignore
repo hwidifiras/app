@@ -13,6 +13,7 @@
 # testing
 /coverage
 /reports/
+/.local-audits/
 /prisma/test.db
 /prisma/test.db-journal
 /prisma/dev.db
@@ -47,6 +48,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+next-dev*.log
+next-start*.log
+qa-artifacts/
+/prisma/audit-build.db
+/prisma/audit-build.db-journal
 
 # env files (can opt-in for committing if needed)
 .env*

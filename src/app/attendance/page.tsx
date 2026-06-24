@@ -59,7 +59,7 @@ export default async function AttendancePage() {
       <PageHeader
         overline="Suivi"
         title="Présences"
-        description={`${rows.length} pointage(s) enregistré(s).`}
+        description={`${rows.length} pointage(s) enregistrés pour le suivi réception.`}
         actions={
           <>
             <Link href="/attendance/groups" className="btn btn-ghost btn-block-mobile min-h-11 text-sm sm:w-auto">

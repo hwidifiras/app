@@ -82,15 +82,15 @@ export default async function SubscriptionsPage() {
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Abonnements & Finance"
+        overline="Membres"
         title="Abonnements"
-        description="Suivi des abonnements membres, statuts et paiements associés."
+        description="Suivre les statuts, soldes, dates et séances restantes."
         actions={
           <Link
             href="/subscriptions/new"
             className="btn btn-primary btn-block-mobile inline-flex items-center justify-center gap-1.5 text-sm"
           >
-            <Plus className="size-4" /> Renouvellement
+            <Plus className="size-4" /> Renouveler
           </Link>
         }
       />

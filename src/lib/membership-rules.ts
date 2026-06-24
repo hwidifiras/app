@@ -2,6 +2,7 @@ import type { Offer, OfferKind, Prisma, SubscriptionPlan } from "@prisma/client"
 
 import { getAppTimeZone } from "@/lib/dates";
 import { getClubSettings } from "@/lib/club-settings";
+import { businessDayWindow } from "@/lib/assignment-policy";
 import { resolveOfferRules } from "@/lib/offer-rules";
 import type { EnrollmentLineInput } from "@/lib/schemas/enrollment";
 import { prisma } from "@/lib/prisma";
@@ -15,12 +16,19 @@ export type ActiveSubscriptionView = {
   plan: { sportId: string; sessionsPerWeek: number | null; name: string };
 };
 
+function activeSubscriptionDateWindow(date: Date) {
+  const { dayStart, nextDayStart } = businessDayWindow(date);
+  return {
+    startDate: { lt: nextDayStart },
+    OR: [{ endDate: null }, { endDate: { gte: dayStart } }],
+  };
+}
+
 const activeSubWhere = (memberId: string, sportId: string, now = new Date()) => ({
   memberId,
   sportId,
   status: "ACTIVE" as const,
-  startDate: { lte: now },
-  OR: [{ endDate: null }, { endDate: { gte: now } }],
+  ...activeSubscriptionDateWindow(now),
   remainingSessions: { gt: 0 },
 });
 
@@ -122,11 +130,12 @@ export function isSubscriptionFullyPaid(amount: number, payments: { amount: numb
 
 export async function expireStaleSubscriptions(memberId?: string) {
   const now = new Date();
+  const { dayStart } = businessDayWindow(now);
   await prisma.memberSubscription.updateMany({
     where: {
       status: "ACTIVE",
       ...(memberId ? { memberId } : {}),
-      OR: [{ endDate: { lt: now } }, { remainingSessions: { lte: 0 } }],
+      OR: [{ endDate: { lt: dayStart } }, { remainingSessions: { lte: 0 } }],
     },
     data: { status: "EXPIRED" },
   });
@@ -171,8 +180,7 @@ export async function resolveSubscriptionForAttendance(
       memberId,
       sportId,
       status: { in: ["ACTIVE", "EXPIRED"] },
-      startDate: { lte: sessionDate },
-      OR: [{ endDate: null }, { endDate: { gte: sessionDate } }],
+      ...activeSubscriptionDateWindow(sessionDate),
       remainingSessions: { gt: 0 },
     },
     select: {

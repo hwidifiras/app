@@ -15,6 +15,7 @@ export const createCoachSchema = z.object({
     .optional()
     .or(z.literal("")),
   sportId: z.union([z.string().trim().min(1), z.literal(""), z.null()]).optional(),
+  qualifiedSportIds: z.array(z.string().trim().min(1)).optional(),
 });
 
 export type CreateCoachInput = z.infer<typeof createCoachSchema>;
@@ -33,6 +34,7 @@ export const updateCoachSchema = z
       .union([z.string().trim().email("Email invalide"), z.literal(""), z.null()])
       .optional(),
     sportId: z.union([z.string().trim().min(1), z.literal(""), z.null()]).optional(),
+    qualifiedSportIds: z.array(z.string().trim().min(1)).optional(),
     isActive: z.boolean().optional(),
   })
   .refine(
@@ -42,6 +44,7 @@ export const updateCoachSchema = z
       payload.phone !== undefined ||
       payload.email !== undefined ||
       payload.sportId !== undefined ||
+      payload.qualifiedSportIds !== undefined ||
       payload.isActive !== undefined,
     {
       message: "Aucun champ à mettre à jour",

@@ -12,7 +12,7 @@ export function DataTable({
   return (
     <div
       className={cn(
-        "data-table overflow-x-auto rounded-2xl border border-border bg-(--surface) shadow-[0_8px_22px_rgba(16,36,63,0.07)]",
+        "data-table overflow-x-auto rounded-lg border border-border bg-[var(--surface)] shadow-[var(--shadow-panel)]",
         className,
       )}
     >
@@ -67,7 +67,7 @@ export function DataTableRow({
 
 export function Th({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <th className={cn("h-11 px-4 text-left text-[0.72rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground", className)}>
+    <th className={cn("h-10 px-4 text-left text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground", className)}>
       {children}
     </th>
   );
@@ -89,7 +89,7 @@ export function Td({
   return (
     <td
       className={cn(
-        "px-4 py-3 text-[0.86rem] align-middle",
+        "px-4 py-3 text-[0.86rem] align-middle text-[var(--foreground)]",
         mobileDetail && "mobile-detail-cell",
         primary && "data-table-primary",
         className,

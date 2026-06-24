@@ -132,7 +132,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
         </div>
         <div>
           <Link href="/groups/new" className="btn btn-primary btn-block-mobile">
-            + Créer un groupe
+            + Nouveau cours
           </Link>
         </div>
         </div>
@@ -147,10 +147,10 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
         <EmptyState
           icon={<UsersRound className="size-8 opacity-45" />}
           title={groups.length === 0 ? "Aucun groupe" : "Aucun résultat"}
-          message={groups.length === 0 ? "Créez le premier groupe et ses créneaux." : "Modifiez la recherche ou le filtre de statut."}
+          message={groups.length === 0 ? "Créez le premier cours et ses créneaux." : "Modifiez la recherche ou le filtre de statut."}
           action={
             groups.length === 0 ? (
-              <Link href="/groups/new" className="btn btn-primary">Créer un groupe</Link>
+              <Link href="/groups/new" className="btn btn-primary">Créer un cours</Link>
             ) : (
               <button type="button" onClick={() => { setSearchTerm(""); setStatusFilter("ALL"); }} className="btn btn-ghost">
                 Réinitialiser

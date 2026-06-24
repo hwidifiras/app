@@ -64,9 +64,9 @@ export default async function SportsPage() {
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Référentiels"
-        title="Gestion des sports"
-        description="Référentiel des disciplines du club avec activation et maintenance rapide."
+        overline="Configuration"
+        title="Disciplines"
+        description="Gérer les disciplines proposées par le club."
       />
       <SportManager initialSports={initialSports} />
     </main>

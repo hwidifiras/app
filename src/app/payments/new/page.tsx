@@ -82,9 +82,9 @@ export default async function NewPaymentPage({
       </Link>
 
       <PageHeader
-        overline="Abonnements & Finance"
-        title="Encaisser un paiement"
-        description="Choisissez le membre et l'abonnement concerné, puis confirmez le montant reçu."
+        overline="Finance"
+        title="Encaisser"
+        description="Choisir le membre, vérifier l'abonnement et confirmer le montant reçu."
       />
 
       <section className="panel p-3.5 sm:p-5">

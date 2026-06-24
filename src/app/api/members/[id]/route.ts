@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { updateMemberSchema } from "@/lib/schemas/member";
+import { expireStaleSubscriptions } from "@/lib/membership-rules";
 
 export const runtime = "nodejs";
 
@@ -116,8 +117,9 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  let actor;
   try {
-    await requirePermission(_request, "members.manage");
+    actor = await requirePermission(_request, "members.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -125,20 +127,40 @@ export async function DELETE(
   const { id } = await params;
 
   try {
-    const deleted = await prisma.$transaction(async (tx) => {
-      await tx.groupMember.deleteMany({ where: { memberId: id } });
+    const now = new Date();
+    const archived = await prisma.$transaction(async (tx) => {
+      const member = await tx.member.update({
+        where: { id },
+        data: {
+          status: "ARCHIVED",
+          archivedAt: now,
+        },
+      });
 
-      const member = await tx.member.delete({ where: { id } });
+      await tx.groupMember.updateMany({
+        where: { memberId: id, status: "ACTIVE" },
+        data: {
+          status: "INACTIVE",
+          endDate: now,
+        },
+      });
+
+      await tx.memberSubscription.updateMany({
+        where: { memberId: id, status: "ACTIVE" },
+        data: { status: "CANCELLED" },
+      });
 
       await tx.auditLog.create({
         data: {
-          action: "MEMBER_DELETED",
+          action: "MEMBER_ARCHIVED",
           entityType: "Member",
           entityId: member.id,
+          userId: actor.id,
           details: JSON.stringify({
             firstName: member.firstName,
             lastName: member.lastName,
             phone: member.phone,
+            archivedAt: now.toISOString(),
           }),
         },
       });
@@ -146,9 +168,13 @@ export async function DELETE(
       return member;
     });
 
+    await expireStaleSubscriptions(id);
+
     return NextResponse.json({
       data: {
-        id: deleted.id,
+        id: archived.id,
+        status: archived.status,
+        archivedAt: archived.archivedAt?.toISOString() ?? null,
       },
     });
   } catch (error) {

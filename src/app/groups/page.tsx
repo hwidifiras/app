@@ -71,9 +71,9 @@ export default async function GroupsPage() {
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Référentiels"
-        title="Liste des groupes"
-        description="Consulter, modifier ou supprimer les groupes d'entraînement."
+        overline="Configuration"
+        title="Cours"
+        description="Gérer les groupes d'entraînement, capacités et créneaux actifs."
       />
 
       <section className="panel p-3 sm:p-5">

@@ -16,10 +16,6 @@ import { resolveMemberPhone } from "@/lib/member-phone";
 
 export const runtime = "nodejs";
 
-function formatPaymentPrefill(cents: number) {
-  return (cents / 100).toFixed(2).replace(".", ",");
-}
-
 export async function POST(request: Request) {
   let actor;
   try {
@@ -180,6 +176,7 @@ export async function POST(request: Request) {
               data: {
                 memberSubscriptionId: sub.id,
                 amount: payCents,
+                createdById: actor.id,
                 paymentMethod: line.paymentMethod?.trim() || "CASH",
                 notes: line.paymentNotes?.trim() || null,
               },
@@ -208,6 +205,7 @@ export async function POST(request: Request) {
               data: {
                 memberSubscriptionId: existing.id,
                 amount: payCents,
+                createdById: actor.id,
                 paymentMethod: line.paymentMethod?.trim() || "CASH",
                 notes: line.paymentNotes?.trim() || null,
               },

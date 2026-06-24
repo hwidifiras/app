@@ -54,15 +54,15 @@ export default async function SubscriptionPlansPage() {
       </Link>
 
       <PageHeader
-        overline="Abonnements & Finance"
-        title="Plans d'abonnement"
-        description={`${plans.length} plan${plans.length > 1 ? "s" : ""} configuré${plans.length > 1 ? "s" : ""}. Créez et gérez les forfaits proposés aux membres.`}
+        overline="Configuration"
+        title="Formules"
+        description={`${plans.length} formule${plans.length > 1 ? "s" : ""} configurée${plans.length > 1 ? "s" : ""}. Gérez les tarifs proposés aux membres.`}
         actions={
           <Link
             href="/subscription-plans/new"
             className="btn btn-primary btn-block-mobile inline-flex items-center justify-center gap-1.5"
           >
-            <Plus className="size-4" /> Nouveau plan
+            <Plus className="size-4" /> Nouvelle formule
           </Link>
         }
       />

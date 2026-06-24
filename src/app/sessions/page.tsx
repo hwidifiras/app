@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { SessionsPlanner } from "@/components/sessions/sessions-planner";
-import { getWeekRangeFromStartIso, getWeekRangeUtc, weekStartIsoForDate } from "@/lib/dates";
+import { getWeekRangeFromStartIso, weekStartIsoForDate } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import {
@@ -28,6 +28,7 @@ export default async function SessionsPage({
     id: string;
     groupId: string;
     groupName: string;
+    groupSportId: string;
     scheduleId: string | null;
     sessionDate: string;
     startTime: string;
@@ -51,8 +52,14 @@ export default async function SessionsPage({
     updatedAt: string;
   }> = [];
 
-  let groupsOptions: Array<{ id: string; name: string }> = [];
-  let coachesOptions: Array<{ id: string; firstName: string; lastName: string }> = [];
+  let groupsOptions: Array<{ id: string; name: string; sportId: string }> = [];
+  let coachesOptions: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    qualifiedSportIds: string[];
+    qualifiedSports: Array<{ id: string; name: string; isPrimary: boolean }>;
+  }> = [];
 
   try {
     const [sessions, groups, coaches] = await Promise.all([
@@ -68,6 +75,7 @@ export default async function SessionsPage({
           group: {
             select: {
               name: true,
+              sportId: true,
               members: {
                 select: { memberId: true, startDate: true, endDate: true },
               },
@@ -82,12 +90,22 @@ export default async function SessionsPage({
       }),
       prisma.group.findMany({
         where: { isActive: true },
-        select: { id: true, name: true },
+        select: { id: true, name: true, sportId: true },
         orderBy: { name: "asc" },
       }),
       prisma.coach.findMany({
         where: { isActive: true },
-        select: { id: true, firstName: true, lastName: true },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          sportId: true,
+          sport: { select: { id: true, name: true } },
+          qualifications: {
+            include: { sport: { select: { id: true, name: true } } },
+            orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+          },
+        },
         orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
       }),
     ]);
@@ -104,6 +122,7 @@ export default async function SessionsPage({
         id: session.id,
         groupId: session.groupId,
         groupName: session.group.name,
+        groupSportId: session.group.sportId,
         scheduleId: session.scheduleId,
         sessionDate: session.sessionDate.toISOString(),
         startTime: session.startTime,
@@ -124,7 +143,34 @@ export default async function SessionsPage({
     });
 
     groupsOptions = groups;
-    coachesOptions = coaches;
+    coachesOptions = coaches.map((coach) => {
+      const qualifiedSportsById = new Map<string, { id: string; name: string; isPrimary: boolean }>();
+      for (const qualification of coach.qualifications) {
+        qualifiedSportsById.set(qualification.sport.id, {
+          id: qualification.sport.id,
+          name: qualification.sport.name,
+          isPrimary: qualification.isPrimary,
+        });
+      }
+      if (coach.sport) {
+        qualifiedSportsById.set(coach.sport.id, {
+          id: coach.sport.id,
+          name: coach.sport.name,
+          isPrimary: true,
+        });
+      }
+      const qualifiedSports = Array.from(qualifiedSportsById.values()).sort((a, b) => {
+        if (a.isPrimary !== b.isPrimary) return a.isPrimary ? -1 : 1;
+        return a.name.localeCompare(b.name, "fr");
+      });
+      return {
+        id: coach.id,
+        firstName: coach.firstName,
+        lastName: coach.lastName,
+        qualifiedSportIds: qualifiedSports.map((sport) => sport.id),
+        qualifiedSports,
+      };
+    });
   } catch (error) {
     hasSessionsDataError = true;
     console.error("Sessions page degraded mode due to Prisma model mismatch:", error);
@@ -153,9 +199,9 @@ export default async function SessionsPage({
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Planification"
-        title="Planning des séances"
-        description="Vue hebdomadaire des séances avec filtres par groupe, jour et statut."
+        overline="Planning"
+        title="Planning"
+        description="Voir les séances, filtrer par cours et ouvrir le pointage."
       />
       <SessionsPlanner
         initialSessions={initialSessions}

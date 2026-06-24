@@ -129,9 +129,9 @@ export default async function MembersPage() {
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Parcours réception"
-        title="Liste des membres"
-        description="Rechercher, filtrer et consulter les dossiers membres."
+        overline="Membres"
+        title="Membres"
+        description="Rechercher, filtrer et ouvrir les dossiers utiles à l'accueil."
       />
 
       <section className="panel p-3 sm:p-5">
