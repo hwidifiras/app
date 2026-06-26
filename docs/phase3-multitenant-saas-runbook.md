@@ -54,6 +54,17 @@
 - Fast/medium Vitest suite plus tenant isolation tests passed against isolated Postgres
 - Full `tests/dojo-scenarios.test.ts` is too slow over the SSH tunnel; a representative payment scenario was run and fixed/passed.
 
+## Continuation Check - 2026-06-26
+
+- Local branch `codex/phase3-multitenant-saas` was already chunked and pushed in four commits.
+- Local ignored `.env.development` was corrected from SQLite to the Postgres dev URL so plain Prisma commands validate this branch correctly.
+- `npx prisma validate` passed after the ignored local env correction.
+- `npm run lint` passed.
+- `npm run build` passed.
+- `npm audit --omit=dev` still reports the moderate PostCSS advisory through `next`; the suggested `--force` fix would install a breaking `next` version and was not applied.
+- `npm test` is currently blocked on this Windows machine because no local Postgres server, Docker, WSL, or Podman runtime is available on `localhost:5432`.
+- VPS access to `178.105.144.196` timed out on SSH and connectivity checks, so live dirty-state reconciliation and parallel staging deploy could not be completed in this continuation window.
+
 ## Known Follow-Up Before Production
 
 - Reconcile live dirty files in `/opt/we-discipline` with this branch before staging deploy.
