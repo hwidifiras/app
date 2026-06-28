@@ -65,8 +65,40 @@
 - `npm test` is currently blocked on this Windows machine because no local Postgres server, Docker, WSL, or Podman runtime is available on `localhost:5432`.
 - VPS access to `178.105.144.196` timed out on SSH and connectivity checks, so live dirty-state reconciliation and parallel staging deploy could not be completed in this continuation window.
 
+## Staging Readiness Check - 2026-06-29
+
+- Fresh live backup created before staging work: `/root/we-discipline-backups/phase3-20260628T192934Z`.
+- Production `/opt/we-discipline` and Nginx traffic were not modified.
+- Parallel staging checkout created at `/opt/we-discipline-saas-staging` on `codex/phase3-multitenant-saas`.
+- Staging app commit: `0d61f2d` (`fix: make permission backfill postgres compatible`).
+- Staging stack is running beside production:
+  - `dojo-saas-postgres-staging`
+  - `dojo-saas-staging`
+  - exposed only on `127.0.0.1:3002`
+- PostgreSQL baseline migration deployed successfully to `gymday_saas_staging`.
+- Fresh SQLite backup import succeeded for tenant `tenant_we_discipline` / `we-discipline`.
+- `npm run saas:verify:migration` passed after import and again after test execution:
+  - `User` 1/1
+  - `Sport` 9/9
+  - `Coach` 9/9
+  - `Group` 9/9
+  - `AuditLog` 80/80
+  - payment total `0`
+  - active subscriptions `0`
+  - login-ready users `1/1`
+- Full test suite passed inside Docker against a separate Postgres test DB:
+  - 13 test files passed
+  - 144 tests passed
+- Browser-level HTTP smoke checks through `127.0.0.1:3002` passed:
+  - root alias `Host: we-discipline.com /` redirects to `/accueil` when unauthenticated
+  - `/login` renders
+  - `/members` redirects to `/login?next=%2Fmembers` when unauthenticated
+  - temporary signed staging cookie can access `/api/auth/me`, `/members`, and `/`
+- Known non-blocking observation: Next still emits `X-Powered-By: Next.js` on rendered pages even though security headers are otherwise present.
+
 ## Known Follow-Up Before Production
 
-- Reconcile live dirty files in `/opt/we-discipline` with this branch before staging deploy.
-- Run the full scenario suite in an environment with local Postgres, not through the SSH tunnel.
+- Cutover has not been performed; production still serves the existing app.
+- Decide the cutover window and keep the old SQLite container, DB backup, image, and Nginx config ready for immediate rollback.
+- Reconfirm DNS/TLS/subdomain routing before exposing tenant subdomains publicly.
 - Review `npm audit --omit=dev`: current advisory is a moderate PostCSS issue through `next`; npm only suggests a breaking forced change, so no automatic fix was applied.
