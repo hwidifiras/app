@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
+
 const keys = [
   "members.manage",
   "enrollment.manage",
@@ -10,11 +11,35 @@ const keys = [
   "offers.manage",
 ];
 
-for (const key of keys) {
-  await prisma.$executeRawUnsafe(
-    `INSERT OR IGNORE INTO "UserPermission" ("id", "userId", "key")
-     SELECT "id" || ':${key}', "id", '${key}' FROM "User" WHERE "role" = 'STAFF'`,
-  );
+const staffUsers = await prisma.user.findMany({
+  where: { role: "STAFF" },
+  select: {
+    id: true,
+    tenantId: true,
+    permissions: { select: { key: true } },
+  },
+});
+
+let inserted = 0;
+
+for (const user of staffUsers) {
+  const existing = new Set(user.permissions.map((permission) => permission.key));
+  const missing = keys.filter((key) => !existing.has(key));
+
+  if (missing.length === 0) continue;
+
+  const result = await prisma.userPermission.createMany({
+    data: missing.map((key) => ({
+      tenantId: user.tenantId,
+      userId: user.id,
+      key,
+    })),
+    skipDuplicates: true,
+  });
+
+  inserted += result.count;
 }
 
 await prisma.$disconnect();
+
+console.log(`Backfilled ${inserted} staff permission records.`);
