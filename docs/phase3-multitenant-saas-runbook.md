@@ -96,9 +96,35 @@
   - temporary signed staging cookie can access `/api/auth/me`, `/members`, and `/`
 - Known non-blocking observation: Next still emits `X-Powered-By: Next.js` on rendered pages even though security headers are otherwise present.
 
+## Cutover Log - 2026-06-29
+
+- Pre-cutover backup created: `/root/we-discipline-backups/pre-cutover-20260629T012204Z`.
+- First Nginx cutover switched `we-discipline.com` from `127.0.0.1:3001` to `127.0.0.1:3002`.
+- Smoke checks found protected-page degraded rendering with `TENANT_CONTEXT_REQUIRED` in the SaaS app logs.
+- Nginx was immediately rolled back to the old SQLite app on `127.0.0.1:3001`.
+- Rollback config file: `/etc/nginx/sites-available/we-discipline.rollback-to-3001-20260629T012250Z`.
+- Fixes applied and pushed:
+  - `cc43826` - recover tenant context from trusted request headers and strip spoofable incoming tenant/user headers in the proxy.
+  - `131befd` - scope club settings through the Prisma tenant guard.
+- Fixed SaaS staging was rebuilt and retested:
+  - dashboard, members, attendance today, payments, sessions, and club settings returned `200`
+  - no degraded markers were found
+  - no `TENANT_CONTEXT_REQUIRED` errors were logged
+  - full Docker test suite passed again: 13 files, 144 tests
+- Fresh retry backup created from the old app before the second switch: `/root/we-discipline-backups/pre-cutover-retry-20260629T013835Z`.
+- Retry backup verification against staging Postgres passed with counts/totals matching.
+- Second Nginx cutover switched `we-discipline.com` back to `127.0.0.1:3002`.
+- Post-cutover HTTPS smoke checks passed:
+  - `/` redirects to `/accueil` when unauthenticated
+  - `/login` renders `200`
+  - `/members` redirects to `/login?next=%2Fmembers` when unauthenticated
+  - temporary signed staging cookie can access `/api/auth/me`, `/`, `/members`, `/attendance/today`, `/payments`, `/sessions`, and `/settings/club`
+- Current production proxy target: `127.0.0.1:3002`.
+- Old SQLite app container remains running on `127.0.0.1:3001` for immediate rollback.
+
 ## Known Follow-Up Before Production
 
-- Cutover has not been performed; production still serves the existing app.
-- Decide the cutover window and keep the old SQLite container, DB backup, image, and Nginx config ready for immediate rollback.
+- Cutover has been performed and production currently serves the SaaS/Postgres app through Nginx.
+- Keep the old SQLite container, DB backup, image, and Nginx rollback config ready until the SaaS app has survived a real operating window.
 - Reconfirm DNS/TLS/subdomain routing before exposing tenant subdomains publicly.
 - Review `npm audit --omit=dev`: current advisory is a moderate PostCSS issue through `next`; npm only suggests a breaking forced change, so no automatic fix was applied.
