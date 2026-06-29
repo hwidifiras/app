@@ -53,6 +53,9 @@ next-start*.log
 qa-artifacts/
 /prisma/audit-build.db
 /prisma/audit-build.db-journal
+/docs/audits/**/screenshots/
+/docs/audits/**/capture-results.json
+/docs/audits/**/scenario-capture-results.json
 
 # env files (can opt-in for committing if needed)
 .env*
