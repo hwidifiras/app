@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 
-import { getTenantId, isTenantScopedModel } from "@/lib/tenant-context";
+import { enterTenantContext, getTenantContext, isTenantScopedModel } from "@/lib/tenant-context";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -37,9 +37,28 @@ function assertNoTenantMutation(data: unknown, tenantId: string): void {
   assertTenantId((data as Record<string, unknown>).tenantId, tenantId);
 }
 
-function tenantIdForModel(model: string | undefined): string | null {
+async function tenantIdFromRequestHeaders(): Promise<string | null> {
+  try {
+    const { headers } = await import("next/headers");
+    const requestHeaders = await headers();
+    const tenantId = requestHeaders.get("x-tenant-id")?.trim();
+    if (!tenantId) return null;
+
+    enterTenantContext({
+      tenantId,
+      tenantSlug: requestHeaders.get("x-tenant-slug")?.trim() || "unknown",
+      host: requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? undefined,
+    });
+
+    return tenantId;
+  } catch {
+    return null;
+  }
+}
+
+async function tenantIdForModel(model: string | undefined): Promise<string | null> {
   if (!isTenantScopedModel(model)) return null;
-  const tenantId = getTenantId();
+  const tenantId = getTenantContext()?.tenantId ?? (await tenantIdFromRequestHeaders());
   if (!tenantId) throw new Error("TENANT_CONTEXT_REQUIRED");
   return tenantId;
 }
@@ -60,7 +79,7 @@ export const prisma = basePrisma.$extends({
   query: {
     $allModels: {
       async $allOperations({ model, operation, args, query }) {
-        const tenantId = tenantIdForModel(model);
+        const tenantId = await tenantIdForModel(model);
         if (!tenantId) return query(args);
 
         const scopedArgs = { ...(args as Record<string, unknown>) };

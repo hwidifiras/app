@@ -4,6 +4,23 @@ import { AUTH_COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
 import { isPublicPath } from "@/lib/public-paths";
 import { tenantSlugFromHost } from "@/lib/tenant-host";
 
+const TRUSTED_REQUEST_HEADERS = [
+  "x-tenant-id",
+  "x-tenant-slug",
+  "x-user-id",
+  "x-user-role",
+  "x-user-email",
+  "x-user-name",
+];
+
+function sanitizedRequestHeaders(request: NextRequest) {
+  const headers = new Headers(request.headers);
+  for (const header of TRUSTED_REQUEST_HEADERS) {
+    headers.delete(header);
+  }
+  return headers;
+}
+
 function nextWithPathHeader(request: NextRequest, headers = new Headers(request.headers)) {
   headers.set("x-pathname", request.nextUrl.pathname);
   return NextResponse.next({
@@ -37,7 +54,7 @@ export async function proxy(request: NextRequest) {
   const tenantSlug = tenantSlugFromHost(request.headers.get("x-forwarded-host") ?? request.headers.get("host"));
 
   if (isPublicPath(pathname)) {
-    const headers = new Headers(request.headers);
+    const headers = sanitizedRequestHeaders(request);
     headers.set("x-pathname", pathname);
     if (tenantSlug) headers.set("x-tenant-slug", tenantSlug);
     return nextWithPathHeader(request, headers);
@@ -57,7 +74,7 @@ export async function proxy(request: NextRequest) {
     return loginRedirect(request, "invalid");
   }
 
-  const headers = new Headers(request.headers);
+  const headers = sanitizedRequestHeaders(request);
   headers.set("x-pathname", pathname);
   headers.set("x-tenant-id", payload.tenantId);
   headers.set("x-tenant-slug", payload.tenantSlug);
