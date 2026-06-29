@@ -24,6 +24,7 @@ Not ready for SaaS cutover yet, but the private app UI is moving in the right di
 - `npm.cmd run lint`: passed after UI-copy patch.
 - `npm.cmd run build`: passed.
 - `npm.cmd test`: blocked during `pretest` because local PostgreSQL `gymday_test` was not reachable at `localhost:5432`.
+- `npm.cmd audit --omit=dev`: reported 2 moderate PostCSS advisories through `next`; the suggested `--force` fix would install a breaking Next version and was not applied.
 - Browser capture: passed for 62 screenshots.
 - Horizontal overflow check: passed for captured routes at `1440x900` and `390x844`.
 - Staging functional scenario script: passed key auth, permission, payment, subscription, attendance, and cross-tenant record checks; flagged proxy header risk.
