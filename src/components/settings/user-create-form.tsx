@@ -80,13 +80,13 @@ export function UserCreateForm() {
           <option value="ADMIN">Admin</option>
         </select>
         <p className="text-xs text-[var(--muted-foreground)]">
-          Admin = tous les droits. Staff = droits configurables.
+          Admin gère tout le club. Staff reçoit seulement les accès cochés.
         </p>
       </div>
 
       <div className="space-y-1.5">
         <label className="text-sm font-semibold text-[var(--foreground)]" htmlFor="password">Mot de passe</label>
-        <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="field" required minLength={8} placeholder="Min 8 caractères" />
+        <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="field" required minLength={8} placeholder="8 caractères minimum" />
       </div>
 
       {role === "STAFF" && (
@@ -95,7 +95,7 @@ export function UserCreateForm() {
             <div>
               <p className="text-sm font-semibold text-[var(--foreground)]">Droits du staff</p>
               <p className="text-xs text-[var(--muted-foreground)]">
-                Choisissez si ce compte est complet ou limité.
+                Choisissez les écrans que ce compte peut utiliser.
               </p>
             </div>
             <select

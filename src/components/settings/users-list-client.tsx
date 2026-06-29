@@ -178,7 +178,7 @@ export function UsersListClient({
                     onClick={() => sendReset(u.id)}
                   >
                     <Mail className="size-3.5" />
-                    {loadingId === u.id ? "Envoi…" : "Envoyer reset"}
+                    {loadingId === u.id ? "Envoi…" : "Envoyer un lien"}
                   </button>
                 </div>
               </>

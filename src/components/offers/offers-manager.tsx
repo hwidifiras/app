@@ -170,7 +170,7 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
       <section className="panel order-2 p-4 sm:p-5 lg:order-1">
         <h2 className="mb-2 text-lg font-semibold">Créer une offre</h2>
         <p className="mb-4 text-sm text-[var(--muted-foreground)]">
-          Configurez la règle par type — aucun JSON à saisir. Les offres s&apos;appliquent dans le parcours{" "}
+          Choisissez le type de remise, vérifiez l&apos;aperçu, puis retrouvez l&apos;offre dans le parcours{" "}
           <strong>Inscription</strong>.
         </p>
         {contextHint ? (

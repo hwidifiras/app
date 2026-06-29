@@ -74,7 +74,7 @@ export async function POST(request: Request) {
   } catch (e) {
     console.error(e);
     return NextResponse.json(
-      { error: "Impossible d'enregistrer le logo (base de données). Exécutez npm run prisma:repair:dev" },
+      { error: "Impossible d'enregistrer le logo pour le moment. Contactez le support si le problème continue." },
       { status: 500 },
     );
   }

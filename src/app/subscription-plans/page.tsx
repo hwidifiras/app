@@ -41,7 +41,10 @@ export default async function SubscriptionPlansPage() {
         <div className="panel panel-soft p-6">
           <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Mode dégradé</p>
           <h1 className="mt-2 text-2xl font-semibold text-foreground">Plans indisponibles</h1>
-          <p className="mt-3 text-sm text-muted-foreground">Données inaccessibles.</p>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Cette page ne peut pas charger ses données pour le moment. Revenez au tableau de bord puis contactez le
+            support si le problème continue.
+          </p>
         </div>
       </main>
     );
