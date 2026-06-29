@@ -9,5 +9,7 @@ export function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/api/auth")) return true;
   if (pathname.startsWith("/_next")) return true;
   if (pathname === "/favicon.ico") return true;
+  if (pathname === "/icon.png") return true;
+  if (pathname === "/apple-icon.png") return true;
   return false;
 }
