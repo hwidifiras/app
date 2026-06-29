@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { getRequiredTenantId } from "@/lib/tenant-context";
 
 export type ClubSettingsData = {
   id: string;
@@ -64,28 +63,30 @@ function normalizeClubSettings(row: Record<string, unknown>): ClubSettingsData {
 }
 
 export async function readClubLogoUrl(): Promise<string> {
-  const tenantId = getRequiredTenantId();
   const row = await prisma.clubSettings.findFirst({
-    where: { tenantId },
     select: { clubLogoUrl: true },
   });
   return row?.clubLogoUrl ?? "";
 }
 
 export async function writeClubLogoUrl(clubLogoUrl: string): Promise<void> {
-  const tenantId = getRequiredTenantId();
-  await prisma.clubSettings.upsert({
-    where: { tenantId },
-    create: { tenantId, clubLogoUrl },
-    update: { clubLogoUrl },
-  });
+  const row = await prisma.clubSettings.findFirst({ select: { tenantId: true } });
+
+  if (row?.tenantId) {
+    await prisma.clubSettings.update({
+      where: { tenantId: row.tenantId },
+      data: { clubLogoUrl },
+    });
+    return;
+  }
+
+  await prisma.clubSettings.create({ data: { clubLogoUrl } });
 }
 
 export async function getClubSettings(): Promise<ClubSettingsData> {
-  const tenantId = getRequiredTenantId();
-  const row = await prisma.clubSettings.findFirst({ where: { tenantId } });
+  const row = await prisma.clubSettings.findFirst();
   if (!row) {
-    const created = await prisma.clubSettings.create({ data: { tenantId } });
+    const created = await prisma.clubSettings.create({ data: {} });
     return normalizeClubSettings(created as Record<string, unknown>);
   }
   return normalizeClubSettings(row as Record<string, unknown>);
