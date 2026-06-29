@@ -27,6 +27,7 @@ Not ready for SaaS cutover yet, but the private app UI is moving in the right di
 - Browser capture: passed for 62 screenshots.
 - Horizontal overflow check: passed for captured routes at `1440x900` and `390x844`.
 - Staging functional scenario script: passed key auth, permission, payment, subscription, attendance, and cross-tenant record checks; flagged proxy header risk.
+- Temporary audit accounts were disabled after the staging checks.
 
 ## Next Recommended Pass
 

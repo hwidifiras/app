@@ -7,6 +7,7 @@
 - Test account: temporary staging-only audit admin.
 - Dataset: staging-only `audit-ux-*` records for sport, coach, group, plan, members, subscriptions, payments, sessions, attendance, and offer.
 - Production data: not mutated.
+- Cleanup: temporary `audit-20260629`, `audit-staff-20260629`, and `audit-demote-20260629` accounts were disabled after capture/testing.
 
 ## Scenario Results
 
