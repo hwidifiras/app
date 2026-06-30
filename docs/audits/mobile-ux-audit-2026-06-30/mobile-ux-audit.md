@@ -230,6 +230,50 @@ Recommended fix:
   - VPS Docker build and restart passed.
 - The temporary audit admin account was disabled after verification.
 
+## Mobile Form Section Navigation Pass
+
+- Commit: `1fcb333` (`fix: add mobile form section navigation`).
+- Deployed to the live SaaS app on `127.0.0.1:3002`.
+- Captured focused `390x844` screenshots in `screenshots/mobile-form-nav-1fcb333/`:
+  - `01-settings-club-mobile-viewport.png`
+  - `02-settings-account-mobile-viewport.png`
+  - `03-settings-data-import-closed-mobile-viewport.png`
+  - `04-settings-data-import-active-mobile-viewport.png`
+- Added shared `FormSectionNav` anchors for long settings/reprise forms.
+- Result: club settings, account settings, and active reprise mode now expose short mobile section chips (`Identité`, `Pointage`, `Alertes`, `Profil`, `Thème`, `Sécurité`, `État réel`, `Pointages`) before long form content.
+- All captured form screens reported `horizontalOverflow=false`.
+- Reprise mode was opened only to verify the active form layout; no import was applied, and the mode was closed immediately after capture.
+- Verification completed:
+  - `npm.cmd run lint`
+  - `npm.cmd run build`
+  - VPS Docker build and restart passed.
+
+## Current Mobile Review And Config List Priority
+
+- Commit: `d299052` (`fix: prioritize config lists on mobile`).
+- Deployed to the live SaaS app on `127.0.0.1:3002`.
+- Captured a fresh current-state `390x844` review set in `screenshots/mobile-current-review-1fcb333/` for:
+  - dashboard, pointage, inscription, encaissement
+  - membres, abonnements, paiements, planning
+  - cours, coachs, disciplines, formules, offres, club settings
+- Result: all 14 reviewed routes reported `horizontalOverflow=false`.
+- Finding: high-frequency reception pages are now stable, but configuration pages still felt form-first on mobile. Coachs and Disciplines opened on creation forms before showing the existing data, which is backwards for a normal admin checking or editing records.
+- Fix applied:
+  - Coachs and Disciplines now show the existing list first on mobile.
+  - A clear primary jump action (`Ajouter un coach`, `Ajouter une discipline`) remains in the page header.
+  - Desktop keeps the management layout with the create form first/left and the list beside it.
+  - Coach mobile card actions now show readable `Modifier` and `Supprimer` labels instead of icon-only square controls.
+- After screenshots were saved in `screenshots/mobile-config-list-priority-d299052/`:
+  - `01-coaches-list-first.png`
+  - `02-sports-list-first.png`
+- Both changed pages reported `horizontalOverflow=false` after deployment.
+- Verification completed:
+  - `npm.cmd run lint`
+  - `npm.cmd run build`
+  - VPS Docker build and restart passed.
+  - Live HTTPS smoke check returned `200 OK` on `https://we-discipline.com/login`.
+  - `npm.cmd test` remains blocked in the Windows workspace because the local PostgreSQL test database at `localhost:5432` is unavailable; the failure happens during `scripts/test-db-reset.mjs` before tests run.
+
 ## Evidence Limits
 
 - This audit is screenshot and DOM-metric based; it does not prove full WCAG compliance.
