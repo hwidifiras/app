@@ -101,6 +101,7 @@ Captured at desktop and mobile:
 - `npm run audit:ux:seed` creates a tenant-scoped `audit-ux-*` dataset for screenshots: paid/partial/unpaid members, a valid group/session, inactive attendance history, payment debt, and an offer.
 - `npm run audit:ux:status` checks how many `audit-ux-*` records exist.
 - `npm run audit:ux:cleanup` removes only the `audit-ux-*` records.
+- Live tenant cleanup check after adding the helper: `audit-ux-*` members, sessions, attendances, payments, offers, and users all returned `0`.
 
 ## Recommendation
 
