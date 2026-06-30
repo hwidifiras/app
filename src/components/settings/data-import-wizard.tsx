@@ -79,7 +79,7 @@ type BulkImportResult = {
 };
 
 const today = new Date().toISOString().slice(0, 10);
-const templateUrl = "/templates/we-discipline-first-client-bulk-import.xlsx";
+const templateUrl = "/templates/we-discipline-reprise-membres.xlsx";
 
 function isoDate(value: string) {
   return new Date(`${value}T00:00:00.000Z`).toISOString();

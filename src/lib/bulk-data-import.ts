@@ -106,6 +106,13 @@ function normalizeLookup(value: string) {
   return normalizeHeader(value).trim();
 }
 
+function generateExternalId(rowNumber: number, firstName: string, lastName: string, phone: string, parentPhone: string) {
+  const rowReference = `M${String(Math.max(rowNumber - 1, 1)).padStart(3, "0")}`;
+  const nameReference = normalizeLookup(`${firstName}${lastName}`).slice(0, 18);
+  const phoneReference = normalizeLookup(phone || parentPhone).slice(-4);
+  return [rowReference, nameReference, phoneReference].filter(Boolean).join("-");
+}
+
 function cellValueText(value: RawCell): string {
   if (value === null || value === undefined) return "";
   if (value instanceof Date) return value.toISOString().slice(0, 10);
@@ -316,9 +323,11 @@ async function prepareBulkImport(buffer: Buffer, fileName: string, fallbackCutov
     if (isEmptyRow(row, headerIndex)) continue;
 
     const errors: string[] = [];
-    const externalId = readText(row, headerIndex, "externalId") || `L${rowNumber}`;
     const firstName = readText(row, headerIndex, "firstName");
     const lastName = readText(row, headerIndex, "lastName");
+    const phone = readText(row, headerIndex, "phone");
+    const parentPhone = readText(row, headerIndex, "parentPhone");
+    const externalId = readText(row, headerIndex, "externalId") || generateExternalId(rowNumber, firstName, lastName, phone, parentPhone);
     const groupName = readText(row, headerIndex, "groupName");
     const planName = readText(row, headerIndex, "planName");
     const memberType = normalizeMemberType(readText(row, headerIndex, "memberType"));
@@ -354,13 +363,13 @@ async function prepareBulkImport(buffer: Buffer, fileName: string, fallbackCutov
     const member = {
       firstName,
       lastName,
-      phone: readText(row, headerIndex, "phone"),
+      phone,
       email: readText(row, headerIndex, "email"),
       memberType: memberType ?? "NOT_SPECIFIED",
       birthDate: parseDate(readCell(row, headerIndex, "birthDate")) ?? "",
       address: readText(row, headerIndex, "address"),
       parentName: readText(row, headerIndex, "parentName"),
-      parentPhone: readText(row, headerIndex, "parentPhone"),
+      parentPhone,
       joinedAt,
     };
 

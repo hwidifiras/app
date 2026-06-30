@@ -35,6 +35,7 @@
 # misc
 .DS_Store
 *.pem
+~$*.xlsx
 
 # SSH keys (never commit private keys)
 key-gen-git

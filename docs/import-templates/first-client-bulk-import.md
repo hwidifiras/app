@@ -8,42 +8,44 @@ Workflow:
 
 1. Admin opens `Reprise`.
 2. Clicks `Activer pour 4 heures`.
-3. Downloads `we-discipline-first-client-bulk-import.xlsx`.
+3. Downloads `we-discipline-reprise-membres.xlsx`.
 4. Fills the `Membres` sheet.
 5. Uploads the file.
-6. Clicks `Verifier Excel`.
+6. Clicks `Vérifier Excel`.
 7. Applies import only when every row is valid.
 
 The import stays behind the temporary reprise mode and creates rollbackable `DATA_IMPORT_APPLIED` audit logs.
 
-## Required Columns
+## Colonnes Du Modele
 
-Fill one row per active member to resume.
+Fill one row per active member to resume. The downloadable template uses French headers, and old English headers remain accepted for compatibility.
 
-- `externalId`: stable line id from the client sheet, for example `M001`.
-- `firstName`
-- `lastName`
-- `memberType`: `ADULT`, `KID`, or `NOT_SPECIFIED`.
-- `phone`: required for adults.
-- `parentPhone`: required for kids.
-- `joinedAt`: date member joined the club, `YYYY-MM-DD`.
-- `groupName`: must match a current group name.
-- `planName`: must match a current formula name.
-- `subscriptionStartDate`
-- `subscriptionEndDate`
-- `amount`: full subscription amount in normal currency units, for example `40`.
-- `paid`: amount already paid, for example `20`.
-- `remainingSessions`: current remaining session balance.
+Required or commonly filled:
+
+- `reference`: optional. Leave it empty and the app generates one like `M001-prenomnom-1234`.
+- `prenom`
+- `nom`
+- `typeMembre`: `ADULT`, `KID`, or `NOT_SPECIFIED`.
+- `telephone`: required for adults.
+- `telephoneParent`: required for kids.
+- `dateInscription`: date member joined the club, `YYYY-MM-DD`.
+- `groupe`: must match a current group name.
+- `formule`: must match a current formula name.
+- `debutAbonnement`
+- `finAbonnement`
+- `montant`: full subscription amount in normal currency units, for example `40`.
+- `paye`: amount already paid, for example `20`.
+- `seancesRestantes`: current remaining session balance.
 
 Optional:
 
 - `email`
-- `birthDate`
-- `address`
-- `parentName`
-- `assignmentStartDate`: defaults to subscription start.
-- `paymentDate`: defaults to cutover date when `paid > 0`.
-- `paymentMethod`: `REPRISE_EXCEL`, `CASH`, `CARD`, `TRANSFER`, or `CHECK`.
+- `dateNaissance`
+- `adresse`
+- `nomParent`
+- `debutGroupe`: defaults to subscription start.
+- `datePaiement`: defaults to cutover date when `paye > 0`.
+- `modePaiement`: `REPRISE_EXCEL`, `CASH`, `CARD`, `TRANSFER`, or `CHECK`.
 - `note`
 
 ## Current First-Client References
@@ -75,4 +77,3 @@ Before importing members for other disciplines, create formulas for those discip
 - Group/formula discipline mismatch is blocked.
 - Paid amount above amount due is blocked.
 - Remaining sessions above the formula quota is blocked.
-
