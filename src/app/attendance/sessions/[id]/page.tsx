@@ -8,6 +8,7 @@ import {
   deriveSessionLifecycle,
   expectedMemberIdsAtSession,
 } from "@/lib/session-lifecycle";
+import { formatAttendanceOperator, isLikelyInternalId } from "@/lib/attendance-display";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -68,6 +69,25 @@ export default async function SessionAttendanceDetailPage({
 
   if (!session) notFound();
 
+  const operatorIds = Array.from(
+    new Set(
+      session.attendances
+        .map((attendance) => attendance.checkedBy)
+        .filter((value): value is string => isLikelyInternalId(value)),
+    ),
+  );
+  const operators = operatorIds.length
+    ? await prisma.user.findMany({
+        where: { id: { in: operatorIds } },
+        select: { id: true, name: true },
+      })
+    : [];
+  const operatorNamesById = new Map(operators.map((operator) => [operator.id, operator.name]));
+  const attendanceRows = session.attendances.map((attendance) => ({
+    ...attendance,
+    checkedBy: formatAttendanceOperator(attendance.checkedBy, operatorNamesById),
+  }));
+
   const expectedIds = new Set(
     expectedMemberIdsAtSession(session.group.members, session.sessionDate),
   );
@@ -79,13 +99,13 @@ export default async function SessionAttendanceDetailPage({
     sessionDate: session.sessionDate,
     endTime: session.endTime,
     expectedMemberIds: [...expectedIds],
-    attendanceMemberIds: session.attendances.map((attendance) => attendance.memberId),
+    attendanceMemberIds: attendanceRows.map((attendance) => attendance.memberId),
   });
-  const attByMember = new Map(session.attendances.map((a) => [a.memberId, a]));
+  const attByMember = new Map(attendanceRows.map((a) => [a.memberId, a]));
   const enrolled = expectedMembers.length;
-  const present = session.attendances.filter((a) => a.status === "PRESENT").length;
-  const absent = session.attendances.filter((a) => a.status === "ABSENT").length;
-  const override = session.attendances.filter((a) => a.status === "OVERRIDE").length;
+  const present = attendanceRows.filter((a) => a.status === "PRESENT").length;
+  const absent = attendanceRows.filter((a) => a.status === "ABSENT").length;
+  const override = attendanceRows.filter((a) => a.status === "OVERRIDE").length;
   const checked = present + absent + override;
   const notMarked = Math.max(0, enrolled - checked);
 
@@ -184,7 +204,7 @@ export default async function SessionAttendanceDetailPage({
                         <StatusBadge variant={attendanceVariant(att.status)}>
                           {attendanceLabel(att.status)}
                         </StatusBadge>
-                        {att.checkedBy && <span>par {att.checkedBy}</span>}
+                        {att.checkedBy && <span>par {formatAttendanceOperator(att.checkedBy, operatorNamesById)}</span>}
                         {att.overrideReason && (
                           <span className="max-w-[12rem] truncate" title={att.overrideReason}>
                             {att.overrideReason}
@@ -205,7 +225,7 @@ export default async function SessionAttendanceDetailPage({
             </ul>
           </div>
 
-          {session.attendances.length > 0 && (
+          {attendanceRows.length > 0 && (
             <div>
               <h2 className="mb-2 text-sm font-semibold text-[var(--foreground)]">Historique des pointages</h2>
               <div className="data-table overflow-x-auto">
@@ -219,7 +239,7 @@ export default async function SessionAttendanceDetailPage({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--border)]">
-                    {session.attendances.map((a) => (
+                    {attendanceRows.map((a) => (
                       <tr key={a.id} className="hover:bg-[var(--surface-soft)]">
                         <td className="data-table-primary px-3 py-2" data-label="Élève">
                           <Link href={`/members/${a.member.id}`} className="text-[var(--primary)] hover:underline">

@@ -5,6 +5,7 @@ import {
   AttendanceHistoryList,
   type AttendanceHistoryRow,
 } from "@/components/attendance/attendance-history-list";
+import { formatAttendanceOperator, isLikelyInternalId } from "@/lib/attendance-display";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -21,6 +22,17 @@ export default async function AttendancePage() {
         member: { select: { firstName: true, lastName: true } },
       },
     });
+    const operatorIds = Array.from(
+      new Set(data.map((a) => a.checkedBy).filter((value): value is string => isLikelyInternalId(value))),
+    );
+    const operators = operatorIds.length
+      ? await prisma.user.findMany({
+          where: { id: { in: operatorIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const operatorNamesById = new Map(operators.map((operator) => [operator.id, operator.name]));
+
     rows = data.map((a) => ({
       id: a.id,
       memberName: `${a.member.firstName} ${a.member.lastName}`,
@@ -29,7 +41,7 @@ export default async function AttendancePage() {
       startTime: a.session.startTime,
       status: a.status,
       overrideReason: a.overrideReason,
-      checkedBy: a.checkedBy,
+      checkedBy: formatAttendanceOperator(a.checkedBy, operatorNamesById),
       checkedAt: a.checkedAt.toISOString(),
     }));
   } catch (error) {
