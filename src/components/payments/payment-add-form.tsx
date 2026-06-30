@@ -471,10 +471,15 @@ export function PaymentAddForm({
           <ArrowLeft className="size-4" />
           Retour
         </button>
+        {amountNum <= 0 ? (
+          <p className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-center text-xs font-medium text-[var(--muted-foreground)] md:hidden">
+            Saisissez le montant avant d&apos;encaisser.
+          </p>
+        ) : null}
         <button
           type="submit"
           disabled={loading || !subscriptionId || amountNum <= 0 || wouldExceed}
-          className="btn btn-primary btn-block-mobile"
+          className={cn("btn btn-primary btn-block-mobile", amountNum <= 0 && "max-md:hidden")}
         >
           {loading ? (
             <span className="inline-block size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
