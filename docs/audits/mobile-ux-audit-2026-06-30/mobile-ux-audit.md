@@ -107,6 +107,16 @@ Recommended fix:
 5. Tighten the mobile top bar account/notification area.
 6. Add a quick route alias `/plans -> /subscription-plans` only if desired.
 
+## First Polish Applied
+
+- Commit: `28d74eb` (`fix: polish mobile app responsiveness`).
+- Deployed to the live SaaS app on `127.0.0.1:3002`.
+- Fixed `/sessions` mobile overflow: after capture at `390x844` reported `scrollWidth=375`, `clientWidth=375`, `horizontalOverflow=false`.
+- Updated disabled primary button styling so blocked form CTAs read as unavailable instead of active.
+- Increased the shared sticky `FormActions` mobile bottom offset so sticky form actions sit more comfortably above the bottom nav.
+- After screenshots were saved in `screenshots/after-polish/` for `/sessions`, `/enrollment`, `/payments/new`, and `/settings/users`.
+- The temporary audit admin account was disabled after the verification pass.
+
 ## Evidence Limits
 
 - This audit is screenshot and DOM-metric based; it does not prove full WCAG compliance.
