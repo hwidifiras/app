@@ -193,6 +193,23 @@ Recommended fix:
   - `npm.cmd audit --omit=dev` reported two moderate advisories through Next's bundled PostCSS dependency. No automated force-fix was applied because npm suggested a breaking downgrade path.
 - The temporary audit admin account was disabled after verification.
 
+## Mobile Action Labels Pass
+
+- Commit: `b985656` (`fix: label mobile card actions`).
+- Deployed to the live SaaS app on `127.0.0.1:3002`.
+- Captured focused `390x844` screenshots in `screenshots/mobile-action-labels-b985656/`:
+  - `01-groups-labelled-actions.png`
+  - `02-plans-labelled-actions.png`
+- Result: expanded course card actions now show readable mobile labels (`Planifier`, `Modifier`, `Désactiver`) instead of icon-only square buttons.
+- The shared mobile card action CSS now wraps compact action pills and derives visible labels from `aria-label` for icon-only controls.
+- Subscription/formula-style cards with already visible text actions remain full-width and unchanged in behavior.
+- Both captured screens reported `horizontalOverflow=false`.
+- Verification completed:
+  - `npm.cmd run lint`
+  - `npm.cmd run build`
+  - VPS Docker build and restart passed.
+- The temporary audit admin account was disabled after verification.
+
 ## Evidence Limits
 
 - This audit is screenshot and DOM-metric based; it does not prove full WCAG compliance.
