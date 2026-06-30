@@ -20,33 +20,34 @@ The import stays behind the temporary reprise mode and creates rollbackable `DAT
 
 Fill one row per active member to resume. The downloadable template uses French headers, and old English headers remain accepted for compatibility.
 
+The member code is generated automatically. The client does not need to fill an `externalId` or reference column. If an old file still contains `reference`, `ref`, `code`, `matricule`, or `externalId`, the importer will continue to accept it.
+
 Required or commonly filled:
 
-- `Code membre (auto)`: optional. Leave it empty and the app generates one like `M001-prenomnom-1234` from the row number, member name, and the last 4 digits of the phone. Old headers such as `reference`, `ref`, `code`, `matricule`, and `externalId` still work.
-- `prenom`
+- `Prenom`
 - `nom`
-- `typeMembre`: `ADULT`, `KID`, or `NOT_SPECIFIED`.
-- `telephone`: required for adults.
-- `telephoneParent`: required for kids.
-- `dateInscription`: date member joined the club, `YYYY-MM-DD`.
-- `groupe`: must match a current group name.
-- `formule`: must match a current formula name.
-- `debutAbonnement`
-- `finAbonnement`
-- `montant`: full subscription amount in normal currency units, for example `40`.
-- `paye`: amount already paid, for example `20`.
-- `seancesRestantes`: current remaining session balance.
+- `Type membre`: `ADULT`, `KID`, or `NOT_SPECIFIED`.
+- `Telephone`: required for adults.
+- `Telephone parent`: required for kids.
+- `Date inscription`: date member joined the club, `YYYY-MM-DD`.
+- `Groupe`: must match a current group name.
+- `Formule`: must match a current formula name.
+- `Debut abonnement`
+- `Fin abonnement`
+- `Montant total`: full subscription amount in normal currency units, for example `40`.
+- `Deja paye`: amount already paid, for example `20`.
+- `Seances restantes`: current remaining session balance.
 
 Optional:
 
-- `email`
-- `dateNaissance`
-- `adresse`
-- `nomParent`
-- `debutGroupe`: defaults to subscription start.
-- `datePaiement`: defaults to cutover date when `paye > 0`.
-- `modePaiement`: `REPRISE_EXCEL`, `CASH`, `CARD`, `TRANSFER`, or `CHECK`.
-- `note`
+- `Email`
+- `Date naissance`
+- `Adresse`
+- `Nom parent`
+- `Debut groupe`: defaults to subscription start.
+- `Date paiement`: defaults to cutover date when `Deja paye > 0`.
+- `Mode paiement`: `REPRISE_EXCEL`, `CASH`, `CARD`, `TRANSFER`, or `CHECK`.
+- `Note reprise`
 
 ## Current First-Client References
 

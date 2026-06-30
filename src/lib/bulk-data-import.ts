@@ -77,6 +77,9 @@ const HEADER_ALIASES: Record<HeaderKey, string[]> = {
     "referenceauto",
     "codemembre",
     "codemembreauto",
+    "codemembrelaisservide",
+    "codemembreoptionnel",
+    "codemembreautooptionnel",
     "codeadherent",
     "ref",
     "code",
@@ -97,12 +100,12 @@ const HEADER_ALIASES: Record<HeaderKey, string[]> = {
   assignmentStartDate: ["assignmentstartdate", "dateaffectation", "debutgroupe"],
   subscriptionStartDate: ["subscriptionstartdate", "debutabonnement"],
   subscriptionEndDate: ["subscriptionenddate", "finabonnement"],
-  amount: ["amount", "montant", "montantdu", "prix"],
+  amount: ["amount", "montant", "montanttotal", "montantabonnement", "montantdu", "prix", "total"],
   paid: ["paid", "paye", "dejapaye"],
   remainingSessions: ["remainingsessions", "seancesrestantes", "reste"],
   paymentDate: ["paymentdate", "datepaiement", "datereglement"],
   paymentMethod: ["paymentmethod", "moyenpaiement", "modepaiement"],
-  note: ["note", "commentaire", "remarque"],
+  note: ["note", "notereprise", "commentaire", "remarque"],
 };
 
 function normalizeHeader(value: string) {

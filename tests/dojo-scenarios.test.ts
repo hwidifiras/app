@@ -520,11 +520,10 @@ beforeEach(async () => {
 });
 
 describe("temporary data import", () => {
-  it("accepts the French auto-code column and generates a member code when it is blank or formula-only", async () => {
+  it("generates a member code when the import file has no code column", async () => {
     const fx = await dojoFixture();
     const rows = [
       [
-        "Code membre (auto)",
         "Prénom",
         "Nom",
         "Type membre",
@@ -534,12 +533,11 @@ describe("temporary data import", () => {
         "Formule",
         "Début abonnement",
         "Fin abonnement",
-        "Montant",
-        "Payé",
+        "Montant total",
+        "Déjà payé",
         "Séances restantes",
       ],
       [
-        "=B2",
         "Amine",
         "Client",
         "ADULT",
