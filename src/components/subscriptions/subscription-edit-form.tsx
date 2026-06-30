@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
-import { FormActions } from "@/components/ui/form-layout";
+import { FormActions, FormSectionNav } from "@/components/ui/form-layout";
 import { ReceptionInfoCard } from "@/components/ui/reception-info-card";
 
 type PlanOption = { id: string; name: string; price: number; totalSessions: number; validityDays: number };
@@ -104,12 +104,21 @@ export function SubscriptionEditForm({ subscription, plansOptions }: Subscriptio
         Toute modification du montant ou des séances exige un motif traçable dans le journal.
       </ReceptionInfoCard>
 
-      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
+      <FormSectionNav
+        items={[
+          { href: "#subscription-member", label: "Membre" },
+          { href: "#subscription-plan", label: "Formule" },
+          { href: "#subscription-period", label: "Période" },
+          { href: "#subscription-values", label: "Valeurs" },
+        ]}
+      />
+
+      <div id="subscription-member" className="form-section-anchor rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
         <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Membre</p>
         <p className="mt-1 text-sm font-semibold text-[var(--foreground)]">{subscription.memberName}</p>
       </div>
 
-      <div>
+      <div id="subscription-plan" className="form-section-anchor">
         <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Plan *</label>
         <select value={planId} onChange={(e) => handlePlanChange(e.target.value)} className="field" required>
           {plansOptions.map((plan) => (
@@ -120,7 +129,7 @@ export function SubscriptionEditForm({ subscription, plansOptions }: Subscriptio
         </select>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div id="subscription-period" className="form-section-anchor grid gap-4 sm:grid-cols-2">
         <div>
           <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Début *</label>
           <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="field" required />
@@ -131,7 +140,7 @@ export function SubscriptionEditForm({ subscription, plansOptions }: Subscriptio
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div id="subscription-values" className="form-section-anchor grid gap-4 sm:grid-cols-3">
         <div>
           <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Montant (€) *</label>
           <input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className="field" required />
@@ -152,7 +161,7 @@ export function SubscriptionEditForm({ subscription, plansOptions }: Subscriptio
       </div>
 
       {needsAdjustmentReason && (
-        <div>
+        <div id="subscription-reason" className="form-section-anchor">
           <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Motif de correction *</label>
           <textarea
             value={adjustmentReason}

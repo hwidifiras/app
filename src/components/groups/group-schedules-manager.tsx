@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { FormActions } from "@/components/ui/form-layout";
+import { FormActions, FormSectionNav } from "@/components/ui/form-layout";
 
 type DayOfWeekValue =
   | "MONDAY"
@@ -166,7 +166,14 @@ export function GroupSchedulesManager({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-[var(--border)] p-6">
+      <FormSectionNav
+        items={[
+          { href: "#schedule-current", label: "Créneaux" },
+          { href: "#schedule-new", label: "Ajouter" },
+        ]}
+      />
+
+      <div id="schedule-current" className="form-section-anchor rounded-xl border border-[var(--border)] p-6">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-[var(--foreground)]">Créneaux hebdomadaires</h2>
           <p className="text-sm text-[var(--muted-foreground)]">
@@ -243,7 +250,7 @@ export function GroupSchedulesManager({
         </div>
       </div>
 
-      <div className="rounded-xl border border-[var(--border)] p-6">
+      <div id="schedule-new" className="form-section-anchor rounded-xl border border-[var(--border)] p-6">
         <h2 className="text-lg font-semibold text-[var(--foreground)]">Définir les créneaux hebdomadaires</h2>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
           Cochez les jours d&apos;entraînement et définissez l&apos;heure pour chacun. Les séances seront automatiquement générées.

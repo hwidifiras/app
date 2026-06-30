@@ -7,7 +7,7 @@ import { ArrowLeft, CheckCircle2, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FieldControl } from "@/components/ui/field-control";
-import { FormActions, FormField, FormGrid, FormSection } from "@/components/ui/form-layout";
+import { FormActions, FormField, FormGrid, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 
 const METHODS = [
   { value: "CASH", label: "Espèces" },
@@ -139,9 +139,19 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
     <form onSubmit={handleSubmit} className="space-y-5 pb-4 lg:pb-0">
       {message && <FeedbackMessage message={message} />}
 
+      <FormSectionNav
+        items={[
+          { href: "#payment-original", label: "Original" },
+          { href: "#payment-correction", label: "Correction" },
+          { href: "#payment-impact", label: "Impact" },
+          { href: "#payment-reversal", label: "Annulation" },
+        ]}
+      />
+
       <div className="grid min-w-0 items-start gap-4 lg:grid-cols-12">
         <div className="space-y-4 lg:col-span-8">
           <FormSection
+            id="payment-original"
             title="Paiement original"
             description="Le paiement d'origine reste visible. Une correction ajoute une nouvelle ligne au grand livre."
           >
@@ -171,7 +181,7 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
             <FeedbackMessage message="Cette ligne est déjà une correction ou une annulation. Seul le paiement original peut être corrigé." />
           )}
 
-          <FormSection title="Correction tracée" description="Saisissez le nouveau montant et le motif visible dans l'audit.">
+          <FormSection id="payment-correction" title="Correction tracée" description="Saisissez le nouveau montant et le motif visible dans l'audit.">
             <FormGrid>
               <FormField label="Nouveau montant (€) *" htmlFor="amount">
                 <FieldControl suffix="€">
@@ -246,7 +256,7 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
           </FormSection>
         </div>
 
-        <aside className="lg:sticky lg:top-20 lg:col-span-4">
+        <aside id="payment-impact" className="form-section-anchor lg:sticky lg:top-20 lg:col-span-4">
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
             <p className="text-sm font-semibold">Impact grand livre</p>
             <p className="text-xs text-[var(--muted-foreground)]">Correction sans perte d&apos;historique</p>
@@ -303,6 +313,7 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
       </FormActions>
 
       <FormSection
+        id="payment-reversal"
         title="Annulation"
         description="L'annulation garde le paiement original et ajoute une ligne de reversal au grand livre."
         className="border-[var(--danger)]/25"

@@ -16,7 +16,7 @@ import {
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FieldControl } from "@/components/ui/field-control";
-import { FormActions, FormField, FormGrid, FormSection } from "@/components/ui/form-layout";
+import { FormActions, FormField, FormGrid, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import { SubscriptionBillingSummary } from "@/components/ui/reception-info-card";
 import { UndoButton } from "@/components/ui/undo-button";
 import { useActionHistory } from "@/hooks/use-action-history";
@@ -224,9 +224,21 @@ export function PaymentAddForm({
           </Link>
         </div>
       ) : (
+        <>
+          <FormSectionNav
+            items={[
+              { href: "#payment-member", label: "Dossier" },
+              { href: "#payment-amount", label: "Montant" },
+              { href: "#payment-method", label: "Règlement" },
+              { href: "#payment-summary", label: "Récap" },
+            ]}
+            className="mb-4"
+          />
+
         <div className="grid min-w-0 items-start gap-4 lg:grid-cols-12">
           <div className="space-y-4 lg:col-span-8">
             <FormSection
+              id="payment-member"
               title="1. Dossier"
               description="Choisissez le membre et le solde à régler."
             >
@@ -280,6 +292,7 @@ export function PaymentAddForm({
             </FormSection>
 
             <FormSection
+              id="payment-amount"
               title="2. Montant"
               description="Saisissez le versement remis, sans dépasser le reste dû."
             >
@@ -327,6 +340,7 @@ export function PaymentAddForm({
             </FormSection>
 
             <FormSection
+              id="payment-method"
               title="3. Règlement"
               description="La date et le moyen de paiement apparaîtront dans l'historique."
             >
@@ -382,7 +396,7 @@ export function PaymentAddForm({
             </FormSection>
           </div>
 
-          <aside className="lg:sticky lg:top-20 lg:col-span-4">
+          <aside id="payment-summary" className="form-section-anchor lg:sticky lg:top-20 lg:col-span-4">
             <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
               <div className="flex items-center gap-2">
                 <span className="flex size-9 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-[var(--primary)]">
@@ -440,6 +454,7 @@ export function PaymentAddForm({
             </div>
           </aside>
         </div>
+        </>
       )}
 
       {subscriptions.length > 0 ? <FormActions sticky>

@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FieldControl } from "@/components/ui/field-control";
-import { FormActions, FormField, FormGrid, FormSection } from "@/components/ui/form-layout";
+import { FormActions, FormField, FormGrid, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import { SubscriptionBillingSummary } from "@/components/ui/reception-info-card";
 
 type MemberOption = { id: string; firstName: string; lastName: string; phone: string };
@@ -178,9 +178,18 @@ export function SubscriptionAddForm({ membersOptions, plansOptions }: Subscripti
     <form onSubmit={onSubmit} className="space-y-5 pb-4 lg:pb-0">
       <FeedbackMessage message={message} />
 
+      <FormSectionNav
+        items={[
+          { href: "#renew-member", label: "Dossier" },
+          { href: "#renew-plan", label: "Formule" },
+          { href: "#renew-payment", label: "Paiement" },
+          { href: "#renew-summary", label: "Récap" },
+        ]}
+      />
+
       <div className="grid min-w-0 items-start gap-4 lg:grid-cols-12">
         <div className="space-y-4 lg:col-span-8">
-          <FormSection title="1. Dossier" description="Sélectionnez le membre avant de créer la nouvelle période.">
+          <FormSection id="renew-member" title="1. Dossier" description="Sélectionnez le membre avant de créer la nouvelle période.">
             <FormField label="Membre *">
               <select value={memberId} onChange={(e) => handleMemberChange(e.target.value)} className="field" required>
                 <option value="">Sélectionner un membre</option>
@@ -217,7 +226,7 @@ export function SubscriptionAddForm({ membersOptions, plansOptions }: Subscripti
             </div>
           </FormSection>
 
-          <FormSection title="2. Nouvelle formule" description="Choisissez le quota et la période à ouvrir.">
+          <FormSection id="renew-plan" title="2. Nouvelle formule" description="Choisissez le quota et la période à ouvrir.">
             <FormField label="Formule *">
               <select value={planId} onChange={(e) => handlePlanChange(e.target.value)} className="field" required>
                 <option value="">Sélectionner une formule</option>
@@ -262,7 +271,7 @@ export function SubscriptionAddForm({ membersOptions, plansOptions }: Subscripti
             )}
           </FormSection>
 
-          <FormSection title="3. Paiement initial" description="Optionnel, mais il ne peut pas dépasser le prix de la formule.">
+          <FormSection id="renew-payment" title="3. Paiement initial" description="Optionnel, mais il ne peut pas dépasser le prix de la formule.">
             <FormGrid>
               <FormField label="Paiement initial (€)">
                 <FieldControl suffix="€">
@@ -291,7 +300,7 @@ export function SubscriptionAddForm({ membersOptions, plansOptions }: Subscripti
           </FormSection>
         </div>
 
-        <aside className="lg:sticky lg:top-20 lg:col-span-4">
+        <aside id="renew-summary" className="form-section-anchor lg:sticky lg:top-20 lg:col-span-4">
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
             <p className="text-sm font-semibold">Récapitulatif</p>
             <p className="text-xs text-[var(--muted-foreground)]">Nouvelle période à créer</p>

@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
-import { FormActions, FormSection } from "@/components/ui/form-layout";
+import { FormActions, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import { GroupMemberSelector } from "@/components/groups/group-member-selector";
 import { CoachDto } from "@/types/coach";
 import { MemberDto } from "@/types/member";
@@ -119,7 +119,14 @@ export function GroupAddForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-5 pb-4 lg:pb-0">
-      <FormSection title="Informations" description="Sport, coach, salle et capacité du cours.">
+      <FormSectionNav
+        items={[
+          { href: "#group-info", label: "Infos" },
+          { href: "#group-members", label: "Membres" },
+        ]}
+      />
+
+      <FormSection id="group-info" title="Informations" description="Sport, coach, salle et capacité du cours.">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div className="sm:col-span-2 lg:col-span-1">
             <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Nom</label>
@@ -209,6 +216,7 @@ export function GroupAddForm({
       </FormSection>
 
       <GroupMemberSelector
+        id="group-members"
         members={filteredMembers}
         selectedIds={selectedMemberIds}
         search={membersSearch}

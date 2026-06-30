@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import type { MemberDto } from "@/types/member";
 
 type GroupMemberSelectorProps = {
+  id?: string;
   members: MemberDto[];
   selectedIds: string[];
   search: string;
@@ -27,6 +28,7 @@ function memberTypeLabel(memberType: MemberDto["memberType"]) {
 }
 
 export function GroupMemberSelector({
+  id,
   members,
   selectedIds,
   search,
@@ -57,7 +59,12 @@ export function GroupMemberSelector({
   }
 
   return (
-    <section className="rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] p-3.5 shadow-[var(--shadow-panel)] sm:p-4">
+    <section
+      id={id}
+      className={cn(
+        "form-section-anchor rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] p-3.5 shadow-[var(--shadow-panel)] sm:p-4",
+      )}
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-sm font-semibold text-[var(--foreground)]">{title}</h2>

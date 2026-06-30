@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
-import { FormActions } from "@/components/ui/form-layout";
+import { FormActions, FormSectionNav } from "@/components/ui/form-layout";
 import { ReceptionInfoCard } from "@/components/ui/reception-info-card";
 
 type SportOption = { id: string; name: string };
@@ -116,8 +116,18 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
         Pour 2 mois, préférez une formule 2 mois plutôt qu&apos;un double paiement.
       </ReceptionInfoCard>
 
+      <FormSectionNav
+        items={[
+          ...(mode === "create" ? [{ href: "#plan-templates", label: "Modèles" }] : []),
+          { href: "#plan-basics", label: "Infos" },
+          { href: "#plan-quota", label: "Quota" },
+          { href: "#plan-validity", label: "Validité" },
+          ...(mode === "edit" ? [{ href: "#plan-status", label: "Statut" }] : []),
+        ]}
+      />
+
       {mode === "create" && (
-        <div className="flex flex-wrap gap-2">
+        <div id="plan-templates" className="form-section-anchor flex flex-wrap gap-2">
           {([1, 2, 3] as const).map((months) => (
             <button
               key={months}
@@ -130,12 +140,12 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
           ))}
         </div>
       )}
-      <div>
+      <div id="plan-basics" className="form-section-anchor">
         <label className="mb-1 block text-xs font-medium text-muted-foreground">Nom du plan *</label>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Mensuel Standard" className="field" required />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div id="plan-quota" className="form-section-anchor grid gap-4 sm:grid-cols-2">
         <div>
           <label className="mb-1 block text-xs font-medium text-muted-foreground">Prix (€) *</label>
           <input type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" className="field" required />
@@ -149,7 +159,7 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div id="plan-validity" className="form-section-anchor grid gap-4 sm:grid-cols-2">
         <div>
           <label className="mb-1 block text-xs font-medium text-muted-foreground">Validité (jours) *</label>
           <input type="number" min="1" value={validityDays} onChange={(e) => setValidityDays(e.target.value)} className="field" required />
@@ -168,7 +178,7 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
       </div>
 
       {mode === "edit" ? (
-        <div>
+        <div id="plan-status" className="form-section-anchor">
           <label className="mb-1 block text-xs font-medium text-muted-foreground">Statut</label>
           <select value={String(isActive)} onChange={(e) => setIsActive(e.target.value === "true")} className="field">
             <option value="true">Actif</option>
