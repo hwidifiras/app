@@ -57,7 +57,29 @@ type Preview = {
   warnings: string[];
 };
 
+type BulkImportRow = {
+  rowNumber: number;
+  externalId: string;
+  memberName: string;
+  groupName: string;
+  planName: string;
+  status: "OK" | "ERROR" | "IMPORTED";
+  errors: string[];
+  warnings: string[];
+  memberId?: string;
+  remainingBalanceCents?: number;
+};
+
+type BulkImportResult = {
+  totalRows: number;
+  okRows: number;
+  errorRows: number;
+  importedRows: number;
+  rows: BulkImportRow[];
+};
+
 const today = new Date().toISOString().slice(0, 10);
+const templateUrl = "/templates/we-discipline-first-client-bulk-import.xlsx";
 
 function isoDate(value: string) {
   return new Date(`${value}T00:00:00.000Z`).toISOString();
@@ -88,8 +110,11 @@ export function DataImportWizard({
   });
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
+  const [bulkFile, setBulkFile] = useState<File | null>(null);
+  const [bulkPreview, setBulkPreview] = useState<BulkImportResult | null>(null);
 
   const [member, setMember] = useState({
     firstName: "",
@@ -290,6 +315,47 @@ export function DataImportWizard({
     router.refresh();
   }
 
+  async function submitBulk(action: "preview" | "apply") {
+    if (!bulkFile) {
+      setMessage("Choisissez le fichier Excel de reprise.");
+      return;
+    }
+
+    setBulkBusy(true);
+    setMessage(null);
+    const formData = new FormData();
+    formData.append("action", action);
+    formData.append("cutoverDate", cutoverDate);
+    formData.append("file", bulkFile);
+
+    const response = await fetch("/api/data-import/bulk", {
+      method: "POST",
+      body: formData,
+    });
+    const json = (await response.json()) as { data?: BulkImportResult; error?: string };
+    setBulkBusy(false);
+
+    if (!response.ok || !json.data) {
+      setBulkPreview(null);
+      setMessage(json.error ?? "Import Excel impossible.");
+      return;
+    }
+
+    setBulkPreview(json.data);
+    if (action === "preview") {
+      setMessage(
+        json.data.errorRows > 0
+          ? `${json.data.errorRows} ligne(s) a corriger avant import.`
+          : "Prevalidation Excel reussie. Vous pouvez appliquer l'import.",
+      );
+      return;
+    }
+
+    setMessage(`${json.data.importedRows} membre(s) importe(s) avec succes.`);
+    await loadStatus();
+    router.refresh();
+  }
+
   if (loadingStatus) {
     return <section className="panel p-5 text-sm text-[var(--muted-foreground)]">Chargement du mode de reprise…</section>;
   }
@@ -330,6 +396,91 @@ export function DataImportWizard({
       />
 
       {status.active ? (
+        <>
+          <section className="panel p-4 sm:p-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-wider text-[var(--primary)]">Import Excel</p>
+                <h2 className="mt-1 text-lg font-semibold">Reprise en masse</h2>
+                <p className="mt-1 max-w-3xl text-sm text-[var(--muted-foreground)]">
+                  Utilisez le modele, gardez les noms de groupes/formules tels qu&apos;ils existent dans le club, puis lancez la prevalidation avant d&apos;importer.
+                </p>
+              </div>
+              <a href={templateUrl} className="btn btn-ghost btn-block-mobile" download>
+                Télécharger le modèle
+              </a>
+            </div>
+
+            <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-end">
+              <label className="text-sm font-medium">
+                Fichier .xlsx ou .csv
+                <input
+                  type="file"
+                  accept=".xlsx,.csv"
+                  className="field mt-1"
+                  onChange={(event) => {
+                    setBulkFile(event.target.files?.[0] ?? null);
+                    setBulkPreview(null);
+                    setMessage(null);
+                  }}
+                />
+              </label>
+              <button type="button" disabled={bulkBusy || !bulkFile} onClick={() => void submitBulk("preview")} className="btn btn-ghost btn-block-mobile">
+                Vérifier Excel
+              </button>
+              <button
+                type="button"
+                disabled={bulkBusy || !bulkPreview || bulkPreview.errorRows > 0 || bulkPreview.okRows === 0}
+                onClick={() => void submitBulk("apply")}
+                className="btn btn-primary btn-block-mobile"
+              >
+                <Upload className="size-4" /> Importer {bulkPreview?.okRows ? `(${bulkPreview.okRows})` : ""}
+              </button>
+            </div>
+
+            {bulkPreview ? (
+              <div className="mt-5 space-y-3">
+                <div className="grid gap-2 text-sm sm:grid-cols-4">
+                  <div className="rounded-lg bg-[var(--surface-soft)] p-3"><span className="text-[var(--muted-foreground)]">Lignes</span><strong className="block">{bulkPreview.totalRows}</strong></div>
+                  <div className="rounded-lg bg-emerald-500/10 p-3 text-emerald-700"><span>Valides</span><strong className="block">{bulkPreview.okRows}</strong></div>
+                  <div className="rounded-lg bg-red-500/10 p-3 text-red-700"><span>Erreurs</span><strong className="block">{bulkPreview.errorRows}</strong></div>
+                  <div className="rounded-lg bg-blue-500/10 p-3 text-blue-700"><span>Importees</span><strong className="block">{bulkPreview.importedRows}</strong></div>
+                </div>
+
+                <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+                  <table className="w-full min-w-[760px] text-left text-sm">
+                    <thead className="bg-[var(--surface-soft)] text-xs uppercase text-[var(--muted-foreground)]">
+                      <tr>
+                        <th className="px-3 py-2">Ligne</th>
+                        <th className="px-3 py-2">Membre</th>
+                        <th className="px-3 py-2">Groupe</th>
+                        <th className="px-3 py-2">Formule</th>
+                        <th className="px-3 py-2">Solde</th>
+                        <th className="px-3 py-2">Statut</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {bulkPreview.rows.slice(0, 50).map((row) => (
+                        <tr key={`${row.rowNumber}-${row.externalId}`}>
+                          <td className="px-3 py-2">{row.rowNumber}</td>
+                          <td className="px-3 py-2 font-medium">{row.memberName || row.externalId}</td>
+                          <td className="px-3 py-2">{row.groupName}</td>
+                          <td className="px-3 py-2">{row.planName}</td>
+                          <td className="px-3 py-2">{formatMoney(row.remainingBalanceCents ?? 0)}</td>
+                          <td className="px-3 py-2">
+                            <span className={row.status === "ERROR" ? "text-red-700" : row.status === "IMPORTED" ? "text-blue-700" : "text-emerald-700"}>
+                              {row.status === "ERROR" ? row.errors.join(" · ") : row.status === "IMPORTED" ? "Importe" : row.warnings.join(" · ") || "Valide"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : null}
+          </section>
+
         <form
           className="space-y-5"
           onSubmit={(event) => {
@@ -517,6 +668,7 @@ export function DataImportWizard({
             </button>
           </div>
         </form>
+        </>
       ) : null}
 
       <section className="panel p-4 sm:p-5">
