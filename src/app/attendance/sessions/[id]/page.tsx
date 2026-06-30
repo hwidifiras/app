@@ -98,6 +98,9 @@ export default async function SessionAttendanceDetailPage({
   const expectedMembers = session.group.members.filter((member) =>
     expectedIds.has(member.memberId),
   );
+  const activeAttendanceRows = attendanceRows.filter((attendance) =>
+    expectedIds.has(attendance.memberId),
+  );
   const lifecycle = deriveSessionLifecycle({
     status: session.status,
     sessionDate: session.sessionDate,
@@ -107,9 +110,9 @@ export default async function SessionAttendanceDetailPage({
   });
   const attByMember = new Map(attendanceRows.map((a) => [a.memberId, a]));
   const enrolled = expectedMembers.length;
-  const present = attendanceRows.filter((a) => a.status === "PRESENT").length;
-  const absent = attendanceRows.filter((a) => a.status === "ABSENT").length;
-  const override = attendanceRows.filter((a) => a.status === "OVERRIDE").length;
+  const present = activeAttendanceRows.filter((a) => a.status === "PRESENT").length;
+  const absent = activeAttendanceRows.filter((a) => a.status === "ABSENT").length;
+  const override = activeAttendanceRows.filter((a) => a.status === "OVERRIDE").length;
   const checked = present + absent + override;
   const notMarked = Math.max(0, enrolled - checked);
 
@@ -246,9 +249,16 @@ export default async function SessionAttendanceDetailPage({
                     {attendanceRows.map((a) => (
                       <tr key={a.id} className="hover:bg-[var(--surface-soft)]">
                         <td className="data-table-primary px-3 py-2" data-label="Élève">
-                          <Link href={`/members/${a.member.id}`} className="text-[var(--primary)] hover:underline">
-                            {a.member.firstName} {a.member.lastName}
-                          </Link>
+                          <div className="flex flex-col items-start gap-1">
+                            <Link href={`/members/${a.member.id}`} className="text-[var(--primary)] hover:underline">
+                              {a.member.firstName} {a.member.lastName}
+                            </Link>
+                            {!expectedIds.has(a.memberId) ? (
+                              <StatusBadge variant="muted" className="text-[0.62rem]">
+                                Hors liste active
+                              </StatusBadge>
+                            ) : null}
+                          </div>
                         </td>
                         <td className="px-3 py-2" data-label="Statut">
                           <StatusBadge variant={attendanceVariant(a.status)}>
