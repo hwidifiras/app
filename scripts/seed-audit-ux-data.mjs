@@ -263,10 +263,10 @@ async function apply(tenantId) {
   });
 
   const members = [
-    [ids.memberPaid, "Audit Lina", "Payee", "97000001", "ACTIVE"],
-    [ids.memberPartial, "Audit Sami", "Partiel", "97000002", "ACTIVE"],
-    [ids.memberUnpaid, "Audit Noor", "Dette", "97000003", "ACTIVE"],
-    [ids.memberArchived, "Audit Archive", "Ferme", "97000004", "ARCHIVED"],
+    [ids.memberPaid, "Audit Lina", "Payee", `${PREFIX}-phone-paid`, "ACTIVE"],
+    [ids.memberPartial, "Audit Sami", "Partiel", `${PREFIX}-phone-partial`, "ACTIVE"],
+    [ids.memberUnpaid, "Audit Noor", "Dette", `${PREFIX}-phone-unpaid`, "ACTIVE"],
+    [ids.memberArchived, "Audit Archive", "Ferme", `${PREFIX}-phone-archived`, "ARCHIVED"],
   ];
 
   for (const [id, firstName, lastName, phone, status] of members) {
