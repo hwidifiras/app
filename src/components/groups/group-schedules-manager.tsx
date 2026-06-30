@@ -231,7 +231,7 @@ export function GroupSchedulesManager({
                         onClick={() => toggleExpand(row.id)}
                         aria-expanded={expanded}
                       >
-                        Détails
+                        {expanded ? "Réduire" : "Infos"}
                         <ChevronDown className={`size-3 transition-transform ${expanded ? "rotate-180" : ""}`} />
                       </button>
                     </td>

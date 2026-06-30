@@ -227,7 +227,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
     return (
       <tr
         key={member.id}
-        className={`mobile-collapsible-row transition-colors hover:bg-(--surface-soft) ${isExpanded ? "is-expanded" : ""}`}
+        className={`mobile-collapsible-row transition-colors hover:bg-[var(--surface-soft)] ${isExpanded ? "is-expanded" : ""}`}
       >
         {selectable ? (
           <td className="hidden px-4 py-3 align-top sm:table-cell">
@@ -427,7 +427,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
 
           <div className="data-table overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-(--surface-soft) text-xs uppercase tracking-wider text-muted-foreground">
+              <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="w-10 px-4 py-3 text-left font-semibold">
                     <input
@@ -481,7 +481,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
               </div>
               <div className="data-table mt-3 overflow-x-auto rounded-xl border-border">
                 <table className="w-full text-sm">
-                  <thead className="bg-(--surface-soft) text-xs uppercase tracking-wider text-muted-foreground">
+                  <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-muted-foreground">
                     <tr>
                       <th className="px-4 py-3 text-left font-semibold">Nom</th>
                       <th className="px-4 py-3 text-left font-semibold">Téléphone</th>

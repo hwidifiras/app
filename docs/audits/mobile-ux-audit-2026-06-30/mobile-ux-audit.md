@@ -410,6 +410,23 @@ Recommended fix:
 - `npm.cmd test` remains blocked locally because the PostgreSQL test database `localhost:5432/gymday_test` is unavailable; the failure happens during `scripts/test-db-reset.mjs` before Vitest starts.
 - No file was uploaded and no import/apply action was performed during this pass.
 
+## Manual Card Consistency Follow-Up
+
+- Finding: after the shared card/table work, a few manual list implementations still differed from the app pattern:
+  - `Membres` and `Formules` used malformed `bg-(--surface-soft)` / `hover:bg-(--surface-soft)` classes, so intended surface and hover colors could fail to render.
+  - Group schedule and formula mobile cards still used `Détails` instead of the shared `Infos` / `Réduire` affordance.
+- Fix:
+  - Replaced the malformed surface classes with `bg-[var(--surface-soft)]` and `hover:bg-[var(--surface-soft)]`.
+  - Updated manual mobile toggles on group schedules and formulas to `Infos` when closed and `Réduire` when open.
+  - Added the missing `data-label="Actions"` on the formula action cell so it matches the table-card semantics.
+- Static search after the fix found no remaining malformed `bg-(--surface-soft)` classes or standalone old `Détails` mobile toggles in `src/app` or `src/components`.
+- Verification completed:
+  - `npx.cmd tsc --noEmit`
+  - `npm.cmd run lint -- --format stylish`
+  - `npm.cmd run build`
+  - `git diff --check` returned no whitespace errors, only the normal CRLF warning for this workspace.
+- `npm.cmd test` remains blocked locally because the PostgreSQL test database `localhost:5432/gymday_test` is unavailable; the failure happens during `scripts/test-db-reset.mjs` before Vitest starts.
+
 ## Evidence Limits
 
 - This audit is screenshot and DOM-metric based; it does not prove full WCAG compliance.
