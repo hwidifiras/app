@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Tag, Trash2 } from "lucide-react";
+import { CircleOff, Tag } from "lucide-react";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FieldControl } from "@/components/ui/field-control";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -167,7 +167,7 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
 
   return (
     <div className="grid items-start gap-4 sm:gap-5 lg:grid-cols-2">
-      <section className="panel order-2 p-4 sm:p-5 lg:order-1">
+      <section id="offer-create" className="panel order-2 scroll-mt-24 p-4 sm:p-5 lg:order-1">
         <h2 className="mb-2 text-lg font-semibold">Créer une offre</h2>
         <p className="mb-4 text-sm text-[var(--muted-foreground)]">
           Choisissez le type de remise, vérifiez l&apos;aperçu, puis retrouvez l&apos;offre dans le parcours{" "}
@@ -337,11 +337,12 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
                     type="button"
                     onClick={() => setPendingDeleteOffer(offer)}
                     disabled={deletingId !== null}
-                    className="btn btn-ghost btn-sm shrink-0 border-[var(--danger)]/25 p-2 text-[var(--danger)]"
+                    className="btn btn-ghost btn-sm shrink-0 border-[var(--warning)]/35 px-2.5 py-2 text-[var(--warning)]"
                     title="Désactiver l'offre"
                     aria-label={`Désactiver ${offer.name}`}
                   >
-                    <Trash2 className="size-4" />
+                    <CircleOff className="size-4" />
+                    <span className="text-xs font-semibold">Désactiver</span>
                   </button>
                 </div>
               </li>
