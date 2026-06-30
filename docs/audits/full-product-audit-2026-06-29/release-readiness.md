@@ -38,6 +38,6 @@ Not ready for SaaS cutover yet, but the private app UI is moving in the right di
 
 1. Add `X-Forwarded-Host` to staging Nginx/cutover config and retest tenant resolution.
 2. Recapture the fixed UI flows on live/staging: payment creation, attendance session detail, staff dashboard, offers creation, and reprise/import template.
-3. Add a reusable demo tenant seed script for future audits and sales demos.
+3. Use `npm run audit:ux:seed`, `npm run audit:ux:status`, and `npm run audit:ux:cleanup` for repeatable temporary audit data.
 4. Run the full functional scenario audit with a writable test tenant.
 5. Run full test/build/audit before production cutover once the local/Postgres test database is available.

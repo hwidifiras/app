@@ -96,6 +96,12 @@ Captured at desktop and mobile:
 - Attendance detail inactive-history rows are clarified after `ca26d4a`.
 - Reprise/import now downloads a simpler French workbook with app-generated member codes after `0e5e07c`.
 
+## Repeatable Audit Data
+
+- `npm run audit:ux:seed` creates a tenant-scoped `audit-ux-*` dataset for screenshots: paid/partial/unpaid members, a valid group/session, inactive attendance history, payment debt, and an offer.
+- `npm run audit:ux:status` checks how many `audit-ux-*` records exist.
+- `npm run audit:ux:cleanup` removes only the `audit-ux-*` records.
+
 ## Recommendation
 
 The app is visually ready for the next functional audit pass. The remaining proof should focus on real workflow behavior rather than broad UI layout:
