@@ -25,6 +25,25 @@ type OffersManagerProps = {
   sportsOptions: Array<{ id: string; name: string }>;
 };
 
+const OFFER_KIND_HELP: Record<OfferKindValue, { title: string; example: string }> = {
+  PERCENT_OFF: {
+    title: "Remise simple sur le devis",
+    example: "Exemple : -10 % sur une inscription de lancement ou une promotion courte.",
+  },
+  FIXED_OFF: {
+    title: "Montant fixe retiré",
+    example: "Exemple : -20 € sur les frais du premier mois, sans changer le quota de séances.",
+  },
+  FAMILY_BUNDLE: {
+    title: "Prix global pour plusieurs élèves",
+    example: "Exemple : deux enfants du même foyer paient 70 € au total au lieu de deux abonnements séparés.",
+  },
+  SECOND_DISCIPLINE: {
+    title: "Réduction pour une discipline ajoutée",
+    example: "Exemple : un élève déjà inscrit prend kick boxing et reçoit -30 % sur la deuxième discipline.",
+  },
+};
+
 export function OffersManager({ sportsOptions }: OffersManagerProps) {
   const searchParams = useSearchParams();
   const contextMemberId = searchParams.get("memberId") ?? "";
@@ -208,6 +227,12 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
               <option value="SECOND_DISCIPLINE">Réduction 2e discipline (%)</option>
             </select>
           </label>
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-sm">
+            <p className="font-semibold text-[var(--foreground)]">{OFFER_KIND_HELP[kind].title}</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-[var(--muted-foreground)]">
+              {OFFER_KIND_HELP[kind].example}
+            </p>
+          </div>
           <div className="rounded-xl border border-[var(--primary)]/20 bg-[var(--primary)]/5 px-3 py-2.5">
             <p className="text-[0.65rem] font-bold uppercase tracking-wide text-[var(--primary)]">Aperçu</p>
             <p className="mt-1 text-sm text-[var(--foreground)]">{offerPreview}</p>

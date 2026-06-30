@@ -50,6 +50,10 @@ export default async function SessionAttendanceDetailPage({
         select: {
           name: true,
           members: {
+            where: {
+              status: "ACTIVE",
+              member: { status: "ACTIVE" },
+            },
             include: {
               member: { select: { id: true, firstName: true, lastName: true } },
             },

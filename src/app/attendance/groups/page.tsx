@@ -75,6 +75,10 @@ export default async function AttendanceByGroupPage({
           id: true,
           name: true,
           members: {
+            where: {
+              status: "ACTIVE",
+              member: { status: "ACTIVE" },
+            },
             select: { memberId: true, startDate: true, endDate: true },
           },
         },

@@ -77,6 +77,10 @@ export default async function AttendanceTodayPage({
           include: {
             sport: { select: { id: true } },
             members: {
+              where: {
+                status: "ACTIVE",
+                member: { status: "ACTIVE" },
+              },
               include: {
                 member: { select: { id: true, firstName: true, lastName: true } },
               },

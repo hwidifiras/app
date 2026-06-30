@@ -172,12 +172,12 @@ export function SetupGuide({ variant, className }: SetupGuideProps) {
           aria-expanded={open}
           aria-label={`Premiers pas, ${pendingCount} étape(s) restante(s)`}
           className={cn(
-            "inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-lg border border-[var(--primary)]/35 bg-[var(--primary)]/10 px-1.5 py-1 text-xs font-semibold text-[var(--primary)] shadow-sm transition sm:min-h-10 sm:gap-2 sm:rounded-xl sm:border-2 sm:px-3 sm:py-2 sm:text-sm",
-            "hover:border-[var(--primary)] hover:bg-[var(--primary)]/18 active:scale-[0.98]",
-            open && "border-[var(--primary)] bg-[var(--primary)]/20 ring-2 ring-[var(--primary)]/25",
+            "inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-1.5 py-1 text-xs font-semibold text-[var(--muted-foreground)] shadow-sm transition sm:min-h-10 sm:gap-2 sm:rounded-xl sm:border-[var(--primary)]/35 sm:bg-[var(--primary)]/10 sm:px-3 sm:py-2 sm:text-sm sm:text-[var(--primary)]",
+            "hover:border-[var(--primary)]/60 hover:bg-[var(--primary)]/10 active:scale-[0.98]",
+            open && "border-[var(--primary)] bg-[var(--primary)]/12 text-[var(--primary)] ring-2 ring-[var(--primary)]/20",
           )}
         >
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)] text-xs font-bold text-white">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-xs font-bold text-[var(--primary)] sm:bg-[var(--primary)] sm:text-white">
             {nextStep.order}
           </span>
           <span className="hidden font-semibold sm:inline lg:hidden">Guide</span>

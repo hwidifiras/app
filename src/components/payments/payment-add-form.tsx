@@ -282,7 +282,16 @@ export function PaymentAddForm({
               </FormGrid>
 
               {selected ? (
-                <div className="mt-4">
+                <div className="mt-4 md:hidden">
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-sm">
+                    <span className="text-[var(--muted-foreground)]">Reste à encaisser</span>
+                    <strong className="tabular-nums text-[var(--danger)]">{formatCurrency(remaining)}</strong>
+                  </div>
+                </div>
+              ) : null}
+
+              {selected ? (
+                <div className="mt-4 hidden md:block">
                   <SubscriptionBillingSummary
                     amountDueCents={selected.amount}
                     totalPaidCents={selected.totalPaid}
