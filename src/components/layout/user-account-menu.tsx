@@ -93,9 +93,9 @@ export function UserAccountMenu({
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label="Menu compte"
-        className="flex min-h-11 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] px-2 py-1.5 text-left transition hover:bg-[var(--surface)]"
+        className="flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-1.5 py-1 text-left transition hover:bg-[var(--surface)] sm:min-h-11 sm:gap-2 sm:rounded-xl sm:px-2 sm:py-1.5"
       >
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)]/15 text-xs font-bold text-[var(--primary)]">
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)]/15 text-[0.68rem] font-bold text-[var(--primary)] sm:size-8 sm:text-xs">
           {account ? initials(account.name) : "…"}
         </span>
         <span className="hidden max-w-[8rem] truncate text-sm font-medium text-[var(--foreground)] sm:block">
@@ -103,7 +103,7 @@ export function UserAccountMenu({
         </span>
         <ChevronDown
           className={cn(
-            "size-4 shrink-0 text-[var(--muted-foreground)] transition-transform",
+            "size-3.5 shrink-0 text-[var(--muted-foreground)] transition-transform sm:size-4",
             open && "rotate-180",
           )}
         />

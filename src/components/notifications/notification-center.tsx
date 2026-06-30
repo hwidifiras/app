@@ -134,7 +134,7 @@ export function NotificationCenter({ className }: { className?: string }) {
         aria-haspopup="dialog"
         aria-label={`${data.unreadCount} notification${data.unreadCount > 1 ? "s" : ""} non lue${data.unreadCount > 1 ? "s" : ""}`}
         className={cn(
-          "relative flex size-10 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)] shadow-sm transition hover:bg-[var(--surface)]",
+          "relative flex size-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)] shadow-sm transition hover:bg-[var(--surface)] sm:size-10 sm:rounded-xl",
           open && "border-[var(--primary)]/45 ring-2 ring-[var(--primary)]/15",
         )}
       >
@@ -144,7 +144,7 @@ export function NotificationCenter({ className }: { className?: string }) {
           <Bell className="size-4.5" />
         )}
         {data.unreadCount > 0 ? (
-          <span className="absolute -right-1.5 -top-1.5 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[0.62rem] font-bold leading-none text-white ring-2 ring-[var(--surface)]">
+          <span className="absolute -right-1.5 -top-1.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[0.55rem] font-bold leading-none text-white ring-2 ring-[var(--surface)] sm:min-h-5 sm:min-w-5 sm:text-[0.62rem]">
             {data.unreadCount > 99 ? "99+" : data.unreadCount}
           </span>
         ) : null}

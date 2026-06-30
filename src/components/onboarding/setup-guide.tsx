@@ -172,7 +172,7 @@ export function SetupGuide({ variant, className }: SetupGuideProps) {
           aria-expanded={open}
           aria-label={`Premiers pas, ${pendingCount} étape(s) restante(s)`}
           className={cn(
-            "inline-flex min-h-10 max-w-full items-center gap-2 rounded-xl border-2 border-[var(--primary)]/40 bg-[var(--primary)]/10 px-3 py-2 text-sm font-semibold text-[var(--primary)] shadow-sm transition",
+            "inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-lg border border-[var(--primary)]/35 bg-[var(--primary)]/10 px-1.5 py-1 text-xs font-semibold text-[var(--primary)] shadow-sm transition sm:min-h-10 sm:gap-2 sm:rounded-xl sm:border-2 sm:px-3 sm:py-2 sm:text-sm",
             "hover:border-[var(--primary)] hover:bg-[var(--primary)]/18 active:scale-[0.98]",
             open && "border-[var(--primary)] bg-[var(--primary)]/20 ring-2 ring-[var(--primary)]/25",
           )}
@@ -180,7 +180,7 @@ export function SetupGuide({ variant, className }: SetupGuideProps) {
           <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)] text-xs font-bold text-white">
             {nextStep.order}
           </span>
-          <span className="font-semibold lg:hidden">Guide</span>
+          <span className="hidden font-semibold sm:inline lg:hidden">Guide</span>
           <span className="hidden min-w-0 text-left leading-tight lg:block">
             <span className="block text-[0.62rem] font-bold uppercase tracking-wide text-[var(--primary)]">
               Premiers pas
@@ -189,7 +189,7 @@ export function SetupGuide({ variant, className }: SetupGuideProps) {
               {nextStep.label}
             </span>
           </span>
-          <span className="flex min-w-[1.35rem] shrink-0 items-center justify-center rounded-full bg-[var(--primary)] px-1.5 text-xs font-bold text-white">
+          <span className="hidden min-w-[1.35rem] shrink-0 items-center justify-center rounded-full bg-[var(--primary)] px-1.5 text-xs font-bold text-white sm:flex">
             {pendingCount}
           </span>
         </button>

@@ -84,20 +84,20 @@ export function MobileNav() {
 
   return (
     <>
-      <div className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)]/96 px-3 py-2.5 shadow-sm backdrop-blur lg:hidden">
+      <div className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)]/96 px-2.5 py-2 shadow-sm backdrop-blur lg:hidden">
         <Link
           href="/"
-          className="flex min-w-0 max-w-[55%] items-center gap-2.5 rounded-lg px-1 py-1 transition hover:bg-[var(--surface-soft)]"
+          className="flex min-w-0 max-w-[48%] items-center gap-2 rounded-lg px-1 py-1 transition hover:bg-[var(--surface-soft)] sm:max-w-[55%]"
         >
           <ClubBrandMark size="sm" />
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <SetupGuide variant="header" />
           <NotificationCenter />
           <UserAccountMenu onNavigate={close} />
           <button
             onClick={() => setOpen((v) => !v)}
-            className="flex size-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)] shadow-sm transition-colors hover:bg-[var(--surface)]"
+            className="flex size-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)] shadow-sm transition-colors hover:bg-[var(--surface)] sm:size-10"
             aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
           >
             {open ? <X className="size-5" /> : <Menu className="size-5" />}
@@ -109,7 +109,7 @@ export function MobileNav() {
 
       <div
         className={cn(
-          "fixed bottom-0 left-0 top-[57px] z-40 w-[min(86vw,320px)] transform bg-[var(--surface)] shadow-xl transition-transform duration-300 ease-out lg:hidden",
+          "fixed bottom-0 left-0 top-[53px] z-40 w-[min(86vw,320px)] transform bg-[var(--surface)] shadow-xl transition-transform duration-300 ease-out lg:hidden sm:top-[57px]",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -162,7 +162,7 @@ export function MobileNav() {
         </nav>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-10px_24px_rgba(15,23,42,0.12)] backdrop-blur lg:hidden dark:shadow-[0_-10px_28px_rgba(0,0,0,0.45)]">
+      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-8px_20px_rgba(15,23,42,0.1)] backdrop-blur lg:hidden dark:shadow-[0_-10px_28px_rgba(0,0,0,0.45)]">
         <nav className="mobile-quick-nav grid grid-cols-5 gap-1">
           <QuickMobileLink href="/" label="Accueil" icon={Home} pathname={pathname} />
           <QuickMobileLink href="/attendance/today" label="Pointage" icon={Clock} pathname={pathname} />
@@ -172,7 +172,7 @@ export function MobileNav() {
         </nav>
       </div>
 
-      <div className="h-[57px] lg:hidden" />
+      <div className="h-[53px] sm:h-[57px] lg:hidden" />
     </>
   );
 }
@@ -198,7 +198,7 @@ function QuickMobileLink({
       href={href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-[0.64rem] font-bold transition",
+        "flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-md px-1 py-1.5 text-[0.62rem] font-bold transition",
         active
           ? cn("bg-[var(--primary)] shadow-sm", activeFg, "[&_svg]:text-[var(--primary-foreground)]")
           : featured

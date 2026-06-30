@@ -7,14 +7,14 @@ type PageHeaderProps = {
 
 export function PageHeader({ overline, title, description, actions }: PageHeaderProps) {
   return (
-    <div className="mb-4 flex flex-col gap-3 md:mb-5 md:flex-row md:items-end md:justify-between md:gap-4">
+    <div className="mb-3 flex flex-col gap-2.5 md:mb-5 md:flex-row md:items-end md:justify-between md:gap-4">
       <div className="flex min-w-0 flex-col gap-1">
         {overline ? (
           <p className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-[var(--primary)] md:text-[0.72rem]">
             {overline}
           </p>
         ) : null}
-        <h1 className="text-[1.55rem] font-bold leading-tight text-[var(--foreground)] md:text-[2rem]">
+        <h1 className="text-[1.48rem] font-bold leading-tight text-[var(--foreground)] md:text-[2rem]">
           {title}
         </h1>
         {description ? (
