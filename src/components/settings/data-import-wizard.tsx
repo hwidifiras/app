@@ -5,6 +5,7 @@ import { AlertTriangle, CheckCircle2, LockKeyhole, RotateCcw, Upload } from "luc
 import { useRouter } from "next/navigation";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { FormSectionNav } from "@/components/ui/form-layout";
 
 type GroupOption = {
   id: string;
@@ -336,7 +337,15 @@ export function DataImportWizard({
             void submit("preview");
           }}
         >
-          <section className="panel p-4 sm:p-6">
+          <FormSectionNav
+            items={[
+              { href: "#reprise-identity", label: "Identité" },
+              { href: "#reprise-current", label: "État réel" },
+              { href: "#reprise-attendance", label: "Pointages" },
+            ]}
+          />
+
+          <section id="reprise-identity" className="form-section-anchor panel p-4 sm:p-6">
             <div className="mb-5">
               <p className="text-xs font-bold uppercase tracking-wider text-[var(--primary)]">1. Identité</p>
               <h2 className="mt-1 text-lg font-semibold">Membre à reprendre</h2>
@@ -377,7 +386,7 @@ export function DataImportWizard({
             </div>
           </section>
 
-          <section className="panel p-4 sm:p-6">
+          <section id="reprise-current" className="form-section-anchor panel p-4 sm:p-6">
             <div className="mb-5">
               <p className="text-xs font-bold uppercase tracking-wider text-[var(--primary)]">2. État réel</p>
               <h2 className="mt-1 text-lg font-semibold">Affectation et abonnement en cours</h2>
@@ -434,7 +443,7 @@ export function DataImportWizard({
             </div>
           </section>
 
-          <section className="panel p-4 sm:p-6">
+          <section id="reprise-attendance" className="form-section-anchor panel p-4 sm:p-6">
             <div className="mb-4">
               <p className="text-xs font-bold uppercase tracking-wider text-[var(--primary)]">3. Semaine de bascule</p>
               <h2 className="mt-1 text-lg font-semibold">Pointages déjà réalisés sur papier</h2>

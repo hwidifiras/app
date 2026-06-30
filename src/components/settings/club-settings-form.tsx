@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
-import { FormActions, FormField, FormGrid, FormSection } from "@/components/ui/form-layout";
+import { FormActions, FormField, FormGrid, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import { FieldControl } from "@/components/ui/field-control";
 import { cn } from "@/lib/utils";
 
@@ -208,7 +208,16 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
     <form onSubmit={submit} className="space-y-5">
       <FeedbackMessage message={message} />
 
+      <FormSectionNav
+        items={[
+          { href: "#club-identity", label: "Identité" },
+          { href: "#club-checkin", label: "Pointage" },
+          { href: "#club-alerts", label: "Alertes" },
+        ]}
+      />
+
       <FormSection
+        id="club-identity"
         title="Identité du club"
         description="Ces informations apparaissent dans l'application et sur les écrans d'accueil."
       >
@@ -299,6 +308,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
       </FormSection>
 
       <FormSection
+        id="club-checkin"
         title="Pointage & paiements"
         description="Définissez ce que l'équipe peut accepter pendant le pointage."
       >
@@ -328,6 +338,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
       </FormSection>
 
       <FormSection
+        id="club-alerts"
         title="Alertes et remises"
         description="Réglez les montants visibles et la marge de remise accordée à l'équipe."
       >

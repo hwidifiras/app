@@ -496,11 +496,57 @@ input.field[type="search"]::-webkit-search-results-decoration {
   background: var(--background);
 }
 
+.form-section-anchor {
+  scroll-margin-top: 5.25rem;
+}
+
+.form-section-nav {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.form-section-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.form-section-nav-link {
+  display: inline-flex;
+  min-height: 2.3rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  background: color-mix(in srgb, var(--surface-raised) 90%, var(--primary) 10%);
+  padding: 0.42rem 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--foreground);
+  text-decoration: none;
+}
+
+.form-section-nav-link:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--primary) 24%, transparent);
+  outline-offset: 2px;
+}
+
 @media (min-width: 768px) {
   .form-actions {
     flex-direction: row;
     align-items: center;
     justify-content: flex-end;
+  }
+
+  .form-section-anchor {
+    scroll-margin-top: 5.75rem;
+  }
+
+  .form-section-nav {
+    flex-wrap: wrap;
+    overflow: visible;
   }
 }
 

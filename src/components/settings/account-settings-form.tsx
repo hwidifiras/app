@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Mail, Pencil } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
-import { FormActions, FormField, FormGrid, FormSection } from "@/components/ui/form-layout";
+import { FormActions, FormField, FormGrid, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 
@@ -193,7 +193,15 @@ export function AccountSettingsForm() {
     <div className="space-y-4">
       <FeedbackMessage message={message} variant={message?.includes("succès") ? "success" : undefined} />
 
-      <FormSection title="Informations personnelles" description="Ces informations identifient votre compte dans l'application.">
+      <FormSectionNav
+        items={[
+          { href: "#account-profile", label: "Profil" },
+          { href: "#account-theme", label: "Thème" },
+          { href: "#account-security", label: "Sécurité" },
+        ]}
+      />
+
+      <FormSection id="account-profile" title="Informations personnelles" description="Ces informations identifient votre compte dans l'application.">
         <form onSubmit={saveName} className="space-y-4">
           <FormField label="Nom affiché">
             <input className="field" value={name} onChange={(e) => setName(e.target.value)} required minLength={2} />
@@ -277,11 +285,11 @@ export function AccountSettingsForm() {
         </div>
       </FormSection>
 
-      <FormSection title="Apparence" description="Choisissez le thème le plus confortable pour votre écran.">
+      <FormSection id="account-theme" title="Apparence" description="Choisissez le thème le plus confortable pour votre écran.">
         <ThemeToggle />
       </FormSection>
 
-      <FormSection title="Sécurité" description="Utilisez un mot de passe unique d'au moins 8 caractères.">
+      <FormSection id="account-security" title="Sécurité" description="Utilisez un mot de passe unique d'au moins 8 caractères.">
         {!passwordEditOpen ? (
           <button type="button" className="btn btn-ghost btn-block-mobile" onClick={() => setPasswordEditOpen(true)}>
             <Pencil className="size-4" />

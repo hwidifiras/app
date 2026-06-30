@@ -1,22 +1,56 @@
 import { cn } from "@/lib/utils";
 
 export function FormSection({
+  id,
   title,
   description,
   children,
   className,
 }: {
+  id?: string;
   title?: string;
   description?: string;
   children: React.ReactNode;
   className?: string;
 }) {
   return (
-    <section className={cn("rounded-lg border border-border/80 bg-[var(--surface-raised)] p-3.5 shadow-[var(--shadow-panel)] md:p-4", className)}>
+    <section
+      id={id}
+      className={cn(
+        "form-section-anchor rounded-lg border border-border/80 bg-[var(--surface-raised)] p-3.5 shadow-[var(--shadow-panel)] md:p-4",
+        className,
+      )}
+    >
       {title ? <h3 className="text-sm font-semibold text-foreground">{title}</h3> : null}
       {description ? <p className="mt-0.5 text-xs text-muted-foreground">{description}</p> : null}
       <div className={cn(title || description ? "mt-3" : undefined)}>{children}</div>
     </section>
+  );
+}
+
+export function FormSectionNav({
+  items,
+  className,
+}: {
+  items: Array<{ href: string; label: string }>;
+  className?: string;
+}) {
+  if (items.length === 0) return null;
+
+  return (
+    <nav
+      className={cn(
+        "form-section-nav rounded-lg border border-border/80 bg-[var(--surface)]/96 p-2 shadow-[var(--shadow-panel)]",
+        className,
+      )}
+      aria-label="Sections du formulaire"
+    >
+      {items.map((item) => (
+        <a key={item.href} href={item.href} className="form-section-nav-link">
+          {item.label}
+        </a>
+      ))}
+    </nav>
   );
 }
 
