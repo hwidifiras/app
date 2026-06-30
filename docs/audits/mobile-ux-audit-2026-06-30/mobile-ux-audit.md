@@ -190,6 +190,7 @@ Recommended fix:
   - VPS Docker build and restart passed.
   - Live HTTPS smoke check returned `200 OK` on `https://we-discipline.com/login`.
   - `npm.cmd test` was blocked in the Windows workspace because local Postgres/Docker is unavailable; no production/staging data reset was attempted.
+  - `npm.cmd audit --omit=dev` reported two moderate advisories through Next's bundled PostCSS dependency. No automated force-fix was applied because npm suggested a breaking downgrade path.
 - The temporary audit admin account was disabled after verification.
 
 ## Evidence Limits
