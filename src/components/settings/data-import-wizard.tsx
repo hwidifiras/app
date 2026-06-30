@@ -5,7 +5,7 @@ import { AlertTriangle, CheckCircle2, LockKeyhole, RotateCcw, Upload } from "luc
 import { useRouter } from "next/navigation";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
-import { FormSectionNav } from "@/components/ui/form-layout";
+import { FormActions, FormSectionNav } from "@/components/ui/form-layout";
 
 type GroupOption = {
   id: string;
@@ -91,6 +91,18 @@ function eurosToCents(value: string) {
 
 function formatMoney(cents: number) {
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
+}
+
+function bulkRowStatusText(row: BulkImportRow) {
+  if (row.status === "ERROR") return row.errors.join("; ");
+  if (row.status === "IMPORTED") return "Importé";
+  return row.warnings.join("; ") || "Valide";
+}
+
+function bulkRowStatusClass(row: BulkImportRow) {
+  if (row.status === "ERROR") return "text-red-700";
+  if (row.status === "IMPORTED") return "text-blue-700";
+  return "text-emerald-700";
 }
 
 export function DataImportWizard({
@@ -403,7 +415,10 @@ export function DataImportWizard({
                 <p className="text-xs font-bold uppercase tracking-wider text-[var(--primary)]">Import Excel</p>
                 <h2 className="mt-1 text-lg font-semibold">Reprise en masse</h2>
                 <p className="mt-1 max-w-3xl text-sm text-[var(--muted-foreground)]">
-                  Utilisez le modele, gardez les noms de groupes/formules tels qu&apos;ils existent dans le club, puis lancez la prevalidation avant d&apos;importer.
+                  Utilisez le modèle, gardez les noms de groupes/formules tels qu&apos;ils existent dans le club, puis lancez la prévalidation avant d&apos;importer.
+                </p>
+                <p className="mt-2 max-w-3xl rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-800">
+                  La colonne Référence est optionnelle : laissez-la vide si vous n&apos;avez pas de code membre, elle sera générée automatiquement.
                 </p>
               </div>
               <a href={templateUrl} className="btn btn-ghost btn-block-mobile" download>
@@ -444,10 +459,10 @@ export function DataImportWizard({
                   <div className="rounded-lg bg-[var(--surface-soft)] p-3"><span className="text-[var(--muted-foreground)]">Lignes</span><strong className="block">{bulkPreview.totalRows}</strong></div>
                   <div className="rounded-lg bg-emerald-500/10 p-3 text-emerald-700"><span>Valides</span><strong className="block">{bulkPreview.okRows}</strong></div>
                   <div className="rounded-lg bg-red-500/10 p-3 text-red-700"><span>Erreurs</span><strong className="block">{bulkPreview.errorRows}</strong></div>
-                  <div className="rounded-lg bg-blue-500/10 p-3 text-blue-700"><span>Importees</span><strong className="block">{bulkPreview.importedRows}</strong></div>
+                  <div className="rounded-lg bg-blue-500/10 p-3 text-blue-700"><span>Importées</span><strong className="block">{bulkPreview.importedRows}</strong></div>
                 </div>
 
-                <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+                <div className="data-table overflow-x-auto rounded-lg border border-[var(--border)]">
                   <table className="w-full min-w-[760px] text-left text-sm">
                     <thead className="bg-[var(--surface-soft)] text-xs uppercase text-[var(--muted-foreground)]">
                       <tr>
@@ -462,14 +477,21 @@ export function DataImportWizard({
                     <tbody className="divide-y divide-[var(--border)]">
                       {bulkPreview.rows.slice(0, 50).map((row) => (
                         <tr key={`${row.rowNumber}-${row.externalId}`}>
-                          <td className="px-3 py-2">{row.rowNumber}</td>
-                          <td className="px-3 py-2 font-medium">{row.memberName || row.externalId}</td>
-                          <td className="px-3 py-2">{row.groupName}</td>
-                          <td className="px-3 py-2">{row.planName}</td>
-                          <td className="px-3 py-2">{formatMoney(row.remainingBalanceCents ?? 0)}</td>
-                          <td className="px-3 py-2">
-                            <span className={row.status === "ERROR" ? "text-red-700" : row.status === "IMPORTED" ? "text-blue-700" : "text-emerald-700"}>
-                              {row.status === "ERROR" ? row.errors.join(" · ") : row.status === "IMPORTED" ? "Importe" : row.warnings.join(" · ") || "Valide"}
+                          <td className="px-3 py-2" data-label="Ligne">{row.rowNumber}</td>
+                          <td className="data-table-primary px-3 py-2 font-medium" data-label="Membre">
+                            <span>{row.memberName || "Membre sans nom"}</span>
+                            {row.externalId ? (
+                              <span className="mt-0.5 block text-[0.68rem] font-medium text-[var(--muted-foreground)]">
+                                Réf. {row.externalId}
+                              </span>
+                            ) : null}
+                          </td>
+                          <td className="px-3 py-2" data-label="Groupe">{row.groupName || "-"}</td>
+                          <td className="px-3 py-2" data-label="Formule">{row.planName || "-"}</td>
+                          <td className="px-3 py-2" data-label="Solde">{formatMoney(row.remainingBalanceCents ?? 0)}</td>
+                          <td className="px-3 py-2" data-label="Statut">
+                            <span className={bulkRowStatusClass(row)}>
+                              {bulkRowStatusText(row)}
                             </span>
                           </td>
                         </tr>
@@ -659,14 +681,14 @@ export function DataImportWizard({
             </section>
           ) : null}
 
-          <div className="sticky bottom-20 z-20 flex flex-col-reverse gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)]/95 p-3 shadow-lg backdrop-blur sm:bottom-4 sm:flex-row sm:justify-end">
+          <FormActions sticky className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button type="submit" disabled={busy} className="btn btn-ghost btn-block-mobile">
               Vérifier toutes les contraintes
             </button>
             <button type="button" disabled={busy || !preview} onClick={() => void submit("apply")} className="btn btn-primary btn-block-mobile">
               <Upload className="size-4" /> Appliquer la reprise
             </button>
-          </div>
+          </FormActions>
         </form>
         </>
       ) : null}

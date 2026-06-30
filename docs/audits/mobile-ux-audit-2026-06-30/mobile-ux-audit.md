@@ -393,6 +393,23 @@ Recommended fix:
   - VPS Docker build and restart passed for both commits.
 - `npm.cmd test` was not rerun in this small UI-only follow-up; previous passes remain blocked locally by the unavailable PostgreSQL test database at `localhost:5432/gymday_test`.
 
+## Data Import Mobile Clarity Follow-Up
+
+- Finding: the reprise/import preview reused the shared mobile card table behavior, but the bulk preview cells did not expose `data-label` values. On mobile this could show row values without enough context for a receptionist checking an Excel file.
+- Fix:
+  - Added labelled mobile preview fields for `Ligne`, `Membre`, `Groupe`, `Formule`, `Solde`, and `Statut`.
+  - Kept the generated member reference visible as `Réf.` under the member name instead of exposing `externalId` language to the user.
+  - Added a short note explaining that `Référence` is optional and is generated automatically when blank.
+  - Reused the shared sticky `FormActions` layout for the manual reprise submit bar.
+  - Cleaned the visible import copy: `modèle`, `prévalidation`, and `Importées`.
+- Verification completed:
+  - `npx.cmd tsc --noEmit`
+  - `npm.cmd run lint -- --format stylish`
+  - `npm.cmd run build`
+  - `git diff --check` returned no whitespace errors, only the normal CRLF warning for this workspace.
+- `npm.cmd test` remains blocked locally because the PostgreSQL test database `localhost:5432/gymday_test` is unavailable; the failure happens during `scripts/test-db-reset.mjs` before Vitest starts.
+- No file was uploaded and no import/apply action was performed during this pass.
+
 ## Evidence Limits
 
 - This audit is screenshot and DOM-metric based; it does not prove full WCAG compliance.
