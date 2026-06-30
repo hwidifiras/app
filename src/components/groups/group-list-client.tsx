@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Clock, Pencil, RotateCcw, Trash2, UsersRound } from "lucide-react";
+import { CircleOff, Clock, Pencil, RotateCcw, UsersRound } from "lucide-react";
 import { formatGroupRoomLabel } from "@/lib/group-room";
 import { GroupDto } from "@/types/group";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -35,7 +35,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [expandedGroupIds, setExpandedGroupIds] = useState<string[]>([]);
   const [message, setMessage] = useState<string | null>(null);
-  const [pendingDeleteGroup, setPendingDeleteGroup] = useState<GroupDto | null>(null);
+  const [pendingDeactivateGroup, setPendingDeactivateGroup] = useState<GroupDto | null>(null);
 
   function toggleExpand(groupId: string) {
     setExpandedGroupIds((current) =>
@@ -60,7 +60,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
   const activeFilterCount = statusFilter === "ALL" ? 0 : 1;
   const pagination = usePagination(filteredGroups, 20, `${searchTerm}|${statusFilter}`);
 
-  async function deleteGroup(groupId: string) {
+  async function deactivateGroup(groupId: string) {
     setActionLoadingId(groupId);
     setMessage(null);
 
@@ -73,14 +73,19 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
     const result = await response.json();
 
     if (!response.ok) {
-      setMessage(result.error ?? "Erreur lors de la suppression");
+      setMessage(result.error ?? "Erreur lors de la désactivation");
       setActionLoadingId(null);
       return;
     }
 
-    setGroups((current) => current.filter((g) => g.id !== groupId));
-    setPendingDeleteGroup(null);
-    setMessage("Groupe supprimé avec succès");
+    const deactivatedGroup = (result.data as GroupDto | undefined) ?? null;
+    setGroups((current) =>
+      current.map((group) =>
+        group.id === groupId ? (deactivatedGroup ?? { ...group, isActive: false }) : group,
+      ),
+    );
+    setPendingDeactivateGroup(null);
+    setMessage("Cours désactivé. Les séances et l'historique restent consultables.");
     setActionLoadingId(null);
   }
 
@@ -216,13 +221,13 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
                     </Link>
                     <button
                       type="button"
-                      onClick={() => setPendingDeleteGroup(group)}
+                      onClick={() => setPendingDeactivateGroup(group)}
                       disabled={actionLoadingId === group.id}
-                      className="btn btn-ghost btn-sm inline-flex size-9 items-center justify-center border-[var(--danger)]/30 p-0 text-[var(--danger)]"
-                      title="Supprimer"
-                      aria-label="Supprimer"
+                      className="btn btn-ghost btn-sm inline-flex size-9 items-center justify-center border-[var(--warning)]/35 p-0 text-[var(--warning)]"
+                      title="Désactiver"
+                      aria-label="Désactiver"
                     >
-                      <Trash2 className="size-4" />
+                      <CircleOff className="size-4" />
                     </button>
                   </div>
                 </TableActionsCell>
@@ -259,13 +264,13 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
       </MobileFilterSheet>
 
       <ConfirmDialog
-        open={pendingDeleteGroup !== null}
-        title="Supprimer ce groupe ?"
-        description={`Le groupe « ${pendingDeleteGroup?.name ?? ""} » et ses séances planifiées seront supprimés.`}
-        confirmLabel="Supprimer le groupe"
-        loading={actionLoadingId === pendingDeleteGroup?.id}
-        onCancel={() => setPendingDeleteGroup(null)}
-        onConfirm={() => pendingDeleteGroup ? deleteGroup(pendingDeleteGroup.id) : undefined}
+        open={pendingDeactivateGroup !== null}
+        title="Désactiver ce cours ?"
+        description={`Le cours « ${pendingDeactivateGroup?.name ?? ""} » ne sera plus proposé aux nouvelles inscriptions. Les séances et l'historique restent consultables.`}
+        confirmLabel="Désactiver le cours"
+        loading={actionLoadingId === pendingDeactivateGroup?.id}
+        onCancel={() => setPendingDeactivateGroup(null)}
+        onConfirm={() => pendingDeactivateGroup ? deactivateGroup(pendingDeactivateGroup.id) : undefined}
       />
     </div>
   );

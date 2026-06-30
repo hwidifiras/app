@@ -136,8 +136,8 @@ export default async function AddMemberToGroupPage({
 
       <PageHeader
         overline="Gestion du membre"
-        title={`Ajouter ${member.firstName} ${member.lastName} à un groupe`}
-        description="Sélectionnez un groupe et l'abonnement associé. Les conflits d'horaires seront détectés automatiquement."
+        title="Affecter à un groupe"
+        description={`${member.firstName} ${member.lastName} · sélectionnez un groupe et l'abonnement associé.`}
       />
 
       <section className="panel p-4 sm:p-6">
