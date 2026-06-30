@@ -163,6 +163,35 @@ Recommended fix:
   - Live HTTPS smoke check returned `200 OK` on `https://we-discipline.com/login`.
 - The temporary audit admin account was disabled after verification.
 
+## Mobile Responsiveness Follow-Up
+
+- Commit: `f5e7f18` (`fix: align mobile soft action copy`).
+- Deployed to the live SaaS app on `127.0.0.1:3002`.
+- Captured a fresh `390x844` mobile evidence set in `screenshots/mobile-responsive-pass-f5e7f18/`:
+  - dashboard, pointage, inscription, encaissement
+  - membres, abonnements, paiements, planning
+  - add-to-group, cours list, expanded cours actions, deactivation dialog
+- Result: all captured screens reported `horizontalOverflow=false`.
+- Fixed the add-to-group page title from the long member-name sentence to `Affecter à un groupe`; the member name now lives in supporting text. This keeps the first mobile fold cleaner for long names.
+- Fixed the courses list safety copy: the action now reads `Désactiver`, uses a warning tone instead of a delete/trash treatment, keeps the row visible after success, and explains that sessions/history remain consultable.
+- Verified the new deactivation dialog without confirming the destructive action. The dialog now says the course will stop being offered for new registrations while preserving history.
+- Current mobile assessment:
+  - Dashboard remains strong and reception-first; first fold is clear.
+  - Forms for `Inscrire` and `Encaisser` are readable with large inputs and clear step/action hierarchy.
+  - Members, subscriptions, payments, sessions, and groups now behave as card lists without visible sideways scrolling.
+  - Bottom navigation is stable and gives the five main reception tasks quick access.
+- Remaining UX polish worth a later pass:
+  - Expanded row actions on configuration cards are still icon-only; mobile users would benefit from clearer labels or a compact action menu.
+  - Search/filter/primary-action toolbars consume a lot of first-fold height on list pages; acceptable now, but a denser toolbar pattern would improve scan speed.
+  - Long operational forms remain usable, but progressive sectioning or anchors would make settings-heavy screens easier for non-technical users.
+- Verification completed:
+  - `npm.cmd run lint`
+  - `npm.cmd run build`
+  - VPS Docker build and restart passed.
+  - Live HTTPS smoke check returned `200 OK` on `https://we-discipline.com/login`.
+  - `npm.cmd test` was blocked in the Windows workspace because local Postgres/Docker is unavailable; no production/staging data reset was attempted.
+- The temporary audit admin account was disabled after verification.
+
 ## Evidence Limits
 
 - This audit is screenshot and DOM-metric based; it does not prove full WCAG compliance.
