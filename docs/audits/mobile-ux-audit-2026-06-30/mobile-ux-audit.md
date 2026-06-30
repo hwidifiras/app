@@ -117,6 +117,32 @@ Recommended fix:
 - After screenshots were saved in `screenshots/after-polish/` for `/sessions`, `/enrollment`, `/payments/new`, and `/settings/users`.
 - The temporary audit admin account was disabled after the verification pass.
 
+## Later Mobile Polish Applied
+
+- Commits:
+  - `a288f6e` (`fix: compact mobile card actions`).
+  - `4503e51` (`fix: clean up member mobile actions`).
+  - `46b5eb2` (`fix: tighten mobile app chrome and cards`).
+- Deployed to the live SaaS app on `127.0.0.1:3002`.
+- Added `/plans -> /subscription-plans` redirect for safer old bookmarks or guessed navigation.
+- Compact card actions were verified on `/members` and `/subscription-plans`; each visible member card now shows one `Détails` action plus one `Voir plus` toggle.
+- Tightened the mobile top bar, account/notification/setup controls, bottom nav, shared page header rhythm, mobile table-card spacing, mobile card labels, `Voir plus` affordance, and sticky form action offset.
+- Viewport screenshots were saved in `screenshots/responsive-polish-after-46b5eb2/` for dashboard, pointage, inscription, encaissement, membres, abonnements, paiements, planning, cours, coachs, disciplines, formules, offres, club, and logs.
+- Visual result at `390x844`: cards are more compact, top/bottom chrome consumes less of the first fold, table cards remain readable, and primary actions stay visible without horizontal scrolling.
+- Automated overflow metrics still flag the closed off-canvas mobile drawer because it exists offscreen with a transform. The accepted screenshots do not show user-visible horizontal scrolling after this pass.
+- Verification completed:
+  - `npm.cmd run lint`
+  - `npm.cmd run build`
+  - Live HTTPS smoke check returned `200 OK` on `https://we-discipline.com/login`.
+  - Server repo is on `46b5eb2`.
+- The temporary audit admin account was disabled after the verification pass.
+
+## Remaining Mobile UX Notes
+
+- The top chrome is now acceptable, but it still occupies a fixed band on every screen; a future redesign could collapse secondary controls into the menu on very small devices.
+- Long forms such as club settings and coach creation remain readable, but they are still lengthy. A later pass should consider section anchors or progressive grouping for configuration-heavy screens.
+- Several configuration lists intentionally hide secondary details behind `Voir plus`; this keeps scanning fast, but power users may eventually want inline quick actions per row.
+
 ## Evidence Limits
 
 - This audit is screenshot and DOM-metric based; it does not prove full WCAG compliance.
