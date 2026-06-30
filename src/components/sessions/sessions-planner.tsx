@@ -567,15 +567,15 @@ export function SessionsPlanner({
                           <p className="text-xs text-[var(--danger)]">Motif: {item.exceptionReason}</p>
                         ) : null}
                       </div>
-                      <div className="mt-auto flex w-full items-center justify-between gap-2">
+                      <div className="mt-auto flex w-full min-w-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <StatusBadge variant={displayedSessionStatus(item).variant}>
                           {displayedSessionStatus(item).label}
                         </StatusBadge>
-                        <div className="flex items-center gap-1">
+                        <div className="grid min-w-0 grid-cols-2 gap-1 sm:flex sm:items-center sm:justify-end">
                           {item.operationalStatus === "NEEDS_FINALIZATION" ? (
                             <Link
                               href={`/attendance/today?sessionId=${item.id}`}
-                              className="btn btn-primary btn-sm"
+                              className="btn btn-primary btn-sm min-w-0 max-sm:w-full"
                             >
                               <AlertTriangle className="size-3.5" />
                               Finaliser
@@ -584,7 +584,7 @@ export function SessionsPlanner({
                           {item.status === "COMPLETED" ? (
                             <Link
                               href={`/attendance/today?sessionId=${item.id}`}
-                              className="btn btn-ghost btn-sm"
+                              className="btn btn-ghost btn-sm min-w-0 max-sm:w-full"
                             >
                               Consulter
                             </Link>
@@ -592,7 +592,7 @@ export function SessionsPlanner({
                             <button
                               type="button"
                               onClick={() => openEdit(item)}
-                              className="btn btn-ghost btn-sm"
+                              className="btn btn-ghost btn-sm min-w-0 max-sm:w-full"
                             >
                               Modifier
                             </button>
@@ -608,7 +608,7 @@ export function SessionsPlanner({
                                 ? "Annulez les pointages depuis le pointage du jour avant d'annuler la séance"
                                 : undefined
                             }
-                            className="btn btn-ghost btn-sm border-[var(--danger)]/30 text-[var(--danger)] disabled:opacity-50"
+                            className="btn btn-ghost btn-sm min-w-0 border-[var(--danger)]/30 text-[var(--danger)] disabled:opacity-50 max-sm:w-full"
                           >
                             Annuler
                           </button>

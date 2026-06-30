@@ -81,7 +81,7 @@ export function FormActions({
       className={cn(
         "form-actions mt-4 border-t border-border/70 pt-4",
         sticky &&
-          "sticky bottom-[calc(3.65rem+env(safe-area-inset-bottom,0px))] z-20 border-t border-border bg-[var(--background)] pb-3 pt-3 shadow-[0_-10px_24px_-8px_rgba(15,23,42,0.14)] md:bottom-0 md:-mx-4 md:px-4 md:pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+          "sticky bottom-[calc(4.55rem+env(safe-area-inset-bottom,0px))] z-20 rounded-t-lg border-t border-border bg-[var(--background)] pb-2.5 pt-2.5 shadow-[0_-10px_24px_-8px_rgba(15,23,42,0.14)] md:bottom-0 md:-mx-4 md:rounded-none md:px-4 md:pb-[max(0.75rem,env(safe-area-inset-bottom))]",
         className,
       )}
     >
