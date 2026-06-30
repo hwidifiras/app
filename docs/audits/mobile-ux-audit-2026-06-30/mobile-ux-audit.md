@@ -210,6 +210,26 @@ Recommended fix:
   - VPS Docker build and restart passed.
 - The temporary audit admin account was disabled after verification.
 
+## Mobile Toolbar Compact Pass
+
+- Commit: `aa3308e` (`fix: compact mobile list toolbars`).
+- Deployed to the live SaaS app on `127.0.0.1:3002`.
+- Captured focused `390x844` screenshots in `screenshots/mobile-toolbar-compact-aa3308e/`:
+  - `01-members-toolbar.png`
+  - `02-groups-toolbar.png`
+  - `03-payments-toolbar.png`
+  - `04-sessions-toolbar.png`
+  - `05-attendance-history-toolbar.png`
+- Result: the shared mobile list toolbar now uses shorter search fields, filter buttons, action buttons, padding, and result-count text while keeping touch targets readable at about `41px` high.
+- Applied the shared `list-toolbar` hook to members, groups, payments, subscriptions, formulas, attendance history, planning, and group reports.
+- All captured toolbar screens reported `horizontalOverflow=false`.
+- Visual result: list pages now show more real content in the first mobile fold without removing the search/filter/action workflow.
+- Verification completed:
+  - `npm.cmd run lint`
+  - `npm.cmd run build`
+  - VPS Docker build and restart passed.
+- The temporary audit admin account was disabled after verification.
+
 ## Evidence Limits
 
 - This audit is screenshot and DOM-metric based; it does not prove full WCAG compliance.
