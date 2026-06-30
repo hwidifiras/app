@@ -293,9 +293,12 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
           </Link>
         </td>
         <td className="px-4 py-3 text-center md:hidden mobile-toggle-cell">
+          <Link href={`/members/${member.id}`} className="btn btn-ghost mb-1.5 w-full min-h-10 text-xs">
+            DÃ©tails
+          </Link>
           <button
             type="button"
-            className="mobile-card-toggle"
+            className="mobile-card-toggle w-full"
             onClick={() => toggleExpandMember(member.id)}
             aria-expanded={isExpanded}
           >
