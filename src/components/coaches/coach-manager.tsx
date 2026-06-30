@@ -226,7 +226,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
   return (
     <div>
       <div className="grid w-full items-start gap-4 lg:grid-cols-[minmax(20rem,0.85fr)_minmax(0,1.25fr)]">
-        <section className="panel p-4 sm:p-5">
+        <section id="coach-create" className="panel order-2 scroll-mt-24 p-4 sm:p-5 lg:order-1">
           <h2 className="text-base font-semibold text-[var(--foreground)]">Ajouter un coach</h2>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">
             Créer un nouveau coach avec sa spécialité sportive.
@@ -325,7 +325,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
           <FeedbackMessage message={message} className="mt-4" />
         </section>
 
-        <section className="panel p-4 sm:p-5">
+        <section className="panel order-1 p-4 sm:p-5 lg:order-2">
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-base font-semibold text-[var(--foreground)]">Coachs enregistrés</h2>
@@ -437,7 +437,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
                     <div className="flex min-w-0 flex-1 items-center gap-3">
                       <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-xs font-bold text-[var(--primary)]">
                         {coach.firstName[0]}
@@ -460,26 +460,28 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                         </StatusBadge>
                       </span>
                     </div>
-                    <div className="flex shrink-0 items-center justify-end gap-1">
+                    <div className="list-card-actions mt-1 shrink-0 md:mt-0 md:justify-end">
                       <button
                         type="button"
                         onClick={() => startEdit(coach)}
                         disabled={actionLoadingId === coach.id}
-                        className="btn btn-ghost btn-sm inline-flex size-9 items-center justify-center p-0"
+                        className="btn btn-ghost btn-sm inline-flex items-center justify-center md:size-9 md:p-0"
                         title="Modifier"
                         aria-label="Modifier"
                       >
                         <Pencil className="size-4" />
+                        <span className="md:hidden">Modifier</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setPendingDeleteCoach(coach)}
                         disabled={actionLoadingId === coach.id}
-                        className="btn btn-danger btn-sm inline-flex size-9 items-center justify-center p-0"
+                        className="btn btn-danger btn-sm inline-flex items-center justify-center md:size-9 md:p-0"
                         title="Supprimer"
                         aria-label="Supprimer"
                       >
                         <Trash2 className="size-4" />
+                        <span className="md:hidden">Supprimer</span>
                       </button>
                     </div>
                   </div>

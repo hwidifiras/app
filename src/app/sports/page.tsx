@@ -1,6 +1,7 @@
 import { SportManager } from "@/components/sports/sport-manager";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
@@ -67,6 +68,11 @@ export default async function SportsPage() {
         overline="Configuration"
         title="Disciplines"
         description="Gérer les disciplines proposées par le club."
+        actions={
+          <Link href="#sport-create" className="btn btn-primary btn-block-mobile">
+            <Plus className="size-4" /> Ajouter une discipline
+          </Link>
+        }
       />
       <SportManager initialSports={initialSports} />
     </main>

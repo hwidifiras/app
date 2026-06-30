@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Plus } from "lucide-react";
 
 import { CoachManager } from "@/components/coaches/coach-manager";
 import { prisma } from "@/lib/prisma";
@@ -120,6 +121,11 @@ export default async function CoachesPage() {
         overline="Configuration"
         title="Coachs"
         description="Gérer les coachs, leurs spécialités et leur disponibilité."
+        actions={
+          <Link href="#coach-create" className="btn btn-primary btn-block-mobile">
+            <Plus className="size-4" /> Ajouter un coach
+          </Link>
+        }
       />
       <CoachManager initialCoaches={initialCoaches} sportsOptions={sportsOptions} />
     </main>

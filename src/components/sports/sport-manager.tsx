@@ -174,8 +174,8 @@ export function SportManager({ initialSports }: SportManagerProps) {
 
   return (
     <div>
-      <div className="grid w-full gap-6 md:grid-cols-2">
-        <section className="panel panel-soft p-4 sm:p-6">
+      <div className="grid w-full gap-4 md:grid-cols-2 md:gap-6">
+        <section id="sport-create" className="panel panel-soft order-2 scroll-mt-24 p-4 sm:p-6 md:order-1">
           <h2 className="text-lg font-semibold text-[var(--foreground)]">Ajouter un sport</h2>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">
             Créer une nouvelle discipline pour le club.
@@ -213,7 +213,7 @@ export function SportManager({ initialSports }: SportManagerProps) {
           <FeedbackMessage message={message} className="mt-4" />
         </section>
 
-        <section className="panel p-4 sm:p-6">
+        <section className="panel order-1 p-4 sm:p-6 md:order-2">
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-xl font-semibold text-[var(--foreground)]">Sports enregistrés</h2>
