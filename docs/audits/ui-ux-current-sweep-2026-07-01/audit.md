@@ -89,12 +89,19 @@ Captured at desktop and mobile:
 - This pass does not prove full accessibility compliance. Screenshots and DOM metrics cannot fully verify keyboard order, screen-reader output, or focus recovery.
 - This pass was read-only and did not validate mutation flows such as saving a member, applying an import, correcting a payment, or finalizing attendance.
 
+## Follow-Up Fixes After This Sweep
+
+- Payment creation mobile helper/submit state was clarified in `74b9b86`.
+- Staff users no longer see the setup guide in daily chrome after `e2a8a4d`.
+- Attendance detail inactive-history rows are clarified after `ca26d4a`.
+- Reprise/import now downloads a simpler French workbook with app-generated member codes after `0e5e07c`.
+
 ## Recommendation
 
 The app is visually ready for the next functional audit pass. The remaining proof should focus on real workflow behavior rather than broad UI layout:
 
 - Login/logout and role freshness.
-- Pointage and finalization when valid sessions exist.
-- Enrollment, payment, and partial-payment edge cases.
-- Import prevalidation and rollback in a non-client test tenant.
+- Pointage and finalization when valid tenant-scoped sessions exist.
+- Enrollment, payment, and partial-payment edge cases, including the updated mobile payment state.
+- Import prevalidation and rollback in a non-client test tenant, including the updated French workbook.
 - Payment correction/reversal audit logs.

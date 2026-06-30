@@ -26,13 +26,20 @@
 
 Commit: `6af348b fix: polish staff-facing ui copy`.
 
+## Follow-Up Fixes Applied After This Pass
+
+- Payment creation on mobile now avoids showing a large disabled primary payment button before an amount is entered: `74b9b86`.
+- Attendance session detail now separates active expected members from inactive history rows and marks old rows as `Hors liste active`: `ca26d4a`.
+- Setup guide visibility is now admin-only, and role parsing uses the current `/api/account` shape: `e2a8a4d`.
+- The reprise/import workbook now uses client-facing French columns, removes the confusing code column, and lets the app auto-generate member codes: `0e5e07c`.
+- Offers creation has practical examples and a live preview in `src/components/offers/offers-manager.tsx`.
+
 ## Still Needs Product Work
 
-- Payment mobile flow: amount input and payment method are below the first mobile fold, while the disabled submit button is visible first.
-- Session detail can show inactive/archived assignment rows if stale assignment data exists; the UI should make inactive rows explicit or hide them by default.
-- Dashboard setup guide competes visually with daily work on mobile when the club is not fully configured.
-- Offers are better after copy cleanup, but the form still deserves a short practical example per offer type.
-- Empty staging data hid payment/attendance realism until a scenario dataset was added; future audits should start with a maintained demo tenant.
+- Fresh screenshot proof for the follow-up fixes above, especially payment creation, staff dashboard, offers creation, attendance session detail, and reprise/import.
+- A valid tenant-scoped session dataset for attendance detail and postpone screens; the July 1 sweep could not accept those routes.
+- Maintained demo tenant data for payment/attendance realism before future sales demos or audits.
+- Accessibility verification beyond screenshots: keyboard order, visible focus, screen-reader labels, and form error recovery.
 
 ## Out Of Scope For This Pass
 
