@@ -121,7 +121,7 @@ export function MobileRowToggle({
   return (
     <td className={cn("mobile-toggle-cell px-4 py-3 text-center md:hidden", className)}>
       <button type="button" className="mobile-card-toggle" onClick={onToggle} aria-expanded={expanded}>
-        {expanded ? "Voir moins" : "Voir plus"}
+        {expanded ? "Réduire" : "Infos"}
         <ChevronDown className={cn("size-3 transition-transform", expanded && "rotate-180")} />
       </button>
     </td>

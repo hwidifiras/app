@@ -201,7 +201,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
                     {group.isActive ? "Actif" : "Inactif"}
                   </StatusBadge>
                 </Td>
-                <TableActionsCell className="mobile-detail-cell">
+                <TableActionsCell>
                   <div className="flex flex-nowrap items-center justify-end gap-1">
                     <Link
                       href={`/groups/${group.id}/schedules`}

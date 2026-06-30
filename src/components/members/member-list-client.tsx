@@ -289,7 +289,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
         <td className="hidden px-4 py-3 text-muted-foreground md:table-cell mobile-detail-cell" data-label="Inscrit le">{new Date(member.createdAt).toLocaleDateString("fr-FR")}</td>
         <td className="card-actions-cell px-4 py-3 text-right" data-label="Actions">
           <Link href={`/members/${member.id}`} className="btn btn-ghost min-h-0 px-2 py-1 text-xs">
-            Détails
+            Ouvrir
           </Link>
         </td>
         <td className="px-4 py-3 text-center md:hidden mobile-toggle-cell">
@@ -299,7 +299,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
             onClick={() => toggleExpandMember(member.id)}
             aria-expanded={isExpanded}
           >
-            {isExpanded ? "Voir moins" : "Voir plus"}
+            {isExpanded ? "Réduire" : "Infos"}
             <ChevronDown className={`size-3 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
           </button>
         </td>

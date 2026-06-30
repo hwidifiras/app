@@ -274,10 +274,20 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
               <Td label="Séances" mobileDetail className="md:hidden">
                 {sub.remainingSessions} / {sub.totalSessions}
               </Td>
-              <TableActionsCell className="mobile-detail-cell">
-                <Link href={`/subscriptions/${sub.id}/edit`} className="btn btn-ghost btn-block-mobile min-h-11 sm:w-auto">
-                  Modifier
-                </Link>
+              <TableActionsCell>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+                  {sub.status === "ACTIVE" && sub.totalPaid < sub.amount ? (
+                    <Link
+                      href={`/payments/new?memberSubscriptionId=${sub.id}`}
+                      className="btn btn-primary btn-block-mobile min-h-11 sm:w-auto"
+                    >
+                      Encaisser
+                    </Link>
+                  ) : null}
+                  <Link href={`/subscriptions/${sub.id}/edit`} className="btn btn-ghost btn-block-mobile min-h-11 sm:w-auto">
+                    Modifier
+                  </Link>
+                </div>
               </TableActionsCell>
               <MobileRowToggle expanded={isExpanded} onToggle={() => toggle(sub.id)} />
             </DataTableRow>
