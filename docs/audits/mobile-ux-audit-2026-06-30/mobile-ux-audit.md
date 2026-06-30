@@ -339,6 +339,29 @@ Recommended fix:
   - `npm.cmd test` remains blocked in the Windows workspace because the local PostgreSQL test database at `localhost:5432/gymday_test` is unavailable; the failure happens during `scripts/test-db-reset.mjs` before tests run.
   - `npm.cmd audit --omit=dev` reported two moderate advisories through Next's bundled PostCSS dependency. No force-fix was applied because npm suggested a breaking path.
 
+## Offers Mobile Action Clarity
+
+- Commit: `27aada8` (`fix: clarify offers mobile actions`).
+- Deployed to the live SaaS app on `127.0.0.1:3002`.
+- Captured focused `390x844` screenshot in `screenshots/mobile-offers-actions-27aada8/`:
+  - `01-offers-mobile-actions.png`
+- Result: `/offers` reported `horizontalOverflow=false`.
+- Fixed the last inconsistent configuration action pattern found in the current pass:
+  - Added a header primary action `Ajouter une offre` that jumps to the create form.
+  - Kept the mobile list-first layout: `Offres actives` remains above `Créer une offre`.
+  - Replaced the icon-only trash-style action with a labelled warning action, `Désactiver`.
+  - Preserved the existing deactivate flow and confirmation dialog; no offer was actually deactivated during QA.
+- Anchor/action QA:
+  - `#offer-create` exists.
+  - Tapping `Ajouter une offre` changed the hash to `#offer-create`, scrolled the page, and brought the create form into view.
+  - Browser console check after the anchor click returned no errors.
+- Verification completed:
+  - `npm.cmd run lint`
+  - `npm.cmd run build`
+  - VPS Docker build and restart passed.
+  - Live HTTPS smoke check returned `200 OK` on `https://we-discipline.com/login`.
+- The temporary audit admin account was disabled after verification.
+
 ## Evidence Limits
 
 - This audit is screenshot and DOM-metric based; it does not prove full WCAG compliance.
