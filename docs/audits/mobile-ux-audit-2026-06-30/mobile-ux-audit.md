@@ -274,6 +274,37 @@ Recommended fix:
   - Live HTTPS smoke check returned `200 OK` on `https://we-discipline.com/login`.
   - `npm.cmd test` remains blocked in the Windows workspace because the local PostgreSQL test database at `localhost:5432` is unavailable; the failure happens during `scripts/test-db-reset.mjs` before tests run.
 
+## Mobile Deep Screens And Users List Priority
+
+- Commit: `fa5688c` (`fix: prioritize users list on mobile`).
+- Deployed to the live SaaS app on `127.0.0.1:3002`.
+- Captured a deep `390x844` mobile evidence set in `screenshots/mobile-deep-screens-0a0e93b/` for:
+  - attendance history, group reports, session detail
+  - member detail, add-to-group, member new redirect to enrollment
+  - subscription new/edit, payment correction
+  - group new/edit/schedules
+  - formula new/edit
+  - session postpone redirect to planning
+  - account, users, reprise, logs, log detail
+- Result: all deep-screen captures reported `horizontalOverflow=false`.
+- Tenant isolation observation: the first member-detail sample used `audit-other-member`, which belongs to `tenant_audit_other`; `we-discipline.com` correctly returned a private-app 404. The member screenshots were recaptured with same-tenant member `audit-ux-member-partial`.
+- Route behavior observation: `/sessions/[id]/postpone` intentionally redirects into the planning editor with `week`, `groupId`, and `sessionId` query parameters, so the planning editor is the effective postpone screen.
+- Finding: `Utilisateurs` still opened on the long create form on mobile. This was inconsistent with the newer Coachs/Disciplines pattern and slowed down the admin task of checking or editing existing accounts.
+- Fix applied:
+  - `Utilisateurs` now shows the existing account list first on mobile.
+  - A primary header action links to `Ajouter un utilisateur`.
+  - Desktop keeps the create form above the list, preserving the existing admin workflow.
+- After screenshot saved in `screenshots/mobile-users-list-priority-fa5688c/`:
+  - `01-settings-users-list-first.png`
+- The changed users screen reported `horizontalOverflow=false`; first visible panel is now `Liste (5)`.
+- Verification completed:
+  - `npm.cmd run lint`
+  - `npm.cmd run build`
+  - VPS Docker build and restart passed.
+  - Live HTTPS smoke check returned `200 OK` on `https://we-discipline.com/login`.
+  - `npm.cmd test` remains blocked in the Windows workspace because the local PostgreSQL test database at `localhost:5432` is unavailable; the failure happens during `scripts/test-db-reset.mjs` before tests run.
+- The temporary audit admin account was disabled after verification.
+
 ## Evidence Limits
 
 - This audit is screenshot and DOM-metric based; it does not prove full WCAG compliance.
