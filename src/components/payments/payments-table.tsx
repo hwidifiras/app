@@ -192,7 +192,7 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
 
   return (
     <>
-      <div className="sticky top-[57px] z-20 -mx-2 mb-4 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[3.5rem]">
+      <div className="list-toolbar sticky top-[57px] z-20 -mx-2 mb-4 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[3.5rem]">
         <div className="flex flex-col gap-2 md:flex-row md:items-end">
           <div className="min-w-0 flex-1">
             <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Recherche</label>

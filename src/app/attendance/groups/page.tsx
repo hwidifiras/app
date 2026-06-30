@@ -174,7 +174,7 @@ export default async function AttendanceByGroupPage({
       />
 
       <section className="panel p-3 sm:p-5">
-        <form className="sticky top-[57px] z-20 -mx-2 mb-4 grid gap-3 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur sm:grid-cols-2 lg:top-[3.5rem] lg:grid-cols-[minmax(14rem,1fr)_minmax(10rem,0.55fr)_minmax(10rem,0.55fr)_auto]">
+        <form className="list-toolbar sticky top-[57px] z-20 -mx-2 mb-4 grid gap-3 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur sm:grid-cols-2 lg:top-[3.5rem] lg:grid-cols-[minmax(14rem,1fr)_minmax(10rem,0.55fr)_minmax(10rem,0.55fr)_auto]">
           <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
             Groupe
             <select name="groupId" defaultValue={groupId ?? ""} className="field text-sm">

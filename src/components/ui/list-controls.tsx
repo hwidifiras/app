@@ -19,7 +19,7 @@ export function ListSearch({
 }) {
   return (
     <FieldControl
-      className={cn("min-w-0 flex-1", className)}
+      className={cn("list-search-control min-w-0 flex-1", className)}
       icon={<Search className="size-4" />}
       action={
         value ? (
@@ -38,7 +38,7 @@ export function ListSearch({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className={cn("field has-leading-icon w-full text-sm", value && "has-trailing-action")}
+        className={cn("field list-search-input has-leading-icon w-full text-sm", value && "has-trailing-action")}
         type="search"
         enterKeyHint="search"
       />
@@ -54,7 +54,7 @@ export function MobileFiltersButton({
   count?: number;
 }) {
   return (
-    <button type="button" onClick={onClick} className="btn btn-ghost min-h-12 shrink-0 md:hidden">
+    <button type="button" onClick={onClick} className="btn btn-ghost mobile-filters-button min-h-12 shrink-0 md:hidden">
       <SlidersHorizontal className="size-4" />
       Filtres
       {count > 0 ? (
