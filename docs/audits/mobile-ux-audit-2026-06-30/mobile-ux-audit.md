@@ -305,6 +305,40 @@ Recommended fix:
   - `npm.cmd test` remains blocked in the Windows workspace because the local PostgreSQL test database at `localhost:5432` is unavailable; the failure happens during `scripts/test-db-reset.mjs` before tests run.
 - The temporary audit admin account was disabled after verification.
 
+## Long Operational Forms Section Navigation
+
+- Commit: `b295f7a` (`fix: add mobile section nav to long forms`).
+- Deployed to the live SaaS app on `127.0.0.1:3002`.
+- Captured focused `390x844` screenshots in `screenshots/mobile-form-nav-b295f7a/` for:
+  - payment creation and payment correction
+  - subscription renewal and subscription edit
+  - group creation, group edit, and group schedules
+  - formula creation and formula edit
+- Result: all 9 captured long-form routes reported `horizontalOverflow=false`.
+- Added short section chips to long operational forms so mobile users can jump between major form areas:
+  - `Dossier`, `Montant`, `Règlement`, `Récap` on payment creation.
+  - `Original`, `Correction`, `Impact`, `Annulation` on payment correction.
+  - `Dossier`, `Formule`, `Paiement`, `Récap` on renewal.
+  - `Membre`, `Formule`, `Période`, `Valeurs` on subscription edit.
+  - `Infos`, `Membres` on group create/edit.
+  - `Créneaux`, `Ajouter` on group schedules.
+  - `Modèles`, `Infos`, `Quota`, `Validité`, and `Statut` where relevant on formula forms.
+- Anchor QA:
+  - Every captured section chip pointed to an existing page anchor.
+  - Tapping `Récap` on `/payments/new` changed the hash to `#payment-summary`, scrolled the page, and brought the recap panel into the viewport.
+  - Browser console check after the anchor click returned no errors.
+- Visual result:
+  - Cards remain full-width and readable on mobile.
+  - Long forms now communicate their structure in the first fold.
+  - Summary panels are easier to reach before submit, which helps cashier/reception confidence.
+  - No public route, API, schema, or business behavior was changed.
+- Verification completed:
+  - `npm.cmd run lint`
+  - `npm.cmd run build`
+  - VPS Docker build and restart passed.
+  - `npm.cmd test` remains blocked in the Windows workspace because the local PostgreSQL test database at `localhost:5432/gymday_test` is unavailable; the failure happens during `scripts/test-db-reset.mjs` before tests run.
+  - `npm.cmd audit --omit=dev` reported two moderate advisories through Next's bundled PostCSS dependency. No force-fix was applied because npm suggested a breaking path.
+
 ## Evidence Limits
 
 - This audit is screenshot and DOM-metric based; it does not prove full WCAG compliance.
