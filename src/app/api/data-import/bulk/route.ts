@@ -8,6 +8,14 @@ import { withTenantContext } from "@/lib/tenant-context";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const bulkImportHeaderLabels: Record<string, string> = {
+  firstName: "Prénom",
+  lastName: "Nom",
+  memberType: "Type membre",
+  groupName: "Groupe",
+  planName: "Formule",
+};
+
 async function adminOrResponse(request: Request) {
   try {
     return { user: await requireAdmin(request), response: null };
@@ -61,8 +69,13 @@ export async function POST(request: Request) {
       } catch (error) {
         const message = error instanceof Error ? error.message : "BULK_IMPORT_FAILED";
         if (message.startsWith("BULK_IMPORT_MISSING_HEADERS:")) {
+          const labels = message
+            .replace("BULK_IMPORT_MISSING_HEADERS:", "")
+            .split(",")
+            .map((header) => bulkImportHeaderLabels[header] ?? header)
+            .join(", ");
           return NextResponse.json(
-            { error: `Colonnes manquantes: ${message.replace("BULK_IMPORT_MISSING_HEADERS:", "")}` },
+            { error: `Colonnes manquantes: ${labels}` },
             { status: 400 },
           );
         }

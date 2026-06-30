@@ -22,7 +22,7 @@ Fill one row per active member to resume. The downloadable template uses French 
 
 Required or commonly filled:
 
-- `reference`: optional. Leave it empty and the app generates one like `M001-prenomnom-1234`.
+- `Code membre (auto)`: optional. Leave it empty and the app generates one like `M001-prenomnom-1234` from the row number, member name, and the last 4 digits of the phone. Old headers such as `reference`, `ref`, `code`, `matricule`, and `externalId` still work.
 - `prenom`
 - `nom`
 - `typeMembre`: `ADULT`, `KID`, or `NOT_SPECIFIED`.

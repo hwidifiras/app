@@ -70,7 +70,18 @@ type HeaderKey =
   | "note";
 
 const HEADER_ALIASES: Record<HeaderKey, string[]> = {
-  externalId: ["externalid", "idexterne", "reference", "ref", "code", "matricule"],
+  externalId: [
+    "externalid",
+    "idexterne",
+    "reference",
+    "referenceauto",
+    "codemembre",
+    "codemembreauto",
+    "codeadherent",
+    "ref",
+    "code",
+    "matricule",
+  ],
   firstName: ["firstname", "prenom"],
   lastName: ["lastname", "nom"],
   memberType: ["membertype", "type", "typemembre", "typeadherent"],
@@ -214,6 +225,12 @@ function readText(row: RawRow, headerIndex: Map<HeaderKey, number>, key: HeaderK
   return cellValueText(row[col]);
 }
 
+function readImportText(row: RawRow, headerIndex: Map<HeaderKey, number>, key: HeaderKey): string {
+  const text = readText(row, headerIndex, key);
+  if (key === "externalId" && text.trim().startsWith("=")) return "";
+  return text;
+}
+
 function makeLookup(records: LookupRecord[]) {
   const map = new Map<string, LookupRecord[]>();
   for (const record of records) {
@@ -233,7 +250,7 @@ function findUniqueByName(map: Map<string, LookupRecord[]>, value: string, label
 }
 
 function isEmptyRow(row: RawRow, headerIndex: Map<HeaderKey, number>) {
-  return Array.from(headerIndex.keys()).every((key) => !String(readText(row, headerIndex, key)).trim());
+  return Array.from(headerIndex.keys()).every((key) => !String(readImportText(row, headerIndex, key)).trim());
 }
 
 function parseCsvLine(line: string): string[] {
@@ -327,7 +344,9 @@ async function prepareBulkImport(buffer: Buffer, fileName: string, fallbackCutov
     const lastName = readText(row, headerIndex, "lastName");
     const phone = readText(row, headerIndex, "phone");
     const parentPhone = readText(row, headerIndex, "parentPhone");
-    const externalId = readText(row, headerIndex, "externalId") || generateExternalId(rowNumber, firstName, lastName, phone, parentPhone);
+    const externalId =
+      readImportText(row, headerIndex, "externalId") ||
+      generateExternalId(rowNumber, firstName, lastName, phone, parentPhone);
     const groupName = readText(row, headerIndex, "groupName");
     const planName = readText(row, headerIndex, "planName");
     const memberType = normalizeMemberType(readText(row, headerIndex, "memberType"));
@@ -383,7 +402,7 @@ async function prepareBulkImport(buffer: Buffer, fileName: string, fallbackCutov
     const externalKey = normalizeLookup(externalId);
     if (externalKey) {
       const duplicateRow = seenExternalIds.get(externalKey);
-      if (duplicateRow) errors.push(`externalId en double avec la ligne ${duplicateRow}`);
+      if (duplicateRow) errors.push(`Référence en double avec la ligne ${duplicateRow}`);
       seenExternalIds.set(externalKey, rowNumber);
     }
 

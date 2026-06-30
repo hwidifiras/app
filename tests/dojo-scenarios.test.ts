@@ -65,6 +65,7 @@ import {
   inspectDataImport,
   rollbackDataImport,
 } from "@/lib/data-import-service";
+import { previewBulkDataImport } from "@/lib/bulk-data-import";
 import type { DataImportPayload } from "@/lib/schemas/data-import";
 import { getWeekRangeUtc } from "@/lib/dates";
 import { setFallbackTenantContext } from "@/lib/tenant-context";
@@ -519,6 +520,48 @@ beforeEach(async () => {
 });
 
 describe("temporary data import", () => {
+  it("accepts the French auto-code column and generates a member code when it is blank or formula-only", async () => {
+    const fx = await dojoFixture();
+    const rows = [
+      [
+        "Code membre (auto)",
+        "Prénom",
+        "Nom",
+        "Type membre",
+        "Téléphone",
+        "Date inscription",
+        "Groupe",
+        "Formule",
+        "Début abonnement",
+        "Fin abonnement",
+        "Montant",
+        "Payé",
+        "Séances restantes",
+      ],
+      [
+        "=B2",
+        "Amine",
+        "Client",
+        "ADULT",
+        "0612349999",
+        "2026-06-01",
+        fx.adultBjj.name,
+        fx.bjjPlan.name,
+        "2026-06-01",
+        "2026-07-01",
+        "120",
+        "20",
+        "7",
+      ],
+    ];
+    const csv = rows.map((row) => row.join(";")).join("\n");
+
+    const result = await previewBulkDataImport(Buffer.from(csv, "utf8"), "reprise.csv", "2026-06-15");
+
+    expect(result.errorRows).toBe(0);
+    expect(result.rows[0].externalId).toBe("M001-amineclient-9999");
+  });
+
   it("imports the member state atomically without consuming the paper attendance twice", async () => {
     const fx = await dojoFixture();
     const { start } = getWeekRangeUtc(new Date());

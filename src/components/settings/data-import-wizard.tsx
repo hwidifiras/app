@@ -418,7 +418,7 @@ export function DataImportWizard({
                   Utilisez le modèle, gardez les noms de groupes/formules tels qu&apos;ils existent dans le club, puis lancez la prévalidation avant d&apos;importer.
                 </p>
                 <p className="mt-2 max-w-3xl rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-800">
-                  La colonne Référence est optionnelle : laissez-la vide si vous n&apos;avez pas de code membre, elle sera générée automatiquement.
+                  La colonne Code membre (auto) est optionnelle : laissez-la vide, l&apos;application crée un code avec la ligne, le nom et le téléphone.
                 </p>
               </div>
               <a href={templateUrl} className="btn btn-ghost btn-block-mobile" download>
@@ -482,7 +482,7 @@ export function DataImportWizard({
                             <span>{row.memberName || "Membre sans nom"}</span>
                             {row.externalId ? (
                               <span className="mt-0.5 block text-[0.68rem] font-medium text-[var(--muted-foreground)]">
-                                Réf. {row.externalId}
+                                Code {row.externalId}
                               </span>
                             ) : null}
                           </td>
