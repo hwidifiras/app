@@ -362,6 +362,37 @@ Recommended fix:
   - Live HTTPS smoke check returned `200 OK` on `https://we-discipline.com/login`.
 - The temporary audit admin account was disabled after verification.
 
+## Responsive Cards And Mobile Actions Follow-Up
+
+- Commits:
+  - `01a112b` (`fix: improve mobile table card actions`).
+  - `14f5b39` (`fix: compact subscription card actions`).
+- Deployed to the live SaaS app on `127.0.0.1:3002`.
+- Captured a fresh `390x844` route set in `screenshots/responsive-pass-20260630/`:
+  - login, dashboard, pointage, inscription, encaissement
+  - membres, abonnements, paiements, planning, cours, club settings
+  - focused after screenshots for members, subscriptions, and courses
+- Result: every captured route reported `horizontalOverflow=false`.
+- UX critique from the evidence:
+  - Overall mobile responsiveness is now stable; the app behaves like a real mobile admin tool rather than a squeezed desktop table.
+  - The main remaining weakness was action clarity on table-card lists: too many cards asked users to expand with `Voir plus` before exposing the next useful action.
+  - The shared row toggle now reads `Infos` / `Réduire`, which makes expansion feel secondary instead of the main task.
+  - Member cards now use `Ouvrir` instead of `Détails`, which is clearer as an operational action.
+  - Course cards expose `Planifier`, `Modifier`, and `Désactiver` directly on mobile cards; this improves discoverability for admin maintenance.
+  - Subscription cards now expose `Encaisser` directly for active unpaid/partial subscriptions, with `Modifier` as the secondary action. This better matches reception work.
+- Visual QA caught and fixed one regression:
+  - The first subscription action layout made `Modifier` too tall on mobile.
+  - Commit `14f5b39` removed the extra wrapper so the shared compact action stack controls button height again.
+- Final subscription metrics at `390x844`:
+  - `path=/subscriptions`
+  - `horizontalOverflow=false`
+  - visible/available actions include `Renouveler`, `Filtres`, `Encaisser`, `Modifier`, and `Infos`.
+- Verification completed:
+  - `npm.cmd run lint`
+  - `npm.cmd run build`
+  - VPS Docker build and restart passed for both commits.
+- `npm.cmd test` was not rerun in this small UI-only follow-up; previous passes remain blocked locally by the unavailable PostgreSQL test database at `localhost:5432/gymday_test`.
+
 ## Evidence Limits
 
 - This audit is screenshot and DOM-metric based; it does not prove full WCAG compliance.
