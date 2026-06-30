@@ -20,7 +20,7 @@ The import stays behind the temporary reprise mode and creates rollbackable `DAT
 
 Fill one row per active member to resume. The downloadable template uses French headers, and old English headers remain accepted for compatibility.
 
-The member code is generated automatically. The client does not need to fill an `externalId` or reference column. If an old file still contains `reference`, `ref`, `code`, `matricule`, or `externalId`, the importer will continue to accept it.
+La référence membre est générée automatiquement avec la ligne, le nom et le téléphone. Le client ne doit pas remplir de colonne `externalId`, `référence` ou `code`. Si un ancien fichier contient encore `reference`, `ref`, `code`, `matricule` ou `externalId`, l'import reste compatible.
 
 Required or commonly filled:
 
