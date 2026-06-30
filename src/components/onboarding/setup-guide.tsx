@@ -100,6 +100,14 @@ export function SetupGuide({ variant, className }: SetupGuideProps) {
 
   const load = useCallback(async () => {
     try {
+      const accountRes = await fetch("/api/account", { cache: "no-store" });
+      const accountJson = (await accountRes.json()) as { data?: { role?: string }; role?: string };
+      if (!accountRes.ok || (accountJson.data?.role ?? accountJson.role) !== "ADMIN") {
+        setOpen(false);
+        setProgress(null);
+        return;
+      }
+
       const res = await fetch("/api/setup-guide", { cache: "no-store" });
       const json = await res.json();
       if (res.ok && json.data) {

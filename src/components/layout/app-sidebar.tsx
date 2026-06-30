@@ -120,8 +120,8 @@ function useAccountRole() {
       try {
         const response = await fetch("/api/account", { cache: "no-store" });
         if (!response.ok) return;
-        const account = (await response.json()) as { role?: string };
-        if (!cancelled) setRole(account.role ?? null);
+        const account = (await response.json()) as { data?: { role?: string }; role?: string };
+        if (!cancelled) setRole(account.data?.role ?? account.role ?? null);
       } catch {
         if (!cancelled) setRole(null);
       }
