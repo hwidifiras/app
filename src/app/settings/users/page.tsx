@@ -1,4 +1,6 @@
 import { headers } from "next/headers";
+import Link from "next/link";
+import { Plus } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
@@ -52,21 +54,28 @@ export default async function SettingsUsersPage() {
         overline="Administration"
         title="Utilisateurs"
         description="Créer, activer et réinitialiser les comptes du staff."
+        actions={
+          <Link href="#user-create" className="btn btn-primary btn-block-mobile">
+            <Plus className="size-4" /> Ajouter un utilisateur
+          </Link>
+        }
       />
 
-      <section className="panel panel-soft p-5 md:p-6">
-        <h2 className="text-sm font-semibold text-[var(--foreground)]">Créer un utilisateur</h2>
-        <div className="mt-4">
-          <UserCreateForm />
-        </div>
-      </section>
+      <div className="grid gap-4 md:gap-6">
+        <section className="panel order-1 p-4 md:order-2 md:p-6">
+          <h2 className="text-sm font-semibold text-[var(--foreground)]">Liste ({users.length})</h2>
+          <div className="mt-4">
+            <UsersListClient users={rows} currentUserId={currentUserId} />
+          </div>
+        </section>
 
-      <section className="panel mt-6 p-5 md:p-6">
-        <h2 className="text-sm font-semibold text-[var(--foreground)]">Liste ({users.length})</h2>
-        <div className="mt-4">
-          <UsersListClient users={rows} currentUserId={currentUserId} />
-        </div>
-      </section>
+        <section id="user-create" className="panel panel-soft order-2 scroll-mt-24 p-4 md:order-1 md:p-6">
+          <h2 className="text-sm font-semibold text-[var(--foreground)]">Créer un utilisateur</h2>
+          <div className="mt-4">
+            <UserCreateForm />
+          </div>
+        </section>
+      </div>
     </main>
   );
 }
