@@ -143,6 +143,26 @@ Recommended fix:
 - Long forms such as club settings and coach creation remain readable, but they are still lengthy. A later pass should consider section anchors or progressive grouping for configuration-heavy screens.
 - Several configuration lists intentionally hide secondary details behind `Voir plus`; this keeps scanning fast, but power users may eventually want inline quick actions per row.
 
+## Secondary Screens Pass
+
+- Commit: `85cc067` (`fix: clean attendance operator display`).
+- Deployed to the live SaaS app on `127.0.0.1:3002`.
+- Captured additional mobile screenshots in `screenshots/remaining-screens-before/` for:
+  - attendance history, group reports, session detail
+  - member detail and add-to-group
+  - subscription new/edit, payment correction
+  - group new/edit/schedules, plan new/edit
+  - session edit modal, account/users/data-import settings, log detail
+- Finding fixed: attendance history was exposing an internal operator id in the mobile `Pointage` row. It now resolves known user ids to account names and falls back to `Utilisateur` for unresolved internal ids.
+- After screenshots were saved in `screenshots/remaining-screens-after-85cc067/`; browser text checks reported no raw CUID-like strings on attendance history or session detail screens.
+- Remaining low-priority polish: the add-to-group screen title can still become long when member names are long. The screen remains usable, but a later copy-only pass should shorten it to `Affecter à un groupe` and move the member name into supporting text.
+- Verification completed:
+  - `npm.cmd run lint`
+  - `npm.cmd run build`
+  - VPS Docker build and restart passed.
+  - Live HTTPS smoke check returned `200 OK` on `https://we-discipline.com/login`.
+- The temporary audit admin account was disabled after verification.
+
 ## Evidence Limits
 
 - This audit is screenshot and DOM-metric based; it does not prove full WCAG compliance.
