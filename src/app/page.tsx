@@ -27,6 +27,7 @@ import { utcDateOnlyForTimeZone } from "@/lib/dates";
 import { isPaymentReminderEmailConfigured } from "@/lib/email";
 import { enrichDebtsWithReminderMeta } from "@/lib/payment-reminders";
 import { prisma } from "@/lib/prisma";
+import { formatRoomLabel } from "@/lib/group-room";
 import {
   deriveSessionLifecycle,
   expectedMemberIdsAtSession,
@@ -310,7 +311,7 @@ function TodaySessionRow({ session }: { session: TodaySession }) {
             </span>
           </div>
           <p className="mt-1 text-xs text-[#64748B] dark:text-slate-400">
-            {session.startTime} - {session.endTime} · Salle {session.room}
+            {session.startTime} - {session.endTime} · {formatRoomLabel(session.room)}
             {session.coachName ? ` · ${session.coachName}` : ""}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[#64748B] dark:text-slate-400">

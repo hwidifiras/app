@@ -7,7 +7,7 @@ export default function NewPlanPage() {
   return (
     <main className="app-shell py-4 md:py-8">
       <Link href="/subscription-plans" className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--primary)] hover:underline">
-        <ArrowLeft className="size-3.5" /> Retour aux plans
+        <ArrowLeft className="size-3.5" /> Retour aux formules
       </Link>
 
       <PageHeader

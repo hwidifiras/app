@@ -7,6 +7,7 @@ import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, RotateCcw } fro
 import { SessionDto, SessionStatusDto } from "@/types/session";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { formatRoomLabel } from "@/lib/group-room";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { UndoButton } from "@/components/ui/undo-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -561,7 +562,9 @@ export function SessionsPlanner({
                     <div className="flex h-full flex-col gap-3">
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-[var(--foreground)]">{item.groupName}</p>
-                        <p className="text-xs text-[var(--muted-foreground)]">{item.startTime} - {item.endTime} • Salle {item.room}</p>
+                        <p className="text-xs text-[var(--muted-foreground)]">
+                          {item.startTime} - {item.endTime} • {formatRoomLabel(item.room)}
+                        </p>
                         <p className="text-xs text-[var(--muted-foreground)]">Coach: {item.coachName ?? "-"}</p>
                         {item.exceptionReason ? (
                           <p className="text-xs text-[var(--danger)]">Motif: {item.exceptionReason}</p>

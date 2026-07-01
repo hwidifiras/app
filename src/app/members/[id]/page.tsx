@@ -18,7 +18,7 @@ import {
   Th,
 } from "@/components/ui/responsive-table";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { formatGroupRoomLabel } from "@/lib/group-room";
+import { formatRoomLabel } from "@/lib/group-room";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -188,7 +188,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                           <StatusBadge variant="success">Actif</StatusBadge>
                         </div>
                         <div className="mt-3 grid gap-2 text-xs text-[var(--muted-foreground)] sm:grid-cols-2">
-                          <span>Salle {formatGroupRoomLabel(assignment.group.room)}</span>
+                          <span>{formatRoomLabel(assignment.group.room, "Salle par séance")}</span>
                           <span>{schedule ? `${schedule.dayOfWeek} ${schedule.startTime}` : "Créneau à planifier"}</span>
                           <span className="sm:col-span-2">Depuis le {formatDate(assignment.startDate)}</span>
                         </div>
@@ -284,7 +284,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                     <li key={assignment.id} className="rounded-lg border border-[var(--border)] p-3 opacity-75">
                       <p className="text-sm font-medium">{assignment.group.name}</p>
                       <p className="text-xs text-[var(--muted-foreground)]">
-                        {assignment.group.sport?.name ?? "-"} · Salle {formatGroupRoomLabel(assignment.group.room)}
+                        {assignment.group.sport?.name ?? "-"} · {formatRoomLabel(assignment.group.room, "Salle par séance")}
                       </p>
                       <p className="mt-1 text-xs text-[var(--muted-foreground)]">
                         {formatDate(assignment.startDate)}

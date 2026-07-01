@@ -1,5 +1,9 @@
 export function isLikelyInternalId(value: string | null | undefined) {
-  return Boolean(value && /^[a-z0-9]{20,}$/i.test(value) && !value.includes("@"));
+  return Boolean(
+    value &&
+      !value.includes("@") &&
+      (/^[a-z0-9]{20,}$/i.test(value) || /^audit-[a-z0-9-]+$/i.test(value)),
+  );
 }
 
 export function formatAttendanceOperator(

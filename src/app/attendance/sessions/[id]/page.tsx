@@ -9,6 +9,7 @@ import {
   expectedMemberIdsAtSession,
 } from "@/lib/session-lifecycle";
 import { formatAttendanceOperator, isLikelyInternalId } from "@/lib/attendance-display";
+import { formatRoomLabel } from "@/lib/group-room";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -20,6 +21,14 @@ function statusVariant(status: string) {
   if (status === "COMPLETED") return "success";
   if (status === "CANCELLED") return "danger";
   return "muted";
+}
+
+function sessionStatusLabel(status: string) {
+  if (status === "PLANNED") return "Planifiée";
+  if (status === "RESCHEDULED") return "Reportée";
+  if (status === "COMPLETED") return "Finalisée";
+  if (status === "CANCELLED") return "Annulée";
+  return status;
 }
 
 function attendanceLabel(status: string) {
@@ -137,7 +146,7 @@ export default async function SessionAttendanceDetailPage({
       <PageHeader
         overline="Détail séance"
         title={session.group.name}
-        description={`${dateLabel} · ${session.startTime} – ${session.endTime} · ${session.room}`}
+        description={`${dateLabel} · ${session.startTime} – ${session.endTime} · ${formatRoomLabel(session.room)}`}
         actions={
           lifecycle.operationalStatus === "NEEDS_FINALIZATION" ? (
             <Link href={`/attendance/today?sessionId=${session.id}`} className="btn btn-primary">
@@ -185,7 +194,7 @@ export default async function SessionAttendanceDetailPage({
               ? lifecycle.unmarkedCount > 0
                 ? `Pointage incomplet (${lifecycle.unmarkedCount})`
                 : "À finaliser"
-              : session.status}
+              : sessionStatusLabel(session.status)}
           </StatusBadge>
         </div>
 
@@ -211,7 +220,7 @@ export default async function SessionAttendanceDetailPage({
                         <StatusBadge variant={attendanceVariant(att.status)}>
                           {attendanceLabel(att.status)}
                         </StatusBadge>
-                        {att.checkedBy && <span>par {formatAttendanceOperator(att.checkedBy, operatorNamesById)}</span>}
+                        {att.checkedBy && <span>par {att.checkedBy}</span>}
                         {att.overrideReason && (
                           <span className="max-w-[12rem] truncate" title={att.overrideReason}>
                             {att.overrideReason}

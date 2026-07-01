@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { CircleOff, Clock, Pencil, RotateCcw, UsersRound } from "lucide-react";
-import { formatGroupRoomLabel } from "@/lib/group-room";
+import { formatRoomLabel } from "@/lib/group-room";
 import { GroupDto } from "@/types/group";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
@@ -184,7 +184,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
                 <Td label="Nom" primary className="font-medium text-foreground">
                   {group.name}
                   <p className="text-xs text-muted-foreground">
-                    Salle {formatGroupRoomLabel(group.room)} • Cap. {group.capacity}
+                    {formatRoomLabel(group.room, "Salle par séance")} • Cap. {group.capacity}
                   </p>
                 </Td>
                 <Td label="Sport" mobileDetail>

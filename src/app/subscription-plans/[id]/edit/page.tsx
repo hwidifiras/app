@@ -34,10 +34,10 @@ export default async function EditSubscriptionPlanPage({
     return (
       <main className="app-shell py-6 md:py-8">
         <div className="panel panel-soft p-6">
-          <h1 className="text-2xl font-semibold text-foreground">Plan introuvable</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Le plan demandé n&apos;existe pas ou a été supprimé.</p>
+          <h1 className="text-2xl font-semibold text-foreground">Formule introuvable</h1>
+          <p className="mt-2 text-sm text-muted-foreground">La formule demandée n&apos;existe pas ou a été supprimée.</p>
           <Link href="/subscription-plans" className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-            <ArrowLeft className="size-3.5" /> Retour aux plans
+            <ArrowLeft className="size-3.5" /> Retour aux formules
           </Link>
         </div>
       </main>
@@ -47,7 +47,7 @@ export default async function EditSubscriptionPlanPage({
   return (
     <main className="app-shell py-4 md:py-8">
       <Link href="/subscription-plans" className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-        <ArrowLeft className="size-3.5" /> Retour aux plans
+        <ArrowLeft className="size-3.5" /> Retour aux formules
       </Link>
 
       <PageHeader

@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { GroupSchedulesManager } from "@/components/groups/group-schedules-manager";
 import { PageHeader } from "@/components/ui/page-header";
-import { formatGroupRoomLabel } from "@/lib/group-room";
+import { formatRoomLabel } from "@/lib/group-room";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -90,7 +90,7 @@ export default async function GroupSchedulesPage({ params }: { params: Promise<{
       <PageHeader
         overline="Planning"
         title={group.name}
-        description={`${group.sport.name} — Coach ${group.coach.firstName} ${group.coach.lastName} — Salle ${formatGroupRoomLabel(group.room)}`}
+        description={`${group.sport.name} — Coach ${group.coach.firstName} ${group.coach.lastName} — ${formatRoomLabel(group.room, "Salle par séance")}`}
         actions={
           <div className="flex flex-wrap gap-2">
             <Link href={`/sessions?groupId=${group.id}`} className="btn btn-primary text-sm">

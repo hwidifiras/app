@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, LockKeyhole, RotateCcw, Upload } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, LockKeyhole, RotateCcw, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
@@ -391,14 +391,21 @@ export function DataImportWizard({
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void modeAction(status.active ? "deactivate" : "activate")}
-            className={`btn ${status.active ? "btn-ghost" : "btn-primary"} btn-block-mobile`}
-          >
-            {status.active ? "Fermer maintenant" : "Activer pour 4 heures"}
-          </button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            {!status.active ? (
+              <a href={templateUrl} className="btn btn-ghost btn-block-mobile" download>
+                <Download className="size-4" /> Télécharger le modèle
+              </a>
+            ) : null}
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void modeAction(status.active ? "deactivate" : "activate")}
+              className={`btn ${status.active ? "btn-ghost" : "btn-primary"} btn-block-mobile`}
+            >
+              {status.active ? "Fermer maintenant" : "Activer pour 4 heures"}
+            </button>
+          </div>
         </div>
       </section>
 
@@ -418,7 +425,7 @@ export function DataImportWizard({
                   Utilisez le modèle, gardez les noms de groupes/formules tels qu&apos;ils existent dans le club, puis lancez la prévalidation avant d&apos;importer.
                 </p>
                 <p className="mt-2 max-w-3xl rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-800">
-                  Aucun code membre à inventer : la colonne Code membre auto se calcule seule, et l&apos;application la régénère si elle est vide ou obsolète.
+                  Aucun code membre à inventer : laissez la colonne Code membre auto vide, l&apos;application génère le code pendant Vérifier Excel.
                 </p>
               </div>
               <a href={templateUrl} className="btn btn-ghost btn-block-mobile" download>

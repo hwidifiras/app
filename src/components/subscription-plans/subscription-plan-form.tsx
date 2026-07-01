@@ -84,12 +84,12 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
     const result = await response.json();
 
     if (!response.ok) {
-      setMessage(result.error ?? (mode === "create" ? "Erreur lors de la création du plan" : "Erreur lors de la modification du plan"));
+      setMessage(result.error ?? (mode === "create" ? "Erreur lors de la création de la formule" : "Erreur lors de la modification de la formule"));
       setLoading(false);
       return;
     }
 
-    setMessage(mode === "create" ? "Plan créé avec succès" : "Plan modifié avec succès");
+    setMessage(mode === "create" ? "Formule créée avec succès" : "Formule modifiée avec succès");
     setLoading(false);
     router.push("/subscription-plans");
     router.refresh();
@@ -141,7 +141,7 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
         </div>
       )}
       <div id="plan-basics" className="form-section-anchor">
-        <label className="mb-1 block text-xs font-medium text-muted-foreground">Nom du plan *</label>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">Nom de la formule *</label>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Mensuel Standard" className="field" required />
       </div>
 
@@ -194,7 +194,7 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
           Annuler
         </button>
         <button type="submit" disabled={loading} className="btn btn-primary btn-block-mobile">
-          {loading ? "Enregistrement..." : mode === "create" ? "Créer plan" : "Enregistrer les modifications"}
+          {loading ? "Enregistrement..." : mode === "create" ? "Créer formule" : "Enregistrer les modifications"}
         </button>
       </FormActions>
     </form>

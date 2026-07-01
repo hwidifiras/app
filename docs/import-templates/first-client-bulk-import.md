@@ -20,11 +20,11 @@ The import stays behind the temporary reprise mode and creates rollbackable `DAT
 
 Fill one row per active member to resume. The downloadable template uses French headers, and old English headers remain accepted for compatibility.
 
-La première colonne du modèle est `Code membre auto`. Elle se calcule dans Excel avec la ligne, le nom et le téléphone pour rassurer le client, mais elle n'est pas obligatoire. Le client peut la laisser telle quelle, la vider ou même supprimer la colonne: l'application régénère un code sûr au moment de l'import. Si Excel garde un ancien résultat calculé, l'application l'ignore et recalcule le code avec l'ordre réel des lignes non vides. Si un ancien fichier contient encore `reference`, `ref`, `code`, `matricule` ou `externalId`, l'import reste compatible.
+La première colonne du modèle est `Code membre auto (laisser vide)`. Le client n'a rien à inventer: l'application génère un code sûr au moment de `Vérifier Excel`, avec le format `M001-prenomnom-9999` selon l'ordre réel des lignes non vides, le nom et le téléphone. Si un ancien fichier contient encore `reference`, `ref`, `code`, `matricule` ou `externalId`, l'import reste compatible.
 
 Required or commonly filled:
 
-- `Code membre auto`: optional; generated automatically by Excel/app.
+- `Code membre auto (laisser vide)`: optional; generated automatically by the app.
 - `Prénom`
 - `Nom`
 - `Type membre`: `ADULT`, `KID`, or `NOT_SPECIFIED`.
