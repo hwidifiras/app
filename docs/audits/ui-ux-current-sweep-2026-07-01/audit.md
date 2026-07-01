@@ -153,6 +153,17 @@ Captured at desktop and mobile:
 - Confirmed: visible skip link, skip target to `#main-content`, no invisible focused controls, no unnamed focused controls, and visible focus on sampled operational controls.
 - Fix included: closed mobile side drawer is now `aria-hidden` and `inert`, so off-canvas nav links are not reachable by keyboard while hidden.
 
+## Screen-Reader Semantics Proof After `adbf397`
+
+- Evidence note: `screen-reader-semantics-audit-adbf397.md`.
+- Raw result: `screen-reader-semantics-results-adbf397.json`.
+- Runner: `scripts/audit-screen-reader-semantics.mjs`.
+- Routes covered at mobile and desktop: `/`, `/attendance/today`, `/enrollment`, `/payments/new`, `/members`, `/subscriptions`, `/payments`, `/sessions`, `/groups`, `/coaches`, `/sports`, `/subscription-plans`, `/offers`, `/settings/club`, `/settings/data-import`, `/settings/users`, and `/logs`.
+- Result: 34 route/profile checks passed, 0 failed.
+- Confirmed: one `main` landmark, a connected `#main-content` skip target, one skip link, visible `h1`, no heading-level jumps, no duplicate IDs, no unnamed visible controls, no visible controls inside `aria-hidden`, and no visible image alt/name failures on every audited route/profile.
+- Fix included: shared form sections and today pointage session cards now use `h2` headings instead of jumping from page `h1` to card/section `h3`.
+- Live cleanup after the run returned 0 `audit-ux-*` members, sessions, attendances, payments, offers, and users.
+
 ## Enrollment Apply/Revert Proof After `37b4014`
 
 - Evidence note: `enrollment-smoke-audit-37b4014.md`.
@@ -165,4 +176,4 @@ Captured at desktop and mobile:
 
 ## Recommendation
 
-The app now has broad visual proof, focused functional proof for the highest-risk daily workflows, authenticated Lighthouse coverage, keyboard/focus proof across representative private screens, enrollment apply/revert proof, a full isolated PostgreSQL test pass, a clean production dependency audit after the Next/PostCSS override, and a current readiness note in `release-readiness.md`. Remaining release-hardening evidence should focus on manual screen-reader traversal limits and the normal deployment backup/rollback checklist.
+The app now has broad visual proof, focused functional proof for the highest-risk daily workflows, authenticated Lighthouse coverage, keyboard/focus proof, automated screen-reader semantics proof across private screens, enrollment apply/revert proof, a full isolated PostgreSQL test pass, a clean production dependency audit after the Next/PostCSS override, and a current readiness note in `release-readiness.md`. Remaining release-hardening evidence should focus on optional manual assistive-technology traversal limits and the normal deployment backup/rollback checklist.

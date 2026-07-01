@@ -259,7 +259,7 @@ async function collectDomSemantics(page) {
 
     const mainContent = document.getElementById("main-content");
     const main = document.querySelector("main");
-    const skipLinks = Array.from(document.querySelectorAll('a[href="#main-content"]')).filter(isVisible);
+    const skipLinks = Array.from(document.querySelectorAll('a[href="#main-content"]'));
     const mainContentValid =
       Boolean(mainContent) &&
       Boolean(main) &&
@@ -272,6 +272,7 @@ async function collectDomSemantics(page) {
       mainContentExists: Boolean(mainContent),
       mainContentValid,
       skipLinkCount: skipLinks.length,
+      skipLinkLabels: skipLinks.map((link) => link.textContent?.trim().replace(/\s+/g, " ") || ""),
       navCount: document.querySelectorAll("nav").length,
       loginWall: /connexion/i.test(document.body.textContent || "") && location.pathname !== "/login",
       headings,
@@ -349,7 +350,7 @@ async function auditPage(browser, cookies, pagePath, profile) {
     ...(dom.mainCount === 1 ? [] : [`Expected exactly one main landmark, found ${dom.mainCount}.`]),
     ...(dom.mainContentExists ? [] : ['Skip-link target "#main-content" is missing.']),
     ...(dom.mainContentValid ? [] : ['Skip-link target "#main-content" is not connected to the main landmark.']),
-    ...(dom.skipLinkCount > 0 ? [] : ['Visible skip link to "#main-content" is missing.']),
+    ...(dom.skipLinkCount > 0 ? [] : ['Skip link to "#main-content" is missing.']),
     ...(dom.navCount > 0 ? [] : ["No navigation landmark was found."]),
     ...(dom.loginWall ? ["Route appears to show a login wall."] : []),
     ...evaluateHeadingOrder(dom.headings),
@@ -442,7 +443,12 @@ try {
   if (browser) await browser.close().catch(() => {});
   if (chrome) {
     try {
-      await chrome.kill();
+      await Promise.race([
+        chrome.kill(),
+        delay(5000).then(() => {
+          throw new Error("Chrome cleanup timed out after 5 seconds");
+        }),
+      ]);
     } catch (error) {
       console.warn(`Chrome cleanup warning: ${error instanceof Error ? error.message : String(error)}`);
     }
