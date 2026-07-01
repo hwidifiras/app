@@ -22,7 +22,7 @@ export type SubscriptionBillingView = {
   offerRemark: string | null;
 };
 
-export function formatMoney(cents: number, currency = "EUR") {
+export function formatMoney(cents: number, currency = "TND") {
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency }).format(cents / 100);
 }
 

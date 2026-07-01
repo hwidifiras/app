@@ -3,7 +3,6 @@ import {
   AlertCircle,
   ArrowRight,
   BadgeCheck,
-  Banknote,
   BarChart3,
   CalendarCheck2,
   CalendarClock,
@@ -11,8 +10,6 @@ import {
   ClipboardCheck,
   ReceiptText,
   RotateCcw,
-  UserPlus,
-  Users,
   Wallet,
 } from "lucide-react";
 
@@ -150,37 +147,6 @@ const dashboardToneStyles: Record<
   },
 };
 
-const receptionQuickLinks = [
-  {
-    title: "Pointer",
-    description: "Présences du jour",
-    href: "/attendance/today",
-    icon: BadgeCheck,
-    tone: "blue" as const,
-  },
-  {
-    title: "Encaisser",
-    description: "Règlement membre",
-    href: "/payments/new",
-    icon: Banknote,
-    tone: "green" as const,
-  },
-  {
-    title: "Inscrire",
-    description: "Nouveau dossier",
-    href: "/enrollment",
-    icon: UserPlus,
-    tone: "blue" as const,
-  },
-  {
-    title: "Membres",
-    description: "Recherche rapide",
-    href: "/members",
-    icon: Users,
-    tone: "slate" as const,
-  },
-];
-
 function DashboardPanel({
   children,
   className,
@@ -239,19 +205,19 @@ function DashboardMetricCard({ metric }: { metric: DashboardMetric }) {
     <Link
       href={metric.href}
       className={cn(
-        "group flex min-h-[6.25rem] items-center gap-3 rounded-lg border bg-white p-3 text-[#111827] shadow-[0_6px_18px_rgba(15,23,42,0.045)] transition hover:-translate-y-0.5 hover:border-[#2563EB] hover:shadow-[0_10px_24px_rgba(37,99,235,0.12)] dark:bg-slate-950 dark:text-slate-100",
+        "group flex min-h-[4.75rem] items-center gap-3 rounded-lg border bg-white p-3 text-[#111827] shadow-[0_6px_18px_rgba(15,23,42,0.045)] transition hover:-translate-y-0.5 hover:border-[#2563EB] hover:shadow-[0_10px_24px_rgba(37,99,235,0.12)] dark:bg-slate-950 dark:text-slate-100",
         tone.border,
       )}
       aria-label={metric.label}
     >
-      <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-lg", tone.icon)}>
-        <Icon className="size-5" />
+      <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", tone.icon)}>
+        <Icon className="size-4" />
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-xs font-medium leading-tight text-[#64748B] dark:text-slate-400">
           {metric.label}
         </span>
-        <span className="mt-1 block truncate text-xl font-bold leading-tight text-[#0B1220] dark:text-slate-50">
+        <span className="mt-1 block truncate text-lg font-bold leading-tight text-[#0B1220] dark:text-slate-50">
           {metric.value}
         </span>
         {metric.hint ? (
@@ -259,41 +225,6 @@ function DashboardMetricCard({ metric }: { metric: DashboardMetric }) {
             {metric.hint}
           </span>
         ) : null}
-      </span>
-      <ArrowRight className="size-4 shrink-0 text-[#94A3B8] transition group-hover:translate-x-0.5 group-hover:text-[#2563EB]" />
-    </Link>
-  );
-}
-
-function DashboardQuickAction({
-  title,
-  description,
-  href,
-  icon: Icon,
-  tone,
-}: {
-  title: string;
-  description: string;
-  href: string;
-  icon: IconComponent;
-  tone: DashboardTone;
-}) {
-  const toneStyle = dashboardToneStyles[tone];
-
-  return (
-    <Link
-      href={href}
-      className="group flex min-h-[4.75rem] items-center gap-3 rounded-lg border border-[#E2E8F0] bg-white px-3 py-2.5 text-[#111827] transition hover:border-[#2563EB] hover:bg-[#F8FAFC] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-900"
-      aria-label={title}
-    >
-      <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", toneStyle.icon)}>
-        <Icon className="size-4" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold leading-tight">{title}</span>
-        <span className="mt-0.5 block text-xs leading-snug text-[#64748B] dark:text-slate-400">
-          {description}
-        </span>
       </span>
       <ArrowRight className="size-4 shrink-0 text-[#94A3B8] transition group-hover:translate-x-0.5 group-hover:text-[#2563EB]" />
     </Link>
@@ -366,65 +297,104 @@ function TodaySessionRow({ session }: { session: TodaySession }) {
   );
 }
 
-function PriorityQueue({ items }: { items: PriorityItem[] }) {
+function PrioritySummary({ items }: { items: PriorityItem[] }) {
+  if (items.length === 0) {
+    return (
+      <div className="mx-4 mb-4 flex items-start gap-3 rounded-lg border border-[#A7F3D0] bg-[#ECFDF5] px-3 py-3">
+        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#10B981]" />
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-[#047857]">Rien à traiter</p>
+          <p className="mt-0.5 text-xs leading-snug text-[#64748B]">
+            Aucun impayé urgent, aucune séance à finaliser et aucune échéance critique.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <DashboardPanel labelledBy="dashboard-priority-title" className="min-w-0">
+    <div className="border-t border-[#E2E8F0] px-4 py-3 dark:border-slate-800">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[#2563EB]">Priorités</p>
+          <p className="text-sm font-semibold text-[#0B1220] dark:text-slate-50">À traiter</p>
+        </div>
+        <Link href="/subscriptions" className="text-xs font-semibold text-[#2563EB] hover:underline">
+          Voir tout
+        </Link>
+      </div>
+      <ul className="grid gap-2">
+        {items.slice(0, 3).map((item) => {
+          const tone = dashboardToneStyles[item.tone];
+          const Icon = item.icon;
+          return (
+            <li key={item.id} className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 gap-2.5">
+                  <span className={cn("mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg", tone.soft, tone.text)}>
+                    <Icon className="size-4" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-[#0B1220] dark:text-slate-50">
+                      {item.title}
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-snug text-[#64748B] dark:text-slate-400">
+                      {item.detail}
+                    </span>
+                  </span>
+                </div>
+                <Link
+                  href={item.href}
+                  className="inline-flex min-h-8 shrink-0 items-center justify-center rounded-lg border border-[#D8E2F0] bg-white px-3 text-xs font-semibold text-[#0B1220] transition hover:border-[#2563EB] hover:text-[#2563EB] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                >
+                  {item.actionLabel}
+                </Link>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function TodayWorkPanel({
+  todaySessions,
+  priorityItems,
+}: {
+  todaySessions: TodaySession[];
+  priorityItems: PriorityItem[];
+}) {
+  return (
+    <DashboardPanel labelledBy="dashboard-today-title" className="min-w-0">
       <DashboardSectionHeader
-        titleId="dashboard-priority-title"
-        title="À traiter"
-        eyebrow="Priorités"
+        titleId="dashboard-today-title"
+        title="Séances du jour"
+        eyebrow="Aujourd'hui"
         action={
-          <Link href="/subscriptions" className="text-xs font-semibold text-[#2563EB] hover:underline">
-            Voir tout
+          <Link href="/attendance/today" className="text-xs font-semibold text-[#2563EB] hover:underline">
+            Ouvrir
           </Link>
         }
       />
-      {items.length === 0 ? (
-        <div className="flex min-h-44 flex-col items-center justify-center px-4 py-6 text-center">
-          <CheckCircle2 className="size-8 text-[#10B981]" />
-          <p className="mt-2 text-sm font-semibold text-[#0B1220] dark:text-slate-50">Rien à traiter</p>
+      {todaySessions.length === 0 ? (
+        <div className="flex min-h-36 flex-col items-center justify-center px-4 py-6 text-center">
+          <CalendarCheck2 className="size-9 text-[#10B981]" />
+          <p className="mt-2 text-sm font-semibold text-[#0B1220] dark:text-slate-50">
+            Aucune séance aujourd&apos;hui
+          </p>
           <p className="mt-1 max-w-sm text-xs text-[#64748B] dark:text-slate-400">
-            Aucun impayé prioritaire, aucune séance à finaliser et aucune échéance urgente.
+            Le planning du jour est vide ou toutes les séances ont été annulées.
           </p>
         </div>
       ) : (
         <ul>
-          {items.map((item) => {
-            const tone = dashboardToneStyles[item.tone];
-            const Icon = item.icon;
-            return (
-              <li key={item.id} className="border-t border-[#E2E8F0] px-4 py-3 first:border-t-0 dark:border-slate-800">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex min-w-0 gap-3">
-                    <span className={cn("mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg", tone.soft, tone.text)}>
-                      <Icon className="size-4" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-semibold text-[#0B1220] dark:text-slate-50">
-                        {item.title}
-                      </span>
-                      <span className="mt-0.5 block text-xs leading-snug text-[#64748B] dark:text-slate-400">
-                        {item.detail}
-                      </span>
-                      {item.meta ? (
-                        <span className={cn("mt-1 inline-flex rounded-full px-2 py-0.5 text-[0.66rem] font-semibold", tone.badge)}>
-                          {item.meta}
-                        </span>
-                      ) : null}
-                    </span>
-                  </div>
-                  <Link
-                    href={item.href}
-                    className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg border border-[#D8E2F0] bg-white px-3 text-sm font-semibold text-[#0B1220] transition hover:border-[#2563EB] hover:text-[#2563EB] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-                  >
-                    {item.actionLabel}
-                  </Link>
-                </div>
-              </li>
-            );
-          })}
+          {todaySessions.map((session) => (
+            <TodaySessionRow key={session.id} session={session} />
+          ))}
         </ul>
       )}
+      <PrioritySummary items={priorityItems} />
     </DashboardPanel>
   );
 }
@@ -496,18 +466,14 @@ function CashRegisterPanel({
           </div>
         </div>
 
-        <div className="mt-3 rounded-lg border border-[#E2E8F0] p-3">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#64748B]">Par moyen</p>
-            <Link href="/payments" className="text-xs font-semibold text-[#2563EB] hover:underline">
-              Voir paiements
-            </Link>
+        {methodStats.length === 0 ? (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs">
+            <span className="font-semibold uppercase tracking-[0.12em] text-[#64748B]">Par moyen</span>
+            <span className="text-[#64748B]">Aucun mouvement aujourd&apos;hui</span>
           </div>
-          {methodStats.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-[#CFE0F5] bg-[#F8FAFC] px-3 py-4 text-center text-xs text-[#64748B]">
-              Aucun mouvement de caisse aujourd&apos;hui.
-            </div>
-          ) : (
+        ) : (
+          <div className="mt-3 rounded-lg border border-[#E2E8F0] p-3">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-[#64748B]">Par moyen</p>
             <div className="space-y-3">
               {methodStats.map((stat) => {
                 const tone = dashboardToneStyles[stat.amount < 0 ? "red" : stat.tone];
@@ -531,22 +497,15 @@ function CashRegisterPanel({
                 );
               })}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        <div
-          className={cn(
-            "mt-3 flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium",
-            hasAdjustments
-              ? "border-[#FDE68A] bg-[#FFFBEB] text-[#B45309]"
-              : "border-[#D8E2F0] bg-[#F8FAFC] text-[#64748B]",
-          )}
-        >
-          <RotateCcw className="size-3.5 shrink-0" />
-          {hasAdjustments
-            ? `${correctionsToday} correction(s), ${reversalsToday} annulation(s) aujourd'hui`
-            : "Aucune correction ou annulation aujourd'hui"}
-        </div>
+        {hasAdjustments ? (
+          <div className="mt-3 flex items-center gap-2 rounded-lg border border-[#FDE68A] bg-[#FFFBEB] px-3 py-2 text-xs font-medium text-[#B45309]">
+            <RotateCcw className="size-3.5 shrink-0" />
+            {`${correctionsToday} correction(s), ${reversalsToday} annulation(s) aujourd'hui`}
+          </div>
+        ) : null}
       </div>
     </DashboardPanel>
   );
@@ -1087,49 +1046,8 @@ export default async function Home() {
           </div>
         ) : null}
 
-        <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(21rem,0.75fr)]">
-          <DashboardPanel labelledBy="dashboard-today-title" className="min-w-0">
-            <DashboardSectionHeader
-              titleId="dashboard-today-title"
-              title="Séances du jour"
-              eyebrow="Aujourd'hui"
-              action={
-                <Link href="/attendance/today" className="text-xs font-semibold text-[#2563EB] hover:underline">
-                  Ouvrir le pointage
-                </Link>
-              }
-            />
-            {todaySessions.length === 0 ? (
-              <div className="flex min-h-52 flex-col items-center justify-center px-4 py-6 text-center">
-                <CalendarCheck2 className="size-9 text-[#10B981]" />
-                <p className="mt-2 text-sm font-semibold text-[#0B1220] dark:text-slate-50">
-                  Aucune séance aujourd&apos;hui
-                </p>
-                <p className="mt-1 max-w-sm text-xs text-[#64748B] dark:text-slate-400">
-                  Le planning du jour est vide ou toutes les séances ont été annulées.
-                </p>
-              </div>
-            ) : (
-              <ul>
-                {todaySessions.map((session) => (
-                  <TodaySessionRow key={session.id} session={session} />
-                ))}
-              </ul>
-            )}
-          </DashboardPanel>
-
-          <DashboardPanel labelledBy="dashboard-actions-title" className="min-w-0">
-            <DashboardSectionHeader titleId="dashboard-actions-title" title="Actions rapides" eyebrow="Réception" />
-            <div className="grid gap-2 p-3 sm:grid-cols-2">
-              {receptionQuickLinks.map((item) => (
-                <DashboardQuickAction key={item.href} {...item} />
-              ))}
-            </div>
-          </DashboardPanel>
-        </section>
-
-        <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.85fr)]">
-          <PriorityQueue items={priorityItems} />
+        <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.8fr)]">
+          <TodayWorkPanel todaySessions={todaySessions} priorityItems={priorityItems} />
           <CashRegisterPanel
             totalToday={revenueToday}
             paymentCountToday={paymentCountToday}
@@ -1142,12 +1060,12 @@ export default async function Home() {
           />
         </section>
 
-        <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,0.72fr)]">
+        <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.8fr)]">
           <CashTrendPanel trend={cashTrend} weekTotal={revenueWeek} />
           <RecentCashMovementsPanel movements={recentCashMovements} />
         </section>
 
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label="Repères du club">
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Repères du club">
           <DashboardMetricCard
             metric={{
               label: "Présences",
@@ -1181,37 +1099,35 @@ export default async function Home() {
               tone: finance.totalOutstandingCents > 0 ? "amber" : "green",
             }}
           />
+          <DashboardMetricCard
+            metric={{
+              label: "Impayés détaillés",
+              value: debts.length > 0 ? debts.length : "Aucun",
+              hint: debts.length > 0 ? "Dossiers à relancer" : "Masqué si rien à suivre",
+              href: "/subscriptions",
+              icon: ReceiptText,
+              tone: debts.length > 0 ? "red" : "green",
+            }}
+          />
         </section>
 
-        <DashboardPanel labelledBy="dashboard-debts-title" className="min-w-0">
-          <DashboardSectionHeader
-            titleId="dashboard-debts-title"
-            title="Impayés détaillés"
-            eyebrow="Relances"
-            action={
-              debts.length > 0 ? (
+        {debts.length > 0 ? (
+          <DashboardPanel labelledBy="dashboard-debts-title" className="min-w-0">
+            <DashboardSectionHeader
+              titleId="dashboard-debts-title"
+              title="Impayés détaillés"
+              eyebrow="Relances"
+              action={
                 <Link href="/subscriptions" className="text-xs font-semibold text-[#2563EB] hover:underline">
                   Abonnements
                 </Link>
-              ) : null
-            }
-          />
-          <div className="p-3">
-            {debts.length === 0 ? (
-              <div className="flex min-h-36 flex-col items-center justify-center rounded-lg border border-dashed border-[#CFE0F5] bg-[#F8FAFC] px-4 text-center dark:border-slate-700 dark:bg-slate-900">
-                <CheckCircle2 className="size-8 text-[#10B981]" />
-                <p className="mt-2 text-sm font-semibold text-[#0B1220] dark:text-slate-50">
-                  Aucun impayé prioritaire
-                </p>
-                <p className="mt-1 text-xs text-[#64748B] dark:text-slate-400">
-                  Tous les soldes sont sous le seuil d&apos;alerte configuré.
-                </p>
-              </div>
-            ) : (
+              }
+            />
+            <div className="p-3">
               <DashboardDebtsSection debts={debts} emailConfigured={emailConfigured} />
-            )}
-          </div>
-        </DashboardPanel>
+            </div>
+          </DashboardPanel>
+        ) : null}
       </div>
     </main>
   );
