@@ -128,7 +128,7 @@ async function apply(tenantId) {
   const tomorrow = utcDay(1);
   const pastSessionDate = utcDay(-1);
   const started = utcDay(-10);
-  const ended = utcDay(-1);
+  const ended = utcDay(-2);
   const expires = utcDay(20);
   const todayName = dayNames[today.getUTCDay()];
 

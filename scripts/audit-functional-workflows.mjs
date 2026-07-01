@@ -126,6 +126,12 @@ function cents(value) {
   return typeof value === "number" ? value : Number.NaN;
 }
 
+function extractLogDetailPaths(html) {
+  return [...html.matchAll(/href="(\/logs\/[^"]+)"/g)]
+    .map((match) => match[1])
+    .filter((href, index, all) => all.indexOf(href) === index);
+}
+
 await check("Unauthenticated /api/auth/me is empty", async () => {
   const response = await request("/api/auth/me");
   addResult(
@@ -279,16 +285,34 @@ await check("Payment reversal creates a signed ledger row", async () => {
 
 await check("Payment audit reasons appear in admin log UI", async () => {
   const response = await request("/logs?q=Audit%20functional");
+  const detailPaths = extractLogDetailPaths(response.text);
+  const detailResponses = [];
+  for (const detailPath of detailPaths.slice(0, 4)) {
+    detailResponses.push(await request(detailPath));
+  }
+  const detailText = detailResponses.map((detail) => detail.text).join("\n");
   const passed =
     response.status === 200 &&
-    response.text.includes("Audit functional correction") &&
-    response.text.includes("Audit functional reversal");
+    response.text.includes("Correction de paiement") &&
+    response.text.includes("Paiement annul") &&
+    detailText.includes("Audit functional correction") &&
+    detailText.includes("Audit functional reversal") &&
+    detailText.includes(email);
   addResult(
     "Payment audit reasons appear in admin log UI",
     response,
     passed,
-    "Logs page contains the correction and reversal reasons.",
-    passed ? "Both reasons found in /logs HTML." : response.text.slice(0, 500),
+    "Logs search finds payment audit entries; detail pages contain correction/reversal reasons and actor email.",
+    passed
+      ? `List and ${detailResponses.length} detail page(s) verified.`
+      : JSON.stringify({
+          detailPaths,
+          listHasCorrection: response.text.includes("Correction de paiement"),
+          listHasReversal: response.text.includes("Paiement annul"),
+          detailHasCorrection: detailText.includes("Audit functional correction"),
+          detailHasReversal: detailText.includes("Audit functional reversal"),
+          detailHasActor: detailText.includes(email),
+        }),
   );
 });
 
