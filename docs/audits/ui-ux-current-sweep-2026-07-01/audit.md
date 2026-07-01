@@ -133,6 +133,16 @@ Captured at desktop and mobile:
 - Workflows covered: auth/login/logout, payment overpay guard, partial payment, payment correction/reversal with reasons, admin log detail proof, unpaid pointage rejection, exceptional pointage reason, partial-paid attendance, finalization and finalized-edit guard, reprise mode activation/deactivation, and French bulk import preview with auto-generated member code.
 - Live cleanup after the run returned 0 `audit-ux-*` members, sessions, attendances, payments, offers, and users.
 
+## Authenticated Lighthouse Proof After `d716e47`
+
+- Evidence note: `authenticated-lighthouse-audit-d716e47.md`.
+- Command: authenticated `npm run lighthouse` with `LIGHTHOUSE_MIN_A11Y=90`.
+- Routes covered at mobile and desktop: `/`, `/attendance/today`, `/enrollment`, `/payments/new`, `/members`, and `/settings/data-import`.
+- Result: all 12 route/profile checks met the accessibility threshold.
+- Lowest accessibility score: 90 on `/attendance/today` mobile and desktop.
+- Member desktop accessibility improved from 88 before the fix to 96 after the fix.
+- Live cleanup after the run returned 0 `audit-ux-*` members, sessions, attendances, payments, offers, and users.
+
 ## Recommendation
 
-The app now has broad visual proof and a focused functional proof for the highest-risk daily workflows. Remaining release-hardening evidence should focus on full accessibility verification, enrollment apply/revert smoke checks, and a final production readiness review before handoff.
+The app now has broad visual proof, focused functional proof for the highest-risk daily workflows, and an authenticated Lighthouse accessibility gate across representative private screens. Remaining release-hardening evidence should focus on manual keyboard/screen-reader traversal, enrollment apply/revert smoke checks, and a final production readiness review before handoff.
