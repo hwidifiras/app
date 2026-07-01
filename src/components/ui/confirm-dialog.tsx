@@ -86,9 +86,10 @@ export function ConfirmDialog({
         ref={dialogRef}
         role="alertdialog"
         aria-modal="true"
+        aria-busy={loading}
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        className="max-h-[min(90dvh,36rem)] w-full overflow-y-auto rounded-t-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-2xl sm:max-w-md sm:rounded-2xl sm:p-5"
+        className="max-h-[min(90dvh,36rem)] w-full overflow-y-auto rounded-t-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-floating)] sm:max-w-md sm:rounded-lg sm:p-5"
       >
         <div className="flex items-start gap-3">
           <span
