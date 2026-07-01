@@ -561,7 +561,7 @@ describe("temporary data import", () => {
     expect(result.rows[0].externalId).toBe("M001-amineclient-9999");
   });
 
-  it("ignores Excel auto-code references and keeps the French import headers", async () => {
+  it("ignores legacy code columns and keeps the French import headers", async () => {
     const fx = await dojoFixture();
     const rows = [
       [
@@ -580,7 +580,7 @@ describe("temporary data import", () => {
         "Séances restantes",
       ],
       [
-        "M009-ancien-0000",
+        "CLIENT-OLD-42",
         "Nour",
         "Client",
         "ADULT",

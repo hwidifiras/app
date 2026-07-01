@@ -142,11 +142,6 @@ function generateExternalId(
   return [rowReference, nameReference, phoneReference].filter(Boolean).join("-");
 }
 
-function isGeneratedExternalId(value: string) {
-  const normalized = normalizeLookup(value);
-  return /^m\d{3}[a-z0-9]*$/.test(normalized);
-}
-
 function cellValueText(value: RawCell): string {
   if (value === null || value === undefined) return "";
   if (value instanceof Date) return value.toISOString().slice(0, 10);
@@ -251,8 +246,7 @@ function readText(row: RawRow, headerIndex: Map<HeaderKey, number>, key: HeaderK
 function readImportText(row: RawRow, headerIndex: Map<HeaderKey, number>, key: HeaderKey): string {
   const text = readText(row, headerIndex, key);
   if (key === "externalId") {
-    const trimmed = text.trim();
-    if (trimmed.startsWith("=") || isGeneratedExternalId(trimmed)) return "";
+    return "";
   }
   return text;
 }

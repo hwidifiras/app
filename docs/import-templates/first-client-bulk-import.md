@@ -20,7 +20,7 @@ The import stays behind the temporary reprise mode and creates rollbackable `DAT
 
 Fill one row per active member to resume. The downloadable template uses French headers, and old English headers remain accepted for compatibility.
 
-Le client n'a aucun code membre à inventer: le modèle commence directement par `Prénom`. Au moment de `Vérifier Excel`, l'application génère une référence sûre au format `M001-prenomnom-9999`, calculée avec l'ordre réel des lignes non vides, le nom et les 4 derniers chiffres du téléphone disponible. Si un ancien fichier contient encore `Code membre`, `reference`, `ref`, `code`, `matricule` ou `externalId`, l'import reste compatible et régénère une référence propre.
+Le client n'a aucun code membre à inventer: le modèle commence directement par `Prénom`. Au moment de `Vérifier Excel`, l'application génère une référence sûre au format `M001-prenomnom-9999`, calculée avec l'ordre réel des lignes non vides, le nom et les 4 derniers chiffres du téléphone disponible. Si un ancien fichier contient encore `Code membre`, `reference`, `ref`, `code`, `matricule` ou `externalId`, l'import reste compatible, ignore cette ancienne colonne, et régénère une référence propre.
 
 Required or commonly filled:
 
