@@ -38,6 +38,7 @@
     "prisma:studio": "prisma studio",
     "handoff:check": "node scripts/handoff-check.mjs",
     "lighthouse": "node scripts/lighthouse-audit.mjs",
+    "audit:screen-reader": "node scripts/audit-screen-reader-semantics.mjs",
     "perf:check": "node scripts/perf-check.mjs",
     "perf:check:local": "node scripts/perf-check.mjs --with-server",
     "postinstall": "node scripts/with-dev-env.mjs scripts/run-prisma-generate.mjs"
