@@ -154,7 +154,7 @@ export function NotificationCenter({ className }: { className?: string }) {
         <div
           role="dialog"
           aria-label="Centre de notifications"
-          className="fixed inset-x-3 top-[4.2rem] z-[70] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl sm:left-auto sm:right-3 sm:w-[24rem] lg:absolute lg:right-0 lg:top-full lg:mt-2"
+          className="fixed inset-x-3 top-[4.2rem] z-[70] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-floating)] sm:left-auto sm:right-3 sm:w-[24rem] lg:absolute lg:right-0 lg:top-full lg:mt-2"
         >
           <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
             <div>

@@ -669,7 +669,7 @@ export function SessionsPlanner({
       {/* Modal d'édition de séance */}
       {editingSession ? (
         <div className="mobile-modal-overlay fixed inset-0 z-50 flex justify-center bg-black/40">
-          <div className="mobile-modal-panel border border-[var(--border)] bg-[var(--card)] p-5 shadow-xl md:max-w-2xl md:rounded-lg">
+          <div className="mobile-modal-panel border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-floating)] md:max-w-2xl md:rounded-lg">
             <h3 className="text-lg font-semibold text-[var(--foreground)]">
               Modifier la séance
             </h3>

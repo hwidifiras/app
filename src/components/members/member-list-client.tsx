@@ -508,7 +508,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
           role="presentation"
         >
           <div
-            className="max-h-[86dvh] w-full overflow-y-auto rounded-t-3xl border border-[var(--border)] bg-[var(--surface)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[var(--shadow-floating)]"
+            className="max-h-[86dvh] w-full overflow-y-auto rounded-t-lg border border-[var(--border)] bg-[var(--surface)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[var(--shadow-floating)]"
             role="dialog"
             aria-modal="true"
             aria-labelledby="member-filters-title"

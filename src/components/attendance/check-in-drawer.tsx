@@ -173,7 +173,7 @@ export function CheckInDrawer({
     >
       <div
         ref={sheetRef}
-        className="drawer-sheet drawer-sheet-adaptive flex w-full max-w-3xl flex-col overflow-hidden rounded-t-3xl bg-[var(--surface)] shadow-2xl md:h-full md:max-h-none md:rounded-none"
+        className="drawer-sheet drawer-sheet-adaptive flex w-full max-w-3xl flex-col overflow-hidden rounded-t-lg bg-[var(--surface)] shadow-[var(--shadow-floating)] md:h-full md:max-h-none md:rounded-none"
         role="dialog"
         aria-modal="true"
         aria-labelledby="check-in-drawer-title"
@@ -437,7 +437,7 @@ export function CheckInDrawer({
           }}
         >
           <div
-            className="mobile-modal-panel border border-[var(--border)] bg-[var(--surface)] p-5 shadow-lg md:max-w-sm md:rounded-xl"
+            className="mobile-modal-panel border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-floating)] md:max-w-sm md:rounded-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-base font-semibold text-[var(--foreground)]">Passage exceptionnel</h3>
@@ -488,7 +488,7 @@ export function CheckInDrawer({
           }}
         >
           <div
-            className="mobile-modal-panel border border-[var(--border)] bg-[var(--surface)] p-5 shadow-lg md:max-w-md md:rounded-xl"
+            className="mobile-modal-panel border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-floating)] md:max-w-md md:rounded-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-base font-semibold text-[var(--foreground)]">Rattrapage d&apos;absence</h3>

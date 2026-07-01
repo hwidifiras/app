@@ -342,7 +342,7 @@ export function SportManager({ initialSports }: SportManagerProps) {
 
       {blockedSport ? (
         <div className="mobile-modal-overlay fixed inset-0 z-50 flex justify-center bg-black/40">
-          <div className="mobile-modal-panel border border-[var(--border)] bg-[var(--card)] p-5 shadow-lg md:rounded-xl">
+          <div className="mobile-modal-panel border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-floating)] md:rounded-lg">
             <h3 className="text-base font-semibold text-[var(--foreground)]">Suppression impossible</h3>
             <p className="mt-2 text-sm text-[var(--muted-foreground)]">
               La discipline <span className="font-medium text-[var(--foreground)]">{blockedSport.name}</span> est

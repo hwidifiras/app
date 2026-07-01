@@ -102,6 +102,7 @@ Captured at desktop and mobile:
 - Shared feedback messages now infer success/info/error states from broader French operational copy, so normal actions such as `désactivée`, `retirée`, `annulée`, and `mis à jour` do not render as red errors.
 - Shared reception info and billing summary cards now use the same compact 8px-style radius as the SaaS dashboard, reducing the last large-rounded form panels on enrollment, formulas, subscriptions, payments, and reception settings.
 - Shared confirmation dialogs now use compact radius, restrained floating shadow, and `aria-busy` during processing across destructive and non-destructive confirmations.
+- Mobile sheets, modal panels, notifications, and enrollment containers now use compact radius and the shared floating/panel shadows instead of older oversized corners and heavy shadows.
 
 ## Repeatable Audit Data
 

@@ -371,7 +371,7 @@ export function EnrollmentWizard({
         <p>Pour 2 mois, choisissez une formule 2 mois ou faites un renouvellement.</p>
       </ReceptionInfoCard>
 
-      <div className="enrollment-stepper grid grid-cols-3 gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-2 shadow-sm">
+      <div className="enrollment-stepper grid grid-cols-3 gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-2 shadow-[var(--shadow-panel)]">
         {["Élèves", "Offre", "Devis"].map((label, index) => {
           const itemStep = index + 1;
           const active = step === itemStep;
@@ -404,7 +404,7 @@ export function EnrollmentWizard({
             </p>
           </div>
           {lines.map((line, idx) => (
-            <fieldset key={line.key} className="enrollment-fieldset rounded-2xl border border-[var(--border)] p-3 sm:p-4">
+            <fieldset key={line.key} className="enrollment-fieldset rounded-lg border border-[var(--border)] p-3 sm:p-4">
               <legend className="px-1 text-sm font-medium">Ligne {idx + 1}</legend>
               <LineEditor
                 line={line}
