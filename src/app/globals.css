@@ -49,6 +49,8 @@
     0 8px 24px rgba(15, 23, 42, 0.06),
     0 1px 0 rgba(255, 255, 255, 0.75) inset;
   --shadow-floating: 0 18px 44px rgba(15, 23, 42, 0.14);
+  --focus-ring: #2563eb;
+  --focus-ring-soft: rgba(37, 99, 235, 0.18);
 }
 
 @theme inline {
@@ -106,6 +108,51 @@ body {
 
 a {
   color: inherit;
+}
+
+:where(
+    a,
+    button,
+    input,
+    select,
+    textarea,
+    summary,
+    [role="button"],
+    [role="menuitem"],
+    [tabindex]:not([tabindex="-1"])
+  ):focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px var(--focus-ring-soft);
+}
+
+#main-content:focus {
+  outline: none;
+}
+
+.skip-link {
+  position: fixed;
+  left: 0.75rem;
+  top: 0.75rem;
+  z-index: 1000;
+  transform: translateY(-150%);
+  border-radius: 0.5rem;
+  border: 1px solid var(--primary);
+  background: var(--surface);
+  color: var(--primary);
+  padding: 0.7rem 0.95rem;
+  font-size: 0.88rem;
+  font-weight: 800;
+  box-shadow: var(--shadow-floating);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
 }
 
 /* Mobile bottom nav: active tab must keep readable icon + label on primary background */
@@ -1138,6 +1185,8 @@ input.field[type="search"]::-webkit-search-results-decoration {
     0 6px 18px rgba(0, 0, 0, 0.2),
     0 1px 4px rgba(0, 0, 0, 0.16);
   --shadow-floating: 0 18px 48px rgba(0, 0, 0, 0.42);
+  --focus-ring: #93c5fd;
+  --focus-ring-soft: rgba(147, 197, 253, 0.2);
   --popover: #152238;
   --popover-foreground: #e8f1fc;
   --primary-foreground: #ffffff;

@@ -237,6 +237,8 @@ export function AppSidebar({
         <div className="mb-1 mt-2 border-t border-[var(--border)] pt-2 lg:mt-3 lg:pt-3">
           <button
             onClick={() => setConfigOpen((v) => !v)}
+            aria-expanded={configOpen || inClubConfig}
+            aria-label={collapsed ? clubConfigSection.title : undefined}
             className={cn(
               "flex w-full items-center rounded-lg py-2 text-[0.82rem] font-medium transition-all lg:mb-1",
               collapsed ? "justify-center px-2" : "justify-between px-3",

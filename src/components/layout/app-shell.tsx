@@ -94,12 +94,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarContext.Provider value={{ collapsed, toggleCollapsed, displayMode, setDisplayMode }}>
+      <a href="#main-content" className="skip-link">
+        Aller au contenu
+      </a>
       <MobileNav />
       <div className={`grid min-h-screen ${collapsed ? "lg:grid-cols-[72px_1fr]" : "lg:grid-cols-[248px_1fr]"}`}>
         <AppSidebar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
         <div className="flex min-w-0 flex-col bg-[var(--background)]">
           <DesktopTopNav />
-          {children}
+          <div id="main-content" tabIndex={-1}>
+            {children}
+          </div>
         </div>
       </div>
     </SidebarContext.Provider>

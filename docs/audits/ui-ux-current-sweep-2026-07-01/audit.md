@@ -95,6 +95,7 @@ Captured at desktop and mobile:
 - Staff users no longer see the setup guide in daily chrome after `e2a8a4d`.
 - Attendance detail inactive-history rows are clarified after `ca26d4a`.
 - Reprise/import now downloads a simpler French workbook with app-generated member codes after `0e5e07c`.
+- Keyboard access was improved with a private-app skip link, a stronger shared focus ring for links/buttons/fields, and an explicit sidebar configuration disclosure state.
 
 ## Repeatable Audit Data
 
