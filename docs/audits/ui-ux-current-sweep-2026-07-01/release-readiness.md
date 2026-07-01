@@ -14,6 +14,7 @@ Not ready to claim complete SaaS release readiness or full accessibility complia
 - Core daily workflow audit passed 23/23 live scenarios: auth, payments, corrections/reversals, attendance guards, finalization, reprise mode, and French bulk import preview.
 - Enrollment apply/revert smoke passed 8/8 live scenarios and proved the temporary member, subscription, payment, and group assignment are removed after revert.
 - Full automated test gate passed on the VPS against an isolated disposable PostgreSQL database: 16 test files and 155 tests passed.
+- Production dependency audit is clean after overriding Next's nested PostCSS dependency to `8.5.16`.
 - Authenticated Lighthouse accessibility gate passed all 12 sampled route/profile checks with threshold `LIGHTHOUSE_MIN_A11Y=90`.
 - Keyboard/focus audit passed all 12 sampled route/profile checks, including visible skip link and hidden mobile drawer focus gating.
 - Temporary audit data cleanup returned 0 `audit-ux-*` members, sessions, attendances, payments, offers, and users after the mutating audit runs.
@@ -22,7 +23,6 @@ Not ready to claim complete SaaS release readiness or full accessibility complia
 ## Remaining Gates
 
 - Manual screen-reader traversal has not been performed; Lighthouse and keyboard automation are strong signals, not complete WCAG proof.
-- `npm audit --omit=dev` currently reports 2 moderate PostCSS advisories through `next`; the suggested `npm audit fix --force` path would install a breaking Next version and was not applied.
 - SaaS/multi-tenant commercial readiness remains separate from this UI/UX handoff: billing, onboarding, tenant operations, and final cutover controls are not covered by this note.
 - Future production deployments should still follow the backup, smoke-test, and rollback checklist before changing live traffic.
 
@@ -36,6 +36,7 @@ Not ready to claim complete SaaS release readiness or full accessibility complia
 - Keyboard/focus proof: `keyboard-focus-audit-7564eaa.md` and `keyboard-focus-results-7564eaa.json`.
 - Enrollment apply/revert proof: `enrollment-smoke-audit-37b4014.md` and `enrollment-smoke-results-37b4014.json`.
 - Full test proof: `full-test-gate-2c928fa.md`.
+- Next/PostCSS advisory proof: `postcss-advisory-resolution-c845dd8.md`.
 
 ## Verification Notes
 
@@ -43,10 +44,12 @@ Not ready to claim complete SaaS release readiness or full accessibility complia
 - `npm.cmd run build`: passed locally and during the VPS Docker rebuild for commit `37b4014`.
 - `SKIP_TEST_DB_SETUP=1 npm.cmd exec -- vitest run tests/import-template.test.ts`: passed 4/4 for the French import workbook checks.
 - Full `npm test`: passed on the VPS in a one-off Docker runner against disposable database `gymday_test_codex_20260701`; 16 files and 155 tests passed, then the database was dropped.
-- `npm.cmd audit --omit=dev`: failed with 2 moderate PostCSS advisories through `next`; no non-breaking automatic fix was available.
+- `npm.cmd audit --omit=dev`: passed after the Next/PostCSS override.
+- Rebuilt VPS container `npm audit --omit=dev`: passed after the Next/PostCSS override.
+- Full `npm test` after rebuilding the override image: passed on the VPS against disposable database `gymday_test_codex_c845dd8`; 16 files and 155 tests passed, then the database was dropped.
 - VPS app container remained healthy during the test and documentation pass.
 - VPS server repo was clean before this readiness update and is synced after each documentation commit.
 
 ## Recommendation
 
-For the current first-client handoff, use the app as deployed and avoid further live-data edge-case testing. For a paid public/SaaS release claim, close the remaining gates: document/manual-test screen-reader behavior, decide the Next/PostCSS advisory path, and keep the deployment backup/rollback checklist mandatory.
+For the current first-client handoff, use the app as deployed and avoid further live-data edge-case testing. For a paid public/SaaS release claim, close the remaining gates: document/manual-test screen-reader behavior and keep the deployment backup/rollback checklist mandatory.
