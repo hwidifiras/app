@@ -113,6 +113,16 @@ Captured at desktop and mobile:
 - `npm run audit:ux:cleanup` removes only the `audit-ux-*` records.
 - Live tenant cleanup check after adding the helper: `audit-ux-*` members, sessions, attendances, payments, offers, and users all returned `0`.
 
+## Focused Proof After `23794df`
+
+- Evidence note: `remaining-proof-23794df.md`.
+- Screenshot folder: `screenshots/remaining-proof-23794df/` (ignored by Git).
+- Captured 16 fresh screenshots at mobile `390x844` and desktop `1440x900`.
+- Routes covered: dashboard, payment creation with partial debt, attendance session detail, today attendance, postpone/session-edit redirect, offers, reprise/import, and formula creation.
+- Metrics: 0 horizontal-overflow screens, 0 login walls, 0 error pages.
+- Previously missing proof is now covered for valid tenant-scoped attendance detail and session postpone/edit routing.
+- Focused text scan found no leftover `externalId`, raw session status strings, old `plan` wording on formula creation, duplicated `Salle Salle`, or raw `audit-ux-admin` operator id.
+
 ## Recommendation
 
 The app is visually ready for the next functional audit pass. The remaining proof should focus on real workflow behavior rather than broad UI layout:
