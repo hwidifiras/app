@@ -26,7 +26,7 @@ Required or commonly filled:
 
 - `Prénom`
 - `Nom`
-- `Type membre`: `ADULT`, `KID`, or `NOT_SPECIFIED`.
+- `Type membre`: `Adulte`, `Enfant`, or `Non précisé`.
 - `Téléphone`: required for adults.
 - `Téléphone parent`: required for kids.
 - `Date inscription`: date member joined the club, `YYYY-MM-DD`.
@@ -46,7 +46,7 @@ Optional:
 - `Nom parent`
 - `Début groupe`: defaults to subscription start.
 - `Date paiement`: defaults to cutover date when `Déjà payé > 0`.
-- `Mode paiement`: `REPRISE_EXCEL`, `CASH`, `CARD`, `TRANSFER`, or `CHECK`.
+- `Mode paiement`: free text for the historical payment method, for example `Espèces`, `Carte`, `Virement`, or `Chèque`.
 - `Note reprise`
 
 ## Current First-Client References

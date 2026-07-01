@@ -71,6 +71,10 @@ describe("bulk import templates", () => {
     expect(rows[0]).toEqual(expectedHeaders);
     expect(rows[0]).not.toContain("Code membre auto");
     expect(rows[1]?.[0]).toBe("Amine");
+    expect(rows[1]?.[2]).toBe("Adulte");
+    expect(rows[1]?.[19]).toBe("Espèces");
     expect(rows[2]?.[0]).toBe("Nour");
+    expect(rows[2]?.[2]).toBe("Enfant");
+    expect(rows[2]?.[19]).toBeNull();
   });
 });
