@@ -216,12 +216,12 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
     const result = await response.json();
 
     if (!response.ok) {
-      setMessage(result.error ?? "Erreur lors de la suppression multiple");
+      setMessage(result.error ?? "Erreur lors du retrait multiple");
       setBulkAction(null);
       return;
     }
 
-    setMessage(`Suppression terminée: ${result.data?.deletedCount ?? 0} affectations supprimées.`);
+    setMessage(`Retrait terminé: ${result.data?.closedCount ?? 0} affectation(s) fermée(s).`);
     setSelectedAssignedMemberIds([]);
     setPendingRemoval(null);
     await reloadAssignments();
@@ -271,12 +271,12 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
     const result = await response.json();
 
     if (!response.ok) {
-      setMessage(result.error ?? "Erreur lors de la suppression");
+      setMessage(result.error ?? "Erreur lors du retrait");
       setActionLoadingId(null);
       return;
     }
 
-    setMessage("Affectation supprimée");
+    setMessage("Affectation retirée du groupe");
     setPendingRemoval(null);
     await reloadAssignments();
     setActionLoadingId(null);
@@ -456,7 +456,7 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
                     disabled={actionLoadingId === item.id}
                     className="btn btn-danger text-xs"
                   >
-                    Supprimer
+                    Retirer
                   </button>
                 </div>
               </li>
@@ -489,7 +489,7 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
       <ConfirmDialog
         open={pendingRemoval === "bulk"}
         title={`Retirer ${selectedAssignedMemberIds.length} membre${selectedAssignedMemberIds.length > 1 ? "s" : ""} du groupe ?`}
-        description={`Les affectations sélectionnées seront supprimées du groupe « ${selectedGroup?.name ?? ""} ». Les dossiers membres seront conservés.`}
+        description={`Les affectations sélectionnées seront fermées pour le groupe « ${selectedGroup?.name ?? ""} ». Les dossiers membres et l'historique resteront conservés.`}
         confirmLabel="Retirer la sélection"
         loading={bulkAction === "remove"}
         onCancel={() => setPendingRemoval(null)}
@@ -498,7 +498,7 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
       <ConfirmDialog
         open={pendingRemoval !== null && pendingRemoval !== "bulk"}
         title="Retirer ce membre du groupe ?"
-        description={`${pendingRemoval && pendingRemoval !== "bulk" ? pendingRemoval.memberName : ""} ne sera plus affecté au groupe « ${selectedGroup?.name ?? ""} ». Son dossier sera conservé.`}
+        description={`${pendingRemoval && pendingRemoval !== "bulk" ? pendingRemoval.memberName : ""} ne sera plus affecté au groupe « ${selectedGroup?.name ?? ""} ». Son dossier et l'historique resteront conservés.`}
         confirmLabel="Retirer du groupe"
         loading={pendingRemoval !== null && pendingRemoval !== "bulk" && actionLoadingId === pendingRemoval.id}
         onCancel={() => setPendingRemoval(null)}

@@ -521,6 +521,6 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ data: { id: closed.id, status: closed.status, endDate: closed.endDate?.toISOString() ?? null } });
   } catch {
-    return NextResponse.json({ error: "Erreur serveur lors de la suppression" }, { status: 500 });
+    return NextResponse.json({ error: "Erreur serveur lors du retrait" }, { status: 500 });
   }
 }

@@ -97,6 +97,7 @@ Captured at desktop and mobile:
 - Reprise/import now downloads a simpler French workbook with app-generated member codes after `0e5e07c`.
 - Keyboard access was improved with a private-app skip link, a stronger shared focus ring for links/buttons/fields, and an explicit sidebar configuration disclosure state.
 - Member archive actions now use `Résilier` copy instead of implying hard deletion; member history remains explicitly preserved in the confirmation text.
+- Group assignment actions now use `Retirer` copy and `closedCount` feedback, matching the non-destructive assignment-close behavior.
 
 ## Repeatable Audit Data
 

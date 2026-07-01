@@ -132,7 +132,7 @@ export function GroupEditForm({
       });
       const removeResult = await removeResponse.json();
       if (removeResponse.ok) {
-        removeMsg = `${removeResult.data?.deletedCount ?? 0} retiré(s)`;
+        removeMsg = `${removeResult.data?.closedCount ?? 0} retiré(s)`;
       } else {
         removeMsg = `Erreur retrait: ${removeResult.error ?? ""}`;
       }
