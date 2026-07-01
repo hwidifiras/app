@@ -537,6 +537,7 @@ describe("temporary data import", () => {
         "Déjà payé",
         "Séances restantes",
       ],
+      ["", "", "", "", "", "", "", "", "", "", "", ""],
       [
         "Amine",
         "Client",
@@ -560,11 +561,11 @@ describe("temporary data import", () => {
     expect(result.rows[0].externalId).toBe("M001-amineclient-9999");
   });
 
-  it("ignores formula-style auto references and keeps the French import headers", async () => {
+  it("ignores Excel auto-code references and keeps the French import headers", async () => {
     const fx = await dojoFixture();
     const rows = [
       [
-        "Référence auto (optionnel)",
+        "Code membre auto",
         "Prénom",
         "Nom",
         "Type membre",
@@ -579,7 +580,7 @@ describe("temporary data import", () => {
         "Séances restantes",
       ],
       [
-        '=IF(AND(B2="",C2=""),"","M"&TEXT(ROW()-1,"000"))',
+        "M009-ancien-0000",
         "Nour",
         "Client",
         "ADULT",

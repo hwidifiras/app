@@ -75,12 +75,17 @@ const HEADER_ALIASES: Record<HeaderKey, string[]> = {
     "idexterne",
     "reference",
     "referenceauto",
+    "referenceautomatique",
     "referenceautooptionnel",
     "referenceoptionnelle",
+    "codeauto",
+    "codeautofacultatif",
+    "codeautomembre",
     "idauto",
     "identifiantauto",
     "codemembre",
     "codemembreauto",
+    "codemembreautofacultatif",
     "codemembrelaisservide",
     "codemembreoptionnel",
     "codemembreautooptionnel",
@@ -124,11 +129,22 @@ function normalizeLookup(value: string) {
   return normalizeHeader(value).trim();
 }
 
-function generateExternalId(rowNumber: number, firstName: string, lastName: string, phone: string, parentPhone: string) {
-  const rowReference = `M${String(Math.max(rowNumber - 1, 1)).padStart(3, "0")}`;
+function generateExternalId(
+  sequenceNumber: number,
+  firstName: string,
+  lastName: string,
+  phone: string,
+  parentPhone: string,
+) {
+  const rowReference = `M${String(Math.max(sequenceNumber, 1)).padStart(3, "0")}`;
   const nameReference = normalizeLookup(`${firstName}${lastName}`).slice(0, 18);
   const phoneReference = normalizeLookup(phone || parentPhone).slice(-4);
   return [rowReference, nameReference, phoneReference].filter(Boolean).join("-");
+}
+
+function isGeneratedExternalId(value: string) {
+  const normalized = normalizeLookup(value);
+  return /^m\d{3}[a-z0-9]*$/.test(normalized);
 }
 
 function cellValueText(value: RawCell): string {
@@ -234,7 +250,10 @@ function readText(row: RawRow, headerIndex: Map<HeaderKey, number>, key: HeaderK
 
 function readImportText(row: RawRow, headerIndex: Map<HeaderKey, number>, key: HeaderKey): string {
   const text = readText(row, headerIndex, key);
-  if (key === "externalId" && text.trim().startsWith("=")) return "";
+  if (key === "externalId") {
+    const trimmed = text.trim();
+    if (trimmed.startsWith("=") || isGeneratedExternalId(trimmed)) return "";
+  }
   return text;
 }
 
@@ -340,11 +359,13 @@ async function prepareBulkImport(buffer: Buffer, fileName: string, fallbackCutov
   const seenPhones = new Map<string, number>();
   const seenExternalIds = new Map<string, number>();
   const fallbackCutoverIso = parseDate(fallbackCutoverDate) ?? new Date().toISOString();
+  let generatedExternalSequence = 0;
 
   for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
     const rowNumber = rowIndex + 1;
     const row = rows[rowIndex];
     if (isEmptyRow(row, headerIndex)) continue;
+    generatedExternalSequence += 1;
 
     const errors: string[] = [];
     const firstName = readText(row, headerIndex, "firstName");
@@ -353,7 +374,7 @@ async function prepareBulkImport(buffer: Buffer, fileName: string, fallbackCutov
     const parentPhone = readText(row, headerIndex, "parentPhone");
     const externalId =
       readImportText(row, headerIndex, "externalId") ||
-      generateExternalId(rowNumber, firstName, lastName, phone, parentPhone);
+      generateExternalId(generatedExternalSequence, firstName, lastName, phone, parentPhone);
     const groupName = readText(row, headerIndex, "groupName");
     const planName = readText(row, headerIndex, "planName");
     const memberType = normalizeMemberType(readText(row, headerIndex, "memberType"));

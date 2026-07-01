@@ -20,24 +20,24 @@ The import stays behind the temporary reprise mode and creates rollbackable `DAT
 
 Fill one row per active member to resume. The downloadable template uses French headers, and old English headers remain accepted for compatibility.
 
-La première colonne du modèle est `Référence auto (optionnel)`. Elle se calcule dans Excel avec la ligne, le nom et le téléphone pour rassurer le client, mais elle n'est pas obligatoire. Le client peut la laisser telle quelle, la vider ou même supprimer la colonne: l'application régénère une référence sûre au moment de l'import. Si un ancien fichier contient encore `reference`, `ref`, `code`, `matricule` ou `externalId`, l'import reste compatible.
+La première colonne du modèle est `Code membre auto`. Elle se calcule dans Excel avec la ligne, le nom et le téléphone pour rassurer le client, mais elle n'est pas obligatoire. Le client peut la laisser telle quelle, la vider ou même supprimer la colonne: l'application régénère un code sûr au moment de l'import. Si Excel garde un ancien résultat calculé, l'application l'ignore et recalcule le code avec l'ordre réel des lignes non vides. Si un ancien fichier contient encore `reference`, `ref`, `code`, `matricule` ou `externalId`, l'import reste compatible.
 
 Required or commonly filled:
 
-- `Référence auto (optionnel)`: optional; generated automatically by Excel/app.
-- `Prenom`
-- `nom`
+- `Code membre auto`: optional; generated automatically by Excel/app.
+- `Prénom`
+- `Nom`
 - `Type membre`: `ADULT`, `KID`, or `NOT_SPECIFIED`.
-- `Telephone`: required for adults.
-- `Telephone parent`: required for kids.
+- `Téléphone`: required for adults.
+- `Téléphone parent`: required for kids.
 - `Date inscription`: date member joined the club, `YYYY-MM-DD`.
 - `Groupe`: must match a current group name.
 - `Formule`: must match a current formula name.
-- `Debut abonnement`
+- `Début abonnement`
 - `Fin abonnement`
 - `Montant total`: full subscription amount in normal currency units, for example `40`.
-- `Deja paye`: amount already paid, for example `20`.
-- `Seances restantes`: current remaining session balance.
+- `Déjà payé`: amount already paid, for example `20`.
+- `Séances restantes`: current remaining session balance.
 
 Optional:
 
@@ -45,8 +45,8 @@ Optional:
 - `Date naissance`
 - `Adresse`
 - `Nom parent`
-- `Debut groupe`: defaults to subscription start.
-- `Date paiement`: defaults to cutover date when `Deja paye > 0`.
+- `Début groupe`: defaults to subscription start.
+- `Date paiement`: defaults to cutover date when `Déjà payé > 0`.
 - `Mode paiement`: `REPRISE_EXCEL`, `CASH`, `CARD`, `TRANSFER`, or `CHECK`.
 - `Note reprise`
 
