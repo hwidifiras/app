@@ -21,7 +21,7 @@ export function FormSection({
         className,
       )}
     >
-      {title ? <h3 className="text-sm font-semibold text-foreground">{title}</h3> : null}
+      {title ? <h2 className="text-sm font-semibold text-foreground">{title}</h2> : null}
       {description ? <p className="mt-0.5 text-xs text-muted-foreground">{description}</p> : null}
       <div className={cn(title || description ? "mt-3" : undefined)}>{children}</div>
     </section>

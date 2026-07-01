@@ -121,9 +121,9 @@ export function SessionCard({
         {/* Header: Group name + Status badge */}
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-bold text-[var(--foreground)] leading-tight truncate">
+            <h2 className="text-sm font-bold text-[var(--foreground)] leading-tight truncate">
               {session.group.name}
-            </h3>
+            </h2>
           </div>
           <span className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[0.65rem] font-semibold ${badge.className}`}>
             {!isSelected ? (
