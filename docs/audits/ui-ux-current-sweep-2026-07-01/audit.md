@@ -143,6 +143,16 @@ Captured at desktop and mobile:
 - Member desktop accessibility improved from 88 before the fix to 96 after the fix.
 - Live cleanup after the run returned 0 `audit-ux-*` members, sessions, attendances, payments, offers, and users.
 
+## Keyboard Focus Proof After `7564eaa`
+
+- Evidence note: `keyboard-focus-audit-7564eaa.md`.
+- Raw result: `keyboard-focus-results-7564eaa.json`.
+- Runner: `scripts/audit-keyboard-focus.mjs`.
+- Routes covered at mobile and desktop: `/`, `/attendance/today`, `/enrollment`, `/payments/new`, `/members`, and `/settings/data-import`.
+- Result: 12 route/profile checks passed, 0 failed.
+- Confirmed: visible skip link, skip target to `#main-content`, no invisible focused controls, no unnamed focused controls, and visible focus on sampled operational controls.
+- Fix included: closed mobile side drawer is now `aria-hidden` and `inert`, so off-canvas nav links are not reachable by keyboard while hidden.
+
 ## Recommendation
 
-The app now has broad visual proof, focused functional proof for the highest-risk daily workflows, and an authenticated Lighthouse accessibility gate across representative private screens. Remaining release-hardening evidence should focus on manual keyboard/screen-reader traversal, enrollment apply/revert smoke checks, and a final production readiness review before handoff.
+The app now has broad visual proof, focused functional proof for the highest-risk daily workflows, authenticated Lighthouse coverage, and keyboard/focus proof across representative private screens. Remaining release-hardening evidence should focus on manual screen-reader traversal limits, enrollment apply/revert smoke checks, and a final production readiness review before handoff.

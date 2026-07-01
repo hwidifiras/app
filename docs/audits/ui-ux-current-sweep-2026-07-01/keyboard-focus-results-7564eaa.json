@@ -1,0 +1,4376 @@
+{
+  "generatedAt": "2026-07-01T03:52:53.413Z",
+  "baseUrl": "https://we-discipline.com",
+  "paths": [
+    "/",
+    "/attendance/today",
+    "/enrollment",
+    "/payments/new",
+    "/members",
+    "/settings/data-import"
+  ],
+  "maxTabs": 18,
+  "summary": {
+    "total": 12,
+    "passed": 12,
+    "failed": 0
+  },
+  "results": [
+    {
+      "path": "/",
+      "profile": "Mobile",
+      "url": "https://we-discipline.com/",
+      "passed": true,
+      "failures": [],
+      "skipLink": {
+        "passed": true,
+        "firstFocus": {
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "type": null,
+          "ariaLabel": null,
+          "title": null,
+          "placeholder": "",
+          "labelText": "",
+          "text": "Aller au contenu",
+          "rect": {
+            "x": 12,
+            "y": 12,
+            "width": 147,
+            "height": 45
+          },
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "visible": true,
+          "focusIndicator": true
+        },
+        "targetPassed": true,
+        "afterSkip": {
+          "role": "generic",
+          "name": "TABLEAU DE BORD Aujourd'hui au club Les séances à pointer, les encaissements à suivre et les priorités qui demandent une action. DATE Mercredi 1 Juillet SÉANCES",
+          "tag": "div",
+          "id": "main-content",
+          "href": null,
+          "type": null,
+          "ariaLabel": null,
+          "title": null,
+          "placeholder": "",
+          "labelText": "",
+          "text": "TABLEAU DE BORD Aujourd'hui au club Les séances à pointer, les encaissements à suivre et les priorités qui demandent une action. DATE Mercredi 1 Juillet SÉANCES",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 3355
+          },
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "visible": true,
+          "focusIndicator": false
+        }
+      },
+      "sequence": [
+        {
+          "step": 1,
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 12,
+            "y": 12,
+            "width": 147,
+            "height": 45
+          }
+        },
+        {
+          "step": 2,
+          "role": "link",
+          "name": "All in Gym We Discipline",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 10,
+            "y": 8,
+            "width": 116,
+            "height": 41
+          }
+        },
+        {
+          "step": 3,
+          "role": "button",
+          "name": "3 notifications non lues",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 234,
+            "y": 11,
+            "width": 36,
+            "height": 36
+          }
+        },
+        {
+          "step": 4,
+          "role": "button",
+          "name": "AU",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 276,
+            "y": 10,
+            "width": 62,
+            "height": 38
+          }
+        },
+        {
+          "step": 5,
+          "role": "button",
+          "name": "Ouvrir le menu",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 344,
+            "y": 11,
+            "width": 36,
+            "height": 36
+          }
+        },
+        {
+          "step": 6,
+          "role": "link",
+          "name": "Accueil",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 7,
+          "role": "link",
+          "name": "Pointage",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance/today",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 84,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 8,
+          "role": "link",
+          "name": "Inscrire",
+          "tag": "a",
+          "id": null,
+          "href": "/enrollment",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 159,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 9,
+          "role": "link",
+          "name": "Caisse",
+          "tag": "a",
+          "id": null,
+          "href": "/payments/new",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 235,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 10,
+          "role": "link",
+          "name": "Membres",
+          "tag": "a",
+          "id": null,
+          "href": "/members",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 310,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 11,
+          "role": "link",
+          "name": "Ouvrir le pointage",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance/today",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 258,
+            "y": 435,
+            "width": 103,
+            "height": 16
+          }
+        },
+        {
+          "step": 12,
+          "role": "link",
+          "name": "Pointer",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance/today?sessionId=audit-ux-session-today",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 29,
+            "y": 586,
+            "width": 332,
+            "height": 36
+          }
+        },
+        {
+          "step": 13,
+          "role": "link",
+          "name": "Pointer",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance/today",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 25,
+            "y": 724,
+            "width": 340,
+            "height": 76
+          }
+        },
+        {
+          "step": 14,
+          "role": "link",
+          "name": "Encaisser",
+          "tag": "a",
+          "id": null,
+          "href": "/payments/new",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 25,
+            "y": 768,
+            "width": 340,
+            "height": 76
+          }
+        },
+        {
+          "step": 15,
+          "role": "link",
+          "name": "Inscrire",
+          "tag": "a",
+          "id": null,
+          "href": "/enrollment",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 25,
+            "y": 384,
+            "width": 340,
+            "height": 76
+          }
+        },
+        {
+          "step": 16,
+          "role": "link",
+          "name": "Membres",
+          "tag": "a",
+          "id": null,
+          "href": "/members",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 25,
+            "y": 468,
+            "width": 340,
+            "height": 76
+          }
+        },
+        {
+          "step": 17,
+          "role": "link",
+          "name": "Voir tout",
+          "tag": "a",
+          "id": null,
+          "href": "/subscriptions",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 311,
+            "y": 586,
+            "width": 50,
+            "height": 16
+          }
+        },
+        {
+          "step": 18,
+          "role": "link",
+          "name": "Encaisser",
+          "tag": "a",
+          "id": null,
+          "href": "/payments/new?memberId=audit-ux-member-unpaid",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 29,
+            "y": 720,
+            "width": 332,
+            "height": 36
+          }
+        }
+      ],
+      "stats": {
+        "focusedCount": 18,
+        "distinctFocusTargets": 16,
+        "focusedControls": 18,
+        "invisible": 0,
+        "unnamed": 0,
+        "withoutFocusIndicator": 0
+      },
+      "screenshots": {
+        "skipFocus": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\keyboard-focus-7564eaa\\mobile-root-01-skip-focus.png",
+        "tabSequence": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\keyboard-focus-7564eaa\\mobile-root-02-tab-sequence.png"
+      }
+    },
+    {
+      "path": "/",
+      "profile": "Desktop",
+      "url": "https://we-discipline.com/",
+      "passed": true,
+      "failures": [],
+      "skipLink": {
+        "passed": true,
+        "firstFocus": {
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "type": null,
+          "ariaLabel": null,
+          "title": null,
+          "placeholder": "",
+          "labelText": "",
+          "text": "Aller au contenu",
+          "rect": {
+            "x": 12,
+            "y": 12,
+            "width": 147,
+            "height": 45
+          },
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "visible": true,
+          "focusIndicator": true
+        },
+        "targetPassed": true,
+        "afterSkip": {
+          "role": "generic",
+          "name": "TABLEAU DE BORD Aujourd'hui au club Les séances à pointer, les encaissements à suivre et les priorités qui demandent une action. DATE Mercredi 1 Juillet SÉANCES",
+          "tag": "div",
+          "id": "main-content",
+          "href": null,
+          "type": null,
+          "ariaLabel": null,
+          "title": null,
+          "placeholder": "",
+          "labelText": "",
+          "text": "TABLEAU DE BORD Aujourd'hui au club Les séances à pointer, les encaissements à suivre et les priorités qui demandent une action. DATE Mercredi 1 Juillet SÉANCES",
+          "rect": {
+            "x": 248,
+            "y": 0,
+            "width": 1177,
+            "height": 1378
+          },
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "visible": true,
+          "focusIndicator": false
+        }
+      },
+      "sequence": [
+        {
+          "step": 1,
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 12,
+            "y": 12,
+            "width": 147,
+            "height": 45
+          }
+        },
+        {
+          "step": 2,
+          "role": "link",
+          "name": "All in Gym We Discipline",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 16,
+            "y": 12,
+            "width": 173,
+            "height": 36
+          }
+        },
+        {
+          "step": 3,
+          "role": "button",
+          "name": "Réduire le menu",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 189,
+            "y": 14,
+            "width": 32,
+            "height": 32
+          }
+        },
+        {
+          "step": 4,
+          "role": "link",
+          "name": "Dashboard",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 99,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 5,
+          "role": "link",
+          "name": "Pointage",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance/today",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 134,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 6,
+          "role": "link",
+          "name": "Inscrire",
+          "tag": "a",
+          "id": null,
+          "href": "/enrollment",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 169,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 7,
+          "role": "link",
+          "name": "Encaisser",
+          "tag": "a",
+          "id": null,
+          "href": "/payments/new",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 204,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 8,
+          "role": "link",
+          "name": "Planning",
+          "tag": "a",
+          "id": null,
+          "href": "/sessions",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 239,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 9,
+          "role": "link",
+          "name": "Membres",
+          "tag": "a",
+          "id": null,
+          "href": "/members",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 308,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 10,
+          "role": "link",
+          "name": "Abonnements",
+          "tag": "a",
+          "id": null,
+          "href": "/subscriptions",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 343,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 11,
+          "role": "link",
+          "name": "Paiements",
+          "tag": "a",
+          "id": null,
+          "href": "/payments",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 412,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 12,
+          "role": "link",
+          "name": "Présences",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 447,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 13,
+          "role": "link",
+          "name": "Rapports groupes",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance/groups",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 482,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 14,
+          "role": "button",
+          "name": "CONFIGURATION",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 550,
+            "width": 221,
+            "height": 32
+          }
+        },
+        {
+          "step": 15,
+          "role": "button",
+          "name": "Compact",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 1017,
+            "y": 13,
+            "width": 88,
+            "height": 36
+          }
+        },
+        {
+          "step": 16,
+          "role": "button",
+          "name": "Large",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 1110,
+            "y": 13,
+            "width": 88,
+            "height": 36
+          }
+        },
+        {
+          "step": 17,
+          "role": "button",
+          "name": "3 notifications non lues",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 1215,
+            "y": 11,
+            "width": 40,
+            "height": 40
+          }
+        },
+        {
+          "step": 18,
+          "role": "button",
+          "name": "AU Audit UX",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 1267,
+            "y": 8,
+            "width": 138,
+            "height": 46
+          }
+        }
+      ],
+      "stats": {
+        "focusedCount": 18,
+        "distinctFocusTargets": 18,
+        "focusedControls": 18,
+        "invisible": 0,
+        "unnamed": 0,
+        "withoutFocusIndicator": 0
+      },
+      "screenshots": {
+        "skipFocus": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\keyboard-focus-7564eaa\\desktop-root-01-skip-focus.png",
+        "tabSequence": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\keyboard-focus-7564eaa\\desktop-root-02-tab-sequence.png"
+      }
+    },
+    {
+      "path": "/attendance/today",
+      "profile": "Mobile",
+      "url": "https://we-discipline.com/attendance/today",
+      "passed": true,
+      "failures": [],
+      "skipLink": {
+        "passed": true,
+        "firstFocus": {
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "type": null,
+          "ariaLabel": null,
+          "title": null,
+          "placeholder": "",
+          "labelText": "",
+          "text": "Aller au contenu",
+          "rect": {
+            "x": 12,
+            "y": 12,
+            "width": 147,
+            "height": 45
+          },
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "visible": true,
+          "focusIndicator": true
+        },
+        "targetPassed": true,
+        "afterSkip": {
+          "role": "generic",
+          "name": "Retour à l'historique RÉCEPTION Pointage 2 séances disponibles. Les séances passées restent ouvertes jusqu'à finalisation. Audit UX Adultes 3 à pointer 08:00 –",
+          "tag": "div",
+          "id": "main-content",
+          "href": null,
+          "type": null,
+          "ariaLabel": null,
+          "title": null,
+          "placeholder": "",
+          "labelText": "",
+          "text": "Retour à l'historique RÉCEPTION Pointage 2 séances disponibles. Les séances passées restent ouvertes jusqu'à finalisation. Audit UX Adultes 3 à pointer 08:00 – ",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 849
+          },
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "visible": true,
+          "focusIndicator": false
+        }
+      },
+      "sequence": [
+        {
+          "step": 1,
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 12,
+            "y": 12,
+            "width": 147,
+            "height": 45
+          }
+        },
+        {
+          "step": 2,
+          "role": "link",
+          "name": "All in Gym We Discipline",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 10,
+            "y": 8,
+            "width": 116,
+            "height": 41
+          }
+        },
+        {
+          "step": 3,
+          "role": "button",
+          "name": "3 notifications non lues",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 234,
+            "y": 11,
+            "width": 36,
+            "height": 36
+          }
+        },
+        {
+          "step": 4,
+          "role": "button",
+          "name": "AU",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 276,
+            "y": 10,
+            "width": 62,
+            "height": 38
+          }
+        },
+        {
+          "step": 5,
+          "role": "button",
+          "name": "Ouvrir le menu",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 344,
+            "y": 11,
+            "width": 36,
+            "height": 36
+          }
+        },
+        {
+          "step": 6,
+          "role": "link",
+          "name": "Accueil",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 7,
+          "role": "link",
+          "name": "Pointage",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance/today",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 84,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 8,
+          "role": "link",
+          "name": "Inscrire",
+          "tag": "a",
+          "id": null,
+          "href": "/enrollment",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 159,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 9,
+          "role": "link",
+          "name": "Caisse",
+          "tag": "a",
+          "id": null,
+          "href": "/payments/new",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 235,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 10,
+          "role": "link",
+          "name": "Membres",
+          "tag": "a",
+          "id": null,
+          "href": "/members",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 310,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 11,
+          "role": "link",
+          "name": "Retour à l'historique",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 12,
+            "y": 64,
+            "width": 151,
+            "height": 20
+          }
+        },
+        {
+          "step": 12,
+          "role": "button",
+          "name": "Audit UX Adultes 3 à pointer 08:00 – 09:00 Salle audit Ouvrir et terminer le pointage A Audit Coach 30/06/2026 · la séance a dépassé son heure de fin. Pointage 0/3 membres 3 à pointer Séance passée · action requise Reporter",
+          "tag": "div",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 29,
+            "y": 225,
+            "width": 332,
+            "height": 280
+          }
+        },
+        {
+          "step": 13,
+          "role": "link",
+          "name": "Reporter",
+          "tag": "a",
+          "id": null,
+          "href": "/sessions?week=2026-06-29&groupId=audit-ux-group&sessionId=audit-ux-session-past",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 269,
+            "y": 465,
+            "width": 75,
+            "height": 23
+          }
+        },
+        {
+          "step": 14,
+          "role": "button",
+          "name": "Audit UX Adultes Pointage 10:00 – 11:30 Salle audit Cliquez pour pointer les membres A Audit Coach Pointage 3/3 membres 2 1 Complet AP Pointage disponible Reporter",
+          "tag": "div",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 29,
+            "y": 517,
+            "width": 332,
+            "height": 284
+          }
+        },
+        {
+          "step": 15,
+          "role": "none",
+          "name": "Aller au contenu All in Gym We Discipline 3 AU ACCUEIL Dashboard Pointage Inscrire Encaisser Planning MEMBRES Membres Abonnements SUIVI Paiements Présences Rapp",
+          "tag": "body",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": false,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 902
+          }
+        },
+        {
+          "step": 16,
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 12,
+            "y": 7,
+            "width": 147,
+            "height": 45
+          }
+        },
+        {
+          "step": 17,
+          "role": "link",
+          "name": "All in Gym We Discipline",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 10,
+            "y": 8,
+            "width": 116,
+            "height": 41
+          }
+        },
+        {
+          "step": 18,
+          "role": "button",
+          "name": "3 notifications non lues",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 234,
+            "y": 11,
+            "width": 36,
+            "height": 36
+          }
+        }
+      ],
+      "stats": {
+        "focusedCount": 18,
+        "distinctFocusTargets": 15,
+        "focusedControls": 17,
+        "invisible": 0,
+        "unnamed": 0,
+        "withoutFocusIndicator": 1
+      },
+      "screenshots": {
+        "skipFocus": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\keyboard-focus-7564eaa\\mobile-attendance-today-01-skip-focus.png",
+        "tabSequence": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\keyboard-focus-7564eaa\\mobile-attendance-today-02-tab-sequence.png"
+      }
+    },
+    {
+      "path": "/attendance/today",
+      "profile": "Desktop",
+      "url": "https://we-discipline.com/attendance/today",
+      "passed": true,
+      "failures": [],
+      "skipLink": {
+        "passed": true,
+        "firstFocus": {
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "type": null,
+          "ariaLabel": null,
+          "title": null,
+          "placeholder": "",
+          "labelText": "",
+          "text": "Aller au contenu",
+          "rect": {
+            "x": 12,
+            "y": 10,
+            "width": 147,
+            "height": 45
+          },
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "visible": true,
+          "focusIndicator": true
+        },
+        "targetPassed": true,
+        "afterSkip": {
+          "role": "generic",
+          "name": "Retour à l'historique RÉCEPTION Pointage 2 séances disponibles. Les séances passées restent ouvertes jusqu'à finalisation. Audit UX Adultes 3 à pointer 08:00 –",
+          "tag": "div",
+          "id": "main-content",
+          "href": null,
+          "type": null,
+          "ariaLabel": null,
+          "title": null,
+          "placeholder": "",
+          "labelText": "",
+          "text": "Retour à l'historique RÉCEPTION Pointage 2 séances disponibles. Les séances passées restent ouvertes jusqu'à finalisation. Audit UX Adultes 3 à pointer 08:00 – ",
+          "rect": {
+            "x": 248,
+            "y": 63,
+            "width": 1192,
+            "height": 556
+          },
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "visible": true,
+          "focusIndicator": false
+        }
+      },
+      "sequence": [
+        {
+          "step": 1,
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 12,
+            "y": 10,
+            "width": 147,
+            "height": 45
+          }
+        },
+        {
+          "step": 2,
+          "role": "link",
+          "name": "All in Gym We Discipline",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 16,
+            "y": 12,
+            "width": 173,
+            "height": 36
+          }
+        },
+        {
+          "step": 3,
+          "role": "button",
+          "name": "Réduire le menu",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 189,
+            "y": 14,
+            "width": 32,
+            "height": 32
+          }
+        },
+        {
+          "step": 4,
+          "role": "link",
+          "name": "Dashboard",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 99,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 5,
+          "role": "link",
+          "name": "Pointage",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance/today",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 134,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 6,
+          "role": "link",
+          "name": "Inscrire",
+          "tag": "a",
+          "id": null,
+          "href": "/enrollment",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 169,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 7,
+          "role": "link",
+          "name": "Encaisser",
+          "tag": "a",
+          "id": null,
+          "href": "/payments/new",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 204,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 8,
+          "role": "link",
+          "name": "Planning",
+          "tag": "a",
+          "id": null,
+          "href": "/sessions",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 239,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 9,
+          "role": "link",
+          "name": "Membres",
+          "tag": "a",
+          "id": null,
+          "href": "/members",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 308,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 10,
+          "role": "link",
+          "name": "Abonnements",
+          "tag": "a",
+          "id": null,
+          "href": "/subscriptions",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 343,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 11,
+          "role": "link",
+          "name": "Paiements",
+          "tag": "a",
+          "id": null,
+          "href": "/payments",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 412,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 12,
+          "role": "link",
+          "name": "Présences",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 447,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 13,
+          "role": "link",
+          "name": "Rapports groupes",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance/groups",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 482,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 14,
+          "role": "button",
+          "name": "CONFIGURATION",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 550,
+            "width": 221,
+            "height": 32
+          }
+        },
+        {
+          "step": 15,
+          "role": "button",
+          "name": "Compact",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 1032,
+            "y": 13,
+            "width": 88,
+            "height": 36
+          }
+        },
+        {
+          "step": 16,
+          "role": "button",
+          "name": "Large",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 1125,
+            "y": 13,
+            "width": 88,
+            "height": 36
+          }
+        },
+        {
+          "step": 17,
+          "role": "button",
+          "name": "3 notifications non lues",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 1230,
+            "y": 11,
+            "width": 40,
+            "height": 40
+          }
+        },
+        {
+          "step": 18,
+          "role": "button",
+          "name": "AU Audit UX",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 1282,
+            "y": 8,
+            "width": 138,
+            "height": 46
+          }
+        }
+      ],
+      "stats": {
+        "focusedCount": 18,
+        "distinctFocusTargets": 18,
+        "focusedControls": 18,
+        "invisible": 0,
+        "unnamed": 0,
+        "withoutFocusIndicator": 0
+      },
+      "screenshots": {
+        "skipFocus": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\keyboard-focus-7564eaa\\desktop-attendance-today-01-skip-focus.png",
+        "tabSequence": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\keyboard-focus-7564eaa\\desktop-attendance-today-02-tab-sequence.png"
+      }
+    },
+    {
+      "path": "/enrollment",
+      "profile": "Mobile",
+      "url": "https://we-discipline.com/enrollment",
+      "passed": true,
+      "failures": [],
+      "skipLink": {
+        "passed": true,
+        "firstFocus": {
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "type": null,
+          "ariaLabel": null,
+          "title": null,
+          "placeholder": "",
+          "labelText": "",
+          "text": "Aller au contenu",
+          "rect": {
+            "x": 12,
+            "y": 12,
+            "width": 147,
+            "height": 45
+          },
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "visible": true,
+          "focusIndicator": true
+        },
+        "targetPassed": true,
+        "afterSkip": {
+          "role": "generic",
+          "name": "RÉCEPTION Inscrire Créer le dossier, choisir le cours, appliquer une offre et préparer l'encaissement. À RETENIR Le paiement règle la dette de la formule — il n",
+          "tag": "div",
+          "id": "main-content",
+          "href": null,
+          "type": null,
+          "ariaLabel": null,
+          "title": null,
+          "placeholder": "",
+          "labelText": "",
+          "text": "RÉCEPTION Inscrire Créer le dossier, choisir le cours, appliquer une offre et préparer l'encaissement. À RETENIR Le paiement règle la dette de la formule — il n",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 1085
+          },
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "visible": true,
+          "focusIndicator": false
+        }
+      },
+      "sequence": [
+        {
+          "step": 1,
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 12,
+            "y": 10,
+            "width": 147,
+            "height": 45
+          }
+        },
+        {
+          "step": 2,
+          "role": "link",
+          "name": "All in Gym We Discipline",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 10,
+            "y": 8,
+            "width": 116,
+            "height": 41
+          }
+        },
+        {
+          "step": 3,
+          "role": "button",
+          "name": "3 notifications non lues",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 234,
+            "y": 11,
+            "width": 36,
+            "height": 36
+          }
+        },
+        {
+          "step": 4,
+          "role": "button",
+          "name": "AU",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 276,
+            "y": 10,
+            "width": 62,
+            "height": 38
+          }
+        },
+        {
+          "step": 5,
+          "role": "button",
+          "name": "Ouvrir le menu",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 344,
+            "y": 11,
+            "width": 36,
+            "height": 36
+          }
+        },
+        {
+          "step": 6,
+          "role": "link",
+          "name": "Accueil",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 7,
+          "role": "link",
+          "name": "Pointage",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance/today",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 84,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 8,
+          "role": "link",
+          "name": "Inscrire",
+          "tag": "a",
+          "id": null,
+          "href": "/enrollment",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 159,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 9,
+          "role": "link",
+          "name": "Caisse",
+          "tag": "a",
+          "id": null,
+          "href": "/payments/new",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 235,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 10,
+          "role": "link",
+          "name": "Membres",
+          "tag": "a",
+          "id": null,
+          "href": "/members",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 310,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 11,
+          "role": "radio",
+          "name": "Existant",
+          "tag": "input",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 90,
+            "y": 577,
+            "width": 1,
+            "height": 1
+          }
+        },
+        {
+          "step": 12,
+          "role": "radio",
+          "name": "Nouveau",
+          "tag": "input",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 241,
+            "y": 577,
+            "width": 1,
+            "height": 1
+          }
+        },
+        {
+          "step": 13,
+          "role": "combobox",
+          "name": "Membre existant",
+          "tag": "select",
+          "id": "d48674dc-c627-4800-a0bc-e20598358e27-member",
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 46,
+            "y": 639,
+            "width": 298,
+            "height": 48
+          }
+        },
+        {
+          "step": 14,
+          "role": "combobox",
+          "name": "Groupe",
+          "tag": "select",
+          "id": "d48674dc-c627-4800-a0bc-e20598358e27-group",
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 46,
+            "y": 719,
+            "width": 298,
+            "height": 48
+          }
+        },
+        {
+          "step": 15,
+          "role": "button",
+          "name": "+ Ajouter un élève",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 33,
+            "y": 582,
+            "width": 324,
+            "height": 46
+          }
+        },
+        {
+          "step": 16,
+          "role": "none",
+          "name": "Aller au contenu All in Gym We Discipline 3 AU ACCUEIL Dashboard Pointage Inscrire Encaisser Planning MEMBRES Membres Abonnements SUIVI Paiements Présences Rapp",
+          "tag": "body",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": false,
+          "rect": {
+            "x": 0,
+            "y": -294,
+            "width": 390,
+            "height": 1138
+          }
+        },
+        {
+          "step": 17,
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 12,
+            "y": 2,
+            "width": 147,
+            "height": 45
+          }
+        },
+        {
+          "step": 18,
+          "role": "link",
+          "name": "All in Gym We Discipline",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 10,
+            "y": 8,
+            "width": 116,
+            "height": 41
+          }
+        }
+      ],
+      "stats": {
+        "focusedCount": 18,
+        "distinctFocusTargets": 16,
+        "focusedControls": 17,
+        "invisible": 0,
+        "unnamed": 0,
+        "withoutFocusIndicator": 1
+      },
+      "screenshots": {
+        "skipFocus": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\keyboard-focus-7564eaa\\mobile-enrollment-01-skip-focus.png",
+        "tabSequence": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\keyboard-focus-7564eaa\\mobile-enrollment-02-tab-sequence.png"
+      }
+    },
+    {
+      "path": "/enrollment",
+      "profile": "Desktop",
+      "url": "https://we-discipline.com/enrollment",
+      "passed": true,
+      "failures": [],
+      "skipLink": {
+        "passed": true,
+        "firstFocus": {
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "type": null,
+          "ariaLabel": null,
+          "title": null,
+          "placeholder": "",
+          "labelText": "",
+          "text": "Aller au contenu",
+          "rect": {
+            "x": 12,
+            "y": 12,
+            "width": 147,
+            "height": 45
+          },
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "visible": true,
+          "focusIndicator": true
+        },
+        "targetPassed": true,
+        "afterSkip": {
+          "role": "generic",
+          "name": "RÉCEPTION Inscrire Créer le dossier, choisir le cours, appliquer une offre et préparer l'encaissement. À RETENIR Le paiement règle la dette de la formule — il n",
+          "tag": "div",
+          "id": "main-content",
+          "href": null,
+          "type": null,
+          "ariaLabel": null,
+          "title": null,
+          "placeholder": "",
+          "labelText": "",
+          "text": "RÉCEPTION Inscrire Créer le dossier, choisir le cours, appliquer une offre et préparer l'encaissement. À RETENIR Le paiement règle la dette de la formule — il n",
+          "rect": {
+            "x": 248,
+            "y": 0,
+            "width": 1177,
+            "height": 961
+          },
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "visible": true,
+          "focusIndicator": false
+        }
+      },
+      "sequence": [
+        {
+          "step": 1,
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 12,
+            "y": 7,
+            "width": 147,
+            "height": 45
+          }
+        },
+        {
+          "step": 2,
+          "role": "link",
+          "name": "All in Gym We Discipline",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 16,
+            "y": 12,
+            "width": 173,
+            "height": 36
+          }
+        },
+        {
+          "step": 3,
+          "role": "button",
+          "name": "Réduire le menu",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 189,
+            "y": 14,
+            "width": 32,
+            "height": 32
+          }
+        },
+        {
+          "step": 4,
+          "role": "link",
+          "name": "Dashboard",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 99,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 5,
+          "role": "link",
+          "name": "Pointage",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance/today",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 134,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 6,
+          "role": "link",
+          "name": "Inscrire",
+          "tag": "a",
+          "id": null,
+          "href": "/enrollment",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 169,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 7,
+          "role": "link",
+          "name": "Encaisser",
+          "tag": "a",
+          "id": null,
+          "href": "/payments/new",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 204,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 8,
+          "role": "link",
+          "name": "Planning",
+          "tag": "a",
+          "id": null,
+          "href": "/sessions",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 239,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 9,
+          "role": "link",
+          "name": "Membres",
+          "tag": "a",
+          "id": null,
+          "href": "/members",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 308,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 10,
+          "role": "link",
+          "name": "Abonnements",
+          "tag": "a",
+          "id": null,
+          "href": "/subscriptions",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 343,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 11,
+          "role": "link",
+          "name": "Paiements",
+          "tag": "a",
+          "id": null,
+          "href": "/payments",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 412,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 12,
+          "role": "link",
+          "name": "Présences",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 447,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 13,
+          "role": "link",
+          "name": "Rapports groupes",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance/groups",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 482,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 14,
+          "role": "button",
+          "name": "CONFIGURATION",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 550,
+            "width": 221,
+            "height": 32
+          }
+        },
+        {
+          "step": 15,
+          "role": "button",
+          "name": "Compact",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 1017,
+            "y": 13,
+            "width": 88,
+            "height": 36
+          }
+        },
+        {
+          "step": 16,
+          "role": "button",
+          "name": "Large",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 1110,
+            "y": 13,
+            "width": 88,
+            "height": 36
+          }
+        },
+        {
+          "step": 17,
+          "role": "button",
+          "name": "3 notifications non lues",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 1215,
+            "y": 11,
+            "width": 40,
+            "height": 40
+          }
+        },
+        {
+          "step": 18,
+          "role": "button",
+          "name": "AU Audit UX",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 1267,
+            "y": 8,
+            "width": 138,
+            "height": 46
+          }
+        }
+      ],
+      "stats": {
+        "focusedCount": 18,
+        "distinctFocusTargets": 18,
+        "focusedControls": 18,
+        "invisible": 0,
+        "unnamed": 0,
+        "withoutFocusIndicator": 0
+      },
+      "screenshots": {
+        "skipFocus": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\keyboard-focus-7564eaa\\desktop-enrollment-01-skip-focus.png",
+        "tabSequence": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\keyboard-focus-7564eaa\\desktop-enrollment-02-tab-sequence.png"
+      }
+    },
+    {
+      "path": "/payments/new",
+      "profile": "Mobile",
+      "url": "https://we-discipline.com/payments/new",
+      "passed": true,
+      "failures": [],
+      "skipLink": {
+        "passed": true,
+        "firstFocus": {
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "type": null,
+          "ariaLabel": null,
+          "title": null,
+          "placeholder": "",
+          "labelText": "",
+          "text": "Aller au contenu",
+          "rect": {
+            "x": 12,
+            "y": 12,
+            "width": 147,
+            "height": 45
+          },
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "visible": true,
+          "focusIndicator": true
+        },
+        "targetPassed": true,
+        "afterSkip": {
+          "role": "generic",
+          "name": "Retour à la liste FINANCE Encaisser Choisir le membre, vérifier l'abonnement et confirmer le montant reçu. Dossier Montant Règlement Récap 1. Dossier Choisissez",
+          "tag": "div",
+          "id": "main-content",
+          "href": null,
+          "type": null,
+          "ariaLabel": null,
+          "title": null,
+          "placeholder": "",
+          "labelText": "",
+          "text": "Retour à la liste FINANCE Encaisser Choisir le membre, vérifier l'abonnement et confirmer le montant reçu. Dossier Montant Règlement Récap 1. Dossier Choisissez",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 1840
+          },
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "visible": true,
+          "focusIndicator": false
+        }
+      },
+      "sequence": [
+        {
+          "step": 1,
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 12,
+            "y": 10,
+            "width": 147,
+            "height": 45
+          }
+        },
+        {
+          "step": 2,
+          "role": "link",
+          "name": "All in Gym We Discipline",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 10,
+            "y": 8,
+            "width": 116,
+            "height": 41
+          }
+        },
+        {
+          "step": 3,
+          "role": "button",
+          "name": "3 notifications non lues",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 234,
+            "y": 11,
+            "width": 36,
+            "height": 36
+          }
+        },
+        {
+          "step": 4,
+          "role": "button",
+          "name": "AU",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 276,
+            "y": 10,
+            "width": 62,
+            "height": 38
+          }
+        },
+        {
+          "step": 5,
+          "role": "button",
+          "name": "Ouvrir le menu",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 344,
+            "y": 11,
+            "width": 36,
+            "height": 36
+          }
+        },
+        {
+          "step": 6,
+          "role": "link",
+          "name": "Accueil",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 7,
+          "role": "link",
+          "name": "Pointage",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance/today",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 84,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 8,
+          "role": "link",
+          "name": "Inscrire",
+          "tag": "a",
+          "id": null,
+          "href": "/enrollment",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 159,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 9,
+          "role": "link",
+          "name": "Caisse",
+          "tag": "a",
+          "id": null,
+          "href": "/payments/new",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 235,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 10,
+          "role": "link",
+          "name": "Membres",
+          "tag": "a",
+          "id": null,
+          "href": "/members",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 310,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 11,
+          "role": "link",
+          "name": "Retour à la liste",
+          "tag": "a",
+          "id": null,
+          "href": "/payments",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 12,
+            "y": 64,
+            "width": 122,
+            "height": 20
+          }
+        },
+        {
+          "step": 12,
+          "role": "link",
+          "name": "Dossier",
+          "tag": "a",
+          "id": null,
+          "href": "#payment-member",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 21,
+            "y": 217,
+            "width": 74,
+            "height": 37
+          }
+        },
+        {
+          "step": 13,
+          "role": "link",
+          "name": "Montant",
+          "tag": "a",
+          "id": null,
+          "href": "#payment-amount",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 102,
+            "y": 217,
+            "width": 79,
+            "height": 37
+          }
+        },
+        {
+          "step": 14,
+          "role": "link",
+          "name": "Règlement",
+          "tag": "a",
+          "id": null,
+          "href": "#payment-method",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 189,
+            "y": 217,
+            "width": 94,
+            "height": 37
+          }
+        },
+        {
+          "step": 15,
+          "role": "link",
+          "name": "Récap",
+          "tag": "a",
+          "id": null,
+          "href": "#payment-summary",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 290,
+            "y": 217,
+            "width": 66,
+            "height": 37
+          }
+        },
+        {
+          "step": 16,
+          "role": "combobox",
+          "name": "Membre *",
+          "tag": "select",
+          "id": "member",
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 27,
+            "y": 363,
+            "width": 336,
+            "height": 48
+          }
+        },
+        {
+          "step": 17,
+          "role": "combobox",
+          "name": "Abonnement à régler *",
+          "tag": "select",
+          "id": "subscription",
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 27,
+            "y": 444,
+            "width": 336,
+            "height": 48
+          }
+        },
+        {
+          "step": 18,
+          "role": "spinbutton",
+          "name": "Montant encaissé (€) *",
+          "tag": "input",
+          "id": "amount",
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 27,
+            "y": 662,
+            "width": 336,
+            "height": 50
+          }
+        }
+      ],
+      "stats": {
+        "focusedCount": 18,
+        "distinctFocusTargets": 18,
+        "focusedControls": 17,
+        "invisible": 0,
+        "unnamed": 0,
+        "withoutFocusIndicator": 0
+      },
+      "screenshots": {
+        "skipFocus": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\keyboard-focus-7564eaa\\mobile-payments-new-01-skip-focus.png",
+        "tabSequence": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\keyboard-focus-7564eaa\\mobile-payments-new-02-tab-sequence.png"
+      }
+    },
+    {
+      "path": "/payments/new",
+      "profile": "Desktop",
+      "url": "https://we-discipline.com/payments/new",
+      "passed": true,
+      "failures": [],
+      "skipLink": {
+        "passed": true,
+        "firstFocus": {
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "type": null,
+          "ariaLabel": null,
+          "title": null,
+          "placeholder": "",
+          "labelText": "",
+          "text": "Aller au contenu",
+          "rect": {
+            "x": 12,
+            "y": 12,
+            "width": 147,
+            "height": 45
+          },
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "visible": true,
+          "focusIndicator": true
+        },
+        "targetPassed": true,
+        "afterSkip": {
+          "role": "generic",
+          "name": "Retour à la liste FINANCE Encaisser Choisir le membre, vérifier l'abonnement et confirmer le montant reçu. Dossier Montant Règlement Récap 1. Dossier Choisissez",
+          "tag": "div",
+          "id": "main-content",
+          "href": null,
+          "type": null,
+          "ariaLabel": null,
+          "title": null,
+          "placeholder": "",
+          "labelText": "",
+          "text": "Retour à la liste FINANCE Encaisser Choisir le membre, vérifier l'abonnement et confirmer le montant reçu. Dossier Montant Règlement Récap 1. Dossier Choisissez",
+          "rect": {
+            "x": 248,
+            "y": 0,
+            "width": 1177,
+            "height": 1037
+          },
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "visible": true,
+          "focusIndicator": false
+        }
+      },
+      "sequence": [
+        {
+          "step": 1,
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 12,
+            "y": 12,
+            "width": 147,
+            "height": 45
+          }
+        },
+        {
+          "step": 2,
+          "role": "link",
+          "name": "All in Gym We Discipline",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 16,
+            "y": 12,
+            "width": 173,
+            "height": 36
+          }
+        },
+        {
+          "step": 3,
+          "role": "button",
+          "name": "Réduire le menu",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 189,
+            "y": 14,
+            "width": 32,
+            "height": 32
+          }
+        },
+        {
+          "step": 4,
+          "role": "link",
+          "name": "Dashboard",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 99,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 5,
+          "role": "link",
+          "name": "Pointage",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance/today",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 134,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 6,
+          "role": "link",
+          "name": "Inscrire",
+          "tag": "a",
+          "id": null,
+          "href": "/enrollment",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 169,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 7,
+          "role": "link",
+          "name": "Encaisser",
+          "tag": "a",
+          "id": null,
+          "href": "/payments/new",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 204,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 8,
+          "role": "link",
+          "name": "Planning",
+          "tag": "a",
+          "id": null,
+          "href": "/sessions",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 239,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 9,
+          "role": "link",
+          "name": "Membres",
+          "tag": "a",
+          "id": null,
+          "href": "/members",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 308,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 10,
+          "role": "link",
+          "name": "Abonnements",
+          "tag": "a",
+          "id": null,
+          "href": "/subscriptions",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 343,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 11,
+          "role": "link",
+          "name": "Paiements",
+          "tag": "a",
+          "id": null,
+          "href": "/payments",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 412,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 12,
+          "role": "link",
+          "name": "Présences",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 447,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 13,
+          "role": "link",
+          "name": "Rapports groupes",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance/groups",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 482,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 14,
+          "role": "button",
+          "name": "CONFIGURATION",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 550,
+            "width": 221,
+            "height": 32
+          }
+        },
+        {
+          "step": 15,
+          "role": "button",
+          "name": "Compact",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 1017,
+            "y": 13,
+            "width": 88,
+            "height": 36
+          }
+        },
+        {
+          "step": 16,
+          "role": "button",
+          "name": "Large",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 1110,
+            "y": 13,
+            "width": 88,
+            "height": 36
+          }
+        },
+        {
+          "step": 17,
+          "role": "button",
+          "name": "3 notifications non lues",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 1215,
+            "y": 11,
+            "width": 40,
+            "height": 40
+          }
+        },
+        {
+          "step": 18,
+          "role": "button",
+          "name": "AU Audit UX",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 1267,
+            "y": 8,
+            "width": 138,
+            "height": 46
+          }
+        }
+      ],
+      "stats": {
+        "focusedCount": 18,
+        "distinctFocusTargets": 18,
+        "focusedControls": 18,
+        "invisible": 0,
+        "unnamed": 0,
+        "withoutFocusIndicator": 0
+      },
+      "screenshots": {
+        "skipFocus": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\keyboard-focus-7564eaa\\desktop-payments-new-01-skip-focus.png",
+        "tabSequence": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\keyboard-focus-7564eaa\\desktop-payments-new-02-tab-sequence.png"
+      }
+    },
+    {
+      "path": "/members",
+      "profile": "Mobile",
+      "url": "https://we-discipline.com/members",
+      "passed": true,
+      "failures": [],
+      "skipLink": {
+        "passed": true,
+        "firstFocus": {
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "type": null,
+          "ariaLabel": null,
+          "title": null,
+          "placeholder": "",
+          "labelText": "",
+          "text": "Aller au contenu",
+          "rect": {
+            "x": 12,
+            "y": 12,
+            "width": 147,
+            "height": 45
+          },
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "visible": true,
+          "focusIndicator": true
+        },
+        "targetPassed": true,
+        "afterSkip": {
+          "role": "generic",
+          "name": "MEMBRES Membres Rechercher, filtrer et ouvrir les dossiers utiles à l'accueil. Recherche Filtres + Ajouter un membre 6 membre(s) trouvé(s) · page 1/1 Audit Arch",
+          "tag": "div",
+          "id": "main-content",
+          "href": null,
+          "type": null,
+          "ariaLabel": null,
+          "title": null,
+          "placeholder": "",
+          "labelText": "",
+          "text": "MEMBRES Membres Rechercher, filtrer et ouvrir les dossiers utiles à l'accueil. Recherche Filtres + Ajouter un membre 6 membre(s) trouvé(s) · page 1/1 Audit Arch",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 1760
+          },
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "visible": true,
+          "focusIndicator": false
+        }
+      },
+      "sequence": [
+        {
+          "step": 1,
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 12,
+            "y": 10,
+            "width": 147,
+            "height": 45
+          }
+        },
+        {
+          "step": 2,
+          "role": "link",
+          "name": "All in Gym We Discipline",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 10,
+            "y": 8,
+            "width": 116,
+            "height": 41
+          }
+        },
+        {
+          "step": 3,
+          "role": "button",
+          "name": "3 notifications non lues",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 234,
+            "y": 11,
+            "width": 36,
+            "height": 36
+          }
+        },
+        {
+          "step": 4,
+          "role": "button",
+          "name": "AU",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 276,
+            "y": 10,
+            "width": 62,
+            "height": 38
+          }
+        },
+        {
+          "step": 5,
+          "role": "button",
+          "name": "Ouvrir le menu",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 344,
+            "y": 11,
+            "width": 36,
+            "height": 36
+          }
+        },
+        {
+          "step": 6,
+          "role": "link",
+          "name": "Accueil",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 7,
+          "role": "link",
+          "name": "Pointage",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance/today",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 84,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 8,
+          "role": "link",
+          "name": "Inscrire",
+          "tag": "a",
+          "id": null,
+          "href": "/enrollment",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 159,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 9,
+          "role": "link",
+          "name": "Caisse",
+          "tag": "a",
+          "id": null,
+          "href": "/payments/new",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 235,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 10,
+          "role": "link",
+          "name": "Membres",
+          "tag": "a",
+          "id": null,
+          "href": "/members",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 310,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 11,
+          "role": "searchbox",
+          "name": "Nom, téléphone ou email...",
+          "tag": "input",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 25,
+            "y": 185,
+            "width": 324,
+            "height": 41
+          }
+        },
+        {
+          "step": 12,
+          "role": "button",
+          "name": "Filtres",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 25,
+            "y": 233,
+            "width": 324,
+            "height": 41
+          }
+        },
+        {
+          "step": 13,
+          "role": "link",
+          "name": "+ Ajouter un membre",
+          "tag": "a",
+          "id": null,
+          "href": "/members/new",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 25,
+            "y": 281,
+            "width": 324,
+            "height": 41
+          }
+        },
+        {
+          "step": 14,
+          "role": "link",
+          "name": "Audit ArchiveFerme",
+          "tag": "a",
+          "id": null,
+          "href": "/members/audit-ux-member-archived",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 48,
+            "y": 399,
+            "width": 112,
+            "height": 42
+          }
+        },
+        {
+          "step": 15,
+          "role": "link",
+          "name": "Ouvrir",
+          "tag": "a",
+          "id": null,
+          "href": "/members/audit-ux-member-archived",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 48,
+            "y": 503,
+            "width": 294,
+            "height": 40
+          }
+        },
+        {
+          "step": 16,
+          "role": "button",
+          "name": "Infos",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 48,
+            "y": 552,
+            "width": 294,
+            "height": 38
+          }
+        },
+        {
+          "step": 17,
+          "role": "link",
+          "name": "Audit NoorDette",
+          "tag": "a",
+          "id": null,
+          "href": "/members/audit-ux-member-unpaid",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 48,
+            "y": 629,
+            "width": 112,
+            "height": 42
+          }
+        },
+        {
+          "step": 18,
+          "role": "link",
+          "name": "Ouvrir",
+          "tag": "a",
+          "id": null,
+          "href": "/members/audit-ux-member-unpaid",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 48,
+            "y": 734,
+            "width": 294,
+            "height": 40
+          }
+        }
+      ],
+      "stats": {
+        "focusedCount": 18,
+        "distinctFocusTargets": 18,
+        "focusedControls": 18,
+        "invisible": 0,
+        "unnamed": 0,
+        "withoutFocusIndicator": 0
+      },
+      "screenshots": {
+        "skipFocus": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\keyboard-focus-7564eaa\\mobile-members-01-skip-focus.png",
+        "tabSequence": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\keyboard-focus-7564eaa\\mobile-members-02-tab-sequence.png"
+      }
+    },
+    {
+      "path": "/members",
+      "profile": "Desktop",
+      "url": "https://we-discipline.com/members",
+      "passed": true,
+      "failures": [],
+      "skipLink": {
+        "passed": true,
+        "firstFocus": {
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "type": null,
+          "ariaLabel": null,
+          "title": null,
+          "placeholder": "",
+          "labelText": "",
+          "text": "Aller au contenu",
+          "rect": {
+            "x": 12,
+            "y": 12,
+            "width": 147,
+            "height": 45
+          },
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "visible": true,
+          "focusIndicator": true
+        },
+        "targetPassed": true,
+        "afterSkip": {
+          "role": "generic",
+          "name": "MEMBRES Membres Rechercher, filtrer et ouvrir les dossiers utiles à l'accueil. Recherche Filtres + Ajouter un membre Statut Tous les statuts Actifs Résiliés Pai",
+          "tag": "div",
+          "id": "main-content",
+          "href": null,
+          "type": null,
+          "ariaLabel": null,
+          "title": null,
+          "placeholder": "",
+          "labelText": "",
+          "text": "MEMBRES Membres Rechercher, filtrer et ouvrir les dossiers utiles à l'accueil. Recherche Filtres + Ajouter un membre Statut Tous les statuts Actifs Résiliés Pai",
+          "rect": {
+            "x": 248,
+            "y": 60,
+            "width": 1177,
+            "height": 840
+          },
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "visible": true,
+          "focusIndicator": false
+        }
+      },
+      "sequence": [
+        {
+          "step": 1,
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 12,
+            "y": 10,
+            "width": 147,
+            "height": 45
+          }
+        },
+        {
+          "step": 2,
+          "role": "link",
+          "name": "All in Gym We Discipline",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 16,
+            "y": 12,
+            "width": 173,
+            "height": 36
+          }
+        },
+        {
+          "step": 3,
+          "role": "button",
+          "name": "Réduire le menu",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 189,
+            "y": 14,
+            "width": 32,
+            "height": 32
+          }
+        },
+        {
+          "step": 4,
+          "role": "link",
+          "name": "Dashboard",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 99,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 5,
+          "role": "link",
+          "name": "Pointage",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance/today",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 134,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 6,
+          "role": "link",
+          "name": "Inscrire",
+          "tag": "a",
+          "id": null,
+          "href": "/enrollment",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 169,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 7,
+          "role": "link",
+          "name": "Encaisser",
+          "tag": "a",
+          "id": null,
+          "href": "/payments/new",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 204,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 8,
+          "role": "link",
+          "name": "Planning",
+          "tag": "a",
+          "id": null,
+          "href": "/sessions",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 239,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 9,
+          "role": "link",
+          "name": "Membres",
+          "tag": "a",
+          "id": null,
+          "href": "/members",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 308,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 10,
+          "role": "link",
+          "name": "Abonnements",
+          "tag": "a",
+          "id": null,
+          "href": "/subscriptions",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 343,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 11,
+          "role": "link",
+          "name": "Paiements",
+          "tag": "a",
+          "id": null,
+          "href": "/payments",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 412,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 12,
+          "role": "link",
+          "name": "Présences",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 447,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 13,
+          "role": "link",
+          "name": "Rapports groupes",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance/groups",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 482,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 14,
+          "role": "button",
+          "name": "CONFIGURATION",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 550,
+            "width": 221,
+            "height": 32
+          }
+        },
+        {
+          "step": 15,
+          "role": "button",
+          "name": "Compact",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 1017,
+            "y": 13,
+            "width": 88,
+            "height": 36
+          }
+        },
+        {
+          "step": 16,
+          "role": "button",
+          "name": "Large",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 1110,
+            "y": 13,
+            "width": 88,
+            "height": 36
+          }
+        },
+        {
+          "step": 17,
+          "role": "button",
+          "name": "3 notifications non lues",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 1215,
+            "y": 11,
+            "width": 40,
+            "height": 40
+          }
+        },
+        {
+          "step": 18,
+          "role": "button",
+          "name": "AU Audit UX",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 1267,
+            "y": 8,
+            "width": 138,
+            "height": 46
+          }
+        }
+      ],
+      "stats": {
+        "focusedCount": 18,
+        "distinctFocusTargets": 18,
+        "focusedControls": 18,
+        "invisible": 0,
+        "unnamed": 0,
+        "withoutFocusIndicator": 0
+      },
+      "screenshots": {
+        "skipFocus": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\keyboard-focus-7564eaa\\desktop-members-01-skip-focus.png",
+        "tabSequence": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\keyboard-focus-7564eaa\\desktop-members-02-tab-sequence.png"
+      }
+    },
+    {
+      "path": "/settings/data-import",
+      "profile": "Mobile",
+      "url": "https://we-discipline.com/settings/data-import",
+      "passed": true,
+      "failures": [],
+      "skipLink": {
+        "passed": true,
+        "firstFocus": {
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "type": null,
+          "ariaLabel": null,
+          "title": null,
+          "placeholder": "",
+          "labelText": "",
+          "text": "Aller au contenu",
+          "rect": {
+            "x": 12,
+            "y": 12,
+            "width": 147,
+            "height": 45
+          },
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "visible": true,
+          "focusIndicator": true
+        },
+        "targetPassed": true,
+        "afterSkip": {
+          "role": "generic",
+          "name": "ADMINISTRATION Reprise Reprendre l'état réel d'un adhérent actif sans recréer artificiellement un abonnement neuf. Mode de reprise fermé Aucune donnée spéciale",
+          "tag": "div",
+          "id": "main-content",
+          "href": null,
+          "type": null,
+          "ariaLabel": null,
+          "title": null,
+          "placeholder": "",
+          "labelText": "",
+          "text": "ADMINISTRATION Reprise Reprendre l'état réel d'un adhérent actif sans recréer artificiellement un abonnement neuf. Mode de reprise fermé Aucune donnée spéciale ",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 576
+          },
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "visible": true,
+          "focusIndicator": false
+        }
+      },
+      "sequence": [
+        {
+          "step": 1,
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 12,
+            "y": 7,
+            "width": 147,
+            "height": 45
+          }
+        },
+        {
+          "step": 2,
+          "role": "link",
+          "name": "All in Gym We Discipline",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 10,
+            "y": 8,
+            "width": 116,
+            "height": 41
+          }
+        },
+        {
+          "step": 3,
+          "role": "button",
+          "name": "3 notifications non lues",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 234,
+            "y": 11,
+            "width": 36,
+            "height": 36
+          }
+        },
+        {
+          "step": 4,
+          "role": "button",
+          "name": "AU",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 276,
+            "y": 10,
+            "width": 62,
+            "height": 38
+          }
+        },
+        {
+          "step": 5,
+          "role": "button",
+          "name": "Ouvrir le menu",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 344,
+            "y": 11,
+            "width": 36,
+            "height": 36
+          }
+        },
+        {
+          "step": 6,
+          "role": "link",
+          "name": "Accueil",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 7,
+          "role": "link",
+          "name": "Pointage",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance/today",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 84,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 8,
+          "role": "link",
+          "name": "Inscrire",
+          "tag": "a",
+          "id": null,
+          "href": "/enrollment",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 159,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 9,
+          "role": "link",
+          "name": "Caisse",
+          "tag": "a",
+          "id": null,
+          "href": "/payments/new",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 235,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 10,
+          "role": "link",
+          "name": "Membres",
+          "tag": "a",
+          "id": null,
+          "href": "/members",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 310,
+            "y": 793,
+            "width": 72,
+            "height": 44
+          }
+        },
+        {
+          "step": 11,
+          "role": "link",
+          "name": "Télécharger le modèle",
+          "tag": "a",
+          "id": null,
+          "href": "/templates/we-discipline-reprise-membres.xlsx",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 29,
+            "y": 272,
+            "width": 332,
+            "height": 46
+          }
+        },
+        {
+          "step": 12,
+          "role": "button",
+          "name": "Activer pour 4 heures",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 29,
+            "y": 325,
+            "width": 332,
+            "height": 46
+          }
+        },
+        {
+          "step": 13,
+          "role": "none",
+          "name": "Aller au contenu All in Gym We Discipline 3 AU ACCUEIL Dashboard Pointage Inscrire Encaisser Planning MEMBRES Membres Abonnements SUIVI Paiements Présences Rapp",
+          "tag": "body",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": false,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 897
+          }
+        },
+        {
+          "step": 14,
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 12,
+            "y": 7,
+            "width": 147,
+            "height": 45
+          }
+        },
+        {
+          "step": 15,
+          "role": "link",
+          "name": "All in Gym We Discipline",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 10,
+            "y": 8,
+            "width": 116,
+            "height": 41
+          }
+        },
+        {
+          "step": 16,
+          "role": "button",
+          "name": "3 notifications non lues",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 234,
+            "y": 11,
+            "width": 36,
+            "height": 36
+          }
+        },
+        {
+          "step": 17,
+          "role": "button",
+          "name": "AU",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 276,
+            "y": 10,
+            "width": 62,
+            "height": 38
+          }
+        },
+        {
+          "step": 18,
+          "role": "button",
+          "name": "Ouvrir le menu",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 344,
+            "y": 11,
+            "width": 36,
+            "height": 36
+          }
+        }
+      ],
+      "stats": {
+        "focusedCount": 18,
+        "distinctFocusTargets": 13,
+        "focusedControls": 17,
+        "invisible": 0,
+        "unnamed": 0,
+        "withoutFocusIndicator": 1
+      },
+      "screenshots": {
+        "skipFocus": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\keyboard-focus-7564eaa\\mobile-settings-data-import-01-skip-focus.png",
+        "tabSequence": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\keyboard-focus-7564eaa\\mobile-settings-data-import-02-tab-sequence.png"
+      }
+    },
+    {
+      "path": "/settings/data-import",
+      "profile": "Desktop",
+      "url": "https://we-discipline.com/settings/data-import",
+      "passed": true,
+      "failures": [],
+      "skipLink": {
+        "passed": true,
+        "firstFocus": {
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "type": null,
+          "ariaLabel": null,
+          "title": null,
+          "placeholder": "",
+          "labelText": "",
+          "text": "Aller au contenu",
+          "rect": {
+            "x": 12,
+            "y": 12,
+            "width": 147,
+            "height": 45
+          },
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "visible": true,
+          "focusIndicator": true
+        },
+        "targetPassed": true,
+        "afterSkip": {
+          "role": "generic",
+          "name": "ADMINISTRATION Reprise Reprendre l'état réel d'un adhérent actif sans recréer artificiellement un abonnement neuf. Mode de reprise fermé Aucune donnée spéciale",
+          "tag": "div",
+          "id": "main-content",
+          "href": null,
+          "type": null,
+          "ariaLabel": null,
+          "title": null,
+          "placeholder": "",
+          "labelText": "",
+          "text": "ADMINISTRATION Reprise Reprendre l'état réel d'un adhérent actif sans recréer artificiellement un abonnement neuf. Mode de reprise fermé Aucune donnée spéciale ",
+          "rect": {
+            "x": 248,
+            "y": 63,
+            "width": 1192,
+            "height": 381
+          },
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "visible": true,
+          "focusIndicator": false
+        }
+      },
+      "sequence": [
+        {
+          "step": 1,
+          "role": "link",
+          "name": "Aller au contenu",
+          "tag": "a",
+          "id": null,
+          "href": "#main-content",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 12,
+            "y": 10,
+            "width": 147,
+            "height": 45
+          }
+        },
+        {
+          "step": 2,
+          "role": "link",
+          "name": "All in Gym We Discipline",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 16,
+            "y": 12,
+            "width": 173,
+            "height": 36
+          }
+        },
+        {
+          "step": 3,
+          "role": "button",
+          "name": "Réduire le menu",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 189,
+            "y": 14,
+            "width": 32,
+            "height": 32
+          }
+        },
+        {
+          "step": 4,
+          "role": "link",
+          "name": "Dashboard",
+          "tag": "a",
+          "id": null,
+          "href": "/",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 99,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 5,
+          "role": "link",
+          "name": "Pointage",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance/today",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 134,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 6,
+          "role": "link",
+          "name": "Inscrire",
+          "tag": "a",
+          "id": null,
+          "href": "/enrollment",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 169,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 7,
+          "role": "link",
+          "name": "Encaisser",
+          "tag": "a",
+          "id": null,
+          "href": "/payments/new",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 204,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 8,
+          "role": "link",
+          "name": "Planning",
+          "tag": "a",
+          "id": null,
+          "href": "/sessions",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 239,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 9,
+          "role": "link",
+          "name": "Membres",
+          "tag": "a",
+          "id": null,
+          "href": "/members",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 308,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 10,
+          "role": "link",
+          "name": "Abonnements",
+          "tag": "a",
+          "id": null,
+          "href": "/subscriptions",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 343,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 11,
+          "role": "link",
+          "name": "Paiements",
+          "tag": "a",
+          "id": null,
+          "href": "/payments",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 412,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 12,
+          "role": "link",
+          "name": "Présences",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 447,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 13,
+          "role": "link",
+          "name": "Rapports groupes",
+          "tag": "a",
+          "id": null,
+          "href": "/attendance/groups",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 482,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 14,
+          "role": "button",
+          "name": "CONFIGURATION",
+          "tag": "button",
+          "id": null,
+          "href": null,
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 550,
+            "width": 221,
+            "height": 32
+          }
+        },
+        {
+          "step": 15,
+          "role": "link",
+          "name": "Club",
+          "tag": "a",
+          "id": null,
+          "href": "/settings/club",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 586,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 16,
+          "role": "link",
+          "name": "Disciplines",
+          "tag": "a",
+          "id": null,
+          "href": "/sports",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 621,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 17,
+          "role": "link",
+          "name": "Coachs",
+          "tag": "a",
+          "id": null,
+          "href": "/coaches",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 656,
+            "width": 221,
+            "height": 35
+          }
+        },
+        {
+          "step": 18,
+          "role": "link",
+          "name": "Cours",
+          "tag": "a",
+          "id": null,
+          "href": "/groups",
+          "visible": true,
+          "focusIndicator": true,
+          "rect": {
+            "x": 8,
+            "y": 691,
+            "width": 221,
+            "height": 35
+          }
+        }
+      ],
+      "stats": {
+        "focusedCount": 18,
+        "distinctFocusTargets": 18,
+        "focusedControls": 18,
+        "invisible": 0,
+        "unnamed": 0,
+        "withoutFocusIndicator": 0
+      },
+      "screenshots": {
+        "skipFocus": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\keyboard-focus-7564eaa\\desktop-settings-data-import-01-skip-focus.png",
+        "tabSequence": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\keyboard-focus-7564eaa\\desktop-settings-data-import-02-tab-sequence.png"
+      }
+    }
+  ]
+}
