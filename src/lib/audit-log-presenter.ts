@@ -43,6 +43,8 @@ const ACTION_LABELS: Record<string, string> = {
   MEMBER_SUBSCRIPTION_UPDATED: "Abonnement modifié",
   PAYMENT_CREATED: "Paiement enregistré",
   PAYMENT_UPDATED: "Paiement modifié",
+  PAYMENT_CORRECTED: "Correction de paiement",
+  PAYMENT_REVERSED: "Paiement annulé",
   PAYMENT_DELETED: "Paiement supprimé",
   MEMBER_ARCHIVED: "Élève archivé (résiliation)",
   MEMBER_UPDATED: "Fiche élève modifiée",
@@ -202,6 +204,16 @@ function buildContext(action: string, details: Record<string, unknown> | null): 
   if (action === "PAYMENT_CREATED" || action === "PAYMENT_UPDATED") {
     const amount = formatEurosFromCents(details.amount);
     if (amount) return amount;
+  }
+
+  if (action === "PAYMENT_CORRECTED") {
+    const amount = formatEurosFromCents(details.delta);
+    if (amount) return `Correction ${amount}`;
+  }
+
+  if (action === "PAYMENT_REVERSED") {
+    const amount = formatEurosFromCents(details.reversedAmount);
+    if (amount) return `Annulation ${amount}`;
   }
 
   if (action === "ENROLLMENT_APPLIED") {

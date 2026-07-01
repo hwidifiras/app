@@ -390,6 +390,6 @@ export async function DELETE(request: Request) {
       data: toGroupDto(deactivated),
     });
   } catch {
-    return NextResponse.json({ error: "Erreur serveur lors de la suppression" }, { status: 500 });
+    return NextResponse.json({ error: "Erreur serveur lors de la désactivation du cours" }, { status: 500 });
   }
 }

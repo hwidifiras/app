@@ -193,6 +193,8 @@ export async function enrichAuditLogPresentation(
 
     case "PAYMENT_CREATED":
     case "PAYMENT_UPDATED":
+    case "PAYMENT_CORRECTED":
+    case "PAYMENT_REVERSED":
     case "PAYMENT_DELETED": {
       const rows: AuditDetailRow[] = [];
       const paymentId = log.entityType === "Payment" ? log.entityId : null;
@@ -210,8 +212,29 @@ export async function enrichAuditLogPresentation(
           })
         : null;
 
-      const amount = formatEurosFromCents(details?.amount ?? payment?.amount);
-      if (amount) rows.push({ label: "Montant", value: amount });
+      const amount = formatEurosFromCents(details?.amount ?? details?.delta ?? payment?.amount);
+      if (amount) {
+        rows.push({ label: log.action === "PAYMENT_CORRECTED" ? "Correction" : "Montant", value: amount });
+      }
+
+      const reversedAmount = formatEurosFromCents(details?.reversedAmount);
+      if (reversedAmount) rows.push({ label: "Montant annulé", value: reversedAmount });
+
+      if (typeof details?.reason === "string") {
+        rows.push({ label: "Motif", value: details.reason });
+      }
+
+      const amountBefore = formatEurosFromCents(details?.amountBefore);
+      const amountAfter = formatEurosFromCents(details?.amountAfter);
+      if (amountBefore && amountAfter) rows.push({ label: "Paiement corrigé", value: `${amountBefore} → ${amountAfter}` });
+
+      const totalBefore = formatEurosFromCents(details?.totalBefore);
+      const totalAfter = formatEurosFromCents(details?.totalAfter);
+      if (totalBefore && totalAfter) rows.push({ label: "Total encaissé", value: `${totalBefore} → ${totalAfter}` });
+
+      if (typeof details?.originalPaymentId === "string") {
+        rows.push({ label: "Paiement original", value: details.originalPaymentId });
+      }
 
       if (payment?.memberSubscription) {
         const m = payment.memberSubscription.member;

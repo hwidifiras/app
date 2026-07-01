@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Tag, Trash2 } from "lucide-react";
+import { CircleOff, Tag } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -73,7 +73,7 @@ export function MemberOffersSection({
     const result = (await response.json()) as { error?: string };
 
     if (!response.ok) {
-      setMessage(result.error ?? "Impossible de supprimer l'offre");
+      setMessage(result.error ?? "Impossible de désactiver l'offre");
       setDeletingId(null);
       return;
     }
@@ -82,7 +82,7 @@ export function MemberOffersSection({
       current ? { ...current, offers: current.offers.filter((item) => item.id !== offer.id) } : current,
     );
     setPendingDeleteOffer(null);
-    setMessage("Offre supprimée des offres actives.");
+    setMessage("Offre désactivée des offres actives.");
     setDeletingId(null);
   }
 
@@ -159,8 +159,8 @@ export function MemberOffersSection({
                     disabled={deletingId !== null}
                     className="btn btn-ghost btn-block-mobile btn-sm border-[var(--danger)]/25 text-[var(--danger)] sm:w-auto"
                   >
-                    <Trash2 className="size-3.5" />
-                    {deletingId === offer.id ? "Suppression…" : "Supprimer"}
+                    <CircleOff className="size-3.5" />
+                    {deletingId === offer.id ? "Désactivation…" : "Désactiver"}
                   </button>
                 </div>
               </div>

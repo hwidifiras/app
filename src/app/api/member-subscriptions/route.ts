@@ -436,6 +436,6 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Abonnement introuvable" }, { status: 404 });
     }
 
-    return NextResponse.json({ error: "Erreur serveur lors de la suppression" }, { status: 500 });
+    return NextResponse.json({ error: "Erreur serveur lors de la résiliation de l'abonnement" }, { status: 500 });
   }
 }

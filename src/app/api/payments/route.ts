@@ -419,6 +419,6 @@ export async function DELETE(request: Request) {
     }
 
     console.error("[DELETE /api/payments] error:", error);
-    return NextResponse.json({ error: "Erreur serveur lors de la suppression" }, { status: 500 });
+    return NextResponse.json({ error: "Erreur serveur lors de l'annulation du paiement" }, { status: 500 });
   }
 }
