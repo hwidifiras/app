@@ -100,6 +100,7 @@ Captured at desktop and mobile:
 - Group assignment actions now use `Retirer` copy and `closedCount` feedback, matching the non-destructive assignment-close behavior.
 - Offer, payment, subscription, and group fallback copy now says deactivation, cancellation, reversal, or `résiliation` instead of implying physical deletion where history is preserved.
 - Shared feedback messages now infer success/info/error states from broader French operational copy, so normal actions such as `désactivée`, `retirée`, `annulée`, and `mis à jour` do not render as red errors.
+- Shared reception info and billing summary cards now use the same compact 8px-style radius as the SaaS dashboard, reducing the last large-rounded form panels on enrollment, formulas, subscriptions, payments, and reception settings.
 
 ## Repeatable Audit Data
 
