@@ -109,7 +109,7 @@ export function MobileNav() {
 
       <div
         className={cn(
-          "fixed bottom-0 left-0 top-[53px] z-40 w-[min(86vw,320px)] transform bg-[var(--surface)] shadow-xl transition-transform duration-300 ease-out lg:hidden sm:top-[57px]",
+          "fixed bottom-0 left-0 top-[53px] z-40 w-[min(86vw,320px)] transform bg-[var(--surface)] shadow-[var(--shadow-floating)] transition-transform duration-300 ease-out lg:hidden sm:top-[57px]",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >

@@ -134,7 +134,7 @@ export function NotificationCenter({ className }: { className?: string }) {
         aria-haspopup="dialog"
         aria-label={`${data.unreadCount} notification${data.unreadCount > 1 ? "s" : ""} non lue${data.unreadCount > 1 ? "s" : ""}`}
         className={cn(
-          "relative flex size-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)] shadow-sm transition hover:bg-[var(--surface)] sm:size-10 sm:rounded-xl",
+          "relative flex size-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)] shadow-[var(--shadow-panel)] transition hover:bg-[var(--surface)] sm:size-10",
           open && "border-[var(--primary)]/45 ring-2 ring-[var(--primary)]/15",
         )}
       >
@@ -235,7 +235,7 @@ function NotificationItem({
         href={notification.href}
         onClick={onOpen}
         className={cn(
-          "group flex min-h-[4.75rem] items-start gap-3 rounded-xl border px-3 py-3 transition",
+          "group flex min-h-[4.75rem] items-start gap-3 rounded-lg border px-3 py-3 transition",
           notification.read
             ? "border-transparent text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)]"
             : "border-[var(--primary)]/15 bg-[var(--primary)]/[0.045] hover:border-[var(--primary)]/30 hover:bg-[var(--primary)]/[0.075]",

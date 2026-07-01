@@ -38,7 +38,7 @@ function GuidePanel({
   return (
     <div
       className={cn(
-        "rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-xl",
+        "rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-floating)]",
         className,
       )}
     >
@@ -180,7 +180,7 @@ export function SetupGuide({ variant, className }: SetupGuideProps) {
           aria-expanded={open}
           aria-label={`Premiers pas, ${pendingCount} étape(s) restante(s)`}
           className={cn(
-            "inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-1.5 py-1 text-xs font-semibold text-[var(--muted-foreground)] shadow-sm transition sm:min-h-10 sm:gap-2 sm:rounded-xl sm:border-[var(--primary)]/35 sm:bg-[var(--primary)]/10 sm:px-3 sm:py-2 sm:text-sm sm:text-[var(--primary)]",
+            "inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-1.5 py-1 text-xs font-semibold text-[var(--muted-foreground)] shadow-[var(--shadow-panel)] transition sm:min-h-10 sm:gap-2 sm:border-[var(--primary)]/35 sm:bg-[var(--primary)]/10 sm:px-3 sm:py-2 sm:text-sm sm:text-[var(--primary)]",
             "hover:border-[var(--primary)]/60 hover:bg-[var(--primary)]/10 active:scale-[0.98]",
             open && "border-[var(--primary)] bg-[var(--primary)]/12 text-[var(--primary)] ring-2 ring-[var(--primary)]/20",
           )}

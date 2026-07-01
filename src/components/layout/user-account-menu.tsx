@@ -93,7 +93,7 @@ export function UserAccountMenu({
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label="Menu compte"
-        className="flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-1.5 py-1 text-left transition hover:bg-[var(--surface)] sm:min-h-11 sm:gap-2 sm:rounded-xl sm:px-2 sm:py-1.5"
+        className="flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-1.5 py-1 text-left transition hover:bg-[var(--surface)] sm:min-h-11 sm:gap-2 sm:px-2 sm:py-1.5"
       >
         <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)]/15 text-[0.68rem] font-bold text-[var(--primary)] sm:size-8 sm:text-xs">
           {account ? initials(account.name) : "…"}
@@ -112,7 +112,7 @@ export function UserAccountMenu({
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-[calc(100%+0.35rem)] z-[60] w-[min(calc(100vw-1.5rem),16rem)] rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-lg"
+          className="absolute right-0 top-[calc(100%+0.35rem)] z-[60] w-[min(calc(100vw-1.5rem),16rem)] rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2 shadow-[var(--shadow-floating)]"
         >
           {account && (
             <div className="border-b border-[var(--border)] px-2 pb-2 pt-1">
