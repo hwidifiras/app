@@ -165,4 +165,4 @@ Captured at desktop and mobile:
 
 ## Recommendation
 
-The app now has broad visual proof, focused functional proof for the highest-risk daily workflows, authenticated Lighthouse coverage, keyboard/focus proof across representative private screens, and enrollment apply/revert proof. Remaining release-hardening evidence should focus on manual screen-reader traversal limits and a final production readiness review before handoff.
+The app now has broad visual proof, focused functional proof for the highest-risk daily workflows, authenticated Lighthouse coverage, keyboard/focus proof across representative private screens, enrollment apply/revert proof, and a current readiness note in `release-readiness.md`. Remaining release-hardening evidence should focus on manual screen-reader traversal limits, the unavailable local PostgreSQL test gate, and the current moderate Next/PostCSS audit advisory.
