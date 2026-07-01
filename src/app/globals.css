@@ -12,9 +12,15 @@
   --primary: #2563eb;
   --primary-strong: #1d4ed8;
   --danger: #dc2626;
-  --success: #10b981;
-  --warning: #f59e0b;
+  --danger-surface: #fee2e2;
+  --success: #047857;
+  --success-surface: #dcfce7;
+  --warning: #b45309;
+  --warning-surface: #fef3c7;
+  --info: #2563eb;
+  --info-surface: #dbeafe;
   --muted: #53555862;
+  --muted-surface: #eef2f7;
   --background: #f6f9ff;
   --foreground: #0b1220;
   --card: var(--surface);
@@ -1177,8 +1183,15 @@ input.field[type="search"]::-webkit-search-results-decoration {
   --primary: #5b9de8;
   --primary-strong: #3d84d4;
   --danger: #ef6b6b;
+  --danger-surface: rgba(239, 107, 107, 0.16);
   --success: #5cb87a;
+  --success-surface: rgba(92, 184, 122, 0.16);
+  --warning: #f3b35f;
+  --warning-surface: rgba(243, 179, 95, 0.16);
+  --info: #93c5fd;
+  --info-surface: rgba(147, 197, 253, 0.16);
   --muted-foreground: #94a8c4;
+  --muted-surface: #243a58;
   --card: #152238;
   --card-foreground: #e8f1fc;
   --shadow-panel:

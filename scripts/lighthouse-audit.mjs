@@ -8,6 +8,8 @@
  * Env:
  *   LIGHTHOUSE_BASE_URL  default http://127.0.0.1:3000
  *   LIGHTHOUSE_PATHS     comma-separated, default /login
+ *   LIGHTHOUSE_LOGIN_EMAIL / LIGHTHOUSE_LOGIN_PASSWORD authenticate before audit
+ *   LIGHTHOUSE_EXTRA_HEADERS JSON object merged into Lighthouse request headers
  */
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -20,6 +22,9 @@ const paths = (process.env.LIGHTHOUSE_PATHS ?? "/login")
   .split(",")
   .map((p) => p.trim())
   .filter(Boolean);
+const loginEmail = process.env.LIGHTHOUSE_LOGIN_EMAIL?.trim();
+const loginPassword = process.env.LIGHTHOUSE_LOGIN_PASSWORD;
+const extraHeaders = parseExtraHeaders(process.env.LIGHTHOUSE_EXTRA_HEADERS);
 
 const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
 const outDir = path.join(root, "reports", "lighthouse", stamp);
@@ -38,6 +43,58 @@ async function pingServer() {
   }
 }
 
+function parseExtraHeaders(raw) {
+  if (!raw?.trim()) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch (error) {
+    throw new Error(`LIGHTHOUSE_EXTRA_HEADERS must be valid JSON: ${error.message}`);
+  }
+}
+
+function splitSetCookieHeader(value) {
+  if (!value) return [];
+  return value.split(/,(?=\s*[^;,\s]+=)/g).map((cookie) => cookie.trim()).filter(Boolean);
+}
+
+function responseCookiePairs(response) {
+  const values =
+    typeof response.headers.getSetCookie === "function"
+      ? response.headers.getSetCookie()
+      : splitSetCookieHeader(response.headers.get("set-cookie"));
+
+  return values
+    .map((value) => value.split(";")[0]?.trim())
+    .filter((value) => value && value.includes("="));
+}
+
+async function authenticateIfConfigured() {
+  if (!loginEmail && !loginPassword) return;
+  if (!loginEmail || !loginPassword) {
+    throw new Error("Set both LIGHTHOUSE_LOGIN_EMAIL and LIGHTHOUSE_LOGIN_PASSWORD.");
+  }
+
+  const response = await fetch(`${baseUrl}/api/auth/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`Lighthouse login failed (${response.status}): ${text.slice(0, 200)}`);
+  }
+
+  const cookie = responseCookiePairs(response).join("; ");
+  if (!cookie) {
+    throw new Error("Lighthouse login succeeded but no auth cookie was returned.");
+  }
+
+  extraHeaders.Cookie = extraHeaders.Cookie ? `${extraHeaders.Cookie}; ${cookie}` : cookie;
+  console.log(`  Auth:     ${loginEmail}\n`);
+}
+
 function runLighthouse(url, profile, outfile) {
   const cli = path.join(root, "node_modules", "lighthouse", "cli", "index.js");
   const args = [
@@ -50,6 +107,9 @@ function runLighthouse(url, profile, outfile) {
     "--quiet",
     "--chrome-flags=--headless --no-sandbox --disable-gpu",
   ];
+  if (Object.keys(extraHeaders).length > 0) {
+    args.push(`--extra-headers=${JSON.stringify(extraHeaders)}`);
+  }
 
   const result = spawnSync(process.execPath, args, {
     cwd: root,
@@ -57,14 +117,13 @@ function runLighthouse(url, profile, outfile) {
     encoding: "utf8",
   });
 
-  if (result.status !== 0) {
-    const err = (result.stderr || result.stdout || "").trim();
-    throw new Error(err || `lighthouse exited ${result.status}`);
-  }
-
   const candidates = [outfile, `${outfile}.report.json`, `${outfile}.json`];
   const jsonPath = candidates.find((p) => fs.existsSync(p));
   if (!jsonPath) {
+    if (result.status !== 0) {
+      const err = (result.stderr || result.stdout || "").trim();
+      throw new Error(err || `lighthouse exited ${result.status}`);
+    }
     throw new Error(`Missing report (tried: ${candidates.join(", ")})`);
   }
   return JSON.parse(fs.readFileSync(jsonPath, "utf8"));
@@ -89,6 +148,13 @@ if (!(await pingServer())) {
   console.error("✗ Server not reachable. Start production server first:");
   console.error("    npm run build && npm run start");
   console.error(`  Then re-run: npm run lighthouse`);
+  process.exit(1);
+}
+
+try {
+  await authenticateIfConfigured();
+} catch (error) {
+  console.error(`âœ— ${error.message}`);
   process.exit(1);
 }
 

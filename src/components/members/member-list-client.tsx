@@ -236,6 +236,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
               checked={selectedMemberIds.includes(member.id)}
               onChange={() => toggleMemberSelection(member.id)}
               className="size-4 rounded border-border text-primary focus:ring-primary"
+              aria-label={`Sélectionner ${member.firstName} ${member.lastName}`}
             />
           </td>
         ) : null}
@@ -342,22 +343,22 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
 
         <div className="mt-3 hidden grid-cols-4 gap-2 md:grid">
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Statut</label>
+            <label htmlFor="member-status-filter" className="mb-1 block text-xs font-medium text-muted-foreground">Statut</label>
             <select value={statusFilter} onChange={(e) => {
               setStatusFilter(e.target.value as typeof statusFilter);
               resetPagingAndSelection();
-            }} className="field text-xs">
+            }} id="member-status-filter" className="field text-xs">
               <option value="ALL">Tous les statuts</option>
               <option value="ACTIVE">Actifs</option>
               <option value="ARCHIVED">Résiliés</option>
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Paiement</label>
+            <label htmlFor="member-payment-filter" className="mb-1 block text-xs font-medium text-muted-foreground">Paiement</label>
             <select value={paymentFilter} onChange={(e) => {
               setPaymentFilter(e.target.value as typeof paymentFilter);
               resetPagingAndSelection();
-            }} className="field text-xs">
+            }} id="member-payment-filter" className="field text-xs">
               <option value="ALL">Tous les paiements</option>
               <option value="PAID">Payé</option>
               <option value="PARTIAL">Partiel</option>
@@ -365,11 +366,11 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Discipline</label>
+            <label htmlFor="member-sport-filter" className="mb-1 block text-xs font-medium text-muted-foreground">Discipline</label>
             <select value={sportFilter} onChange={(e) => {
               setSportFilter(e.target.value);
               resetPagingAndSelection();
-            }} className="field text-xs">
+            }} id="member-sport-filter" className="field text-xs">
               <option value="ALL">Toutes les disciplines</option>
               {sportsOptions.map((sport) => (
                 <option key={sport.id} value={sport.id}>{sport.name}</option>
@@ -377,12 +378,12 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Affichage</label>
+            <label htmlFor="member-view-filter" className="mb-1 block text-xs font-medium text-muted-foreground">Affichage</label>
             <div className="flex gap-2">
               <select value={viewMode} onChange={(e) => {
                 setViewMode(e.target.value as typeof viewMode);
                 resetPagingAndSelection();
-              }} className="field min-w-0 flex-1 text-xs">
+              }} id="member-view-filter" className="field min-w-0 flex-1 text-xs">
                 <option value="LIST">Liste</option>
                 <option value="GROUPED">Par groupe</option>
               </select>
@@ -429,7 +430,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
             <table className="w-full text-sm">
               <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
-                  <th className="w-10 px-4 py-3 text-left font-semibold">
+                  <th scope="col" className="w-10 px-4 py-3 text-left font-semibold">
                     <input
                       type="checkbox"
                       checked={pageMembers.length > 0 && pageMembers.every((member) => selectedMemberIds.includes(member.id))}
@@ -438,15 +439,17 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
                       aria-label="Sélectionner la page"
                     />
                   </th>
-                  <th className="px-4 py-3 text-left font-semibold">Nom</th>
-                  <th className="px-4 py-3 text-left font-semibold">Téléphone</th>
-                  <th className="hidden px-4 py-3 text-left font-semibold sm:table-cell">Email</th>
-                  <th className="hidden px-4 py-3 text-left font-semibold lg:table-cell">Groupes</th>
-                  <th className="hidden px-4 py-3 text-left font-semibold sm:table-cell">Paiement</th>
-                  <th className="hidden px-4 py-3 text-left font-semibold sm:table-cell">Statut</th>
-                  <th className="hidden px-4 py-3 text-left font-semibold md:table-cell">Inscrit le</th>
-                  <th className="hidden px-4 py-3 text-right font-semibold md:table-cell">Actions</th>
-                  <th className="px-4 py-3 text-center md:hidden font-semibold"> </th>
+                  <th scope="col" className="px-4 py-3 text-left font-semibold">Nom</th>
+                  <th scope="col" className="px-4 py-3 text-left font-semibold">Téléphone</th>
+                  <th scope="col" className="hidden px-4 py-3 text-left font-semibold sm:table-cell">Email</th>
+                  <th scope="col" className="hidden px-4 py-3 text-left font-semibold lg:table-cell">Groupes</th>
+                  <th scope="col" className="hidden px-4 py-3 text-left font-semibold sm:table-cell">Paiement</th>
+                  <th scope="col" className="hidden px-4 py-3 text-left font-semibold sm:table-cell">Statut</th>
+                  <th scope="col" className="hidden px-4 py-3 text-left font-semibold md:table-cell">Inscrit le</th>
+                  <th scope="col" className="hidden px-4 py-3 text-right font-semibold md:table-cell">Actions</th>
+                  <th scope="col" className="px-4 py-3 text-center font-semibold md:hidden">
+                    <span className="sr-only">Détails</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

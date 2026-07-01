@@ -224,7 +224,7 @@ export function AppSidebar({
         {navSections.map((section) => (
           <div key={section.title} className="mb-1">
             {!collapsed ? (
-              <p className="mb-1 hidden px-3 pt-2 text-[0.6rem] font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)] opacity-60 lg:block">
+              <p className="mb-1 hidden px-3 pt-2 text-[0.6rem] font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)] lg:block">
                 {section.title}
               </p>
             ) : null}
@@ -252,7 +252,7 @@ export function AppSidebar({
               <SlidersHorizontal className="size-[1.1rem] shrink-0 opacity-60" />
             ) : (
               <>
-                <span className="hidden text-[0.6rem] font-bold uppercase tracking-[0.16em] opacity-60 lg:block">
+                <span className="hidden text-[0.6rem] font-bold uppercase tracking-[0.16em] lg:block">
                   {clubConfigSection.title}
                 </span>
                 <span className="lg:hidden">{clubConfigSection.title}</span>
@@ -271,7 +271,7 @@ export function AppSidebar({
                   className={cn(sectionIndex > 0 && "mt-2 border-t border-[var(--border)] pt-2")}
                 >
                   {!collapsed && sectionIndex > 0 ? (
-                    <p className="mb-1 px-3 text-[0.6rem] font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)] opacity-60">
+                    <p className="mb-1 px-3 text-[0.6rem] font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
                       {section.title}
                     </p>
                   ) : null}

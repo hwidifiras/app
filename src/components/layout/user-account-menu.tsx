@@ -92,10 +92,9 @@ export function UserAccountMenu({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="menu"
-        aria-label="Menu compte"
         className="flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-1.5 py-1 text-left transition hover:bg-[var(--surface)] sm:min-h-11 sm:gap-2 sm:px-2 sm:py-1.5"
       >
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)]/15 text-[0.68rem] font-bold text-[var(--primary)] sm:size-8 sm:text-xs">
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)] text-[0.68rem] font-bold text-white sm:size-8 sm:text-xs">
           {account ? initials(account.name) : "…"}
         </span>
         <span className="hidden max-w-[8rem] truncate text-sm font-medium text-[var(--foreground)] sm:block">
