@@ -20,10 +20,11 @@ The import stays behind the temporary reprise mode and creates rollbackable `DAT
 
 Fill one row per active member to resume. The downloadable template uses French headers, and old English headers remain accepted for compatibility.
 
-La référence membre est générée automatiquement avec la ligne, le nom et le téléphone. Le client ne doit pas remplir de colonne `externalId`, `référence` ou `code`. Si un ancien fichier contient encore `reference`, `ref`, `code`, `matricule` ou `externalId`, l'import reste compatible.
+La première colonne du modèle est `Référence auto (optionnel)`. Elle se calcule dans Excel avec la ligne, le nom et le téléphone pour rassurer le client, mais elle n'est pas obligatoire. Le client peut la laisser telle quelle, la vider ou même supprimer la colonne: l'application régénère une référence sûre au moment de l'import. Si un ancien fichier contient encore `reference`, `ref`, `code`, `matricule` ou `externalId`, l'import reste compatible.
 
 Required or commonly filled:
 
+- `Référence auto (optionnel)`: optional; generated automatically by Excel/app.
 - `Prenom`
 - `nom`
 - `Type membre`: `ADULT`, `KID`, or `NOT_SPECIFIED`.

@@ -560,6 +560,48 @@ describe("temporary data import", () => {
     expect(result.rows[0].externalId).toBe("M001-amineclient-9999");
   });
 
+  it("ignores formula-style auto references and keeps the French import headers", async () => {
+    const fx = await dojoFixture();
+    const rows = [
+      [
+        "Référence auto (optionnel)",
+        "Prénom",
+        "Nom",
+        "Type membre",
+        "Téléphone",
+        "Date inscription",
+        "Groupe",
+        "Formule",
+        "Début abonnement",
+        "Fin abonnement",
+        "Montant total",
+        "Déjà payé",
+        "Séances restantes",
+      ],
+      [
+        '=IF(AND(B2="",C2=""),"","M"&TEXT(ROW()-1,"000"))',
+        "Nour",
+        "Client",
+        "ADULT",
+        "0612348888",
+        "2026-06-01",
+        fx.adultBjj.name,
+        fx.bjjPlan.name,
+        "2026-06-01",
+        "2026-07-01",
+        "120",
+        "20",
+        "7",
+      ],
+    ];
+    const csv = rows.map((row) => row.join(";")).join("\n");
+
+    const result = await previewBulkDataImport(Buffer.from(csv, "utf8"), "reprise.csv", "2026-06-15");
+
+    expect(result.errorRows).toBe(0);
+    expect(result.rows[0].externalId).toBe("M001-nourclient-8888");
+  });
+
   it("imports the member state atomically without consuming the paper attendance twice", async () => {
     const fx = await dojoFixture();
     const { start } = getWeekRangeUtc(new Date());

@@ -418,7 +418,7 @@ export function DataImportWizard({
                   Utilisez le modèle, gardez les noms de groupes/formules tels qu&apos;ils existent dans le club, puis lancez la prévalidation avant d&apos;importer.
                 </p>
                 <p className="mt-2 max-w-3xl rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-800">
-                  Aucun code membre à saisir : la référence est générée automatiquement avec la ligne, le nom et le téléphone.
+                  Aucun code membre à inventer : la colonne Référence auto du modèle se calcule seule, et l&apos;application la régénère si elle est vide.
                 </p>
               </div>
               <a href={templateUrl} className="btn btn-ghost btn-block-mobile" download>
