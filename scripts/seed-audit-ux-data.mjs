@@ -20,6 +20,7 @@ const ids = {
   schedule: `${PREFIX}-schedule`,
   sessionToday: `${PREFIX}-session-today`,
   sessionTomorrow: `${PREFIX}-session-tomorrow`,
+  sessionPast: `${PREFIX}-session-past`,
   plan: `${PREFIX}-plan`,
   memberPaid: `${PREFIX}-member-paid`,
   memberPartial: `${PREFIX}-member-partial`,
@@ -125,6 +126,7 @@ async function maybeCreateAdmin(tenantId) {
 async function apply(tenantId) {
   const today = utcDay(0);
   const tomorrow = utcDay(1);
+  const pastSessionDate = utcDay(-1);
   const started = utcDay(-10);
   const ended = utcDay(-1);
   const expires = utcDay(20);
@@ -443,6 +445,33 @@ async function apply(tenantId) {
     },
   });
 
+  await prisma.session.upsert({
+    where: { id: ids.sessionPast },
+    update: {
+      tenantId,
+      groupId: ids.group,
+      scheduleId: ids.schedule,
+      sessionDate: pastSessionDate,
+      startTime: "08:00",
+      endTime: "09:00",
+      coachId: ids.coach,
+      room: "Salle audit",
+      status: "PLANNED",
+    },
+    create: {
+      id: ids.sessionPast,
+      tenantId,
+      groupId: ids.group,
+      scheduleId: ids.schedule,
+      sessionDate: pastSessionDate,
+      startTime: "08:00",
+      endTime: "09:00",
+      coachId: ids.coach,
+      room: "Salle audit",
+      status: "PLANNED",
+    },
+  });
+
   const attendances = [
     [ids.attPaid, ids.memberPaid, ids.subPaid, "PRESENT", null],
     [ids.attPartial, ids.memberPartial, ids.subPartial, "ABSENT", null],
@@ -506,7 +535,7 @@ async function apply(tenantId) {
   });
 
   const admin = await maybeCreateAdmin(tenantId);
-  return { today, tomorrow, admin };
+  return { today, tomorrow, pastSessionDate, admin };
 }
 
 async function status(tenantId) {
@@ -568,6 +597,7 @@ try {
             dashboard: url("/"),
             paymentNew: url(`/payments/new?memberId=${ids.memberPartial}`),
             attendanceDetail: url(`/attendance/sessions/${ids.sessionToday}`),
+            finalizableAttendanceDetail: url(`/attendance/sessions/${ids.sessionPast}`),
             attendanceToday: url(`/attendance/today?sessionId=${ids.sessionToday}`),
             sessionPostponeRedirect: url(`/sessions/${ids.sessionTomorrow}/postpone`),
             offers: url("/offers"),
