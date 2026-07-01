@@ -63,7 +63,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
   const [currentPage, setCurrentPage] = useState(1);
   const [message, setMessage] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkArchiveOpen, setBulkArchiveOpen] = useState(false);
 
   useEffect(() => {
     if (!filtersOpen) return;
@@ -185,18 +185,18 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
     });
   }
 
-  async function bulkDeleteSelectedMembers() {
+  async function bulkArchiveSelectedMembers() {
     if (selectedMemberIds.length === 0) return;
 
     setMessage(null);
-    setActionLoadingId("bulk-delete");
+    setActionLoadingId("bulk-archive");
 
     const results = await Promise.allSettled(
       selectedMemberIds.map(async (memberId) => {
         const response = await fetch(`/api/members/${memberId}`, { method: "DELETE" });
         if (!response.ok) {
           const result = await response.json();
-          throw new Error(result.error ?? "Erreur lors de la suppression");
+          throw new Error(result.error ?? "Erreur lors de la résiliation");
         }
         return memberId;
       }),
@@ -205,13 +205,13 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
     const failedCount = results.filter((result) => result.status === "rejected").length;
 
     if (failedCount > 0) {
-      setMessage(`Suppression terminée avec ${failedCount} erreur(s)`);
+      setMessage(`Résiliation terminée avec ${failedCount} erreur(s)`);
     } else {
-      setMessage("Membres supprimés avec succès");
+      setMessage("Membres résiliés avec succès");
     }
 
     setSelectedMemberIds([]);
-    setBulkDeleteOpen(false);
+    setBulkArchiveOpen(false);
     await reloadMembers();
     setActionLoadingId(null);
   }
@@ -414,8 +414,8 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
               {selectedMemberIds.length > 0 ? (
                 <>
                   <span className="text-xs font-medium text-muted-foreground">{selectedMemberIds.length} sélectionné(s)</span>
-                  <button type="button" onClick={() => setBulkDeleteOpen(true)} disabled={actionLoadingId === "bulk-delete"} className="btn btn-danger btn-block-mobile min-h-11 px-3 py-2 text-xs sm:w-auto">
-                    {actionLoadingId === "bulk-delete" ? "Suppression..." : "Supprimer la sélection"}
+                  <button type="button" onClick={() => setBulkArchiveOpen(true)} disabled={actionLoadingId === "bulk-archive"} className="btn btn-danger btn-block-mobile min-h-11 px-3 py-2 text-xs sm:w-auto">
+                    {actionLoadingId === "bulk-archive" ? "Résiliation..." : "Résilier la sélection"}
                   </button>
                   <button type="button" onClick={() => setSelectedMemberIds([])} className="btn btn-ghost btn-block-mobile min-h-11 px-3 py-2 text-xs sm:w-auto">
                     Effacer
@@ -593,13 +593,13 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
       ) : null}
 
       <ConfirmDialog
-        open={bulkDeleteOpen}
-        title={`Supprimer ${selectedMemberIds.length} membre${selectedMemberIds.length > 1 ? "s" : ""} ?`}
-        description="Les dossiers sélectionnés et toutes leurs données associées seront supprimés définitivement."
-        confirmLabel="Supprimer définitivement"
-        loading={actionLoadingId === "bulk-delete"}
-        onCancel={() => setBulkDeleteOpen(false)}
-        onConfirm={bulkDeleteSelectedMembers}
+        open={bulkArchiveOpen}
+        title={`Résilier ${selectedMemberIds.length} membre${selectedMemberIds.length > 1 ? "s" : ""} ?`}
+        description="Les dossiers sélectionnés seront archivés. L'historique, les abonnements et les paiements resteront consultables."
+        confirmLabel="Résilier la sélection"
+        loading={actionLoadingId === "bulk-archive"}
+        onCancel={() => setBulkArchiveOpen(false)}
+        onConfirm={bulkArchiveSelectedMembers}
       />
     </div>
   );

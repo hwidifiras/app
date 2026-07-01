@@ -194,7 +194,7 @@ export async function DELETE(
       return NextResponse.json(
         {
           error:
-            "Impossible de supprimer ce membre à cause de dépendances liées",
+            "Impossible de résilier ce membre à cause de dépendances liées",
         },
         { status: 409 },
       );
