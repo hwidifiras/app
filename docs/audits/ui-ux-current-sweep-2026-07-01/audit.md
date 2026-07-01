@@ -99,6 +99,7 @@ Captured at desktop and mobile:
 - Member archive actions now use `Résilier` copy instead of implying hard deletion; member history remains explicitly preserved in the confirmation text.
 - Group assignment actions now use `Retirer` copy and `closedCount` feedback, matching the non-destructive assignment-close behavior.
 - Offer, payment, subscription, and group fallback copy now says deactivation, cancellation, reversal, or `résiliation` instead of implying physical deletion where history is preserved.
+- Shared feedback messages now infer success/info/error states from broader French operational copy, so normal actions such as `désactivée`, `retirée`, `annulée`, and `mis à jour` do not render as red errors.
 
 ## Repeatable Audit Data
 
