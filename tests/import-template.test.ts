@@ -4,7 +4,6 @@ import readXlsxFile from "read-excel-file/node";
 import { describe, expect, it } from "vitest";
 
 const expectedHeaders = [
-  "Code membre auto (laisser vide)",
   "Prénom",
   "Nom",
   "Type membre",
@@ -66,11 +65,12 @@ describe("bulk import templates", () => {
   it.each([
     "we-discipline-reprise-membres.xlsx",
     "we-discipline-first-client-bulk-import.xlsx",
-  ])("keeps example headers French and auto-code cells blank in %s", async (fileName) => {
+  ])("keeps example headers French and hides auto-code cells in %s", async (fileName) => {
     const rows = await readExampleSheet(fileName);
 
     expect(rows[0]).toEqual(expectedHeaders);
-    expect(rows[1]?.[0]).toBeNull();
-    expect(rows[2]?.[0]).toBeNull();
+    expect(rows[0]).not.toContain("Code membre auto");
+    expect(rows[1]?.[0]).toBe("Amine");
+    expect(rows[2]?.[0]).toBe("Nour");
   });
 });

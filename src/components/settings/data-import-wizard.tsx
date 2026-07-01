@@ -425,7 +425,7 @@ export function DataImportWizard({
                   Utilisez le modèle, gardez les noms de groupes/formules tels qu&apos;ils existent dans le club, puis lancez la prévalidation avant d&apos;importer.
                 </p>
                 <p className="mt-2 max-w-3xl rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-800">
-                  Aucun code membre à inventer : laissez la colonne Code membre auto vide, l&apos;application génère le code pendant Vérifier Excel.
+                  Aucun code membre à inventer : le modèle commence par Prénom et l&apos;application génère une référence pendant Vérifier Excel.
                 </p>
               </div>
               <a href={templateUrl} className="btn btn-ghost btn-block-mobile" download>
@@ -489,7 +489,7 @@ export function DataImportWizard({
                             <span>{row.memberName || "Membre sans nom"}</span>
                             {row.externalId ? (
                               <span className="mt-0.5 block text-[0.68rem] font-medium text-[var(--muted-foreground)]">
-                                Code auto {row.externalId}
+                                Réf. générée {row.externalId}
                               </span>
                             ) : null}
                           </td>
