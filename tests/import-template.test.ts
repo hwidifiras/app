@@ -42,6 +42,15 @@ async function readMembersSheet(fileName: string) {
   return ((result as SheetResult[]).find((sheet) => sheet.sheet === "Membres")?.data ?? []) as unknown[][];
 }
 
+async function readExampleSheet(fileName: string) {
+  const templatePath = path.join(process.cwd(), "public", "templates", fileName);
+  const result = (await readXlsxFile(templatePath)) as unknown;
+  if (!Array.isArray(result)) return [];
+  const first = result[0] as unknown;
+  if (Array.isArray(first)) return [];
+  return ((result as SheetResult[]).find((sheet) => sheet.sheet === "Exemple")?.data ?? []) as unknown[][];
+}
+
 describe("bulk import templates", () => {
   it.each([
     "we-discipline-reprise-membres.xlsx",
@@ -52,5 +61,16 @@ describe("bulk import templates", () => {
     expect(rows[0]).toEqual(expectedHeaders);
     expect(rows[0]).not.toContain("externalId");
     expect(rows[0]).not.toContain("firstName");
+  });
+
+  it.each([
+    "we-discipline-reprise-membres.xlsx",
+    "we-discipline-first-client-bulk-import.xlsx",
+  ])("keeps example headers French and auto-code cells blank in %s", async (fileName) => {
+    const rows = await readExampleSheet(fileName);
+
+    expect(rows[0]).toEqual(expectedHeaders);
+    expect(rows[1]?.[0]).toBeNull();
+    expect(rows[2]?.[0]).toBeNull();
   });
 });
