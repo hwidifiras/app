@@ -123,12 +123,16 @@ Captured at desktop and mobile:
 - Previously missing proof is now covered for valid tenant-scoped attendance detail and session postpone/edit routing.
 - Focused text scan found no leftover `externalId`, raw session status strings, old `plan` wording on formula creation, duplicated `Salle Salle`, or raw `audit-ux-admin` operator id.
 
+## Functional Proof After `5cf1ebb`
+
+- Evidence note: `functional-workflow-audit-5cf1ebb.md`.
+- Raw result: `functional-workflow-results-5cf1ebb.json`.
+- Runner: `scripts/audit-functional-workflows.mjs`.
+- Temporary dataset: `audit-ux-*`, including a deterministic past session for finalization checks.
+- Result: 23 scenarios passed, 0 failed.
+- Workflows covered: auth/login/logout, payment overpay guard, partial payment, payment correction/reversal with reasons, admin log detail proof, unpaid pointage rejection, exceptional pointage reason, partial-paid attendance, finalization and finalized-edit guard, reprise mode activation/deactivation, and French bulk import preview with auto-generated member code.
+- Live cleanup after the run returned 0 `audit-ux-*` members, sessions, attendances, payments, offers, and users.
+
 ## Recommendation
 
-The app is visually ready for the next functional audit pass. The remaining proof should focus on real workflow behavior rather than broad UI layout:
-
-- Login/logout and role freshness.
-- Pointage and finalization when valid tenant-scoped sessions exist.
-- Enrollment, payment, and partial-payment edge cases, including the updated mobile payment state.
-- Import prevalidation and rollback in a non-client test tenant, including the updated French workbook.
-- Payment correction/reversal audit logs.
+The app now has broad visual proof and a focused functional proof for the highest-risk daily workflows. Remaining release-hardening evidence should focus on full accessibility verification, enrollment apply/revert smoke checks, and a final production readiness review before handoff.
