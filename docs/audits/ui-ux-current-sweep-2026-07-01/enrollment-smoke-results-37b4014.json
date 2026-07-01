@@ -1,0 +1,86 @@
+{
+  "generatedAt": "2026-07-01T04:10:32.379Z",
+  "baseUrl": "https://we-discipline.com",
+  "tenantSlug": "we-discipline",
+  "prefix": "audit-ux",
+  "enrollPrefix": "audit-enroll",
+  "email": "audit-ux-20260701@we-discipline.test",
+  "smokeMember": {
+    "firstName": "Audit",
+    "lastName": "Enroll 032011",
+    "phone": "audit-enroll-032011",
+    "memberType": "ADULT",
+    "id": "cmr1k55ob0001nz2gymvw77bl"
+  },
+  "summary": {
+    "total": 8,
+    "passed": 8,
+    "failed": 0
+  },
+  "results": [
+    {
+      "name": "Tenant and audit seed records exist",
+      "passed": true,
+      "status": null,
+      "expected": "Tenant, audit admin, active group, and matching active plan are present.",
+      "actual": "{\"tenant\":{\"id\":\"tenant_we_discipline\",\"slug\":\"we-discipline\"},\"group\":{\"id\":\"audit-ux-group\",\"tenantId\":\"tenant_we_discipline\",\"sportId\":\"audit-ux-sport\",\"isActive\":true},\"plan\":{\"id\":\"audit-ux-plan\",\"tenantId\":\"tenant_we_discipline\",\"sportId\":\"audit-ux-sport\",\"isActive\":true,\"price\":4000},\"admin\":{\"id\":\"audit-ux-admin\",\"tenantId\":\"tenant_we_discipline\",\"email\":\"audit-ux-20260701@we-discipline.test\",\"isActive\":true}}",
+      "notes": ""
+    },
+    {
+      "name": "No stale smoke member exists before apply",
+      "passed": true,
+      "status": null,
+      "expected": "Any previous audit-enroll member is removed before the smoke run.",
+      "actual": "{\"staleCount\":0}",
+      "notes": ""
+    },
+    {
+      "name": "Audit admin can log in",
+      "passed": true,
+      "status": 200,
+      "expected": "200, audit email returned, and gym_auth cookie set.",
+      "actual": "{\"body\":{\"data\":{\"id\":\"audit-ux-admin\",\"tenantId\":\"tenant_we_discipline\",\"tenantSlug\":\"we-discipline\",\"email\":\"audit-ux-20260701@we-discipline.test\",\"name\":\"Audit UX\",\"role\":\"ADMIN\",\"permissions\":[]}},\"cookies\":[\"gym_auth\"]}",
+      "notes": ""
+    },
+    {
+      "name": "Enrollment quote accepts new member line",
+      "passed": true,
+      "status": 200,
+      "expected": "200 quote, not blocked, with the audit plan amount.",
+      "actual": "{\"lines\":[{\"lineIndex\":0,\"memberId\":null,\"memberName\":\"Audit Enroll 032011\",\"groupId\":\"audit-ux-group\",\"groupName\":\"Audit UX Adultes\",\"planId\":\"audit-ux-plan\",\"planName\":\"Audit UX 8 seances\",\"sportId\":\"audit-ux-sport\",\"sportName\":\"Audit UX Kickboxing\",\"listPriceCents\":4000,\"discountCents\":0,\"finalAmountCents\":4000,\"endDate\":\"2026-07-31T00:00:00.000Z\",\"totalSessions\":8,\"warnings\":[],\"blocked\":false,\"reusesExistingSubscription\":false}],\"offerName\":null,\"totalListCents\":4000,\"totalDiscountCents\":0,\"totalFinalCents\":4000,\"blocked\":false,\"warnings\":[]}",
+      "notes": ""
+    },
+    {
+      "name": "Enrollment apply creates rollbackable records",
+      "passed": true,
+      "status": 201,
+      "expected": "201 with one created member, subscription, payment, and group assignment in undoSnapshot.",
+      "actual": "{\"memberIds\":[\"cmr1k55ob0001nz2gymvw77bl\"],\"undoSnapshot\":{\"createdMemberIds\":[\"cmr1k55ob0001nz2gymvw77bl\"],\"createdSubscriptionIds\":[\"cmr1k55ok0003nz2g19lf82jt\"],\"createdPaymentIds\":[\"cmr1k55om0005nz2gd5rvsmoj\"],\"createdGroupMemberIds\":[\"cmr1k55on0007nz2gg3sbt8hf\"],\"reactivatedGroupMembers\":[],\"expiredSubscriptionIds\":[],\"offerApplicationId\":null}}",
+      "notes": ""
+    },
+    {
+      "name": "Created enrollment rows are present before revert",
+      "passed": true,
+      "status": null,
+      "expected": "Member, active subscription, payment, active group assignment, and applied audit log exist.",
+      "actual": "{\"member\":{\"id\":\"cmr1k55ob0001nz2gymvw77bl\",\"phone\":\"audit-enroll-032011\"},\"subscription\":{\"id\":\"cmr1k55ok0003nz2g19lf82jt\",\"status\":\"ACTIVE\"},\"payment\":{\"id\":\"cmr1k55om0005nz2gd5rvsmoj\",\"amount\":1000},\"groupMember\":{\"id\":\"cmr1k55on0007nz2gg3sbt8hf\",\"status\":\"ACTIVE\"},\"auditLog\":{\"id\":\"cmr1k55oo0009nz2gu6yd8odn\",\"action\":\"ENROLLMENT_APPLIED\"}}",
+      "notes": ""
+    },
+    {
+      "name": "Enrollment revert succeeds with undoSnapshot",
+      "passed": true,
+      "status": 200,
+      "expected": "200 with data.reverted=true.",
+      "actual": "{\"data\":{\"reverted\":true}}",
+      "notes": ""
+    },
+    {
+      "name": "Reverted enrollment leaves no created rows",
+      "passed": true,
+      "status": null,
+      "expected": "Created member, subscription, payment, and group assignment are gone; reverted audit log exists.",
+      "actual": "{\"member\":false,\"subscription\":false,\"payment\":false,\"groupMember\":false,\"staleByPhone\":0,\"revertedLog\":{\"id\":\"cmr1k55pr000bnz2gvsvyxwjm\",\"action\":\"ENROLLMENT_REVERTED\"}}",
+      "notes": ""
+    }
+  ]
+}

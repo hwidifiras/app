@@ -153,6 +153,16 @@ Captured at desktop and mobile:
 - Confirmed: visible skip link, skip target to `#main-content`, no invisible focused controls, no unnamed focused controls, and visible focus on sampled operational controls.
 - Fix included: closed mobile side drawer is now `aria-hidden` and `inert`, so off-canvas nav links are not reachable by keyboard while hidden.
 
+## Enrollment Apply/Revert Proof After `37b4014`
+
+- Evidence note: `enrollment-smoke-audit-37b4014.md`.
+- Raw result: `enrollment-smoke-results-37b4014.json`.
+- Runner: `scripts/audit-enrollment-smoke.mjs`.
+- Temporary dataset: `audit-ux-*`; smoke-created member prefix: `audit-enroll-*`.
+- Result: 8 scenarios passed, 0 failed.
+- Workflow covered: audit admin login, enrollment quote, enrollment apply, created member/subscription/payment/group assignment proof, applied audit log proof, undoSnapshot revert, removed-row proof, and reverted audit log proof.
+- Live cleanup after the run returned 0 `audit-ux-*` members, sessions, attendances, payments, offers, and users; the runner also verified the smoke member phone had no remaining member row after revert.
+
 ## Recommendation
 
-The app now has broad visual proof, focused functional proof for the highest-risk daily workflows, authenticated Lighthouse coverage, and keyboard/focus proof across representative private screens. Remaining release-hardening evidence should focus on manual screen-reader traversal limits, enrollment apply/revert smoke checks, and a final production readiness review before handoff.
+The app now has broad visual proof, focused functional proof for the highest-risk daily workflows, authenticated Lighthouse coverage, keyboard/focus proof across representative private screens, and enrollment apply/revert proof. Remaining release-hardening evidence should focus on manual screen-reader traversal limits and a final production readiness review before handoff.
