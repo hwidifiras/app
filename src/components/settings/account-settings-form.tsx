@@ -237,7 +237,7 @@ export function AccountSettingsForm() {
           </FormField>
 
           {emailEditOpen ? (
-            <form onSubmit={saveEmail} className="mt-3 space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface-soft)]/60 p-3.5">
+            <form onSubmit={saveEmail} className="mt-3 space-y-3 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)]/60 p-3.5 shadow-[var(--shadow-panel)]">
               <FormField label="Mot de passe actuel">
                 <input
                   className="field"

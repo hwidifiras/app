@@ -36,7 +36,7 @@ export function ThemeToggle({ className, compact }: { className?: string; compac
                 "flex min-h-[2.75rem] flex-row flex-wrap items-center justify-center rounded-lg transition-all",
                 compact ? "px-2 py-2" : "gap-2 px-3 py-2 text-sm font-semibold",
                 active
-                  ? "bg-primary text-primary-foreground shadow-sm"
+                  ? "bg-primary text-primary-foreground shadow-[var(--shadow-panel)]"
                   : "text-muted-foreground hover:bg-[var(--surface)] hover:text-foreground",
               )}
               aria-pressed={active}

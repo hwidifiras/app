@@ -229,7 +229,7 @@ export default async function AttendanceByGroupPage({
             {Array.from(grouped.values()).map((group) => (
               <details
                 key={group.groupId}
-                className="rounded-xl border border-[var(--border)] bg-[var(--surface)]"
+                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-panel)]"
                 open
               >
                 <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-semibold text-[var(--foreground)]">

@@ -380,9 +380,9 @@ export function EnrollmentWizard({
             <div
               key={label}
               aria-current={active ? "step" : undefined}
-              className={`rounded-xl border px-2 py-2 text-center text-xs font-bold transition ${
+              className={`rounded-lg border px-2 py-2 text-center text-xs font-bold transition ${
                 active
-                  ? "border-[var(--primary)] bg-[var(--primary)] text-white shadow-sm"
+                  ? "border-[var(--primary)] bg-[var(--primary)] text-white shadow-[var(--shadow-panel)]"
                   : done
                     ? "border-[var(--primary)]/25 bg-[var(--primary)]/10 text-[var(--primary)]"
                     : "border-transparent bg-[var(--surface-raised)] text-[var(--muted-foreground)]"
@@ -468,7 +468,7 @@ export function EnrollmentWizard({
             ))}
           </select>
           {selectedOffer && (
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--muted)]/30 p-3 text-sm">
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--muted)]/30 p-3 text-sm shadow-[var(--shadow-panel)]">
               <p className="font-medium text-[var(--foreground)]">{selectedOffer.name}</p>
               <p className="text-xs text-[var(--primary)]">{getOfferKindLabel(selectedOffer.kind)}</p>
               <p className="mt-1 text-xs text-[var(--muted-foreground)]">
@@ -619,7 +619,7 @@ function LineEditor({
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-2 text-sm">
-        <label className={`rounded-xl border px-3 py-2 text-center font-semibold ${line.mode === "existing" ? "enrollment-mode-active" : "enrollment-mode-inactive"}`}>
+        <label className={`rounded-lg border px-3 py-2 text-center font-semibold ${line.mode === "existing" ? "enrollment-mode-active" : "enrollment-mode-inactive"}`}>
           <input
             type="radio"
             className="sr-only"
@@ -628,7 +628,7 @@ function LineEditor({
           />
           Existant
         </label>
-        <label className={`rounded-xl border px-3 py-2 text-center font-semibold ${line.mode === "new" ? "enrollment-mode-active" : "enrollment-mode-inactive"}`}>
+        <label className={`rounded-lg border px-3 py-2 text-center font-semibold ${line.mode === "new" ? "enrollment-mode-active" : "enrollment-mode-inactive"}`}>
           <input
             type="radio"
             className="sr-only"

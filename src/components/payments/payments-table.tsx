@@ -267,7 +267,7 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
             <li
               key={group.subscriptionId}
               className={cn(
-                "overflow-hidden rounded-xl border bg-[var(--surface)] shadow-sm transition-shadow",
+                "overflow-hidden rounded-lg border bg-[var(--surface)] shadow-[var(--shadow-panel)] transition-shadow",
                 billing.isComplete ? "border-emerald-200/80" : "border-amber-200/80",
               )}
             >
@@ -314,7 +314,7 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
                       <li key={p.id}>
                         <button
                           type="button"
-                          className="flex w-full items-center justify-between gap-2 rounded-lg bg-[var(--surface)] px-2.5 py-2 text-left shadow-sm ring-1 ring-[var(--border)] active:bg-[var(--surface-soft)]"
+                          className="flex w-full items-center justify-between gap-2 rounded-lg bg-[var(--surface)] px-2.5 py-2 text-left shadow-[var(--shadow-panel)] ring-1 ring-[var(--border)] active:bg-[var(--surface-soft)]"
                           onClick={() => goToEditPayment(p.id)}
                         >
                           <span className="min-w-0">

@@ -165,7 +165,7 @@ export function NavLink({
         "flex items-center rounded-lg py-2 text-[0.82rem] font-medium transition-all",
         collapsed ? "justify-center px-2" : "gap-2.5 px-3",
         active
-          ? "bg-[var(--primary)]/10 text-[var(--primary)] shadow-sm ring-1 ring-[var(--primary)]/20"
+          ? "bg-[var(--primary)]/10 text-[var(--primary)] shadow-[var(--shadow-panel)] ring-1 ring-[var(--primary)]/20"
           : "text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]",
       )}
     >

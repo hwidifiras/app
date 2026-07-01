@@ -103,7 +103,7 @@ export function Pagination({
                 className={cn(
                   "flex size-9 items-center justify-center rounded-lg text-xs font-semibold transition",
                   page === currentPage
-                    ? "bg-[var(--primary)] text-white shadow-sm"
+                    ? "bg-[var(--primary)] text-white shadow-[var(--shadow-panel)]"
                     : "text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]",
                 )}
               >

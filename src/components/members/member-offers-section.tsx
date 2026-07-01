@@ -131,7 +131,7 @@ export function MemberOffersSection({
           }
         >
           {offers.map((offer) => (
-            <li key={offer.id} className="h-full rounded-xl border border-[var(--border)] bg-[var(--surface-soft)]/35 p-3">
+            <li key={offer.id} className="h-full rounded-lg border border-[var(--border)] bg-[var(--surface-soft)]/35 p-3 shadow-[var(--shadow-panel)]">
               <div className="flex h-full flex-col gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">

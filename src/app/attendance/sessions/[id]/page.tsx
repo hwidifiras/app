@@ -148,19 +148,19 @@ export default async function SessionAttendanceDetailPage({
       />
 
       <section className="panel mb-4 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl bg-[var(--surface-soft)] p-3">
+        <div className="rounded-lg bg-[var(--surface-soft)] p-3 shadow-[var(--shadow-panel)]">
           <p className="text-xs font-medium text-[var(--muted-foreground)]">Inscrits au cours</p>
           <p className="mt-1 text-2xl font-semibold text-[var(--foreground)]">{enrolled}</p>
         </div>
-        <div className="rounded-xl bg-[var(--success)]/10 p-3">
+        <div className="rounded-lg bg-[var(--success)]/10 p-3 shadow-[var(--shadow-panel)]">
           <p className="text-xs font-medium text-[var(--success)]">Présents</p>
           <p className="mt-1 text-2xl font-semibold text-[var(--success)]">{present}</p>
         </div>
-        <div className="rounded-xl bg-[var(--danger)]/10 p-3">
+        <div className="rounded-lg bg-[var(--danger)]/10 p-3 shadow-[var(--shadow-panel)]">
           <p className="text-xs font-medium text-[var(--danger)]">Absents</p>
           <p className="mt-1 text-2xl font-semibold text-[var(--danger)]">{absent}</p>
         </div>
-        <div className="rounded-xl bg-[var(--surface-soft)] p-3">
+        <div className="rounded-lg bg-[var(--surface-soft)] p-3 shadow-[var(--shadow-panel)]">
           <p className="text-xs font-medium text-[var(--muted-foreground)]">Non pointés</p>
           <p className="mt-1 text-2xl font-semibold text-[var(--foreground)]">{notMarked}</p>
         </div>
@@ -192,7 +192,7 @@ export default async function SessionAttendanceDetailPage({
         <div className="space-y-6">
           <div>
             <h2 className="mb-2 text-sm font-semibold text-[var(--foreground)]">Liste du cours</h2>
-            <ul className="divide-y divide-[var(--border)] rounded-xl border border-[var(--border)]">
+            <ul className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)] shadow-[var(--shadow-panel)]">
               {expectedMembers.map((gm) => {
                 const att = attByMember.get(gm.memberId);
                 return (

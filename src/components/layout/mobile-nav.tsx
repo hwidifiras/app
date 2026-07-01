@@ -84,7 +84,7 @@ export function MobileNav() {
 
   return (
     <>
-      <div className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)]/96 px-2.5 py-2 shadow-sm backdrop-blur lg:hidden">
+      <div className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)]/96 px-2.5 py-2 shadow-[var(--shadow-panel)] backdrop-blur lg:hidden">
         <Link
           href="/"
           className="flex min-w-0 max-w-[48%] items-center gap-2 rounded-lg px-1 py-1 transition hover:bg-[var(--surface-soft)] sm:max-w-[55%]"
@@ -97,7 +97,7 @@ export function MobileNav() {
           <UserAccountMenu onNavigate={close} />
           <button
             onClick={() => setOpen((v) => !v)}
-            className="flex size-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)] shadow-sm transition-colors hover:bg-[var(--surface)] sm:size-10"
+            className="flex size-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)] shadow-[var(--shadow-panel)] transition-colors hover:bg-[var(--surface)] sm:size-10"
             aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
           >
             {open ? <X className="size-5" /> : <Menu className="size-5" />}
@@ -200,7 +200,7 @@ function QuickMobileLink({
       className={cn(
         "flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-md px-1 py-1.5 text-[0.62rem] font-bold transition",
         active
-          ? cn("bg-[var(--primary)] shadow-sm", activeFg, "[&_svg]:text-[var(--primary-foreground)]")
+          ? cn("bg-[var(--primary)] shadow-[var(--shadow-panel)]", activeFg, "[&_svg]:text-[var(--primary-foreground)]")
           : featured
             ? "bg-[var(--primary)]/10 text-[var(--primary)] [&_svg]:text-[var(--primary)]"
             : "text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)] [&_svg]:text-[var(--muted-foreground)]",

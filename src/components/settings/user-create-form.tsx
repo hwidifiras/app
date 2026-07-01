@@ -90,7 +90,7 @@ export function UserCreateForm() {
       </div>
 
       {role === "STAFF" && (
-        <div className="md:col-span-2 rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] p-4">
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-4 shadow-[var(--shadow-panel)] md:col-span-2">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-sm font-semibold text-[var(--foreground)]">Droits du staff</p>

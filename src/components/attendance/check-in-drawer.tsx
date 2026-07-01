@@ -330,7 +330,7 @@ export function CheckInDrawer({
                       type="button"
                       onClick={() => handleClick(mid, "PRESENT")}
                       disabled={isFinalized || loadingId === mid || markingAll}
-                      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 sm:min-w-[7rem] ${
+                      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 sm:min-w-[7rem] ${
                         att?.status === "PRESENT"
                           ? "ring-2 ring-[var(--success)] ring-offset-2 ring-offset-[var(--surface)] bg-[var(--success)] text-white"
                           : "bg-[var(--success)] text-white hover:bg-[var(--success)]/90"
@@ -343,7 +343,7 @@ export function CheckInDrawer({
                       type="button"
                       onClick={() => handleClick(mid, "ABSENT")}
                       disabled={isFinalized || loadingId === mid || markingAll}
-                      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 sm:min-w-[7rem] ${
+                      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 sm:min-w-[7rem] ${
                         att?.status === "ABSENT"
                           ? "ring-2 ring-[var(--danger)] ring-offset-2 ring-offset-[var(--surface)] bg-[var(--danger)] text-white"
                           : "bg-[var(--danger)] text-white hover:bg-[var(--danger)]/90"
@@ -507,7 +507,7 @@ export function CheckInDrawer({
                     <button
                       type="button"
                       onClick={() => setRecoveryMember(candidate)}
-                      className={`w-full rounded-xl border px-3 py-2 text-left text-sm transition ${
+                      className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition ${
                         recoveryMember?.memberId === candidate.memberId
                           ? "border-[var(--primary)] bg-[var(--primary)]/5"
                           : "border-[var(--border)] hover:bg-[var(--surface-soft)]"

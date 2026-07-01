@@ -41,7 +41,7 @@ function ToggleRow({
     <label
       htmlFor={id}
       className={cn(
-        "flex cursor-pointer items-start justify-between gap-4 rounded-xl border p-3.5 transition sm:p-4",
+        "flex cursor-pointer items-start justify-between gap-4 rounded-lg border p-3.5 shadow-[var(--shadow-panel)] transition sm:p-4",
         checked
           ? "border-primary/30 bg-primary/5"
           : "border-border/80 bg-[var(--surface-soft)]/60 hover:border-primary/25",
@@ -243,7 +243,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
             className="md:col-span-2"
           >
             <div className="flex flex-wrap items-start gap-4">
-              <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-[var(--surface-soft)]">
+              <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-[var(--surface-soft)] shadow-[var(--shadow-panel)]">
                 {clubLogoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={clubLogoUrl} alt="" className="size-full object-contain p-1" />

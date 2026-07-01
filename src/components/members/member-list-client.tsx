@@ -474,12 +474,12 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
       ) : (
         <div className="space-y-4">
           {Array.from(groupedMembers.entries()).map(([groupId, rows]) => (
-            <section key={groupId} className="rounded-xl border-border p-4">
+            <section key={groupId} className="rounded-lg border border-border bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-foreground">{groupLabel(groupId)}</h3>
                 <span className="text-xs text-muted-foreground">{rows.length} membre(s)</span>
               </div>
-              <div className="data-table mt-3 overflow-x-auto rounded-xl border-border">
+              <div className="data-table mt-3 overflow-x-auto rounded-lg border border-border shadow-[var(--shadow-panel)]">
                 <table className="w-full text-sm">
                   <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-muted-foreground">
                     <tr>

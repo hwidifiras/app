@@ -233,7 +233,7 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
               {OFFER_KIND_HELP[kind].example}
             </p>
           </div>
-          <div className="rounded-xl border border-[var(--primary)]/20 bg-[var(--primary)]/5 px-3 py-2.5">
+          <div className="rounded-lg border border-[var(--primary)]/20 bg-[var(--primary)]/5 px-3 py-2.5 shadow-[var(--shadow-panel)]">
             <p className="text-[0.65rem] font-bold uppercase tracking-wide text-[var(--primary)]">Aperçu</p>
             <p className="mt-1 text-sm text-[var(--foreground)]">{offerPreview}</p>
           </div>
@@ -347,7 +347,7 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
         ) : (
           <ul className="mt-4 max-h-[65dvh] space-y-2 overflow-y-auto pr-1 text-sm">
             {pagination.pageItems.map((offer) => (
-              <li key={offer.id} className="rounded-xl border border-[var(--border)] bg-[var(--surface-soft)]/35 p-3">
+              <li key={offer.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)]/35 p-3 shadow-[var(--shadow-panel)]">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-medium text-[var(--foreground)]">{offer.name}</p>

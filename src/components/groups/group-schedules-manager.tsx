@@ -173,7 +173,7 @@ export function GroupSchedulesManager({
         ]}
       />
 
-      <div id="schedule-current" className="form-section-anchor rounded-xl border border-[var(--border)] p-6">
+      <div id="schedule-current" className="form-section-anchor rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)] sm:p-6">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-[var(--foreground)]">Créneaux hebdomadaires</h2>
           <p className="text-sm text-[var(--muted-foreground)]">
@@ -181,7 +181,7 @@ export function GroupSchedulesManager({
           </p>
         </div>
 
-        <div className="data-table overflow-x-auto rounded-xl border border-[var(--border)]">
+        <div className="data-table overflow-x-auto rounded-lg border border-[var(--border)] shadow-[var(--shadow-panel)]">
           <table className="w-full text-sm">
             <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
               <tr>
@@ -250,7 +250,7 @@ export function GroupSchedulesManager({
         </div>
       </div>
 
-      <div id="schedule-new" className="form-section-anchor rounded-xl border border-[var(--border)] p-6">
+      <div id="schedule-new" className="form-section-anchor rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)] sm:p-6">
         <h2 className="text-lg font-semibold text-[var(--foreground)]">Définir les créneaux hebdomadaires</h2>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
           Cochez les jours d&apos;entraînement et définissez l&apos;heure pour chacun. Les séances seront automatiquement générées.

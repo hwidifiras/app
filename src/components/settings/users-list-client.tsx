@@ -111,7 +111,7 @@ export function UsersListClient({
                   .join(", ") || "Aucun droit";
 
         return (
-          <article key={u.id} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm">
+          <article key={u.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
             {isEditing ? (
               <div className="space-y-3">
                 <FormField label="Nom">

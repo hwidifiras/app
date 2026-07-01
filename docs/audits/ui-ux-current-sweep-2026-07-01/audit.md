@@ -104,6 +104,7 @@ Captured at desktop and mobile:
 - Shared confirmation dialogs now use compact radius, restrained floating shadow, and `aria-busy` during processing across destructive and non-destructive confirmations.
 - Mobile sheets, modal panels, notifications, and enrollment containers now use compact radius and the shared floating/panel shadows instead of older oversized corners and heavy shadows.
 - Private app chrome controls now use compact radius and shared shadows for account menu, setup guide, display mode toggle, notifications, and the mobile side drawer.
+- Remaining private operational cards, list panels, table wrappers, mobile payment cards, schedule panels, pointage cards, and active navigation states now use compact radius plus shared panel/floating shadows instead of older `rounded-xl`, `shadow-sm`, or `shadow-lg` styling.
 
 ## Repeatable Audit Data
 

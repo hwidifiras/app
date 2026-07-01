@@ -331,7 +331,7 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
       <FeedbackMessage message={message} className="mt-3" />
 
       <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
-        <section className="rounded-xl border border-[var(--border)] p-3 sm:p-4">
+        <section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-panel)] sm:p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-sm font-semibold text-[var(--foreground)]">Membres disponibles</h3>
@@ -390,7 +390,7 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
           </button>
         </section>
 
-        <section className="rounded-xl border border-[var(--border)] p-3 sm:p-4">
+        <section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-panel)] sm:p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-sm font-semibold text-[var(--foreground)]">Membres affectés</h3>

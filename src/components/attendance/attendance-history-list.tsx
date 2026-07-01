@@ -123,7 +123,7 @@ export function AttendanceHistoryList({ rows }: { rows: AttendanceHistoryRow[] }
           }
         />
       ) : (
-        <div className="data-table overflow-x-auto rounded-xl border border-[var(--border)]">
+        <div className="data-table overflow-x-auto rounded-lg border border-[var(--border)] shadow-[var(--shadow-panel)]">
           <table className="w-full text-sm">
             <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
               <tr>

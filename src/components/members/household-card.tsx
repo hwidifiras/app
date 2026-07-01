@@ -183,7 +183,7 @@ export function HouseholdCard({ memberId }: { memberId: string }) {
             ))}
           </ul>
 
-          <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--surface-soft)]/50 p-3">
+          <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)]/50 p-3 shadow-[var(--shadow-panel)]">
             <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
               Ajouter un membre au foyer
             </label>

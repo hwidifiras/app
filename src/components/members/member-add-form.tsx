@@ -168,7 +168,7 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
       </div>
 
       {memberType === "KID" ? (
-        <div className="rounded-xl border border-[var(--border)] p-4">
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
             Responsable légal
           </p>
@@ -255,7 +255,7 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
         )}
 
         {selectedPlan ? (
-          <div className="rounded-xl border border-[var(--border)] p-4">
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
               Paiement à l&apos;inscription (optionnel)
             </p>

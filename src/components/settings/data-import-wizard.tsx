@@ -377,7 +377,7 @@ export function DataImportWizard({
       <section className="panel p-4 sm:p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
-            <div className={`rounded-xl p-2.5 ${status.active ? "bg-emerald-500/10 text-emerald-600" : "bg-[var(--surface-soft)] text-[var(--muted-foreground)]"}`}>
+            <div className={`rounded-lg p-2.5 ${status.active ? "bg-emerald-500/10 text-emerald-600" : "bg-[var(--surface-soft)] text-[var(--muted-foreground)]"}`}>
               {status.active ? <CheckCircle2 className="size-5" /> : <LockKeyhole className="size-5" />}
             </div>
             <div>
@@ -625,7 +625,7 @@ export function DataImportWizard({
               </p>
             </div>
             {eligibleSessions.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-[var(--border)] p-4 text-sm text-[var(--muted-foreground)]">
+              <div className="rounded-lg border border-dashed border-[var(--border)] p-4 text-sm text-[var(--muted-foreground)]">
                 Aucune séance passée disponible cette semaine pour ce groupe.
               </div>
             ) : (
@@ -633,7 +633,7 @@ export function DataImportWizard({
                 {eligibleSessions.map((session) => {
                   const selected = attendanceStatuses[session.id];
                   return (
-                    <div key={session.id} className="rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+                    <div key={session.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
                       <p className="text-sm font-semibold">{new Date(session.sessionDate).toLocaleDateString("fr-FR")} · {session.startTime}</p>
                       <div className="mt-3 grid grid-cols-3 gap-2">
                         {(["PRESENT", "ABSENT", "NONE"] as const).map((choice) => (
@@ -702,7 +702,7 @@ export function DataImportWizard({
           {status.recentImports.length === 0 ? (
             <p className="text-sm text-[var(--muted-foreground)]">Aucune reprise enregistrée.</p>
           ) : status.recentImports.map((item) => (
-            <div key={item.id} className="flex flex-col gap-3 rounded-xl border border-[var(--border)] p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div key={item.id} className="flex flex-col gap-3 rounded-lg border border-[var(--border)] p-3 shadow-[var(--shadow-panel)] sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-semibold">{item.memberName}</p>
                 <p className="text-xs text-[var(--muted-foreground)]">{new Date(item.createdAt).toLocaleString("fr-FR")}</p>

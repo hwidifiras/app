@@ -47,7 +47,7 @@ export function MemberProfileHero({
       <div className="flex flex-col gap-5 p-4 sm:p-5 xl:flex-row xl:items-start xl:justify-between">
         <div className="flex min-w-0 items-start gap-4">
           <div
-            className="flex size-14 shrink-0 items-center justify-center rounded-lg text-lg font-bold shadow-sm sm:size-16 sm:text-xl"
+            className="flex size-14 shrink-0 items-center justify-center rounded-lg text-lg font-bold shadow-[var(--shadow-panel)] sm:size-16 sm:text-xl"
             style={avatarStyle}
             aria-hidden
           >

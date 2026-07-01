@@ -230,7 +230,7 @@ export function SportManager({ initialSports }: SportManagerProps) {
 
           <ul className="mt-4 space-y-3">
             {pagination.pageItems.map((sport) => (
-              <li key={sport.id} className="rounded-xl border border-[var(--border)] p-3">
+              <li key={sport.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-panel)]">
                 {editingId === sport.id ? (
                   <div className="space-y-2">
                     <input
