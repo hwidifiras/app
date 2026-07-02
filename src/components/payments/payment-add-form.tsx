@@ -66,6 +66,7 @@ export function PaymentAddForm({
   const wouldExceed = Boolean(selected && amountNum > remaining);
   const balanceAfter = remaining - amountNum;
   const displayBalanceAfter = Math.max(0, balanceAfter);
+  const canSubmit = Boolean(subscriptionId && amountNum > 0 && !wouldExceed);
   const members = useMemo(
     () =>
       Array.from(
@@ -185,6 +186,17 @@ export function PaymentAddForm({
     setMessage(null);
   }
 
+  function fillHalfBalance() {
+    if (remaining <= 0) return;
+    setAmount((Math.ceil(remaining / 2) / 100).toFixed(2));
+    setMessage(null);
+  }
+
+  function clearAmount() {
+    setAmount("");
+    setMessage(null);
+  }
+
   return (
     <form onSubmit={handleSubmit}>
       {message && (
@@ -224,20 +236,48 @@ export function PaymentAddForm({
         <>
           <FormSectionNav
             items={[
-              { href: "#payment-member", label: "Dossier" },
-              { href: "#payment-amount", label: "Montant" },
-              { href: "#payment-method", label: "Règlement" },
-              { href: "#payment-summary", label: "Récap" },
+              { href: "#payment-member", label: "Dette" },
+              { href: "#payment-amount", label: "Montant reçu" },
+              { href: "#payment-method", label: "Mode" },
+              { href: "#payment-summary", label: "Confirmer" },
             ]}
             className="mb-4"
           />
+
+          {selected ? (
+            <div className="mb-4 grid gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-panel)] sm:grid-cols-3">
+              <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-900">
+                <p className="text-[0.65rem] font-bold uppercase tracking-wide text-red-600">Reste à encaisser</p>
+                <p className="mt-1 text-lg font-black tabular-nums">{formatMoney(remaining)}</p>
+              </div>
+              <div className="rounded-lg bg-[var(--primary)]/10 px-3 py-2 text-sm text-[var(--primary)]">
+                <p className="text-[0.65rem] font-bold uppercase tracking-wide">Montant reçu</p>
+                <p className="mt-1 text-lg font-black tabular-nums">{amountNum > 0 ? formatMoney(amountNum) : "0,00 TND"}</p>
+              </div>
+              <div className="rounded-lg bg-[var(--surface-soft)] px-3 py-2 text-sm">
+                <p className="text-[0.65rem] font-bold uppercase tracking-wide text-[var(--muted-foreground)]">Après encaissement</p>
+                <p
+                  className={cn(
+                    "mt-1 text-lg font-black tabular-nums",
+                    amountNum > 0 && !wouldExceed && displayBalanceAfter === 0
+                      ? "text-[var(--success)]"
+                      : wouldExceed
+                        ? "text-[var(--danger)]"
+                        : "text-[var(--foreground)]",
+                  )}
+                >
+                  {wouldExceed ? "Invalide" : amountNum > 0 ? formatMoney(displayBalanceAfter) : "À calculer"}
+                </p>
+              </div>
+            </div>
+          ) : null}
 
         <div className="grid min-w-0 items-start gap-4 lg:grid-cols-12">
           <div className="space-y-4 lg:col-span-8">
             <FormSection
               id="payment-member"
-              title="1. Dossier"
-              description="Choisissez le membre et le solde à régler."
+              title="1. Dette"
+              description="Choisissez le membre puis l'abonnement qui a encore un solde."
             >
               <FormGrid>
                 <FormField label="Membre *" htmlFor="member">
@@ -302,8 +342,8 @@ export function PaymentAddForm({
 
             <FormSection
               id="payment-amount"
-              title="2. Montant"
-              description="Saisissez le versement remis, sans dépasser le reste dû."
+              title="2. Montant reçu"
+              description="Saisissez ce que la réception vient réellement d'encaisser."
             >
               <FormField label="Montant encaissé (TND) *" htmlFor="amount">
                 <div className="flex flex-col gap-2 sm:flex-row">
@@ -322,14 +362,32 @@ export function PaymentAddForm({
                       placeholder="0,00"
                     />
                   </FieldControl>
-                  <button
-                    type="button"
-                    onClick={fillRemainingBalance}
-                    disabled={!selected || remaining <= 0}
-                    className="btn btn-secondary whitespace-nowrap sm:min-w-36"
-                  >
-                    Solder {selected ? formatMoney(remaining) : ""}
-                  </button>
+                  <div className="grid grid-cols-3 gap-2 sm:w-auto sm:min-w-72">
+                    <button
+                      type="button"
+                      onClick={fillRemainingBalance}
+                      disabled={!selected || remaining <= 0}
+                      className="btn btn-secondary whitespace-nowrap px-3"
+                    >
+                      Solder
+                    </button>
+                    <button
+                      type="button"
+                      onClick={fillHalfBalance}
+                      disabled={!selected || remaining <= 0}
+                      className="btn btn-ghost whitespace-nowrap px-3"
+                    >
+                      Moitié
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearAmount}
+                      disabled={!amount}
+                      className="btn btn-ghost whitespace-nowrap px-3"
+                    >
+                      Effacer
+                    </button>
+                  </div>
                 </div>
                 {selected ? (
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-1 text-xs">
@@ -350,8 +408,8 @@ export function PaymentAddForm({
 
             <FormSection
               id="payment-method"
-              title="3. Règlement"
-              description="La date et le moyen de paiement apparaîtront dans l'historique."
+              title="3. Mode"
+              description="Choisissez le moyen de paiement visible dans l'historique."
             >
               <FormField label="Moyen de paiement *">
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -412,8 +470,8 @@ export function PaymentAddForm({
                   <ReceiptText className="size-4" />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold">À encaisser</p>
-                  <p className="text-xs text-[var(--muted-foreground)]">Vérification avant validation</p>
+                  <p className="text-sm font-semibold">Reçu à confirmer</p>
+                  <p className="text-xs text-[var(--muted-foreground)]">Vérification avant encaissement</p>
                 </div>
               </div>
 
@@ -460,6 +518,12 @@ export function PaymentAddForm({
               <p className="mt-3 rounded-lg bg-[var(--surface-soft)] px-3 py-2 text-xs leading-relaxed text-[var(--muted-foreground)]">
                 Cet encaissement réduit le solde de l&apos;abonnement. Il n&apos;ajoute pas de séances.
               </p>
+
+              {!canSubmit ? (
+                <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
+                  Sélectionnez une dette et saisissez un montant valide pour activer la confirmation.
+                </p>
+              ) : null}
             </div>
           </aside>
         </div>
@@ -478,7 +542,7 @@ export function PaymentAddForm({
         ) : null}
         <button
           type="submit"
-          disabled={loading || !subscriptionId || amountNum <= 0 || wouldExceed}
+          disabled={loading || !canSubmit}
           className={cn("btn btn-primary btn-block-mobile", amountNum <= 0 && "max-md:hidden")}
         >
           {loading ? (
