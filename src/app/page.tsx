@@ -1040,8 +1040,8 @@ export default async function Home() {
           className="relative overflow-hidden rounded-lg bg-[#0B1220] px-4 py-5 text-white shadow-[0_18px_48px_rgba(37,99,235,0.20)] sm:px-6 lg:min-h-[12.25rem] lg:px-7 lg:py-7"
           style={{
             backgroundImage:
-              "linear-gradient(90deg, rgba(8,22,58,0.96) 0%, rgba(12,43,104,0.86) 42%, rgba(12,44,101,0.46) 68%, rgba(7,18,48,0.84) 100%), url('/we-discipline/wide-dojo-interior.png')",
-            backgroundPosition: "center 42%",
+              "linear-gradient(90deg, rgba(8,22,58,0.94) 0%, rgba(12,43,104,0.78) 38%, rgba(12,44,101,0.24) 66%, rgba(7,18,48,0.50) 100%), linear-gradient(180deg, rgba(7,18,48,0.08) 0%, rgba(7,18,48,0.50) 100%), url('/we-discipline/wide-dojo-interior.png')",
+            backgroundPosition: "center 48%",
             backgroundSize: "cover",
           }}
         >
