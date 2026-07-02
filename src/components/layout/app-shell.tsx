@@ -98,7 +98,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         Aller au contenu
       </a>
       <MobileNav />
-      <div className={`grid min-h-screen ${collapsed ? "lg:grid-cols-[72px_1fr]" : "lg:grid-cols-[248px_1fr]"}`}>
+      <div className={`grid min-h-screen ${collapsed ? "lg:grid-cols-[72px_1fr]" : "lg:grid-cols-[232px_1fr]"}`}>
         <AppSidebar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
         <div className="flex min-w-0 flex-col bg-[var(--background)]">
           <DesktopTopNav />

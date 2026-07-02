@@ -192,7 +192,7 @@ export function AppSidebar({
   );
 
   return (
-    <aside className="sidebar-scroll hidden border-b border-[var(--border)] bg-[var(--surface)]/96 backdrop-blur lg:sticky lg:top-0 lg:block lg:h-screen lg:overflow-y-auto lg:overscroll-y-contain lg:border-r lg:border-b-0">
+    <aside className="sidebar-scroll hidden border-b border-[var(--border)] bg-[var(--surface)]/96 backdrop-blur lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:overflow-y-auto lg:overscroll-y-contain lg:border-r lg:border-b-0">
       <div
         className={cn(
           "border-b border-[var(--border)] py-3",
@@ -220,9 +220,9 @@ export function AppSidebar({
         ) : null}
       </div>
 
-      <nav className="flex gap-1 overflow-x-auto px-2 py-2 lg:flex-col lg:overflow-visible lg:px-2 lg:py-3">
+      <nav className="flex flex-1 gap-1 overflow-x-auto px-2 py-2 lg:flex-col lg:overflow-visible lg:px-2 lg:py-4">
         {navSections.map((section) => (
-          <div key={section.title} className="mb-1">
+          <div key={section.title} className="mb-2">
             {!collapsed ? (
               <p className="mb-1 hidden px-3 pt-2 text-[0.6rem] font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)] lg:block">
                 {section.title}
@@ -234,7 +234,7 @@ export function AppSidebar({
           </div>
         ))}
 
-        <div className="mb-1 mt-2 border-t border-[var(--border)] pt-2 lg:mt-3 lg:pt-3">
+        <div className="mb-1 mt-2 border-t border-[var(--border)] pt-2 lg:mt-5 lg:pt-4">
           <button
             onClick={() => setConfigOpen((v) => !v)}
             aria-expanded={configOpen || inClubConfig}
@@ -284,6 +284,23 @@ export function AppSidebar({
           )}
         </div>
       </nav>
+
+      <div className={cn("mt-auto border-t border-[var(--border)] px-4 py-4", collapsed && "px-2 py-3")}>
+        {collapsed ? (
+          <div className="mx-auto flex size-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-soft)]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/we-discipline/navbar-logo.png" alt="We Discipline" className="h-4 w-10 object-contain opacity-45" />
+          </div>
+        ) : (
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2.5">
+            <p className="text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+              Propulsé par
+            </p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/we-discipline/navbar-logo.png" alt="We Discipline" className="mt-1 h-7 w-auto opacity-70" />
+          </div>
+        )}
+      </div>
     </aside>
   );
 }

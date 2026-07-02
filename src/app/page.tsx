@@ -2,14 +2,15 @@ import Link from "next/link";
 import {
   AlertCircle,
   ArrowRight,
-  BadgeCheck,
   BarChart3,
   CalendarCheck2,
   CalendarClock,
   CheckCircle2,
   ClipboardCheck,
-  ReceiptText,
+  CreditCard,
   RotateCcw,
+  UserPlus,
+  UsersRound,
   Wallet,
 } from "lucide-react";
 
@@ -39,15 +40,6 @@ export const revalidate = 0;
 
 type IconComponent = React.ComponentType<{ className?: string }>;
 type DashboardTone = "blue" | "green" | "amber" | "red" | "slate";
-
-type DashboardMetric = {
-  label: string;
-  value: number | string;
-  hint?: string;
-  href: string;
-  icon: IconComponent;
-  tone: DashboardTone;
-};
 
 type TodaySession = {
   id: string;
@@ -82,7 +74,6 @@ type DashboardPayment = {
   entryType: PaymentEntryTypeValue;
   paymentMethod: string | null;
   paymentDate: Date;
-  memberName: string;
 };
 
 type CashMethodStat = {
@@ -98,6 +89,15 @@ type CashTrendDay = {
   label: string;
   amount: number;
   isToday: boolean;
+};
+
+type RecentMemberPreview = {
+  id: string;
+  name: string;
+  initials: string;
+  planName: string;
+  joinedAt: Date;
+  status: string;
 };
 
 const dashboardToneStyles: Record<
@@ -160,7 +160,7 @@ function DashboardPanel({
     <section
       aria-labelledby={labelledBy}
       className={cn(
-        "rounded-lg border border-[#D8E2F0] bg-white text-[#111827] shadow-[0_8px_24px_rgba(15,23,42,0.06)] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100",
+        "rounded-lg border border-[#DDE7F4] bg-white text-[#111827] shadow-[0_16px_38px_rgba(15,23,42,0.055)] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100",
         className,
       )}
     >
@@ -194,40 +194,6 @@ function DashboardSectionHeader({
       </div>
       {action}
     </div>
-  );
-}
-
-function DashboardMetricCard({ metric }: { metric: DashboardMetric }) {
-  const tone = dashboardToneStyles[metric.tone];
-  const Icon = metric.icon;
-
-  return (
-    <Link
-      href={metric.href}
-      className={cn(
-        "group flex min-h-[4.75rem] items-center gap-3 rounded-lg border bg-white p-3 text-[#111827] shadow-[0_6px_18px_rgba(15,23,42,0.045)] transition hover:-translate-y-0.5 hover:border-[#2563EB] hover:shadow-[0_10px_24px_rgba(37,99,235,0.12)] dark:bg-slate-950 dark:text-slate-100",
-        tone.border,
-      )}
-      aria-label={metric.label}
-    >
-      <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", tone.icon)}>
-        <Icon className="size-4" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-xs font-medium leading-tight text-[#64748B] dark:text-slate-400">
-          {metric.label}
-        </span>
-        <span className="mt-1 block truncate text-lg font-bold leading-tight text-[#0B1220] dark:text-slate-50">
-          {metric.value}
-        </span>
-        {metric.hint ? (
-          <span className="mt-1 block text-[0.7rem] leading-snug text-[#64748B] dark:text-slate-400">
-            {metric.hint}
-          </span>
-        ) : null}
-      </span>
-      <ArrowRight className="size-4 shrink-0 text-[#94A3B8] transition group-hover:translate-x-0.5 group-hover:text-[#2563EB]" />
-    </Link>
   );
 }
 
@@ -300,10 +266,10 @@ function TodaySessionRow({ session }: { session: TodaySession }) {
 function PrioritySummary({ items }: { items: PriorityItem[] }) {
   if (items.length === 0) {
     return (
-      <div className="mx-4 mb-4 flex items-start gap-3 rounded-lg border border-[#A7F3D0] bg-[#ECFDF5] px-3 py-3">
-        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#10B981]" />
+      <div className="mx-4 mb-4 flex items-start gap-3 rounded-lg border border-[#DBEAFE] bg-[#EFF6FF] px-3 py-3">
+        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#2563EB]" />
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-[#047857]">Rien à traiter</p>
+          <p className="text-sm font-semibold text-[#0B3B8F]">Rien à traiter</p>
           <p className="mt-0.5 text-xs leading-snug text-[#64748B]">
             Aucun impayé urgent, aucune séance à finaliser et aucune échéance critique.
           </p>
@@ -379,7 +345,7 @@ function TodayWorkPanel({
       />
       {todaySessions.length === 0 ? (
         <div className="flex min-h-36 flex-col items-center justify-center px-4 py-6 text-center">
-          <CalendarCheck2 className="size-9 text-[#10B981]" />
+          <CalendarCheck2 className="size-10 text-[#2563EB]" />
           <p className="mt-2 text-sm font-semibold text-[#0B1220] dark:text-slate-50">
             Aucune séance aujourd&apos;hui
           </p>
@@ -436,7 +402,7 @@ function CashRegisterPanel({
       <div className="p-3">
         <Link
           href="/payments"
-          className="group flex items-center gap-3 rounded-lg border border-[#A7F3D0] bg-[#ECFDF5] p-3 text-[#0B1220] transition hover:border-[#10B981] hover:bg-[#D1FAE5]"
+          className="group flex items-center gap-3 rounded-lg border border-[#A7F3D0] bg-[linear-gradient(135deg,#ECFDF5_0%,#F0FDFA_58%,#E0F2FE_100%)] p-4 text-[#0B1220] transition hover:border-[#10B981]"
         >
           <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-[#10B981] text-white">
             <Wallet className="size-5" />
@@ -538,75 +504,149 @@ function CashTrendPanel({ trend, weekTotal }: { trend: CashTrendDay[]; weekTotal
           </div>
         </div>
 
-        <div className="flex h-48 items-end gap-2 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 pb-3 pt-4">
-          {trend.map((day) => {
-            const height = day.amount === 0 ? 4 : Math.max(12, Math.round((Math.abs(day.amount) / maxAmount) * 140));
-            const tone = day.amount < 0 ? dashboardToneStyles.red : day.isToday ? dashboardToneStyles.green : dashboardToneStyles.blue;
+        <div className="relative h-56 overflow-hidden rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 pb-3 pt-4">
+          <div className="absolute inset-x-3 top-5 bottom-10 flex flex-col justify-between" aria-hidden="true">
+            {Array.from({ length: 5 }).map((_, index) => (
+              <span key={index} className="border-t border-[#DDE7F4]" />
+            ))}
+          </div>
+          <div className="relative flex h-full items-end gap-2">
+            {trend.map((day) => {
+              const height = day.amount === 0 ? 4 : Math.max(12, Math.round((Math.abs(day.amount) / maxAmount) * 152));
+              const tone = day.amount < 0 ? dashboardToneStyles.red : day.isToday ? dashboardToneStyles.green : dashboardToneStyles.blue;
 
-            return (
-              <div key={day.key} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-2">
-                <div className="flex h-36 w-full items-end justify-center">
-                  <div
-                    className={cn("w-full max-w-9 rounded-t-md", tone.icon)}
-                    style={{ height: `${height}px` }}
-                    aria-label={`${day.label}: ${formatMoney(day.amount)}`}
-                    title={`${day.label}: ${formatMoney(day.amount)}`}
-                  />
+              return (
+                <div key={day.key} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-2">
+                  <div className="flex h-40 w-full items-end justify-center">
+                    <div
+                      className={cn("w-full max-w-10 rounded-t-md shadow-[0_8px_18px_rgba(37,99,235,0.18)]", tone.icon)}
+                      style={{ height: `${height}px` }}
+                      aria-label={`${day.label}: ${formatMoney(day.amount)}`}
+                      title={`${day.label}: ${formatMoney(day.amount)}`}
+                    />
+                  </div>
+                  <p className="w-full truncate text-center text-[0.66rem] font-medium text-[#64748B]">{day.label}</p>
                 </div>
-                <p className="w-full truncate text-center text-[0.66rem] font-medium text-[#64748B]">{day.label}</p>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
     </DashboardPanel>
   );
 }
 
-function RecentCashMovementsPanel({ movements }: { movements: DashboardPayment[] }) {
+function MembersOverviewPanel({
+  activeMembers,
+  newMembersThisMonth,
+  expiringSoon,
+  pendingPayment,
+  recentMembers,
+}: {
+  activeMembers: number;
+  newMembersThisMonth: number;
+  expiringSoon: number;
+  pendingPayment: number;
+  recentMembers: RecentMemberPreview[];
+}) {
+  const stats = [
+    {
+      label: "Membres actifs",
+      value: activeMembers,
+      icon: UsersRound,
+      tone: "blue" as const,
+    },
+    {
+      label: "Nouveaux ce mois",
+      value: newMembersThisMonth,
+      icon: UserPlus,
+      tone: "green" as const,
+    },
+    {
+      label: "Abonnements expirant bientôt",
+      value: expiringSoon,
+      icon: CalendarClock,
+      tone: "amber" as const,
+    },
+    {
+      label: "En attente de paiement",
+      value: pendingPayment,
+      icon: CreditCard,
+      tone: "red" as const,
+    },
+  ];
+
   return (
-    <DashboardPanel labelledBy="dashboard-cash-movements-title" className="min-w-0">
+    <DashboardPanel labelledBy="dashboard-members-overview-title" className="min-w-0">
       <DashboardSectionHeader
-        titleId="dashboard-cash-movements-title"
-        title="Derniers mouvements"
-        eyebrow="Caisse"
+        titleId="dashboard-members-overview-title"
+        title="Aperçu rapide"
+        eyebrow="Membres"
         action={
-          <Link href="/payments" className="text-xs font-semibold text-[#2563EB] hover:underline">
+          <Link href="/members" className="text-xs font-semibold text-[#2563EB] hover:underline">
             Voir tout
           </Link>
         }
       />
-      {movements.length === 0 ? (
-        <div className="flex min-h-44 flex-col items-center justify-center px-4 py-6 text-center">
-          <ReceiptText className="size-8 text-[#94A3B8]" />
-          <p className="mt-2 text-sm font-semibold text-[#0B1220]">Aucun mouvement</p>
-          <p className="mt-1 max-w-sm text-xs text-[#64748B]">Les derniers paiements apparaîtront ici.</p>
-        </div>
-      ) : (
-        <ul>
-          {movements.map((movement) => {
-            const tone = dashboardToneStyles[paymentMovementTone(movement)];
+      <div className="p-3">
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {stats.map((stat) => {
+            const tone = dashboardToneStyles[stat.tone];
+            const Icon = stat.icon;
             return (
-              <li key={movement.id} className="border-t border-[#E2E8F0] px-4 py-3 first:border-t-0">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-[#0B1220]">{movement.memberName}</p>
-                    <p className="mt-0.5 text-xs text-[#64748B]">
-                      {formatPaymentMethodLabel(movement.paymentMethod)} · {formatDateFr(movement.paymentDate)}
-                    </p>
-                    {movement.entryType !== "PAYMENT" ? (
-                      <span className={cn("mt-1 inline-flex rounded-full px-2 py-0.5 text-[0.66rem] font-semibold", tone.badge)}>
-                        {paymentEntryLabel(movement.entryType)}
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className={cn("shrink-0 text-sm font-bold", tone.text)}>{formatMoney(movement.amount)}</p>
-                </div>
-              </li>
+              <Link
+                key={stat.label}
+                href={stat.label === "En attente de paiement" ? "/subscriptions" : "/members"}
+                className="rounded-lg border border-[#E2E8F0] bg-white px-3 py-3 shadow-[0_8px_18px_rgba(15,23,42,0.045)] transition hover:-translate-y-0.5 hover:border-[#2563EB] hover:shadow-[0_12px_26px_rgba(37,99,235,0.10)]"
+              >
+                <span className={cn("flex size-7 items-center justify-center rounded-lg", tone.soft, tone.text)}>
+                  <Icon className="size-4" />
+                </span>
+                <span className="mt-2 block text-lg font-bold leading-none text-[#0B1220]">{stat.value}</span>
+                <span className="mt-1 block text-[0.72rem] leading-snug text-[#475569]">{stat.label}</span>
+              </Link>
             );
           })}
-        </ul>
-      )}
+        </div>
+
+        <div className="mt-4">
+          <p className="mb-2 text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[#64748B]">
+            Derniers membres
+          </p>
+          {recentMembers.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-[#D8E2F0] bg-[#F8FAFC] px-4 py-6 text-center">
+              <UsersRound className="mx-auto size-8 text-[#94A3B8]" />
+              <p className="mt-2 text-sm font-semibold text-[#0B1220]">Aucun membre récent</p>
+              <p className="mt-1 text-xs text-[#64748B]">Les nouvelles inscriptions apparaîtront ici.</p>
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {recentMembers.map((member) => (
+                <li key={member.id}>
+                  <Link
+                    href={`/members/${member.id}`}
+                    className="flex items-center gap-3 rounded-lg border border-[#E2E8F0] bg-white px-3 py-2.5 transition hover:border-[#2563EB] hover:bg-[#F8FAFC]"
+                  >
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#EFF6FF] text-xs font-bold text-[#2563EB]">
+                      {member.initials}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold text-[#0B1220]">{member.name}</span>
+                      <span className="mt-0.5 block truncate text-xs text-[#64748B]">{member.planName}</span>
+                    </span>
+                    <span className="rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[0.68rem] font-semibold text-[#047857]">
+                      {member.status}
+                    </span>
+                    <span className="hidden shrink-0 text-xs font-medium text-[#64748B] sm:inline">
+                      {member.joinedAt.toLocaleDateString("fr-FR")}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
     </DashboardPanel>
   );
 }
@@ -639,6 +679,12 @@ function formatTrendLabel(date: Date) {
     weekday: "short",
     day: "2-digit",
   });
+}
+
+function memberInitials(firstName: string, lastName: string) {
+  const first = firstName.trim().charAt(0);
+  const last = lastName.trim().charAt(0);
+  return `${first}${last}`.toUpperCase() || "M";
 }
 
 function formatPaymentMethodLabel(method: string | null) {
@@ -677,18 +723,6 @@ function paymentMethodTone(method: string): DashboardTone {
   }
 }
 
-function paymentEntryLabel(entryType: PaymentEntryTypeValue) {
-  if (entryType === "CORRECTION") return "Correction";
-  if (entryType === "REVERSAL") return "Annulation";
-  return "Paiement";
-}
-
-function paymentMovementTone(payment: Pick<DashboardPayment, "amount" | "entryType">): DashboardTone {
-  if (payment.entryType === "REVERSAL" || payment.amount < 0) return "red";
-  if (payment.entryType === "CORRECTION") return "amber";
-  return "green";
-}
-
 function buildCashTrend(payments: DashboardPayment[], trendStart: Date, today: Date): CashTrendDay[] {
   const totalsByDay = new Map<string, number>();
 
@@ -714,7 +748,7 @@ function buildCashTrend(payments: DashboardPayment[], trendStart: Date, today: D
 export default async function Home() {
   let hasDataError = false;
   let activeMembers = 0;
-  let attendanceToday = 0;
+  let newMembersThisMonth = 0;
   let sessionsToday = 0;
   let revenueToday = 0;
   let revenueWeek = 0;
@@ -725,7 +759,7 @@ export default async function Home() {
   let reversalsToday = 0;
   let cashMethodStats: CashMethodStat[] = [];
   let cashTrend: CashTrendDay[] = [];
-  let recentCashMovements: DashboardPayment[] = [];
+  let recentMembers: RecentMemberPreview[] = [];
   let finance = {
     totalOutstandingCents: 0,
     debtorsCount: 0,
@@ -759,20 +793,15 @@ export default async function Home() {
 
     const [
       fetchedActiveMembers,
-      fetchedAttendanceToday,
+      fetchedNewMembersThisMonth,
       fetchedSessionsToday,
       fetchedPaymentWindow,
-      fetchedRecentPayments,
       fetchedSubscriptions,
       fetchedSessions,
+      fetchedRecentMembers,
     ] = await Promise.all([
       prisma.member.count({ where: { status: "ACTIVE" } }),
-      prisma.attendance.count({
-        where: {
-          status: { in: ["PRESENT", "OVERRIDE"] },
-          session: { sessionDate: { gte: today, lt: tomorrow } },
-        },
-      }),
+      prisma.member.count({ where: { status: "ACTIVE", joinedAt: { gte: monthStart, lt: tomorrow } } }),
       prisma.session.count({
         where: {
           sessionDate: { gte: today, lt: tomorrow },
@@ -787,29 +816,8 @@ export default async function Home() {
           entryType: true,
           paymentMethod: true,
           paymentDate: true,
-          memberSubscription: {
-            select: {
-              member: { select: { firstName: true, lastName: true } },
-            },
-          },
         },
         orderBy: [{ paymentDate: "asc" }, { createdAt: "asc" }],
-      }),
-      prisma.payment.findMany({
-        select: {
-          id: true,
-          amount: true,
-          entryType: true,
-          paymentMethod: true,
-          paymentDate: true,
-          memberSubscription: {
-            select: {
-              member: { select: { firstName: true, lastName: true } },
-            },
-          },
-        },
-        orderBy: [{ paymentDate: "desc" }, { createdAt: "desc" }],
-        take: 5,
       }),
       prisma.memberSubscription.findMany({
         where: { status: "ACTIVE" },
@@ -851,10 +859,30 @@ export default async function Home() {
         orderBy: [{ sessionDate: "desc" }, { startTime: "asc" }],
         take: 200,
       }),
+      prisma.member.findMany({
+        where: { status: "ACTIVE" },
+        orderBy: [{ joinedAt: "desc" }, { createdAt: "desc" }],
+        take: 3,
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          joinedAt: true,
+          status: true,
+          subscriptions: {
+            where: { status: "ACTIVE" },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: {
+              plan: { select: { name: true } },
+            },
+          },
+        },
+      }),
     ]);
 
     activeMembers = fetchedActiveMembers;
-    attendanceToday = fetchedAttendanceToday;
+    newMembersThisMonth = fetchedNewMembersThisMonth;
     sessionsToday = fetchedSessionsToday;
 
     const paymentWindow: DashboardPayment[] = fetchedPaymentWindow.map((payment) => ({
@@ -863,15 +891,14 @@ export default async function Home() {
       entryType: payment.entryType as PaymentEntryTypeValue,
       paymentMethod: payment.paymentMethod,
       paymentDate: payment.paymentDate,
-      memberName: `${payment.memberSubscription.member.firstName} ${payment.memberSubscription.member.lastName}`,
     }));
-    recentCashMovements = fetchedRecentPayments.map((payment) => ({
-      id: payment.id,
-      amount: payment.amount,
-      entryType: payment.entryType as PaymentEntryTypeValue,
-      paymentMethod: payment.paymentMethod,
-      paymentDate: payment.paymentDate,
-      memberName: `${payment.memberSubscription.member.firstName} ${payment.memberSubscription.member.lastName}`,
+    recentMembers = fetchedRecentMembers.map((member) => ({
+      id: member.id,
+      name: `${member.firstName} ${member.lastName}`,
+      initials: memberInitials(member.firstName, member.lastName),
+      planName: member.subscriptions[0]?.plan?.name ?? "Sans abonnement actif",
+      joinedAt: member.joinedAt,
+      status: member.status === "ACTIVE" ? "Actif" : member.status,
     }));
 
     const paymentsToday = paymentWindow.filter((payment) => payment.paymentDate >= today && payment.paymentDate < tomorrow);
@@ -1001,39 +1028,53 @@ export default async function Home() {
   }
 
   return (
-    <main className="app-shell bg-[#F6F9FF] text-[#111827] dark:bg-[#0B1220] dark:text-slate-100">
-      <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-4">
-        <header className="rounded-lg bg-[#0B1220] px-4 py-4 text-white shadow-[0_12px_32px_rgba(11,18,32,0.16)] sm:px-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="min-w-0">
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-[#93C5FD]">
+    <main
+      className="app-shell relative overflow-hidden text-[#111827] dark:bg-[#0B1220] dark:text-slate-100"
+      style={{
+        background:
+          "radial-gradient(circle at 74% 0%, rgba(191,219,254,0.72) 0, rgba(219,234,254,0.46) 13rem, rgba(246,249,255,0) 31rem), #F6F9FF",
+      }}
+    >
+      <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-5">
+        <header
+          className="relative overflow-hidden rounded-lg bg-[#0B1220] px-4 py-5 text-white shadow-[0_18px_48px_rgba(37,99,235,0.20)] sm:px-6 lg:min-h-[12.25rem] lg:px-7 lg:py-7"
+          style={{
+            backgroundImage:
+              "linear-gradient(90deg, rgba(8,22,58,0.96) 0%, rgba(12,43,104,0.86) 42%, rgba(12,44,101,0.46) 68%, rgba(7,18,48,0.84) 100%), url('/we-discipline/wide-dojo-interior.png')",
+            backgroundPosition: "center 42%",
+            backgroundSize: "cover",
+          }}
+        >
+          <div className="relative z-10 flex min-h-full flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="min-w-0 max-w-2xl">
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#93C5FD]">
                 Tableau de bord
               </p>
-              <h1 className="mt-1 text-2xl font-bold leading-tight tracking-normal sm:text-3xl">
+              <h1 className="mt-2 text-3xl font-bold leading-tight tracking-normal sm:text-4xl">
                 Aujourd&apos;hui au club
               </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+              <p className="mt-4 max-w-xl text-sm leading-7 text-blue-50 sm:text-base">
                 Les séances à pointer, les encaissements à suivre et les priorités qui demandent une action.
               </p>
             </div>
-            <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[30rem]">
-              <div className="rounded-lg border border-white/10 bg-white/8 px-3 py-2">
-                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
+            <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[32rem]">
+              <div className="rounded-lg border border-white/18 bg-[#061A3D]/70 px-4 py-3 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur">
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-blue-200">
                   Date
                 </p>
-                <p className="mt-1 text-sm font-semibold capitalize text-white">{formatLongDateFr(today)}</p>
+                <p className="mt-2 text-sm font-bold capitalize text-white">{formatLongDateFr(today)}</p>
               </div>
-              <div className="rounded-lg border border-white/10 bg-white/8 px-3 py-2">
-                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
+              <div className="rounded-lg border border-white/18 bg-[#061A3D]/70 px-4 py-3 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur">
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-blue-200">
                   Séances
                 </p>
-                <p className="mt-1 text-sm font-semibold text-white">{sessionsToday} aujourd&apos;hui</p>
+                <p className="mt-2 text-sm font-bold text-white">{sessionsToday} aujourd&apos;hui</p>
               </div>
-              <div className="rounded-lg border border-white/10 bg-white/8 px-3 py-2">
-                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
+              <div className="rounded-lg border border-white/18 bg-[#061A3D]/70 px-4 py-3 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur">
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-blue-200">
                   Membres
                 </p>
-                <p className="mt-1 text-sm font-semibold text-white">{activeMembers} actifs</p>
+                <p className="mt-2 text-sm font-bold text-white">{activeMembers} actifs</p>
               </div>
             </div>
           </div>
@@ -1048,68 +1089,27 @@ export default async function Home() {
 
         <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(24rem,0.85fr)]">
           <TodayWorkPanel todaySessions={todaySessions} priorityItems={priorityItems} />
-          <div className="grid min-w-0 gap-4">
-            <CashRegisterPanel
-              totalToday={revenueToday}
-              paymentCountToday={paymentCountToday}
-              averagePaymentToday={averagePaymentToday}
-              weekTotal={revenueWeek}
-              monthTotal={revenueMonth}
-              methodStats={cashMethodStats}
-              correctionsToday={correctionsToday}
-              reversalsToday={reversalsToday}
-            />
-            <CashTrendPanel trend={cashTrend} weekTotal={revenueWeek} />
-          </div>
+          <CashRegisterPanel
+            totalToday={revenueToday}
+            paymentCountToday={paymentCountToday}
+            averagePaymentToday={averagePaymentToday}
+            weekTotal={revenueWeek}
+            monthTotal={revenueMonth}
+            methodStats={cashMethodStats}
+            correctionsToday={correctionsToday}
+            reversalsToday={reversalsToday}
+          />
         </section>
 
-        <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.8fr)]">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2" aria-label="Repères du club">
-            <DashboardMetricCard
-              metric={{
-                label: "Présences",
-                value: attendanceToday,
-                hint: `${sessionsToday} séance${sessionsToday > 1 ? "s" : ""} aujourd'hui`,
-                href: "/attendance/today",
-                icon: BadgeCheck,
-                tone: "blue",
-              }}
-            />
-            <DashboardMetricCard
-              metric={{
-                label: "Échéances 7 jours",
-                value: finance.expiringIn7Days,
-                hint: "Abonnements à surveiller",
-                href: "/subscriptions",
-                icon: CalendarClock,
-                tone: finance.expiringIn7Days > 0 ? "amber" : "green",
-              }}
-            />
-            <DashboardMetricCard
-              metric={{
-                label: "Recouvrement",
-                value: finance.collectionRatePercent === null ? "—" : `${finance.collectionRatePercent} %`,
-                hint:
-                  finance.totalOutstandingCents > 0
-                    ? `${formatMoney(finance.totalOutstandingCents)} à encaisser`
-                    : `${finance.activeSubscriptionsCount} abonnement${finance.activeSubscriptionsCount > 1 ? "s" : ""} actif${finance.activeSubscriptionsCount > 1 ? "s" : ""}`,
-                href: "/subscriptions",
-                icon: ClipboardCheck,
-                tone: finance.totalOutstandingCents > 0 ? "amber" : "green",
-              }}
-            />
-            <DashboardMetricCard
-              metric={{
-                label: "Impayés détaillés",
-                value: debts.length > 0 ? debts.length : "Aucun",
-                hint: debts.length > 0 ? "Dossiers à relancer" : "Masqué si rien à suivre",
-                href: "/subscriptions",
-                icon: ReceiptText,
-                tone: debts.length > 0 ? "red" : "green",
-              }}
-            />
-          </div>
-          <RecentCashMovementsPanel movements={recentCashMovements} />
+        <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(24rem,0.85fr)]">
+          <CashTrendPanel trend={cashTrend} weekTotal={revenueWeek} />
+          <MembersOverviewPanel
+            activeMembers={activeMembers}
+            newMembersThisMonth={newMembersThisMonth}
+            expiringSoon={finance.expiringIn7Days}
+            pendingPayment={finance.debtorsCount}
+            recentMembers={recentMembers}
+          />
         </section>
 
         {debts.length > 0 ? (
