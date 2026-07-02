@@ -7,6 +7,15 @@ import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions } from "@/components/ui/form-layout";
 import { PERMISSION_LABELS, PERMISSIONS, type PermissionKey } from "@/lib/permission-definitions";
 
+const RECEPTION_PERMISSIONS: PermissionKey[] = [
+  "members.manage",
+  "enrollment.manage",
+  "attendance.manage",
+  "payments.manage",
+];
+
+const COACH_PERMISSIONS: PermissionKey[] = ["attendance.manage"];
+
 export function UserCreateForm() {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -26,6 +35,12 @@ export function UserCreateForm() {
     setPermissions((current) =>
       current.includes(key) ? current.filter((item) => item !== key) : [...current, key],
     );
+  }
+
+  function applyStaffPreset(nextPermissions: PermissionKey[]) {
+    setRole("STAFF");
+    setAccessMode("LIMITED");
+    setPermissions(nextPermissions);
   }
 
   async function submit(e: React.FormEvent) {
@@ -76,11 +91,11 @@ export function UserCreateForm() {
       <div className="space-y-1.5">
         <label className="text-sm font-semibold text-[var(--foreground)]" htmlFor="role">Rôle</label>
         <select id="role" value={role} onChange={(e) => setRole(e.target.value as "ADMIN" | "STAFF")} className="field">
-          <option value="STAFF">Staff</option>
+          <option value="STAFF">Réception / Coach</option>
           <option value="ADMIN">Admin</option>
         </select>
         <p className="text-xs text-[var(--muted-foreground)]">
-          Admin gère tout le club. Staff reçoit seulement les accès cochés.
+          Admin gère tout le club. Réception ou Coach reçoit seulement les accès cochés.
         </p>
       </div>
 
@@ -93,7 +108,7 @@ export function UserCreateForm() {
         <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-4 shadow-[var(--shadow-panel)] md:col-span-2">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-sm font-semibold text-[var(--foreground)]">Droits du staff</p>
+              <p className="text-sm font-semibold text-[var(--foreground)]">Droits Réception / Coach</p>
               <p className="text-xs text-[var(--muted-foreground)]">
                 Choisissez les écrans que ce compte peut utiliser.
               </p>
@@ -106,6 +121,15 @@ export function UserCreateForm() {
               <option value="LIMITED">Limité</option>
               <option value="FULL">Accès complet staff</option>
             </select>
+          </div>
+
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <button type="button" onClick={() => applyStaffPreset(RECEPTION_PERMISSIONS)} className="btn btn-ghost btn-block-mobile">
+              Profil Réception
+            </button>
+            <button type="button" onClick={() => applyStaffPreset(COACH_PERMISSIONS)} className="btn btn-ghost btn-block-mobile">
+              Profil Coach
+            </button>
           </div>
 
           {accessMode === "LIMITED" && (

@@ -73,7 +73,7 @@ export default async function GroupsPage() {
       <PageHeader
         overline="Configuration"
         title="Cours"
-        description="Gérer les groupes d'entraînement, capacités et créneaux actifs."
+        description="Organiser les groupes, coachs, salles, capacités et horaires visibles au planning."
       />
 
       <section className="panel p-3 sm:p-5">

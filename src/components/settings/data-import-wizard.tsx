@@ -148,7 +148,7 @@ export function DataImportWizard({
   const [remainingSessions, setRemainingSessions] = useState("");
   const [paymentDate, setPaymentDate] = useState(today);
   const [paymentMethod, setPaymentMethod] = useState("REPRISE_PAPIER");
-  const [note, setNote] = useState("Reprise initiale depuis le registre papier");
+  const [note, setNote] = useState("Import ancien fichier depuis le registre papier");
   const [attendanceStatuses, setAttendanceStatuses] = useState<
     Record<string, "PRESENT" | "ABSENT">
   >({});
@@ -212,7 +212,7 @@ export function DataImportWizard({
     if (response.ok && json.data) {
       setStatus(json.data);
     } else {
-      setMessage(json.error ?? "Impossible de charger le mode de reprise.");
+      setMessage(json.error ?? "Impossible de charger l'import ancien fichier.");
     }
     setLoadingStatus(false);
   }
@@ -273,7 +273,7 @@ export function DataImportWizard({
     }
     setStatus((current) => ({ ...current, ...json.data }));
     setPreview(null);
-    setMessage(action === "activate" ? "Session de reprise activée." : "Session de reprise fermée.");
+    setMessage(action === "activate" ? "Import ancien fichier ouvert." : "Import ancien fichier fermé.");
   }
 
   async function submit(action: "preview" | "apply") {
@@ -288,7 +288,7 @@ export function DataImportWizard({
     setBusy(false);
     if (!response.ok || !json.data) {
       setPreview(null);
-      setMessage(json.error ?? "La reprise n'a pas pu être validée.");
+      setMessage(json.error ?? "L'import ancien fichier n'a pas pu être validé.");
       return;
     }
     if (action === "preview") {
@@ -306,7 +306,7 @@ export function DataImportWizard({
   }
 
   async function rollback(auditLogId: string) {
-    if (!window.confirm("Annuler entièrement cette reprise ?")) return;
+    if (!window.confirm("Annuler entièrement cet import ?")) return;
     setBusy(true);
     const response = await fetch("/api/data-import", {
       method: "POST",
@@ -319,14 +319,14 @@ export function DataImportWizard({
       setMessage(json.error ?? "Annulation impossible.");
       return;
     }
-    setMessage("Reprise annulée.");
+    setMessage("Import annulé.");
     await loadStatus();
     router.refresh();
   }
 
   async function submitBulk(action: "preview" | "apply") {
     if (!bulkFile) {
-      setMessage("Choisissez le fichier Excel de reprise.");
+      setMessage("Choisissez le fichier Excel d'import.");
       return;
     }
 
@@ -366,7 +366,7 @@ export function DataImportWizard({
   }
 
   if (loadingStatus) {
-    return <section className="panel p-5 text-sm text-[var(--muted-foreground)]">Chargement du mode de reprise…</section>;
+    return <section className="panel p-5 text-sm text-[var(--muted-foreground)]">Chargement de l&apos;import ancien fichier…</section>;
   }
 
   return (
@@ -379,12 +379,12 @@ export function DataImportWizard({
             </div>
             <div>
               <h2 className="font-semibold text-[var(--foreground)]">
-                {status.active ? "Session de reprise ouverte" : "Mode de reprise fermé"}
+                {status.active ? "Import ancien fichier ouvert" : "Import ancien fichier fermé"}
               </h2>
               <p className="mt-1 text-sm text-[var(--muted-foreground)]">
                 {status.active
                   ? `Réservé à cet administrateur jusqu'à ${expiresLabel}.`
-                  : "Aucune donnée spéciale ne peut être importée tant que ce mode est fermé."}
+                  : "Aucune donnée d'ancien registre ne peut être importée tant que ce mode est fermé."}
               </p>
             </div>
           </div>
@@ -408,7 +408,14 @@ export function DataImportWizard({
 
       <FeedbackMessage
         message={message}
-        variant={message?.includes("réuss") || message?.includes("activée") || message?.includes("annulée") ? "success" : undefined}
+        variant={
+          message?.includes("réuss") ||
+          message?.includes("ouvert") ||
+          message?.includes("fermé") ||
+          message?.includes("annulé")
+            ? "success"
+            : undefined
+        }
       />
 
       {status.active ? (
@@ -417,7 +424,7 @@ export function DataImportWizard({
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-wider text-[var(--primary)]">Import Excel</p>
-                <h2 className="mt-1 text-lg font-semibold">Reprise en masse</h2>
+                <h2 className="mt-1 text-lg font-semibold">Import en masse</h2>
                 <p className="mt-1 max-w-3xl text-sm text-[var(--muted-foreground)]">
                   Utilisez le modèle, gardez les noms de groupes/formules tels qu&apos;ils existent dans le club, puis lancez la prévalidation avant d&apos;importer.
                 </p>
@@ -525,7 +532,7 @@ export function DataImportWizard({
           <section id="reprise-identity" className="form-section-anchor panel p-4 sm:p-6">
             <div className="mb-5">
               <p className="text-xs font-bold uppercase tracking-wider text-[var(--primary)]">1. Identité</p>
-              <h2 className="mt-1 text-lg font-semibold">Membre à reprendre</h2>
+              <h2 className="mt-1 text-lg font-semibold">Membre à importer</h2>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <label className="text-sm font-medium">Prénom *
@@ -607,14 +614,14 @@ export function DataImportWizard({
               </label>
               <label className="text-sm font-medium">Origine du règlement
                 <select className="field mt-1" value={paymentMethod} onChange={(event) => { setPaymentMethod(event.target.value); invalidatePreview(); }}>
-                  <option value="REPRISE_PAPIER">Reprise papier</option>
+                  <option value="REPRISE_PAPIER">Ancien registre papier</option>
                   <option value="CASH">Espèces</option>
                   <option value="CARD">Carte</option>
                   <option value="TRANSFER">Virement</option>
                   <option value="CHECK">Chèque</option>
                 </select>
               </label>
-              <label className="text-sm font-medium sm:col-span-2">Note de reprise *
+              <label className="text-sm font-medium sm:col-span-2">Note d&apos;import *
                 <input className="field mt-1" value={note} onChange={(event) => { setNote(event.target.value); invalidatePreview(); }} required />
               </label>
             </div>
@@ -690,7 +697,7 @@ export function DataImportWizard({
               Vérifier toutes les contraintes
             </button>
             <button type="button" disabled={busy || !preview} onClick={() => void submit("apply")} className="btn btn-primary btn-block-mobile">
-              <Upload className="size-4" /> Appliquer la reprise
+              <Upload className="size-4" /> Appliquer l&apos;import
             </button>
           </FormActions>
         </form>
@@ -698,13 +705,13 @@ export function DataImportWizard({
       ) : null}
 
       <section className="panel p-4 sm:p-5">
-        <h2 className="font-semibold">Dernières reprises</h2>
+        <h2 className="font-semibold">Derniers imports</h2>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
                 L&apos;annulation reste disponible seulement tant qu&apos;aucune nouvelle activité n&apos;est liée au membre.
         </p>
         <div className="mt-4 space-y-2">
           {status.recentImports.length === 0 ? (
-            <p className="text-sm text-[var(--muted-foreground)]">Aucune reprise enregistrée.</p>
+            <p className="text-sm text-[var(--muted-foreground)]">Aucun import enregistré.</p>
           ) : status.recentImports.map((item) => (
             <div key={item.id} className="flex flex-col gap-3 rounded-lg border border-[var(--border)] p-3 shadow-[var(--shadow-panel)] sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -713,7 +720,7 @@ export function DataImportWizard({
               </div>
               {item.canRollback && status.active ? (
                 <button type="button" disabled={busy} onClick={() => void rollback(item.id)} className="btn btn-ghost text-[var(--danger)]">
-                  <RotateCcw className="size-4" /> Annuler la reprise
+                  <RotateCcw className="size-4" /> Annuler l&apos;import
                 </button>
               ) : (
                 <span className="text-xs text-[var(--muted-foreground)]">Annulation indisponible</span>

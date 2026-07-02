@@ -44,6 +44,11 @@ export type SubscriptionRow = {
   createdAt: string;
 };
 
+type OperationalMode = "TO_COLLECT" | "TO_RENEW" | "ACTIVE" | "ALL";
+
+const RENEWAL_WINDOW_DAYS = 7;
+const LOW_SESSION_THRESHOLD = 2;
+
 function statusVariant(status: SubscriptionStatus) {
   switch (status) {
     case "ACTIVE":
@@ -79,16 +84,61 @@ function formatDate(iso: string | null) {
   return new Date(iso).toLocaleDateString("fr-FR");
 }
 
+function remainingCents(subscription: SubscriptionRow) {
+  return Math.max(0, subscription.amount - subscription.totalPaid);
+}
+
+function daysUntilEnd(subscription: SubscriptionRow) {
+  if (!subscription.endDate) return Number.POSITIVE_INFINITY;
+  const now = new Date();
+  const end = new Date(subscription.endDate);
+  return Math.ceil((end.getTime() - now.getTime()) / 86_400_000);
+}
+
+function needsRenewal(subscription: SubscriptionRow) {
+  if (subscription.status !== "ACTIVE") return false;
+  return daysUntilEnd(subscription) <= RENEWAL_WINDOW_DAYS || subscription.remainingSessions <= LOW_SESSION_THRESHOLD;
+}
+
+function chooseInitialMode(subscriptions: SubscriptionRow[]): OperationalMode {
+  if (subscriptions.some((subscription) => remainingCents(subscription) > 0)) return "TO_COLLECT";
+  if (subscriptions.some(needsRenewal)) return "TO_RENEW";
+  return "ACTIVE";
+}
+
+const OPERATIONAL_MODES: Array<{ id: OperationalMode; label: string }> = [
+  { id: "TO_COLLECT", label: "À encaisser" },
+  { id: "TO_RENEW", label: "À renouveler" },
+  { id: "ACTIVE", label: "Actifs" },
+  { id: "ALL", label: "Tous" },
+];
+
 export function SubscriptionsListClient({ subscriptions }: { subscriptions: SubscriptionRow[] }) {
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | SubscriptionStatus>("ALL");
   const [paymentFilter, setPaymentFilter] = useState<"ALL" | "PAID" | "OPEN">("ALL");
+  const [operationalMode, setOperationalMode] = useState<OperationalMode>(() => chooseInitialMode(subscriptions));
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const operationalCounts = useMemo(
+    () => ({
+      TO_COLLECT: subscriptions.filter((subscription) => remainingCents(subscription) > 0).length,
+      TO_RENEW: subscriptions.filter(needsRenewal).length,
+      ACTIVE: subscriptions.filter((subscription) => subscription.status === "ACTIVE").length,
+      ALL: subscriptions.length,
+    }),
+    [subscriptions],
+  );
 
   const filteredSubscriptions = useMemo(() => {
     const query = searchTerm.trim().toLocaleLowerCase("fr");
     return subscriptions.filter((subscription) => {
+      const matchesOperationalMode =
+        operationalMode === "ALL" ||
+        (operationalMode === "TO_COLLECT" && remainingCents(subscription) > 0) ||
+        (operationalMode === "TO_RENEW" && needsRenewal(subscription)) ||
+        (operationalMode === "ACTIVE" && subscription.status === "ACTIVE");
       const matchesSearch =
         !query ||
         subscription.memberName.toLocaleLowerCase("fr").includes(query) ||
@@ -100,20 +150,32 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
         (paymentFilter === "PAID"
           ? subscription.totalPaid >= subscription.amount
           : subscription.totalPaid < subscription.amount);
-      return matchesSearch && matchesStatus && matchesPayment;
+      return matchesOperationalMode && matchesSearch && matchesStatus && matchesPayment;
+    }).sort((a, b) => {
+      const remainingDelta = remainingCents(b) - remainingCents(a);
+      if (remainingDelta !== 0) return remainingDelta;
+      const dayDelta = daysUntilEnd(a) - daysUntilEnd(b);
+      if (dayDelta !== 0) return dayDelta;
+      return a.remainingSessions - b.remainingSessions;
     });
-  }, [paymentFilter, searchTerm, statusFilter, subscriptions]);
+  }, [operationalMode, paymentFilter, searchTerm, statusFilter, subscriptions]);
 
   const activeFilterCount = [statusFilter !== "ALL", paymentFilter !== "ALL"].filter(Boolean).length;
   const pagination = usePagination(
     filteredSubscriptions,
     20,
-    `${searchTerm}|${statusFilter}|${paymentFilter}`,
+    `${operationalMode}|${searchTerm}|${statusFilter}|${paymentFilter}`,
   );
 
   function resetFilters() {
     setStatusFilter("ALL");
     setPaymentFilter("ALL");
+  }
+
+  function resetAll() {
+    setSearchTerm("");
+    resetFilters();
+    setOperationalMode(chooseInitialMode(subscriptions));
   }
 
   function toggle(id: string) {
@@ -122,6 +184,29 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
 
   return (
     <>
+    <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
+      {OPERATIONAL_MODES.map((mode) => {
+        const active = mode.id === operationalMode;
+        return (
+          <button
+            key={mode.id}
+            type="button"
+            onClick={() => setOperationalMode(mode.id)}
+            className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-semibold transition ${
+              active
+                ? "border-[var(--primary)] bg-[var(--primary)] text-white"
+                : "border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)] hover:border-[var(--primary)]/35"
+            }`}
+            aria-pressed={active}
+          >
+            {mode.label}
+            <span className={`rounded-full px-1.5 py-0.5 text-[0.65rem] ${active ? "bg-white/18 text-white" : "bg-[var(--surface)] text-[var(--muted-foreground)]"}`}>
+              {operationalCounts[mode.id]}
+            </span>
+          </button>
+        );
+      })}
+    </div>
     <div className="list-toolbar sticky top-[57px] z-20 -mx-2 mb-4 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[3.5rem]">
       <div className="flex flex-col gap-2 md:flex-row md:items-end">
         <div className="min-w-0 flex-1">
@@ -181,7 +266,7 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
           subscriptions.length === 0 ? (
             <Link href="/subscriptions/new" className="btn btn-primary">Créer un abonnement</Link>
           ) : (
-            <button type="button" onClick={() => { setSearchTerm(""); resetFilters(); }} className="btn btn-ghost">
+            <button type="button" onClick={resetAll} className="btn btn-ghost">
               Réinitialiser
             </button>
           )

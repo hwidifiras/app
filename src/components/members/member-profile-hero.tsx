@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Banknote, Phone, Mail, User, UserPlus, UsersRound } from "lucide-react";
+import { Archive, Banknote, CreditCard, Phone, Mail, User, UsersRound } from "lucide-react";
 
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getMemberAvatarStyle, getMemberInitials } from "@/lib/member-avatar";
@@ -21,6 +21,9 @@ type MemberProfileHeroProps = {
   totalDebtCents: number;
   activeSubscriptionsCount: number;
   activeGroupsCount: number;
+  activeSubscriptionLabel: string;
+  remainingSessionsLabel: string;
+  lastAttendanceLabel: string;
 };
 
 function memberTypeLabel(value: MemberProfileHeroProps["member"]["memberType"]) {
@@ -34,6 +37,9 @@ export function MemberProfileHero({
   totalDebtCents,
   activeSubscriptionsCount,
   activeGroupsCount,
+  activeSubscriptionLabel,
+  remainingSessionsLabel,
+  lastAttendanceLabel,
 }: MemberProfileHeroProps) {
   const initials = getMemberInitials(member.firstName, member.lastName);
   const avatarStyle = getMemberAvatarStyle(member.id);
@@ -85,6 +91,27 @@ export function MemberProfileHero({
               ) : null}
             </div>
 
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2">
+                <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Solde</p>
+                <p className={`mt-1 text-sm font-bold ${totalDebtCents > 0 ? "text-[var(--warning)]" : "text-[var(--success)]"}`}>
+                  {totalDebtCents > 0 ? formatMoney(totalDebtCents) : "Soldé"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2">
+                <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Abonnement</p>
+                <p className="mt-1 truncate text-sm font-bold text-[var(--foreground)]">{activeSubscriptionLabel}</p>
+              </div>
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2">
+                <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Séances</p>
+                <p className="mt-1 truncate text-sm font-bold text-[var(--foreground)]">{remainingSessionsLabel}</p>
+              </div>
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2">
+                <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Dernier pointage</p>
+                <p className="mt-1 truncate text-sm font-bold text-[var(--foreground)]">{lastAttendanceLabel}</p>
+              </div>
+            </div>
+
             <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Link
                 href={`/payments/new?memberId=${member.id}`}
@@ -97,13 +124,17 @@ export function MemberProfileHero({
               </Link>
               {member.status === "ACTIVE" ? (
                 <>
-                  <Link href={`/enrollment?memberId=${member.id}`} className="btn btn-ghost btn-block-mobile min-h-11 sm:w-auto">
-                    <UserPlus className="size-4" />
-                    Inscrire
+                  <Link href={`/subscriptions/new?memberId=${member.id}`} className="btn btn-ghost btn-block-mobile min-h-11 sm:w-auto">
+                    <CreditCard className="size-4" />
+                    Renouveler
                   </Link>
                   <Link href={`/members/${member.id}/add-to-group`} className="btn btn-ghost btn-block-mobile min-h-11 sm:w-auto">
                     <UsersRound className="size-4" />
                     Affecter
+                  </Link>
+                  <Link href="#member-danger" className="btn btn-ghost btn-block-mobile min-h-11 border-[var(--danger)]/30 text-[var(--danger)] sm:w-auto">
+                    <Archive className="size-4" />
+                    Archiver
                   </Link>
                 </>
               ) : null}
@@ -111,32 +142,15 @@ export function MemberProfileHero({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 xl:flex xl:justify-end">
-          <div className="min-w-[5.5rem] rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-center">
-            <p className="text-[0.65rem] uppercase tracking-wide text-[var(--muted-foreground)]">Abos</p>
-            <p className="text-lg font-bold text-[var(--foreground)]">{activeSubscriptionsCount}</p>
+        <div className="hidden shrink-0 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-3 text-sm xl:block">
+          <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Dossier</p>
+          <p className="mt-1 font-bold text-[var(--foreground)]">
+            {activeSubscriptionsCount} abo · {activeGroupsCount} cours
+          </p>
+          <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+            {totalDebtCents > 0 ? "Action recommandée : encaisser" : "Aucun solde à traiter"}
+          </p>
           </div>
-          <div className="min-w-[5.5rem] rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-center">
-            <p className="text-[0.65rem] uppercase tracking-wide text-[var(--muted-foreground)]">Cours</p>
-            <p className="text-lg font-bold text-[var(--foreground)]">{activeGroupsCount}</p>
-          </div>
-          <div
-            className={`min-w-[6.5rem] rounded-lg border px-3 py-2 text-center ${
-              totalDebtCents > 0
-                ? "border-[var(--warning)]/30 bg-[var(--warning)]/10"
-                : "border-[var(--border)] bg-[var(--surface-soft)]"
-            }`}
-          >
-            <p className="text-[0.65rem] uppercase tracking-wide text-[var(--muted-foreground)]">Solde</p>
-            <p
-              className={`text-lg font-bold ${
-                totalDebtCents > 0 ? "text-[var(--warning)]" : "text-[var(--success)]"
-              }`}
-            >
-              {totalDebtCents > 0 ? formatMoney(totalDebtCents) : "Soldé"}
-            </p>
-          </div>
-        </div>
       </div>
     </section>
   );

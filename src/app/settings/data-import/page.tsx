@@ -15,8 +15,8 @@ export default async function DataImportPage() {
       <main className="app-shell py-4 md:py-8">
         <PageHeader
           overline="Administration"
-          title="Reprise"
-          description="Seul un administrateur peut ouvrir une session de reprise."
+          title="Import ancien fichier"
+          description="Seul un administrateur peut ouvrir un import depuis un ancien registre."
         />
         <section className="panel p-5 text-sm text-[var(--muted-foreground)]">Accès refusé.</section>
       </main>
@@ -69,8 +69,8 @@ export default async function DataImportPage() {
     <main className="app-shell py-4 md:py-8">
       <PageHeader
         overline="Administration"
-        title="Reprise"
-        description="Reprendre l'état réel d'un adhérent actif sans recréer artificiellement un abonnement neuf."
+        title="Import ancien fichier"
+        description="Importer l'état réel d'un adhérent actif depuis un registre papier ou Excel, sans recréer artificiellement un abonnement neuf."
       />
       <div className="mx-auto w-full max-w-6xl">
         <DataImportWizard

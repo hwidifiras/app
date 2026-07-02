@@ -87,6 +87,21 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
   const activeGroups = member.groups.filter((assignment) => assignment.status === "ACTIVE");
   const inactiveGroups = member.groups.filter((assignment) => assignment.status === "INACTIVE");
   const activeSubscriptions = member.subscriptions.filter((subscription) => subscription.status === "ACTIVE");
+  const activeRemainingSessions = activeSubscriptions.reduce((sum, subscription) => sum + subscription.remainingSessions, 0);
+  const latestAttendance = member.attendances[0] ?? null;
+  const activeSubscriptionLabel =
+    activeSubscriptions.length === 0
+      ? "À renouveler"
+      : activeSubscriptions.length === 1
+        ? activeSubscriptions[0].plan.name
+        : `${activeSubscriptions.length} actifs`;
+  const remainingSessionsLabel =
+    activeSubscriptions.length === 0
+      ? "Aucun quota actif"
+      : `${activeRemainingSessions} séance${activeRemainingSessions > 1 ? "s" : ""}`;
+  const lastAttendanceLabel = latestAttendance
+    ? `${attendanceStatus(latestAttendance.status).label} · ${formatDate(latestAttendance.session.sessionDate)}`
+    : "Aucun pointage";
   const totalDebt = member.subscriptions.reduce((sum, subscription) => {
     const totalPaid = subscription.payments.reduce((acc, payment) => acc + payment.amount, 0);
     return sum + Math.max(0, subscription.amount - totalPaid);
@@ -131,6 +146,9 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
           totalDebtCents={totalDebt}
           activeSubscriptionsCount={activeSubscriptions.length}
           activeGroupsCount={activeGroups.length}
+          activeSubscriptionLabel={activeSubscriptionLabel}
+          remainingSessionsLabel={remainingSessionsLabel}
+          lastAttendanceLabel={lastAttendanceLabel}
         />
 
         <div className="grid min-w-0 items-start gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
@@ -326,11 +344,13 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                 Vérifiez le solde, puis affectez le membre au bon cours avant le prochain pointage.
               </p>
             </div>
-            <MemberDangerActions
-              memberId={member.id}
-              memberName={`${member.firstName} ${member.lastName}`}
-              status={member.status}
-            />
+            <div id="member-danger" className="scroll-mt-24">
+              <MemberDangerActions
+                memberId={member.id}
+                memberName={`${member.firstName} ${member.lastName}`}
+                status={member.status}
+              />
+            </div>
           </aside>
         </div>
       </div>

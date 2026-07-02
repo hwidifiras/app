@@ -40,7 +40,7 @@ export default async function SubscriptionPlansPage() {
       <main className="app-shell py-6">
         <div className="panel panel-soft p-6">
           <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Mode dégradé</p>
-          <h1 className="mt-2 text-2xl font-semibold text-foreground">Plans indisponibles</h1>
+          <h1 className="mt-2 text-2xl font-semibold text-foreground">Formules indisponibles</h1>
           <p className="mt-3 text-sm text-muted-foreground">
             Cette page ne peut pas charger ses données pour le moment. Revenez au tableau de bord puis contactez le
             support si le problème continue.
@@ -59,7 +59,7 @@ export default async function SubscriptionPlansPage() {
       <PageHeader
         overline="Configuration"
         title="Formules"
-        description={`${plans.length} formule${plans.length > 1 ? "s" : ""} configurée${plans.length > 1 ? "s" : ""}. Gérez les tarifs proposés aux membres.`}
+        description={`${plans.length} formule${plans.length > 1 ? "s" : ""} configurée${plans.length > 1 ? "s" : ""}. Gérez les prix, quotas et validités vendus aux membres.`}
         actions={
           <Link
             href="/subscription-plans/new"

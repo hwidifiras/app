@@ -507,67 +507,87 @@ export function EnrollmentWizard({
           </div>
           {quote.offerName && <p className="text-sm text-green-700">Offre : {quote.offerName}</p>}
           <ul className="space-y-3 text-sm">
-            {quote.lines.map((l) => (
-              <li key={l.lineIndex} className="rounded-lg border p-3">
-                <p className="font-medium">{l.memberName}</p>
-                <p>
-                  {l.groupName} — {l.planName} ({l.sportName})
-                </p>
-                <p>
-                  {formatMoney(l.finalAmountCents)}
-                  {l.discountCents > 0 && (
-                    <span className="text-green-700">
-                      {" "}
-                      (−{formatMoney(l.discountCents)} · catalogue {formatMoney(l.listPriceCents)})
-                    </span>
+            {quote.lines.map((l) => {
+              const paymentValue = lines[l.lineIndex]?.paymentCents ?? "";
+              const paymentNumber = parseFloat(paymentValue.replace(",", "."));
+              const paymentCents = Number.isFinite(paymentNumber) ? Math.round(paymentNumber * 100) : 0;
+              const balanceAfterPayment = Math.max(0, l.finalAmountCents - Math.max(0, paymentCents));
+
+              return (
+                <li key={l.lineIndex} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
+                  <p className="font-medium">{l.memberName}</p>
+                  <p className="text-[var(--muted-foreground)]">
+                    {l.groupName} — {l.planName} ({l.sportName})
+                  </p>
+                  <div className="mt-3 grid gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 sm:grid-cols-4">
+                    <div>
+                      <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Catalogue</p>
+                      <p className="mt-1 font-bold">{formatMoney(l.listPriceCents)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Remise</p>
+                      <p className={`mt-1 font-bold ${l.discountCents > 0 ? "text-[var(--success)]" : "text-[var(--muted-foreground)]"}`}>
+                        {l.discountCents > 0 ? `-${formatMoney(l.discountCents)}` : "Aucune"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">À payer</p>
+                      <p className="mt-1 font-bold text-[var(--foreground)]">{formatMoney(l.finalAmountCents)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Reste après acompte</p>
+                      <p className={`mt-1 font-bold ${balanceAfterPayment > 0 ? "text-[var(--warning)]" : "text-[var(--success)]"}`}>
+                        {formatMoney(balanceAfterPayment)}
+                      </p>
+                    </div>
+                  </div>
+                  {l.discountCents > 0 && quote.offerName && (
+                    <ReceptionInfoCard variant="success" className="mt-2">
+                      <p className="font-semibold">Offre « {quote.offerName} »</p>
+                      <p>
+                        Nouvel abonnement à {formatMoney(l.finalAmountCents)} — le paiement ci-dessous est prérempli.
+                      </p>
+                    </ReceptionInfoCard>
                   )}
-                </p>
-                {l.discountCents > 0 && quote.offerName && (
-                  <ReceptionInfoCard variant="success" className="mt-2">
-                    <p className="font-semibold">Offre « {quote.offerName} »</p>
-                    <p>
-                      Nouvel abonnement à {formatMoney(l.finalAmountCents)} — le paiement ci-dessous est prérempli.
-                    </p>
-                  </ReceptionInfoCard>
-                )}
-                {l.reusesExistingSubscription && l.discountCents === 0 && (
-                  <ReceptionInfoCard variant="warning" className="mt-2">
-                    <p className="font-semibold">Même abonnement réutilisé</p>
-                    <p>Pas de nouvelles séances — ajout d&apos;un cours ou paiement du solde uniquement.</p>
-                  </ReceptionInfoCard>
-                )}
-                {l.warnings.length > 0 && (
-                  <p className="mt-1 text-xs text-red-600">{l.warnings.join(" • ")}</p>
-                )}
-                {l.blocked && (
-                  <p className="mt-1 text-xs font-medium text-red-600">Cette ligne est bloquée.</p>
-                )}
-                <label className="mt-2 block text-sm">
-                  <span className="font-medium">
-                    {l.reusesExistingSubscription ? "Paiement complémentaire (TND)" : "Paiement initial (TND)"}
-                  </span>
-                  <span className="mt-0.5 block text-xs text-[var(--muted-foreground)]">
-                    Max {formatMoney(l.finalAmountCents)} pour cette période
-                  </span>
-                  <FieldControl suffix={MONEY_INPUT_SUFFIX} className="mt-1">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      className="field pr-10"
-                      value={lines[l.lineIndex]?.paymentCents ?? ""}
-                      onChange={(e) => {
-                        setMessage(null);
-                        setLines((prev) =>
-                          prev.map((row, i) =>
-                            i === l.lineIndex ? { ...row, paymentCents: e.target.value } : row,
-                          ),
-                        );
-                      }}
-                    />
-                  </FieldControl>
-                </label>
-              </li>
-            ))}
+                  {l.reusesExistingSubscription && l.discountCents === 0 && (
+                    <ReceptionInfoCard variant="warning" className="mt-2">
+                      <p className="font-semibold">Même abonnement réutilisé</p>
+                      <p>Pas de nouvelles séances — ajout d&apos;un cours ou paiement du solde uniquement.</p>
+                    </ReceptionInfoCard>
+                  )}
+                  {l.warnings.length > 0 && (
+                    <p className="mt-1 text-xs text-red-600">{l.warnings.join(" • ")}</p>
+                  )}
+                  {l.blocked && (
+                    <p className="mt-1 text-xs font-medium text-red-600">Cette ligne est bloquée.</p>
+                  )}
+                  <label className="mt-2 block text-sm">
+                    <span className="font-medium">
+                      {l.reusesExistingSubscription ? "Paiement complémentaire (TND)" : "Paiement initial (TND)"}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-[var(--muted-foreground)]">
+                      Max {formatMoney(l.finalAmountCents)} pour cette période
+                    </span>
+                    <FieldControl suffix={MONEY_INPUT_SUFFIX} className="mt-1">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        className="field pr-10"
+                        value={paymentValue}
+                        onChange={(e) => {
+                          setMessage(null);
+                          setLines((prev) =>
+                            prev.map((row, i) =>
+                              i === l.lineIndex ? { ...row, paymentCents: e.target.value } : row,
+                            ),
+                          );
+                        }}
+                      />
+                    </FieldControl>
+                  </label>
+                </li>
+              );
+            })}
           </ul>
           <p className="text-lg font-semibold">Total : {formatMoney(quote.totalFinalCents)}</p>
           {quote.warnings.length > 0 && (

@@ -77,7 +77,7 @@ export const clubConfigSection: NavSection = {
     { href: "/groups", label: "Cours", icon: CalendarDays },
     { href: "/subscription-plans", label: "Formules", icon: ClipboardCheck },
     { href: "/offers", label: "Offres", icon: CreditCard },
-    { href: "/settings/data-import", label: "Reprise", icon: Import },
+    { href: "/settings/data-import", label: "Import ancien fichier", icon: Import },
   ],
 };
 

@@ -34,7 +34,7 @@ export default async function SettingsClubPage() {
       <PageHeader
         overline="Configuration"
         title="Club"
-        description="Personnaliser l'identité du club et les règles appliquées à la réception."
+        description="Personnaliser logo, coordonnées et règles de pointage utilisées par la réception."
       />
 
       <div className="mx-auto w-full max-w-5xl">

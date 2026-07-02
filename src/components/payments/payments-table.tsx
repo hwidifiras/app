@@ -114,8 +114,8 @@ function PaymentInstallmentStatus({ status }: { status: string }) {
 }
 
 function ledgerTypeLabel(entryType: PaymentGroup["payments"][number]["entryType"]) {
-  if (entryType === "CORRECTION") return "Correction";
-  if (entryType === "REVERSAL") return "Annulation";
+  if (entryType === "CORRECTION") return "Correction avec motif";
+  if (entryType === "REVERSAL") return "Annulation traçable";
   return "Paiement";
 }
 

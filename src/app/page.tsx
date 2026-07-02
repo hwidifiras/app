@@ -468,12 +468,12 @@ function CashRegisterPanel({
 
         {methodStats.length === 0 ? (
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs">
-            <span className="font-semibold uppercase tracking-[0.12em] text-[#64748B]">Par moyen</span>
+            <span className="font-semibold uppercase tracking-[0.12em] text-[#64748B]">Par mode</span>
             <span className="text-[#64748B]">Aucun mouvement aujourd&apos;hui</span>
           </div>
         ) : (
           <div className="mt-3 rounded-lg border border-[#E2E8F0] p-3">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-[#64748B]">Par moyen</p>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-[#64748B]">Par mode</p>
             <div className="space-y-3">
               {methodStats.map((stat) => {
                 const tone = dashboardToneStyles[stat.amount < 0 ? "red" : stat.tone];
@@ -1046,69 +1046,70 @@ export default async function Home() {
           </div>
         ) : null}
 
-        <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.8fr)]">
+        <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(24rem,0.85fr)]">
           <TodayWorkPanel todaySessions={todaySessions} priorityItems={priorityItems} />
-          <CashRegisterPanel
-            totalToday={revenueToday}
-            paymentCountToday={paymentCountToday}
-            averagePaymentToday={averagePaymentToday}
-            weekTotal={revenueWeek}
-            monthTotal={revenueMonth}
-            methodStats={cashMethodStats}
-            correctionsToday={correctionsToday}
-            reversalsToday={reversalsToday}
-          />
+          <div className="grid min-w-0 gap-4">
+            <CashRegisterPanel
+              totalToday={revenueToday}
+              paymentCountToday={paymentCountToday}
+              averagePaymentToday={averagePaymentToday}
+              weekTotal={revenueWeek}
+              monthTotal={revenueMonth}
+              methodStats={cashMethodStats}
+              correctionsToday={correctionsToday}
+              reversalsToday={reversalsToday}
+            />
+            <CashTrendPanel trend={cashTrend} weekTotal={revenueWeek} />
+          </div>
         </section>
 
         <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.8fr)]">
-          <CashTrendPanel trend={cashTrend} weekTotal={revenueWeek} />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2" aria-label="Repères du club">
+            <DashboardMetricCard
+              metric={{
+                label: "Présences",
+                value: attendanceToday,
+                hint: `${sessionsToday} séance${sessionsToday > 1 ? "s" : ""} aujourd'hui`,
+                href: "/attendance/today",
+                icon: BadgeCheck,
+                tone: "blue",
+              }}
+            />
+            <DashboardMetricCard
+              metric={{
+                label: "Échéances 7 jours",
+                value: finance.expiringIn7Days,
+                hint: "Abonnements à surveiller",
+                href: "/subscriptions",
+                icon: CalendarClock,
+                tone: finance.expiringIn7Days > 0 ? "amber" : "green",
+              }}
+            />
+            <DashboardMetricCard
+              metric={{
+                label: "Recouvrement",
+                value: finance.collectionRatePercent === null ? "—" : `${finance.collectionRatePercent} %`,
+                hint:
+                  finance.totalOutstandingCents > 0
+                    ? `${formatMoney(finance.totalOutstandingCents)} à encaisser`
+                    : `${finance.activeSubscriptionsCount} abonnement${finance.activeSubscriptionsCount > 1 ? "s" : ""} actif${finance.activeSubscriptionsCount > 1 ? "s" : ""}`,
+                href: "/subscriptions",
+                icon: ClipboardCheck,
+                tone: finance.totalOutstandingCents > 0 ? "amber" : "green",
+              }}
+            />
+            <DashboardMetricCard
+              metric={{
+                label: "Impayés détaillés",
+                value: debts.length > 0 ? debts.length : "Aucun",
+                hint: debts.length > 0 ? "Dossiers à relancer" : "Masqué si rien à suivre",
+                href: "/subscriptions",
+                icon: ReceiptText,
+                tone: debts.length > 0 ? "red" : "green",
+              }}
+            />
+          </div>
           <RecentCashMovementsPanel movements={recentCashMovements} />
-        </section>
-
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Repères du club">
-          <DashboardMetricCard
-            metric={{
-              label: "Présences",
-              value: attendanceToday,
-              hint: `${sessionsToday} séance${sessionsToday > 1 ? "s" : ""} aujourd'hui`,
-              href: "/attendance/today",
-              icon: BadgeCheck,
-              tone: "blue",
-            }}
-          />
-          <DashboardMetricCard
-            metric={{
-              label: "Échéances 7 jours",
-              value: finance.expiringIn7Days,
-              hint: "Abonnements à surveiller",
-              href: "/subscriptions",
-              icon: CalendarClock,
-              tone: finance.expiringIn7Days > 0 ? "amber" : "green",
-            }}
-          />
-          <DashboardMetricCard
-            metric={{
-              label: "Recouvrement",
-              value: finance.collectionRatePercent === null ? "—" : `${finance.collectionRatePercent} %`,
-              hint:
-                finance.totalOutstandingCents > 0
-                  ? `${formatMoney(finance.totalOutstandingCents)} à encaisser`
-                  : `${finance.activeSubscriptionsCount} abonnement${finance.activeSubscriptionsCount > 1 ? "s" : ""} actif${finance.activeSubscriptionsCount > 1 ? "s" : ""}`,
-              href: "/subscriptions",
-              icon: ClipboardCheck,
-              tone: finance.totalOutstandingCents > 0 ? "amber" : "green",
-            }}
-          />
-          <DashboardMetricCard
-            metric={{
-              label: "Impayés détaillés",
-              value: debts.length > 0 ? debts.length : "Aucun",
-              hint: debts.length > 0 ? "Dossiers à relancer" : "Masqué si rien à suivre",
-              href: "/subscriptions",
-              icon: ReceiptText,
-              tone: debts.length > 0 ? "red" : "green",
-            }}
-          />
         </section>
 
         {debts.length > 0 ? (

@@ -284,6 +284,9 @@ export function PaymentAddForm({
                     <span className="text-[var(--muted-foreground)]">Reste à encaisser</span>
                     <strong className="tabular-nums text-[var(--danger)]">{formatMoney(remaining)}</strong>
                   </div>
+                  <a href="#payment-amount" className="btn btn-primary btn-block-mobile mt-2 min-h-11">
+                    Saisir le montant
+                  </a>
                 </div>
               ) : null}
 

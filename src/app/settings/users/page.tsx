@@ -53,7 +53,7 @@ export default async function SettingsUsersPage() {
       <PageHeader
         overline="Administration"
         title="Utilisateurs"
-        description="Créer, activer et réinitialiser les comptes du staff."
+        description="Créer les accès Admin, Réception et Coach, puis limiter chaque compte aux écrans utiles."
         actions={
           <Link href="#user-create" className="btn btn-primary btn-block-mobile">
             <Plus className="size-4" /> Ajouter un utilisateur

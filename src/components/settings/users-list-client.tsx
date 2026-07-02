@@ -20,6 +20,17 @@ export type UserRow = {
   permissions: { key: string }[];
 };
 
+function roleIntentLabel(user: UserRow) {
+  if (user.role === "ADMIN") return "Admin";
+  const permissions = parsePermissions(user.permissions.map((permission) => permission.key));
+  const hasReceptionWork =
+    permissions.includes("members.manage") ||
+    permissions.includes("enrollment.manage") ||
+    permissions.includes("payments.manage");
+
+  return hasReceptionWork ? "Réception" : "Coach";
+}
+
 export function UsersListClient({
   users,
   currentUserId,
@@ -101,6 +112,7 @@ export function UsersListClient({
         const isEditing = editingId === u.id;
         const isSelf = u.id === currentUserId;
         const permKeys = u.permissions.map((p) => p.key);
+        const roleIntent = roleIntentLabel(u);
         const rightsLabel =
           u.role === "ADMIN"
             ? "Tous les droits"
@@ -158,7 +170,7 @@ export function UsersListClient({
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     <StatusBadge variant={u.role === "ADMIN" ? "info" : "muted"}>
-                      {u.role === "ADMIN" ? "Admin" : "Staff"}
+                      {roleIntent}
                     </StatusBadge>
                     <StatusBadge variant={u.isActive ? "success" : "warning"}>
                       {u.isActive ? "Actif" : "Désactivé"}

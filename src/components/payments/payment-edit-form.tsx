@@ -139,9 +139,9 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
       <FormSectionNav
         items={[
           { href: "#payment-original", label: "Original" },
-          { href: "#payment-correction", label: "Correction" },
+          { href: "#payment-correction", label: "Correction avec motif" },
           { href: "#payment-impact", label: "Impact" },
-          { href: "#payment-reversal", label: "Annulation" },
+          { href: "#payment-reversal", label: "Annulation traçable" },
         ]}
       />
 
@@ -150,7 +150,7 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
           <FormSection
             id="payment-original"
             title="Paiement original"
-            description="Le paiement d'origine reste visible. Une correction ajoute une nouvelle ligne au grand livre."
+            description="Paiement original conservé. Une correction avec motif ajoute une ligne traçable."
           >
             <dl className="grid gap-3 text-sm sm:grid-cols-2">
               <div>
@@ -175,10 +175,10 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
           </FormSection>
 
           {!canMutate && (
-            <FeedbackMessage message="Cette ligne est déjà une correction ou une annulation. Seul le paiement original peut être corrigé." />
+            <FeedbackMessage message="Cette ligne est déjà une correction ou une annulation traçable. Seul le paiement original peut être corrigé." />
           )}
 
-          <FormSection id="payment-correction" title="Correction tracée" description="Saisissez le nouveau montant et le motif visible dans l'audit.">
+          <FormSection id="payment-correction" title="Correction avec motif" description="Saisissez le nouveau montant et la raison visible dans le journal d'actions.">
             <FormGrid>
               <FormField label="Nouveau montant (TND) *" htmlFor="amount">
                 <FieldControl suffix={MONEY_INPUT_SUFFIX}>
@@ -255,8 +255,8 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
 
         <aside id="payment-impact" className="form-section-anchor lg:sticky lg:top-20 lg:col-span-4">
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
-            <p className="text-sm font-semibold">Impact grand livre</p>
-            <p className="text-xs text-[var(--muted-foreground)]">Correction sans perte d&apos;historique</p>
+            <p className="text-sm font-semibold">Impact sur le solde</p>
+            <p className="text-xs text-[var(--muted-foreground)]">Paiement original conservé</p>
             <dl className="mt-4 divide-y divide-[var(--border)] text-sm">
               <div className="flex items-start justify-between gap-3 py-2.5">
                 <dt className="text-[var(--muted-foreground)]">Paiement original</dt>
@@ -280,7 +280,7 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
               </div>
             </dl>
             <p className="mt-3 rounded-lg bg-[var(--surface-soft)] px-3 py-2 text-xs leading-relaxed text-[var(--muted-foreground)]">
-              Le système crée une ligne de correction signée. Le paiement initial n&apos;est jamais supprimé.
+              Le système ajoute une correction avec motif. Le paiement initial n&apos;est jamais supprimé.
             </p>
           </div>
         </aside>
@@ -311,8 +311,8 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
 
       <FormSection
         id="payment-reversal"
-        title="Annulation"
-        description="L'annulation garde le paiement original et ajoute une ligne de reversal au grand livre."
+        title="Annulation traçable"
+        description="L'annulation garde le paiement original et ajoute une ligne avec motif."
         className="border-[var(--danger)]/25"
       >
         <div className="mt-3 space-y-1.5">
@@ -346,7 +346,7 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
       <ConfirmDialog
         open={deleteOpen}
         title="Annuler ce paiement ?"
-        description={`Une ligne d'annulation de ${formatMoney(effectiveAmount)} sera ajoutée au grand livre. Le paiement original restera visible.`}
+        description={`Une annulation traçable de ${formatMoney(effectiveAmount)} sera ajoutée. Le paiement original restera visible.`}
         confirmLabel="Annuler le paiement"
         loading={deleting}
         onCancel={() => setDeleteOpen(false)}

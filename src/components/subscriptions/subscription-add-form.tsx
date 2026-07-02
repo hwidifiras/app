@@ -25,11 +25,12 @@ type SubscriptionPreview = {
 type SubscriptionAddFormProps = {
   membersOptions: MemberOption[];
   plansOptions: PlanOption[];
+  initialMemberId?: string;
 };
 
-export function SubscriptionAddForm({ membersOptions, plansOptions }: SubscriptionAddFormProps) {
+export function SubscriptionAddForm({ membersOptions, plansOptions, initialMemberId = "" }: SubscriptionAddFormProps) {
   const router = useRouter();
-  const [memberId, setMemberId] = useState("");
+  const [memberId, setMemberId] = useState(initialMemberId);
   const [planId, setPlanId] = useState("");
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [endDate, setEndDate] = useState("");
@@ -37,7 +38,7 @@ export function SubscriptionAddForm({ membersOptions, plansOptions }: Subscripti
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [carryOverRemainingSessions, setCarryOverRemainingSessions] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(Boolean(initialMemberId));
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [preview, setPreview] = useState<SubscriptionPreview | null>(null);
   const [message, setMessage] = useState<string | null>(null);

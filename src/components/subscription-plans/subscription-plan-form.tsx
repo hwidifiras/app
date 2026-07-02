@@ -112,8 +112,8 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
   return (
     <form onSubmit={onSubmit} className="space-y-5 pb-4 lg:pb-0">
       <ReceptionInfoCard title="Formules" variant="info">
-        Une formule fixe le prix, le quota de séances ({computedTotalSessions || 0} avec {sessionsPerWeek || 0}/sem.) et la validité.
-        Pour 2 mois, préférez une formule 2 mois plutôt qu&apos;un double paiement.
+        Une formule fixe ce que le membre achète : prix, quota de séances ({computedTotalSessions || 0} avec {sessionsPerWeek || 0}/sem.) et validité.
+        Pour 2 mois, créez une formule 2 mois plutôt qu&apos;un double paiement.
       </ReceptionInfoCard>
 
       <FormSectionNav
@@ -194,7 +194,7 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
           Annuler
         </button>
         <button type="submit" disabled={loading} className="btn btn-primary btn-block-mobile">
-          {loading ? "Enregistrement..." : mode === "create" ? "Créer formule" : "Enregistrer les modifications"}
+          {loading ? "Enregistrement..." : mode === "create" ? "Créer la formule" : "Enregistrer les modifications"}
         </button>
       </FormActions>
     </form>

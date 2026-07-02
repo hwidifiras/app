@@ -7,7 +7,12 @@ import { SubscriptionAddForm } from "@/components/subscriptions/subscription-add
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function NewSubscriptionPage() {
+export default async function NewSubscriptionPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ memberId?: string }>;
+}) {
+  const { memberId: requestedMemberId } = await searchParams;
   let hasError = false;
   let membersOptions: Array<{ id: string; firstName: string; lastName: string; phone: string }> = [];
   let plansOptions: Array<{ id: string; name: string; price: number; totalSessions: number; validityDays: number }> = [];
@@ -65,7 +70,11 @@ export default async function NewSubscriptionPage() {
         description="Créer un nouvel abonnement sans perdre l'historique du membre."
       />
 
-      <SubscriptionAddForm membersOptions={membersOptions} plansOptions={plansOptions} />
+      <SubscriptionAddForm
+        membersOptions={membersOptions}
+        plansOptions={plansOptions}
+        initialMemberId={membersOptions.some((member) => member.id === requestedMemberId) ? requestedMemberId : ""}
+      />
     </main>
   );
 }

@@ -120,9 +120,9 @@ export default async function PaymentsPage() {
 
         let status: string;
         if (p.entryType === "REVERSAL") {
-          status = `Annulation — reste : ${formatMoney(remainingAfter)}`;
+          status = `Annulation traçable — reste : ${formatMoney(remainingAfter)}`;
         } else if (p.entryType === "CORRECTION") {
-          status = `Correction — reste : ${formatMoney(remainingAfter)}`;
+          status = `Correction avec motif — reste : ${formatMoney(remainingAfter)}`;
         } else if (isSingle && remainingAfter === 0) {
           status = "Paiement complet";
         } else if (isFirst) {

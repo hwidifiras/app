@@ -94,6 +94,93 @@ function coachIsQualifiedForSport(
   return coach.qualifiedSportIds.includes(sportId);
 }
 
+function getWeekDays(weekStartIso: string) {
+  const start = new Date(`${weekStartIso}T12:00:00.000Z`);
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(start);
+    date.setUTCDate(start.getUTCDate() + index);
+
+    return {
+      key: formatUtcDateOnlyIso(date),
+      dayIndex: date.getUTCDay(),
+      label: date.toLocaleDateString("fr-FR", { weekday: "short" }),
+      dateLabel: date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }),
+    };
+  });
+}
+
+function SessionTile({
+  item,
+  onEdit,
+  onCancel,
+}: {
+  item: SessionDto;
+  onEdit: (session: SessionDto) => void;
+  onCancel: (session: SessionDto) => void;
+}) {
+  const displayedStatus = displayedSessionStatus(item);
+  const canCancel = (item.attendanceCount ?? 0) === 0 && item.status !== "CANCELLED";
+
+  return (
+    <li className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 shadow-sm">
+      <div className="flex h-full min-w-0 flex-col gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <p className="rounded-md bg-[var(--surface-soft)] px-2 py-1 text-xs font-bold text-[var(--foreground)]">
+              {item.startTime} - {item.endTime}
+            </p>
+            <StatusBadge variant={displayedStatus.variant}>{displayedStatus.label}</StatusBadge>
+          </div>
+          <p className="mt-2 truncate text-sm font-semibold text-[var(--foreground)]">{item.groupName}</p>
+          <p className="text-xs text-[var(--muted-foreground)]">Coach: {item.coachName ?? "-"}</p>
+          <p className="text-xs text-[var(--muted-foreground)]">Salle: {formatRoomLabel(item.room)}</p>
+          {item.exceptionReason ? (
+            <p className="mt-1 text-xs text-[var(--danger)]">Motif: {item.exceptionReason}</p>
+          ) : null}
+        </div>
+
+        <div className="mt-auto grid min-w-0 grid-cols-2 gap-1">
+          {item.operationalStatus === "NEEDS_FINALIZATION" ? (
+            <>
+              <Link href={`/attendance/today?sessionId=${item.id}`} className="btn btn-primary btn-sm min-w-0">
+                <AlertTriangle className="size-3.5" />
+                Finaliser
+              </Link>
+              <button type="button" onClick={() => onEdit(item)} className="btn btn-ghost btn-sm min-w-0">
+                Modifier
+              </button>
+            </>
+          ) : item.status === "COMPLETED" ? (
+            <Link href={`/attendance/today?sessionId=${item.id}`} className="btn btn-ghost btn-sm col-span-2 min-w-0">
+              Consulter
+            </Link>
+          ) : (
+            <button type="button" onClick={() => onEdit(item)} className="btn btn-ghost btn-sm col-span-2 min-w-0">
+              Modifier
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => onCancel(item)}
+            disabled={!canCancel}
+            title={
+              item.status === "CANCELLED"
+                ? "Séance déjà annulée"
+                : !canCancel
+                  ? "Annulez les pointages depuis le pointage du jour avant d'annuler la séance"
+                  : undefined
+            }
+            className="btn btn-ghost btn-sm col-span-2 min-w-0 border-[var(--danger)]/30 text-[var(--danger)] disabled:opacity-50"
+          >
+            Annuler
+          </button>
+        </div>
+      </div>
+    </li>
+  );
+}
+
 export function SessionsPlanner({
   initialSessions,
   initialWeekStart,
@@ -443,6 +530,32 @@ export function SessionsPlanner({
     });
   }, [dayFilter, searchTerm, sessions, statusFilter]);
 
+  const weekDays = useMemo(() => getWeekDays(weekStart), [weekStart]);
+  const visibleWeekDays = useMemo(
+    () => weekDays.filter((day) => dayFilter === "ALL" || String(day.dayIndex) === dayFilter),
+    [dayFilter, weekDays],
+  );
+  const sessionsByDate = useMemo(() => {
+    const map = new Map<string, SessionDto[]>();
+
+    for (const day of visibleWeekDays) {
+      map.set(day.key, []);
+    }
+
+    for (const item of filteredSessions) {
+      const key = formatUtcDateOnlyIso(new Date(item.sessionDate));
+      const current = map.get(key) ?? [];
+      current.push(item);
+      map.set(key, current);
+    }
+
+    for (const daySessions of map.values()) {
+      daySessions.sort((a, b) => a.startTime.localeCompare(b.startTime));
+    }
+
+    return map;
+  }, [filteredSessions, visibleWeekDays]);
+
   const sessionsByDay = useMemo(() => {
     const map = new Map<string, SessionDto[]>();
 
@@ -453,7 +566,10 @@ export function SessionsPlanner({
       map.set(key, current);
     }
 
-    return Array.from(map.entries()).sort(([a], [b]) => (a < b ? -1 : 1));
+    return Array.from(map.entries()).sort(([a], [b]) => (a < b ? -1 : 1)).map(([key, daySessions]) => [
+      key,
+      daySessions.sort((a, b) => a.startTime.localeCompare(b.startTime)),
+    ] as const);
   }, [filteredSessions]);
 
   const activeFilterCount = [
@@ -551,12 +667,42 @@ export function SessionsPlanner({
           </div>
         ) : null}
 
-        <div className="mt-5 space-y-4">
+        <div className="mt-5">
+          {filteredSessions.length > 0 ? (
+            <div className="hidden gap-2 lg:grid lg:grid-cols-7">
+              {visibleWeekDays.map((day) => {
+                const daySessions = sessionsByDate.get(day.key) ?? [];
+
+                return (
+                  <section key={day.key} className="min-w-0 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] p-2 shadow-[var(--shadow-panel)]">
+                    <div className="rounded-md bg-[var(--surface-soft)] px-2 py-2">
+                      <p className="text-xs font-bold capitalize text-[var(--foreground)]">{day.label}</p>
+                      <p className="text-[0.7rem] text-[var(--muted-foreground)]">{day.dateLabel}</p>
+                    </div>
+
+                    {daySessions.length > 0 ? (
+                      <ul className="mt-2 space-y-2">
+                        {daySessions.map((item) => (
+                          <SessionTile key={item.id} item={item} onEdit={openEdit} onCancel={setPendingDeleteSession} />
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="mt-2 rounded-lg border border-dashed border-[var(--border)] px-2 py-6 text-center text-xs text-[var(--muted-foreground)]">
+                        Aucun cours
+                      </div>
+                    )}
+                  </section>
+                );
+              })}
+            </div>
+          ) : null}
+
+          <div className="space-y-4 lg:hidden">
           {sessionsByDay.map(([dayKey, daySessions]) => (
             <section key={dayKey} className="rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] p-3.5 shadow-[var(--shadow-panel)] sm:p-4">
               <h3 className="text-sm font-semibold capitalize text-[var(--foreground)]">{formatDateFr(`${dayKey}T00:00:00`)}</h3>
 
-              <ul className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+              <ul className="mt-3 grid gap-2">
                 {daySessions.map((item) => (
                   <li key={item.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
                     <div className="flex h-full flex-col gap-3">
@@ -623,6 +769,7 @@ export function SessionsPlanner({
               </ul>
             </section>
           ))}
+          </div>
 
           {sessionsByDay.length === 0 ? (
             <EmptyState
