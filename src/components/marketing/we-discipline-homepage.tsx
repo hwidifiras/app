@@ -13,7 +13,6 @@ import {
   CheckCircle2,
   ChevronDown,
   CircleDollarSign,
-  Clock3,
   CreditCard,
   Globe2,
   Mail,
@@ -373,151 +372,6 @@ function AnimatedCounter({ value, suffix }: { value: number; suffix: string }) {
   );
 }
 
-function DashboardMockup({ compact = false }: { compact?: boolean }) {
-  const rows = [
-    { name: "Lina Martin", belt: "Bleue", age: 12, attendance: "93%" },
-    { name: "Adam Benali", belt: "Jaune", age: 10, attendance: "88%" },
-    { name: "Noé Laurent", belt: "Verte", age: 14, attendance: "95%" },
-    { name: "Camille Dubois", belt: "Blanche", age: 8, attendance: "85%" },
-  ];
-  const topStats = compact
-    ? [
-        { label: "Membres", value: "187", icon: Users, change: "+12 ce mois" },
-        { label: "Présence", value: "92%", icon: CalendarCheck, change: "+4% semaine" },
-        { label: "CA", value: "18,4k€", icon: CircleDollarSign, change: "+14% ce mois" },
-      ]
-    : dashboardStats.slice(0, 3);
-
-  return (
-    <div
-      className={cn(
-        "overflow-hidden rounded-lg border border-slate-200 bg-white text-[#111827] shadow-[0_28px_80px_rgba(15,23,42,0.22)]",
-        compact ? "w-[min(100%,30rem)]" : "w-full",
-      )}
-    >
-      <div className={cn("flex", compact ? "min-h-[17rem]" : "min-h-[21rem]")}>
-        <aside className={cn("hidden shrink-0 bg-[#0B1220] text-white sm:block", compact ? "w-24 p-3" : "w-36 p-4")}>
-          <Link href="/accueil" className={cn("relative block", compact ? "h-6 w-16" : "h-8 w-24")} aria-label="Accueil We Discipline">
-            <Image
-              src="/we-discipline/navbar-logo.svg"
-              alt="We Discipline"
-              fill
-              sizes={compact ? "64px" : "96px"}
-              className="object-contain object-left"
-              unoptimized
-            />
-          </Link>
-          <nav className={cn("space-y-1 font-semibold text-slate-400", compact ? "mt-4 text-[0.65rem]" : "mt-5 text-[0.7rem]")}>
-            {(compact ? ["Vue", "Élèves", "Présences", "Grades", "Paiements"] : ["Vue globale", "Élèves", "Présences", "Cours", "Grades", "Paiements"]).map((item, index) => (
-              <div
-                key={item}
-                className={cn(
-                  "flex items-center gap-2 rounded-md px-2 py-2",
-                  index === 1 ? "bg-[#2563EB] text-white" : "hover:bg-white/5",
-                )}
-              >
-                <span className="size-1.5 rounded-full bg-current" />
-                {item}
-              </div>
-            ))}
-          </nav>
-        </aside>
-        <div className={cn("min-w-0 flex-1", compact ? "p-3" : "p-4 sm:p-5")}>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className={cn("font-bold uppercase tracking-[0.16em] text-[#2563EB]", compact ? "text-[0.68rem]" : "text-xs")}>Tableau de bord</p>
-              <h3 className={cn("mt-1 font-black", compact ? "text-lg" : "text-xl")}>{compact ? "Dojo central" : "Académie principale"}</h3>
-            </div>
-            <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
-              <Clock3 className="size-3.5" aria-hidden="true" />
-              Aujourd’hui
-            </div>
-          </div>
-
-          <div className={cn("grid sm:grid-cols-3", compact ? "mt-4 gap-2" : "mt-5 gap-3")}>
-            {topStats.map((stat) => {
-              const Icon = stat.icon;
-              return (
-                <div key={stat.label} className={cn("rounded-md border border-slate-200 bg-white shadow-sm", compact ? "p-2.5" : "p-3")}>
-                  <div className="flex items-center justify-between">
-                    <p className={cn("font-bold uppercase text-slate-500", compact ? "text-[0.58rem] tracking-[0.08em]" : "text-[0.68rem] tracking-[0.12em]")}>{stat.label}</p>
-                    <Icon className="size-4 text-[#2563EB]" aria-hidden="true" />
-                  </div>
-                  <p className={cn("mt-2 font-black", compact ? "text-xl" : "text-2xl")}>{stat.value}</p>
-                  <p className="mt-1 text-xs font-semibold text-[#10B981]">{stat.change}</p>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className={cn("grid", compact ? "mt-4 grid-cols-[0.9fr_1.1fr] gap-3" : "mt-5 gap-4 lg:grid-cols-[0.8fr_1.2fr]")}>
-            <div className={cn("rounded-md border border-slate-200 bg-slate-50", compact ? "p-3" : "p-4")}>
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-black">Progression</p>
-                <span className="text-xs font-bold text-slate-500">187 élèves</span>
-              </div>
-              <div className={cn("mt-4 rounded-full bg-[conic-gradient(#2563EB_0_26%,#FACC15_26%_44%,#FB923C_44%_61%,#22C55E_61%_76%,#7C4A2D_76%_88%,#111827_88%_100%)]", compact ? "mx-auto size-28 p-3" : "aspect-square p-4")}>
-                <div className="flex h-full flex-col items-center justify-center rounded-full bg-white">
-                  <span className={cn("font-black", compact ? "text-2xl" : "text-3xl")}>187</span>
-                  <span className="text-xs font-bold text-slate-500">élèves</span>
-                </div>
-              </div>
-            </div>
-
-            {compact ? (
-              <div className="rounded-md border border-slate-200 bg-white p-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-black">Priorités</p>
-                  <span className="rounded-full bg-[#10B981]/10 px-2 py-1 text-[0.65rem] font-black text-[#047857]">Aujourd’hui</span>
-                </div>
-                <div className="mt-3 space-y-2 text-xs font-semibold text-slate-600">
-                  <div className="flex items-center justify-between gap-3">
-                    <span>Relances impayées</span>
-                    <span className="font-black text-[#111827]">12</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span>Cours à préparer</span>
-                    <span className="font-black text-[#111827]">6</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span>Élèves prêts au grade</span>
-                    <span className="font-black text-[#111827]">18</span>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-md border border-slate-200">
-                <div className="grid grid-cols-[1.4fr_0.7fr_0.6fr] bg-slate-50 px-3 py-2 text-[0.68rem] font-bold uppercase tracking-[0.12em] text-slate-500 sm:grid-cols-[1.5fr_0.8fr_0.6fr_1fr]">
-                  <span>Élève</span>
-                  <span>Ceinture</span>
-                  <span>Âge</span>
-                  <span className="hidden sm:block">Présence</span>
-                </div>
-                {rows.map((row) => (
-                  <div
-                    key={row.name}
-                    className="grid grid-cols-[1.4fr_0.7fr_0.6fr] items-center border-t border-slate-100 px-3 py-3 text-xs sm:grid-cols-[1.5fr_0.8fr_0.6fr_1fr]"
-                  >
-                    <span className="font-bold">{row.name}</span>
-                    <span>{row.belt}</span>
-                    <span>{row.age}</span>
-                    <span className="hidden items-center gap-2 sm:flex">
-                      <span className="h-1.5 w-16 rounded-full bg-slate-200">
-                        <span className="block h-full rounded-full bg-[#10B981]" style={{ width: row.attendance }} />
-                      </span>
-                      {row.attendance}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
@@ -832,8 +686,15 @@ function AcademyDashboard() {
             className="relative"
           >
             <div className="absolute -inset-6 rounded-lg bg-[#2563EB]/10 blur-3xl" />
-            <div className="relative">
-              <DashboardMockup />
+            <div className="relative overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_32px_90px_rgba(15,23,42,0.18)]">
+              <Image
+                src="/we-discipline/hero-dashboard-reception.png"
+                alt="Tableau de bord We Discipline avec séances du jour, encaissements et aperçu des membres"
+                width={1536}
+                height={1024}
+                sizes="(min-width: 1024px) 58vw, 100vw"
+                className="h-auto w-full object-cover"
+              />
             </div>
           </motion.div>
         </div>
