@@ -1,4 +1,5 @@
 import { getAppName } from "@/lib/app-name";
+import { formatMoney } from "@/lib/money";
 
 export { getAppName };
 
@@ -124,17 +125,17 @@ export function buildPaymentReminderEmail(params: {
   const clubName = escapeHtml(params.clubName || appName);
   const clubPhone = escapeHtml(params.clubPhone);
   const clubAddress = escapeHtml(params.clubAddress);
-  const total = (params.totalDebtCents / 100).toFixed(2).replace(".", ",") + " €";
+  const total = formatMoney(params.totalDebtCents);
   const year = new Date().getFullYear();
 
   const lineText = params.lines
-    .map((line) => `- ${line.label} : ${(line.outstandingCents / 100).toFixed(2).replace(".", ",")} €`)
+    .map((line) => `- ${line.label} : ${formatMoney(line.outstandingCents)}`)
     .join("\n");
 
   const lineHtml = params.lines
     .map(
       (line) =>
-        `<li style="margin:0 0 8px;font-size:14px;line-height:1.5;color:#10243f;">${escapeHtml(line.label)} — <strong>${(line.outstandingCents / 100).toFixed(2).replace(".", ",")} €</strong></li>`,
+        `<li style="margin:0 0 8px;font-size:14px;line-height:1.5;color:#10243f;">${escapeHtml(line.label)} — <strong>${formatMoney(line.outstandingCents)}</strong></li>`,
     )
     .join("");
 

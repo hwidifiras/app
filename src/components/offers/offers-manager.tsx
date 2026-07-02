@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { CircleOff, Tag } from "lucide-react";
+import { CircleOff, Plus, Tag } from "lucide-react";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FieldControl } from "@/components/ui/field-control";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -15,6 +15,7 @@ import {
   formatOfferRulesSummary,
   getOfferKindLabel,
 } from "@/lib/offer-display";
+import { formatMoneyFromMajorInput, MONEY_INPUT_SUFFIX } from "@/lib/money";
 import type { OfferKind } from "@prisma/client";
 
 type OfferRow = OfferLike;
@@ -32,17 +33,26 @@ const OFFER_KIND_HELP: Record<OfferKindValue, { title: string; example: string }
   },
   FIXED_OFF: {
     title: "Montant fixe retiré",
-    example: "Exemple : -20 € sur les frais du premier mois, sans changer le quota de séances.",
+    example: "Exemple : -20 TND sur les frais du premier mois, sans changer le quota de séances.",
   },
   FAMILY_BUNDLE: {
     title: "Prix global pour plusieurs élèves",
-    example: "Exemple : deux enfants du même foyer paient 70 € au total au lieu de deux abonnements séparés.",
+    example: "Exemple : deux enfants du même foyer paient 70 TND au total au lieu de deux abonnements séparés.",
   },
   SECOND_DISCIPLINE: {
     title: "Réduction pour une discipline ajoutée",
     example: "Exemple : un élève déjà inscrit prend kick boxing et reçoit -30 % sur la deuxième discipline.",
   },
 };
+
+type OfferTemplateKey = "family" | "second-discipline" | "launch" | "manual";
+
+const OFFER_TEMPLATES: Array<{ key: OfferTemplateKey; label: string; description: string }> = [
+  { key: "family", label: "Réduction famille", description: "Forfait simple pour plusieurs élèves du même foyer." },
+  { key: "second-discipline", label: "Deuxième discipline", description: "Remise automatique quand un membre ajoute une discipline." },
+  { key: "launch", label: "Promotion lancement", description: "Pourcentage court sur les nouvelles inscriptions." },
+  { key: "manual", label: "Remise manuelle", description: "Montant fixe contrôlé par l'équipe." },
+];
 
 export function OffersManager({ sportsOptions }: OffersManagerProps) {
   const searchParams = useSearchParams();
@@ -54,7 +64,7 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
     (searchParams.get("kind") as OfferKindValue | null) ?? "PERCENT_OFF",
   );
   const [percentOff, setPercentOff] = useState("10");
-  const [fixedAmountEur, setFixedAmountEur] = useState("");
+  const [fixedAmount, setFixedAmount] = useState("");
   const [bundlePrice, setBundlePrice] = useState("");
   const [minMembers, setMinMembers] = useState("2");
   const [maxMembers, setMaxMembers] = useState("");
@@ -65,6 +75,7 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [pendingDeleteOffer, setPendingDeleteOffer] = useState<OfferRow | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(Boolean(contextMemberId || searchParams.get("kind")));
 
   const contextHint = useMemo(() => {
     if (!contextMemberId) return null;
@@ -100,13 +111,13 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
       return `${percentOff || "0"} % de réduction lorsqu'un membre ajoute une deuxième discipline.`;
     }
     if (kind === "FIXED_OFF") {
-      return `${fixedAmountEur || "0"} € retiré par inscription${maxMembers ? `, pour ${maxMembers} ligne(s) maximum` : ""}.`;
+      return `${formatMoneyFromMajorInput(fixedAmount)} retiré par inscription${maxMembers ? `, pour ${maxMembers} ligne(s) maximum` : ""}.`;
     }
     const discipline = sportsOptions.find((sport) => sport.id === sportId)?.name ?? "toutes les disciplines";
-    return `Prix total ${bundlePrice || "0"} € à partir de ${minMembers || "0"} inscription(s), pour ${discipline}${requiresHousehold ? ", avec foyer commun requis" : ""}.`;
+    return `Prix total ${formatMoneyFromMajorInput(bundlePrice)} à partir de ${minMembers || "0"} inscription(s), pour ${discipline}${requiresHousehold ? ", avec foyer commun requis" : ""}.`;
   }, [
     bundlePrice,
-    fixedAmountEur,
+    fixedAmount,
     kind,
     maxMembers,
     minMembers,
@@ -115,6 +126,50 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
     sportId,
     sportsOptions,
   ]);
+
+  function openCreateForm() {
+    setIsCreateOpen(true);
+    window.requestAnimationFrame(() => {
+      document.getElementById("offer-create")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  function applyTemplate(template: OfferTemplateKey) {
+    setIsCreateOpen(true);
+    setSportId("");
+    setMaxMembers("");
+    if (template === "family") {
+      setName("Réduction famille");
+      setKind("FAMILY_BUNDLE");
+      setMinMembers("2");
+      setBundlePrice("70");
+      setRequiresHousehold(true);
+      setPercentOff("10");
+      setFixedAmount("");
+      return;
+    }
+    if (template === "second-discipline") {
+      setName("Deuxième discipline");
+      setKind("SECOND_DISCIPLINE");
+      setPercentOff("30");
+      setFixedAmount("");
+      setBundlePrice("");
+      return;
+    }
+    if (template === "launch") {
+      setName("Promotion lancement");
+      setKind("PERCENT_OFF");
+      setPercentOff("10");
+      setFixedAmount("");
+      setBundlePrice("");
+      return;
+    }
+    setName("Remise manuelle");
+    setKind("FIXED_OFF");
+    setFixedAmount("20");
+    setBundlePrice("");
+    setPercentOff("10");
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -133,7 +188,7 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
         payload.maxMembers = parseInt(maxMembers, 10);
       }
     } else if (kind === "FIXED_OFF") {
-      payload.amountOffCents = Math.round(parseFloat(fixedAmountEur.replace(",", ".")) * 100);
+      payload.amountOffCents = Math.round(parseFloat(fixedAmount.replace(",", ".")) * 100);
       if (maxMembers.trim()) {
         payload.maxMembers = parseInt(maxMembers, 10);
       }
@@ -159,6 +214,10 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
     }
     setName("");
     setSportId("");
+    setFixedAmount("");
+    setBundlePrice("");
+    setMaxMembers("");
+    setIsCreateOpen(false);
     setMessage("Offre créée — utilisable à l'inscription (étape Offre).");
     load();
   }
@@ -186,12 +245,98 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
 
   return (
     <div className="grid items-start gap-4 sm:gap-5 lg:grid-cols-2">
-      <section id="offer-create" className="panel order-2 scroll-mt-24 p-4 sm:p-5 lg:order-1">
+      <section className="panel order-1 p-4 sm:p-5">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Offres actives</h2>
+            <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+              {filteredOffers.length} offre{filteredOffers.length > 1 ? "s" : ""} affichée{filteredOffers.length > 1 ? "s" : ""}
+            </p>
+          </div>
+          <button type="button" onClick={openCreateForm} className="btn btn-primary btn-block-mobile min-h-11 sm:w-auto">
+            <Plus className="size-4" />
+            Créer une offre
+          </button>
+        </div>
+        <ListSearch value={searchTerm} onChange={setSearchTerm} placeholder="Rechercher une offre..." />
+        {filteredOffers.length === 0 ? (
+          <EmptyState
+            className="mt-4"
+            icon={<Tag className="size-8 opacity-45" />}
+            title={offers.length === 0 ? "Aucune offre active" : "Aucun résultat"}
+            message={offers.length === 0 ? "Créez une offre avec un modèle simple." : "Essayez une autre recherche."}
+            action={
+              searchTerm ? (
+                <button type="button" onClick={() => setSearchTerm("")} className="btn btn-ghost">
+                  Effacer la recherche
+                </button>
+              ) : (
+                <button type="button" onClick={openCreateForm} className="btn btn-primary">
+                  Créer une offre
+                </button>
+              )
+            }
+          />
+        ) : (
+          <ul className="mt-4 max-h-[65dvh] space-y-2 overflow-y-auto pr-1 text-sm">
+            {pagination.pageItems.map((offer) => (
+              <li key={offer.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)]/35 p-3 shadow-[var(--shadow-panel)]">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-[var(--foreground)]">{offer.name}</p>
+                    <p className="text-xs font-semibold text-[var(--primary)]">
+                      {getOfferKindLabel(offer.kind as OfferKind)}
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                      {formatOfferRulesSummary(offer)}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPendingDeleteOffer(offer)}
+                    disabled={deletingId !== null}
+                    className="btn btn-ghost btn-sm shrink-0 border-[var(--warning)]/35 px-2.5 py-2 text-[var(--warning)]"
+                    title="Désactiver l'offre"
+                    aria-label={`Désactiver ${offer.name}`}
+                  >
+                    <CircleOff className="size-4" />
+                    <span className="text-xs font-semibold">Désactiver</span>
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <Pagination
+          currentPage={pagination.currentPage}
+          pageCount={pagination.pageCount}
+          totalItems={filteredOffers.length}
+          pageSize={12}
+          onPageChange={pagination.setPage}
+        />
+      </section>
+
+      <section id="offer-create" className="panel order-2 scroll-mt-24 p-4 sm:p-5">
         <h2 className="mb-2 text-lg font-semibold">Créer une offre</h2>
         <p className="mb-4 text-sm text-[var(--muted-foreground)]">
-          Choisissez le type de remise, vérifiez l&apos;aperçu, puis retrouvez l&apos;offre dans le parcours{" "}
+          Choisissez un modèle simple, vérifiez l&apos;aperçu, puis retrouvez l&apos;offre dans le parcours{" "}
           <strong>Inscription</strong>.
         </p>
+        <div className="mb-4 grid gap-2 sm:grid-cols-2">
+          {OFFER_TEMPLATES.map((template) => (
+            <button
+              key={template.key}
+              type="button"
+              onClick={() => applyTemplate(template.key)}
+              className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-left transition hover:border-[var(--primary)]/35 hover:bg-[var(--primary)]/5"
+            >
+              <span className="block text-sm font-semibold text-[var(--foreground)]">{template.label}</span>
+              <span className="mt-0.5 block text-xs leading-relaxed text-[var(--muted-foreground)]">
+                {template.description}
+              </span>
+            </button>
+          ))}
+        </div>
         {contextHint ? (
           <p className="mb-4 rounded-lg border border-[var(--primary)]/20 bg-[var(--primary)]/5 px-3 py-2 text-sm text-[var(--foreground)]">
             {contextHint}
@@ -203,6 +348,11 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
             message={message}
           />
         )}
+        {!isCreateOpen ? (
+          <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-soft)]/45 px-3 py-4 text-sm text-[var(--muted-foreground)]">
+            Sélectionnez un modèle ou utilisez le bouton <strong>Créer une offre</strong> pour ouvrir le formulaire.
+          </div>
+        ) : (
         <form onSubmit={onSubmit} className="space-y-3">
           <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
             Nom de l&apos;offre
@@ -222,7 +372,7 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
               onChange={(e) => setKind(e.target.value as OfferKindValue)}
             >
               <option value="PERCENT_OFF">Réduction % sur le devis</option>
-              <option value="FIXED_OFF">Montant fixe offert par ligne (€)</option>
+              <option value="FIXED_OFF">Montant fixe offert par ligne (TND)</option>
               <option value="FAMILY_BUNDLE">Forfait famille (prix total)</option>
               <option value="SECOND_DISCIPLINE">Réduction 2e discipline (%)</option>
             </select>
@@ -269,9 +419,9 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
           {kind === "FIXED_OFF" && (
             <>
               <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
-                Montant offert par ligne (€)
-                <FieldControl suffix="€">
-                  <input className="field pr-10" inputMode="decimal" value={fixedAmountEur} onChange={(e) => setFixedAmountEur(e.target.value)} required />
+                Montant offert par ligne (TND)
+                <FieldControl suffix={MONEY_INPUT_SUFFIX}>
+                  <input className="field pr-10" inputMode="decimal" value={fixedAmount} onChange={(e) => setFixedAmount(e.target.value)} required />
                 </FieldControl>
               </label>
               <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
@@ -283,8 +433,8 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
           {kind === "FAMILY_BUNDLE" && (
             <>
               <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
-                Prix total du forfait (€)
-                <FieldControl suffix="€">
+                Prix total du forfait (TND)
+                <FieldControl suffix={MONEY_INPUT_SUFFIX}>
                   <input className="field pr-10" inputMode="decimal" value={bundlePrice} onChange={(e) => setBundlePrice(e.target.value)} required />
                 </FieldControl>
               </label>
@@ -321,66 +471,7 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
             </button>
           </FormActions>
         </form>
-      </section>
-      <section className="panel order-1 p-4 sm:p-5 lg:order-2 lg:sticky lg:top-[4.5rem]">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold">Offres actives</h2>
-          <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-            {filteredOffers.length} offre{filteredOffers.length > 1 ? "s" : ""} affichée{filteredOffers.length > 1 ? "s" : ""}
-          </p>
-        </div>
-        <ListSearch value={searchTerm} onChange={setSearchTerm} placeholder="Rechercher une offre..." />
-        {filteredOffers.length === 0 ? (
-          <EmptyState
-            className="mt-4"
-            icon={<Tag className="size-8 opacity-45" />}
-            title={offers.length === 0 ? "Aucune offre active" : "Aucun résultat"}
-            message={offers.length === 0 ? "Créez une offre avec le formulaire." : "Essayez une autre recherche."}
-            action={
-              searchTerm ? (
-                <button type="button" onClick={() => setSearchTerm("")} className="btn btn-ghost">
-                  Effacer la recherche
-                </button>
-              ) : undefined
-            }
-          />
-        ) : (
-          <ul className="mt-4 max-h-[65dvh] space-y-2 overflow-y-auto pr-1 text-sm">
-            {pagination.pageItems.map((offer) => (
-              <li key={offer.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)]/35 p-3 shadow-[var(--shadow-panel)]">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-medium text-[var(--foreground)]">{offer.name}</p>
-                    <p className="text-xs font-semibold text-[var(--primary)]">
-                      {getOfferKindLabel(offer.kind as OfferKind)}
-                    </p>
-                    <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-                      {formatOfferRulesSummary(offer)}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setPendingDeleteOffer(offer)}
-                    disabled={deletingId !== null}
-                    className="btn btn-ghost btn-sm shrink-0 border-[var(--warning)]/35 px-2.5 py-2 text-[var(--warning)]"
-                    title="Désactiver l'offre"
-                    aria-label={`Désactiver ${offer.name}`}
-                  >
-                    <CircleOff className="size-4" />
-                    <span className="text-xs font-semibold">Désactiver</span>
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
         )}
-        <Pagination
-          currentPage={pagination.currentPage}
-          pageCount={pagination.pageCount}
-          totalItems={filteredOffers.length}
-          pageSize={12}
-          onPageChange={pagination.setPage}
-        />
       </section>
 
       <ConfirmDialog

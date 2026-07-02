@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormSectionNav } from "@/components/ui/form-layout";
+import { formatMoney } from "@/lib/money";
 
 type GroupOption = {
   id: string;
@@ -85,12 +86,8 @@ function isoDate(value: string) {
   return new Date(`${value}T00:00:00.000Z`).toISOString();
 }
 
-function eurosToCents(value: string) {
+function moneyInputToCents(value: string) {
   return Math.round((Number.parseFloat(value.replace(",", ".")) || 0) * 100);
-}
-
-function formatMoney(cents: number) {
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
 }
 
 function bulkRowStatusText(row: BulkImportRow) {
@@ -180,8 +177,8 @@ export function DataImportWizard({
       assignmentStartDate: isoDate(assignmentStartDate),
       subscriptionStartDate: isoDate(subscriptionStartDate),
       subscriptionEndDate: subscriptionEndDate ? isoDate(subscriptionEndDate) : "",
-      amountCents: eurosToCents(amount),
-      paidCents: eurosToCents(paid),
+      amountCents: moneyInputToCents(amount),
+      paidCents: moneyInputToCents(paid),
       remainingSessions: Math.max(0, Math.round(Number(remainingSessions) || 0)),
       paymentDate: paymentDate ? isoDate(paymentDate) : "",
       paymentMethod,
@@ -599,10 +596,10 @@ export function DataImportWizard({
               <label className="text-sm font-medium">Séances restantes *
                 <input type="number" min="1" max={selectedPlan?.totalSessions} className="field mt-1" value={remainingSessions} onChange={(event) => { setRemainingSessions(event.target.value); invalidatePreview(); }} required />
               </label>
-              <label className="text-sm font-medium">Montant total dû (€) *
+              <label className="text-sm font-medium">Montant total dû (TND) *
                 <input type="number" min="0" step="0.01" className="field mt-1" value={amount} onChange={(event) => { setAmount(event.target.value); invalidatePreview(); }} required />
               </label>
-              <label className="text-sm font-medium">Déjà payé (€) *
+              <label className="text-sm font-medium">Déjà payé (TND) *
                 <input type="number" min="0" step="0.01" className="field mt-1" value={paid} onChange={(event) => { setPaid(event.target.value); invalidatePreview(); }} required />
               </label>
               <label className="text-sm font-medium">Date du solde repris

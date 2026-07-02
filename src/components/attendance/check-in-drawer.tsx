@@ -6,6 +6,7 @@ import Link from "next/link";
 import { CalendarClock, Check, CheckCircle2, LockOpen, RotateCcw, Users, X, XIcon } from "lucide-react";
 
 import { UndoButton } from "@/components/ui/undo-button";
+import { formatMoney } from "@/lib/money";
 import type { SessionCardData } from "./session-card";
 
 const MARK_ALL_MAX = 8;
@@ -66,7 +67,7 @@ export function CheckInDrawer({
   function remainingDebtLabel(mid: string) {
     const cents = partialPaymentDebtsCents[`${session.id}_${mid}`];
     if (!cents || cents <= 0) return null;
-    return `Solde ${(cents / 100).toFixed(2)} €`;
+    return `Solde ${formatMoney(cents)}`;
   }
 
   function getAtt(mid: string) {
@@ -81,6 +82,9 @@ export function CheckInDrawer({
   const remaining = total - checked;
   const isFinalized = session.status === "COMPLETED";
   const needsFinalization = session.operationalStatus === "NEEDS_FINALIZATION";
+  const hasPaymentPolicyWarning = session.group.members.some(
+    (gm) => !hasSub(gm.memberId) || hasPartialDebt(gm.memberId),
+  );
 
   const unmarkedWithSub = session.group.members.filter((gm) => {
     const att = getAtt(gm.memberId);
@@ -215,9 +219,14 @@ export function CheckInDrawer({
               className="btn btn-primary inline-flex min-h-11 w-full items-center justify-center gap-2 text-sm"
             >
               <Users className="size-4" />
-              {markingAll ? "Pointage en cours…" : `Tous présents (${unmarkedWithSub.length})`}
+              {markingAll ? "Pointage en cours…" : `Pointer les restants présents (${unmarkedWithSub.length})`}
             </button>
           ) : <div />}
+          {hasPaymentPolicyWarning ? (
+            <div className="rounded-lg border border-[var(--warning)]/25 bg-[var(--warning)]/10 px-3 py-2 text-xs leading-relaxed text-[var(--foreground)]">
+              <strong>Règle de paiement.</strong> Sans abonnement actif ou solde non réglé, le pointage normal peut être bloqué. Utilisez un passage exceptionnel uniquement avec un motif clair.
+            </div>
+          ) : null}
           </div>
         </div>
 
@@ -266,7 +275,9 @@ export function CheckInDrawer({
                       </p>
                       <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
                         {!activeSub && (
-                          <span className="text-[0.7rem] font-medium text-[var(--warning)]">Accès restreint</span>
+                          <span className="text-[0.7rem] font-medium text-[var(--warning)]">
+                            Pointage normal bloqué · passage exceptionnel requis
+                          </span>
                         )}
                         {activeSub && hasPartialDebt(mid) && (
                           <span className="text-[0.7rem] font-medium text-[var(--warning)]">

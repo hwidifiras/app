@@ -1,3 +1,5 @@
+import { formatMoney } from "@/lib/money";
+
 export type AuditLogRow = {
   id: string;
   action: string;
@@ -83,9 +85,9 @@ function parseDetails(raw: string | null): Record<string, unknown> | null {
   }
 }
 
-function formatEurosFromCents(cents: unknown): string | null {
+function formatMoneyFromCents(cents: unknown): string | null {
   if (typeof cents !== "number" || Number.isNaN(cents)) return null;
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
+  return formatMoney(cents);
 }
 
 function formatBool(value: unknown): string {
@@ -95,7 +97,7 @@ function formatBool(value: unknown): string {
 }
 
 function formatClubValue(key: string, value: unknown): string {
-  if (key === "debtAlertThresholdCents") return formatEurosFromCents(value) ?? "0 €";
+  if (key === "debtAlertThresholdCents") return formatMoneyFromCents(value) ?? formatMoney(0);
   if (typeof value === "boolean") return formatBool(value);
   if (value === "" || value === null || value === undefined) return "—";
   return String(value);
@@ -136,7 +138,7 @@ function buildEnrollmentSections(details: Record<string, unknown>): AuditDetailS
       const name = typeof l.memberName === "string" ? l.memberName : "Élève";
       const group = typeof l.groupName === "string" ? l.groupName : "";
       const plan = typeof l.planName === "string" ? l.planName : "";
-      const amount = formatEurosFromCents(l.finalAmountCents);
+      const amount = formatMoneyFromCents(l.finalAmountCents);
       list.push(`${name} — ${group}${plan ? ` · ${plan}` : ""}${amount ? ` · ${amount}` : ""}`);
     }
     if (list.length) rows.push({ label: "Inscriptions", list });
@@ -165,7 +167,7 @@ function buildEnrollmentSections(details: Record<string, unknown>): AuditDetailS
     rows.push({ label: "Offre appliquée", value: "Oui" });
   }
 
-  const total = formatEurosFromCents(details.totalFinalCents);
+  const total = formatMoneyFromCents(details.totalFinalCents);
   if (total) rows.push({ label: "Total (devis)", value: total });
 
   return rows.length ? [{ title: "Résumé de l'inscription", rows }] : [];
@@ -178,7 +180,7 @@ function buildGenericSections(details: Record<string, unknown>): AuditDetailSect
     if (key === "before" || key === "after") continue;
     let display: string;
     if (key === "amount" && typeof value === "number") {
-      display = formatEurosFromCents(value) ?? String(value);
+      display = formatMoneyFromCents(value) ?? String(value);
     } else if (typeof value === "object") {
       display = JSON.stringify(value);
     } else {
@@ -202,17 +204,17 @@ function buildContext(action: string, details: Record<string, unknown> | null): 
   if (!details) return null;
 
   if (action === "PAYMENT_CREATED" || action === "PAYMENT_UPDATED") {
-    const amount = formatEurosFromCents(details.amount);
+    const amount = formatMoneyFromCents(details.amount);
     if (amount) return amount;
   }
 
   if (action === "PAYMENT_CORRECTED") {
-    const amount = formatEurosFromCents(details.delta);
+    const amount = formatMoneyFromCents(details.delta);
     if (amount) return `Correction ${amount}`;
   }
 
   if (action === "PAYMENT_REVERSED") {
-    const amount = formatEurosFromCents(details.reversedAmount);
+    const amount = formatMoneyFromCents(details.reversedAmount);
     if (amount) return `Annulation ${amount}`;
   }
 

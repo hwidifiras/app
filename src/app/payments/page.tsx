@@ -1,14 +1,11 @@
 import { prisma } from "@/lib/prisma";
+import { formatMoney } from "@/lib/money";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { PaymentsTable } from "@/components/payments/payments-table";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-function formatCurrency(cents: number) {
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
-}
 
 type PaymentRow = {
   id: string;
@@ -123,17 +120,17 @@ export default async function PaymentsPage() {
 
         let status: string;
         if (p.entryType === "REVERSAL") {
-          status = `Annulation — reste : ${formatCurrency(remainingAfter)}`;
+          status = `Annulation — reste : ${formatMoney(remainingAfter)}`;
         } else if (p.entryType === "CORRECTION") {
-          status = `Correction — reste : ${formatCurrency(remainingAfter)}`;
+          status = `Correction — reste : ${formatMoney(remainingAfter)}`;
         } else if (isSingle && remainingAfter === 0) {
           status = "Paiement complet";
         } else if (isFirst) {
-          status = `Avance — reste : ${formatCurrency(remainingAfter)}`;
+          status = `Avance — reste : ${formatMoney(remainingAfter)}`;
         } else if (isLast && remainingAfter === 0) {
           status = "Paiement complet";
         } else {
-          status = `Versement — reste : ${formatCurrency(remainingAfter)}`;
+          status = `Versement — reste : ${formatMoney(remainingAfter)}`;
         }
 
         return {
@@ -196,7 +193,7 @@ export default async function PaymentsPage() {
       <PageHeader
         overline="Finance"
         title="Paiements"
-        description={`${totalCount} versement(s) enregistrés, total ${formatCurrency(totalPayments)}.`}
+        description={`${totalCount} versement(s) enregistrés, total ${formatMoney(totalPayments)}.`}
         actions={
           <Link href="/payments/new" className="btn btn-primary btn-block-mobile">
             + Encaisser

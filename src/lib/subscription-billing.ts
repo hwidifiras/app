@@ -1,3 +1,7 @@
+import { formatMoney } from "@/lib/money";
+
+export { formatMoney };
+
 export type SubscriptionBillingInput = {
   amount: number;
   totalPaid: number;
@@ -21,10 +25,6 @@ export type SubscriptionBillingView = {
   /** Human-readable offer context for tables and cards */
   offerRemark: string | null;
 };
-
-export function formatMoney(cents: number, currency = "TND") {
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency }).format(cents / 100);
-}
 
 export function formatPaymentPrefill(cents: number) {
   return (cents / 100).toFixed(2).replace(".", ",");

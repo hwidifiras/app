@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FieldControl } from "@/components/ui/field-control";
 import { FormActions, FormField, FormGrid, FormSection, FormSectionNav } from "@/components/ui/form-layout";
+import { formatMoney, MONEY_INPUT_SUFFIX } from "@/lib/money";
 
 const METHODS = [
   { value: "CASH", label: "Espèces" },
@@ -15,10 +16,6 @@ const METHODS = [
   { value: "TRANSFER", label: "Virement" },
   { value: "CHECK", label: "Chèque" },
 ];
-
-function formatCurrency(cents: number) {
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
-}
 
 type PaymentEditFormProps = {
   payment: {
@@ -168,11 +165,11 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
               </div>
               <div>
                 <dt className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Montant dû</dt>
-                <dd className="mt-1 font-semibold">{formatCurrency(subscription.amount)}</dd>
+                <dd className="mt-1 font-semibold">{formatMoney(subscription.amount)}</dd>
               </div>
               <div>
                 <dt className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Reste autorisé</dt>
-                <dd className="mt-1 font-semibold">{formatCurrency(remaining)}</dd>
+                <dd className="mt-1 font-semibold">{formatMoney(remaining)}</dd>
               </div>
             </dl>
           </FormSection>
@@ -183,8 +180,8 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
 
           <FormSection id="payment-correction" title="Correction tracée" description="Saisissez le nouveau montant et le motif visible dans l'audit.">
             <FormGrid>
-              <FormField label="Nouveau montant (€) *" htmlFor="amount">
-                <FieldControl suffix="€">
+              <FormField label="Nouveau montant (TND) *" htmlFor="amount">
+                <FieldControl suffix={MONEY_INPUT_SUFFIX}>
                   <input
                     id="amount"
                     type="number"
@@ -263,23 +260,23 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
             <dl className="mt-4 divide-y divide-[var(--border)] text-sm">
               <div className="flex items-start justify-between gap-3 py-2.5">
                 <dt className="text-[var(--muted-foreground)]">Paiement original</dt>
-                <dd className="text-right font-semibold">{formatCurrency(payment.amount)}</dd>
+                <dd className="text-right font-semibold">{formatMoney(payment.amount)}</dd>
               </div>
               <div className="flex items-start justify-between gap-3 py-2.5">
                 <dt className="text-[var(--muted-foreground)]">Déjà corrigé</dt>
-                <dd className="text-right font-semibold">{formatCurrency(effectiveAmount - payment.amount)}</dd>
+                <dd className="text-right font-semibold">{formatMoney(effectiveAmount - payment.amount)}</dd>
               </div>
               <div className="flex items-start justify-between gap-3 py-2.5">
                 <dt className="text-[var(--muted-foreground)]">Autres paiements</dt>
-                <dd className="text-right font-semibold">{formatCurrency(otherPaid)}</dd>
+                <dd className="text-right font-semibold">{formatMoney(otherPaid)}</dd>
               </div>
               <div className="flex items-start justify-between gap-3 py-2.5">
                 <dt className="text-[var(--muted-foreground)]">Nouveau montant</dt>
-                <dd className="text-right text-base font-bold text-[var(--primary)]">{formatCurrency(amountNum)}</dd>
+                <dd className="text-right text-base font-bold text-[var(--primary)]">{formatMoney(amountNum)}</dd>
               </div>
               <div className="flex items-start justify-between gap-3 py-2.5">
                 <dt className="text-[var(--muted-foreground)]">Maximum</dt>
-                <dd className="text-right font-bold">{formatCurrency(remaining)}</dd>
+                <dd className="text-right font-bold">{formatMoney(remaining)}</dd>
               </div>
             </dl>
             <p className="mt-3 rounded-lg bg-[var(--surface-soft)] px-3 py-2 text-xs leading-relaxed text-[var(--muted-foreground)]">
@@ -349,7 +346,7 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
       <ConfirmDialog
         open={deleteOpen}
         title="Annuler ce paiement ?"
-        description={`Une ligne de reversal de ${formatCurrency(effectiveAmount)} sera ajoutée au grand livre. Le paiement original restera visible.`}
+        description={`Une ligne d'annulation de ${formatMoney(effectiveAmount)} sera ajoutée au grand livre. Le paiement original restera visible.`}
         confirmLabel="Annuler le paiement"
         loading={deleting}
         onCancel={() => setDeleteOpen(false)}

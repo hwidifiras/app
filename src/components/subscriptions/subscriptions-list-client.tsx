@@ -191,12 +191,9 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
     <DataTable>
       <DataTableHead>
         <tr>
-          <Th className="min-w-[11rem] whitespace-nowrap">Membre</Th>
-          <Th className="min-w-[14rem] whitespace-nowrap">Plan</Th>
-          <Th className="hidden min-w-[7rem] whitespace-nowrap sm:table-cell">Montant</Th>
-          <Th className="hidden min-w-[7rem] whitespace-nowrap md:table-cell">Début</Th>
-          <Th className="hidden min-w-[7rem] whitespace-nowrap md:table-cell">Fin</Th>
-          <Th className="hidden min-w-[9rem] whitespace-nowrap lg:table-cell">Payé</Th>
+          <Th className="min-w-[10rem] whitespace-nowrap">Membre</Th>
+          <Th className="min-w-[13rem] whitespace-nowrap">Formule</Th>
+          <Th className="min-w-[9rem] whitespace-nowrap">Payé / reste</Th>
           <Th className="min-w-[7rem] whitespace-nowrap">Statut</Th>
           <Th className="hidden min-w-[6rem] whitespace-nowrap text-center sm:table-cell">Séances</Th>
           <Th className="hidden text-right md:table-cell">Actions</Th>
@@ -215,31 +212,20 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
           });
           return (
             <DataTableRow key={sub.id} expanded={isExpanded}>
-              <Td label="Membre" primary className="min-w-[11rem] whitespace-nowrap font-medium">
+              <Td label="Membre" primary className="min-w-[10rem] font-medium">
                 {sub.memberName}
                 <p className="text-xs text-muted-foreground">{sub.memberPhone}</p>
               </Td>
-              <Td label="Plan" mobileDetail className="min-w-[14rem] whitespace-nowrap">
-                {sub.planName}
+              <Td label="Formule" mobileDetail className="min-w-[13rem]">
+                <span className="font-medium">{sub.planName}</span>
+                <p className="mt-0.5 text-[0.68rem] leading-snug text-muted-foreground">
+                  {formatMoney(sub.amount)} · {formatDate(sub.startDate)} → {formatDate(sub.endDate)}
+                </p>
                 {billing.offerRemark ? (
                   <p className="mt-0.5 text-[0.65rem] leading-snug text-emerald-700">{billing.offerRemark}</p>
                 ) : null}
               </Td>
-              <Td label="Montant" className="hidden whitespace-nowrap sm:table-cell">
-                {formatMoney(sub.amount)}
-                {billing.hasOfferDiscount && billing.listPriceCents > sub.amount ? (
-                  <span className="ml-1 text-xs text-muted-foreground line-through">
-                    {formatMoney(billing.listPriceCents)}
-                  </span>
-                ) : null}
-              </Td>
-              <Td label="Début" mobileDetail className="hidden whitespace-nowrap md:table-cell">
-                {formatDate(sub.startDate)}
-              </Td>
-              <Td label="Fin" mobileDetail className="hidden whitespace-nowrap md:table-cell">
-                {formatDate(sub.endDate)}
-              </Td>
-              <Td label="Payé" mobileDetail className="hidden whitespace-nowrap lg:table-cell">
+              <Td label="Payé / reste" className="whitespace-nowrap">
                 <span
                   className={
                     billing.isComplete
@@ -250,6 +236,11 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
                   {formatMoney(billing.totalPaid)}
                 </span>
                 <span className="text-xs text-muted-foreground"> / {formatMoney(billing.amountDue)}</span>
+                {billing.hasOfferDiscount && billing.listPriceCents > sub.amount ? (
+                  <span className="block text-[0.65rem] text-muted-foreground line-through">
+                    Base {formatMoney(billing.listPriceCents)}
+                  </span>
+                ) : null}
               </Td>
               <Td label="Statut" className="whitespace-nowrap">
                 <StatusBadge variant={statusVariant(sub.status)}>{statusLabel(sub.status)}</StatusBadge>
@@ -258,18 +249,6 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
                 <span className={sub.remainingSessions > 0 ? "text-[var(--primary)]" : "text-[var(--danger)]"}>
                   {sub.remainingSessions} / {sub.totalSessions}
                 </span>
-              </Td>
-              <Td label="Montant" mobileDetail className="md:hidden">
-                {formatMoney(sub.amount)}
-                {billing.offerRemark ? (
-                  <p className="mt-0.5 text-[0.65rem] text-emerald-700">{billing.offerRemark}</p>
-                ) : null}
-              </Td>
-              <Td label="Payé" mobileDetail className="md:hidden">
-                <span className={billing.isComplete ? "text-[var(--success)]" : "text-amber-700"}>
-                  {formatMoney(billing.totalPaid)}
-                </span>
-                <span className="text-xs text-muted-foreground"> / {formatMoney(billing.amountDue)}</span>
               </Td>
               <Td label="Séances" mobileDetail className="md:hidden">
                 {sub.remainingSessions} / {sub.totalSessions}

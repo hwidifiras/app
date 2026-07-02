@@ -14,6 +14,7 @@ import {
   getOfferEnrollmentHint,
   getOfferKindLabel,
 } from "@/lib/offer-display";
+import { formatMoney, MONEY_INPUT_SUFFIX } from "@/lib/money";
 import { formatPaymentPrefill } from "@/lib/subscription-billing";
 import type { OfferKind } from "@prisma/client";
 
@@ -75,10 +76,6 @@ type QuoteData = {
   blocked: boolean;
   warnings: string[];
 };
-
-function formatEur(cents: number) {
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
-}
 
 function isMemberAllowedInGroupType(groupType: GroupType, memberType: MemberType) {
   if (memberType === "NOT_SPECIFIED") return true;
@@ -517,11 +514,11 @@ export function EnrollmentWizard({
                   {l.groupName} — {l.planName} ({l.sportName})
                 </p>
                 <p>
-                  {formatEur(l.finalAmountCents)}
+                  {formatMoney(l.finalAmountCents)}
                   {l.discountCents > 0 && (
                     <span className="text-green-700">
                       {" "}
-                      (−{formatEur(l.discountCents)} · catalogue {formatEur(l.listPriceCents)})
+                      (−{formatMoney(l.discountCents)} · catalogue {formatMoney(l.listPriceCents)})
                     </span>
                   )}
                 </p>
@@ -529,7 +526,7 @@ export function EnrollmentWizard({
                   <ReceptionInfoCard variant="success" className="mt-2">
                     <p className="font-semibold">Offre « {quote.offerName} »</p>
                     <p>
-                      Nouvel abonnement à {formatEur(l.finalAmountCents)} — le paiement ci-dessous est prérempli.
+                      Nouvel abonnement à {formatMoney(l.finalAmountCents)} — le paiement ci-dessous est prérempli.
                     </p>
                   </ReceptionInfoCard>
                 )}
@@ -547,12 +544,12 @@ export function EnrollmentWizard({
                 )}
                 <label className="mt-2 block text-sm">
                   <span className="font-medium">
-                    {l.reusesExistingSubscription ? "Paiement complémentaire (€)" : "Paiement initial (€)"}
+                    {l.reusesExistingSubscription ? "Paiement complémentaire (TND)" : "Paiement initial (TND)"}
                   </span>
                   <span className="mt-0.5 block text-xs text-[var(--muted-foreground)]">
-                    Max {formatEur(l.finalAmountCents)} pour cette période
+                    Max {formatMoney(l.finalAmountCents)} pour cette période
                   </span>
-                  <FieldControl suffix="€" className="mt-1">
+                  <FieldControl suffix={MONEY_INPUT_SUFFIX} className="mt-1">
                     <input
                       type="text"
                       inputMode="decimal"
@@ -572,7 +569,7 @@ export function EnrollmentWizard({
               </li>
             ))}
           </ul>
-          <p className="text-lg font-semibold">Total : {formatEur(quote.totalFinalCents)}</p>
+          <p className="text-lg font-semibold">Total : {formatMoney(quote.totalFinalCents)}</p>
           {quote.warnings.length > 0 && (
             <FeedbackMessage variant="error" message={quote.warnings.join(" • ")} />
           )}
@@ -765,7 +762,7 @@ function LineEditor({
           <option value="">Sélectionner une formule</option>
           {plans.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.name} — {(p.price / 100).toFixed(2)} €
+              {p.name} — {formatMoney(p.price)}
             </option>
           ))}
         </select>

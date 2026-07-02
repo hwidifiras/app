@@ -23,13 +23,56 @@ import {
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+type LogCategory = "BUSINESS" | "ALL" | "PAYMENTS" | "ATTENDANCE" | "ENROLLMENT" | "SETTINGS" | "SYSTEM";
+
+const LOG_CATEGORY_FILTERS: Array<{ id: LogCategory; label: string }> = [
+  { id: "BUSINESS", label: "Essentiel" },
+  { id: "PAYMENTS", label: "Paiements" },
+  { id: "ATTENDANCE", label: "Présences" },
+  { id: "ENROLLMENT", label: "Inscriptions" },
+  { id: "SETTINGS", label: "Paramètres" },
+  { id: "SYSTEM", label: "Système" },
+  { id: "ALL", label: "Tout" },
+];
+
+function isLogCategory(value: string | undefined): value is LogCategory {
+  return Boolean(value && LOG_CATEGORY_FILTERS.some((item) => item.id === value));
+}
+
+function isSystemLog(log: { action: string; entityType: string; userId: string | null }) {
+  return (
+    !log.userId ||
+    log.action.startsWith("PASSWORD_RESET") ||
+    log.action === "ADMIN_BOOTSTRAPPED" ||
+    log.action.startsWith("AUDIT_")
+  );
+}
+
+function getLogCategory(log: { action: string; entityType: string; userId: string | null }): LogCategory {
+  if (isSystemLog(log)) return "SYSTEM";
+  if (log.action.startsWith("PAYMENT") || log.entityType === "Payment") return "PAYMENTS";
+  if (log.action.startsWith("ATTENDANCE") || log.action.startsWith("SESSION_")) return "ATTENDANCE";
+  if (log.action.startsWith("ENROLLMENT") || log.action.startsWith("MEMBER_SUBSCRIPTION")) return "ENROLLMENT";
+  if (
+    log.action.startsWith("CLUB_SETTINGS") ||
+    log.action.startsWith("OFFER_") ||
+    log.action.startsWith("USER_") ||
+    log.action === "ACCOUNT_UPDATED" ||
+    ["ClubSettings", "Offer", "Sport", "Coach", "Group", "SubscriptionPlan", "User"].includes(log.entityType)
+  ) {
+    return "SETTINGS";
+  }
+  return "ENROLLMENT";
+}
+
 export default async function LogsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; category?: string }>;
 }) {
-  const { q, page: pageParam } = await searchParams;
+  const { q, page: pageParam, category: categoryParam } = await searchParams;
   const query = q?.trim();
+  const selectedCategory = isLogCategory(categoryParam) ? categoryParam : "BUSINESS";
   const requestedPage = Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1);
   const pageSize = 30;
   const role = (await headers()).get("x-user-role");
@@ -56,16 +99,26 @@ export default async function LogsPage({
   const presented = allLogs.map((log) => ({
     log,
     presentation: presentAuditLog(log),
+    category: getLogCategory(log),
+    isSystem: isSystemLog(log),
   }));
 
+  const categoryFiltered = presented.filter((item) => {
+    if (selectedCategory === "ALL") return true;
+    if (selectedCategory === "BUSINESS") return !item.isSystem;
+    return item.category === selectedCategory;
+  });
+
   const filtered = query
-    ? presented.filter(({ log, presentation }) => auditLogMatchesQuery(log, presentation, query))
-    : presented;
+    ? categoryFiltered.filter(({ log, presentation }) => auditLogMatchesQuery(log, presentation, query))
+    : categoryFiltered;
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(requestedPage, pageCount);
   const startIndex = (currentPage - 1) * pageSize;
-  const logs = filtered.slice(startIndex, startIndex + pageSize).map((p) => p.log);
+  const pageItems = filtered.slice(startIndex, startIndex + pageSize);
+  const logs = pageItems.map((p) => p.log);
+  const itemById = new Map(pageItems.map((item) => [item.log.id, item]));
   const presentationById = await enrichAuditLogContexts(
     logs,
     new Map(filtered.map((p) => [p.log.id, p.presentation])),
@@ -101,6 +154,7 @@ export default async function LogsPage({
 
       <section className="panel p-4 sm:p-5">
         <form className="page-actions mb-4">
+          <input type="hidden" name="category" value={selectedCategory} />
           <input
             name="q"
             defaultValue={query ?? ""}
@@ -111,11 +165,29 @@ export default async function LogsPage({
             Rechercher
           </button>
           {query ? (
-            <Link href="/logs" className="btn btn-ghost btn-block-mobile min-h-11 sm:w-auto">
+            <Link href={logCategoryHref(selectedCategory)} className="btn btn-ghost btn-block-mobile min-h-11 sm:w-auto">
               Effacer
             </Link>
           ) : null}
         </form>
+        <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+          {LOG_CATEGORY_FILTERS.map((item) => {
+            const active = item.id === selectedCategory;
+            return (
+              <Link
+                key={item.id}
+                href={logCategoryHref(item.id, query)}
+                className={`inline-flex min-h-10 shrink-0 items-center rounded-lg border px-3 text-sm font-semibold transition ${
+                  active
+                    ? "border-[var(--primary)] bg-[var(--primary)] text-white"
+                    : "border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)] hover:border-[var(--primary)]/35"
+                }`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
 
         <DataTable>
           <DataTableHead>
@@ -134,8 +206,10 @@ export default async function LogsPage({
               const presentation = presentationById.get(log.id)!;
               const { date, time } = formatAuditDateTime(log.createdAt);
 
+              const meta = itemById.get(log.id);
+
               return (
-                <DataTableRow key={log.id}>
+                <DataTableRow key={log.id} className={meta?.isSystem ? "opacity-70" : undefined}>
                   <Td label="Date">
                     <span className="font-medium text-[var(--foreground)]">{date}</span>
                     <span className="block text-xs text-[var(--muted-foreground)]">{time}</span>
@@ -188,7 +262,7 @@ export default async function LogsPage({
             </p>
             <div className="flex items-center justify-center gap-2">
               <Link
-                href={logPageHref(currentPage - 1, query)}
+                href={logPageHref(currentPage - 1, query, selectedCategory)}
                 aria-disabled={currentPage === 1}
                 className={`btn btn-ghost min-h-10 px-3 text-xs ${currentPage === 1 ? "pointer-events-none opacity-40" : ""}`}
               >
@@ -198,7 +272,7 @@ export default async function LogsPage({
                 {currentPage} / {pageCount}
               </span>
               <Link
-                href={logPageHref(currentPage + 1, query)}
+                href={logPageHref(currentPage + 1, query, selectedCategory)}
                 aria-disabled={currentPage === pageCount}
                 className={`btn btn-ghost min-h-10 px-3 text-xs ${currentPage === pageCount ? "pointer-events-none opacity-40" : ""}`}
               >
@@ -212,9 +286,17 @@ export default async function LogsPage({
   );
 }
 
-function logPageHref(page: number, query?: string) {
+function logPageHref(page: number, query?: string, category?: LogCategory) {
   const params = new URLSearchParams();
   if (query) params.set("q", query);
+  if (category && category !== "BUSINESS") params.set("category", category);
   params.set("page", String(Math.max(1, page)));
   return `/logs?${params.toString()}`;
+}
+
+function logCategoryHref(category: LogCategory, query?: string) {
+  const params = new URLSearchParams();
+  if (query) params.set("q", query);
+  if (category !== "BUSINESS") params.set("category", category);
+  return `/logs${params.toString() ? `?${params.toString()}` : ""}`;
 }

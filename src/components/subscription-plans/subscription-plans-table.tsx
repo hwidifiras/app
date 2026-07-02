@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/list-controls";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Pagination, usePagination } from "@/components/ui/pagination";
+import { formatMoney } from "@/lib/money";
 
 type PlanRow = {
   id: string;
@@ -162,7 +163,7 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
                 <td className="data-table-primary px-4 py-3 font-medium" data-label="Nom">{plan.name}</td>
                 <td className="px-4 py-3 text-muted-foreground mobile-detail-cell" data-label="Description">{plan.description ?? "—"}</td>
                 <td className="px-4 py-3 text-right" data-label="Prix">
-                  {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(plan.price / 100)}
+                  {formatMoney(plan.price)}
                 </td>
                 <td className="px-4 py-3 text-center mobile-detail-cell" data-label="/ semaine">{plan.sessionsPerWeek ?? "—"}</td>
                 <td className="px-4 py-3 text-center mobile-detail-cell" data-label="/ mois">{plan.totalSessions}</td>

@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { formatMoney } from "@/lib/money";
+
 type ReceptionInfoCardProps = {
   title?: string;
   children: ReactNode;
@@ -44,16 +46,12 @@ export function SubscriptionBillingSummary({
 }) {
   const remainingDue = Math.max(0, amountDueCents - totalPaidCents);
 
-  function formatEur(cents: number) {
-    return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
-  }
-
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
       {[
-        { label: "Dû", value: formatEur(amountDueCents) },
-        { label: "Payé", value: formatEur(totalPaidCents) },
-        { label: "Reste", value: formatEur(remainingDue), highlight: remainingDue > 0 },
+        { label: "Dû", value: formatMoney(amountDueCents) },
+        { label: "Payé", value: formatMoney(totalPaidCents) },
+        { label: "Reste", value: formatMoney(remainingDue), highlight: remainingDue > 0 },
         {
           label: "Séances",
           value:

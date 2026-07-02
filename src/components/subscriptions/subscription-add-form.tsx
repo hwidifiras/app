@@ -6,6 +6,7 @@ import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FieldControl } from "@/components/ui/field-control";
 import { FormActions, FormField, FormGrid, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import { SubscriptionBillingSummary } from "@/components/ui/reception-info-card";
+import { formatMoney, MONEY_INPUT_SUFFIX } from "@/lib/money";
 
 type MemberOption = { id: string; firstName: string; lastName: string; phone: string };
 type PlanOption = { id: string; name: string; price: number; totalSessions: number; validityDays: number };
@@ -25,10 +26,6 @@ type SubscriptionAddFormProps = {
   membersOptions: MemberOption[];
   plansOptions: PlanOption[];
 };
-
-function formatEur(cents: number) {
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
-}
 
 export function SubscriptionAddForm({ membersOptions, plansOptions }: SubscriptionAddFormProps) {
   const router = useRouter();
@@ -232,7 +229,7 @@ export function SubscriptionAddForm({ membersOptions, plansOptions }: Subscripti
                 <option value="">Sélectionner une formule</option>
                 {plansOptions.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name} — {formatEur(p.price)} · {p.totalSessions} séances · {p.validityDays}j
+                    {p.name} — {formatMoney(p.price)} · {p.totalSessions} séances · {p.validityDays}j
                   </option>
                 ))}
               </select>
@@ -273,8 +270,8 @@ export function SubscriptionAddForm({ membersOptions, plansOptions }: Subscripti
 
           <FormSection id="renew-payment" title="3. Paiement initial" description="Optionnel, mais il ne peut pas dépasser le prix de la formule.">
             <FormGrid>
-              <FormField label="Paiement initial (€)">
-                <FieldControl suffix="€">
+              <FormField label="Paiement initial (TND)">
+                <FieldControl suffix={MONEY_INPUT_SUFFIX}>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -285,7 +282,7 @@ export function SubscriptionAddForm({ membersOptions, plansOptions }: Subscripti
                   />
                 </FieldControl>
                 {selectedPlan && (
-                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">Maximum {formatEur(selectedPlan.price)}</p>
+                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">Maximum {formatMoney(selectedPlan.price)}</p>
                 )}
               </FormField>
               <FormField label="Méthode">
@@ -326,13 +323,13 @@ export function SubscriptionAddForm({ membersOptions, plansOptions }: Subscripti
               <div className="flex items-start justify-between gap-3 py-2.5">
                 <dt className="text-[var(--muted-foreground)]">Paiement initial</dt>
                 <dd className="text-right font-semibold text-[var(--primary)]">
-                  {paymentNum > 0 ? formatEur(paymentNum) : "Aucun"}
+                  {paymentNum > 0 ? formatMoney(paymentNum) : "Aucun"}
                 </dd>
               </div>
               <div className="flex items-start justify-between gap-3 py-2.5">
                 <dt className="text-[var(--muted-foreground)]">Reste à encaisser</dt>
                 <dd className="text-right font-bold text-[var(--danger)]">
-                  {selectedPlan ? formatEur(renewalBalance) : "—"}
+                  {selectedPlan ? formatMoney(renewalBalance) : "—"}
                 </dd>
               </div>
             </dl>

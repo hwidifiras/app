@@ -6,6 +6,7 @@ import { useState } from "react";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormField, FormGrid, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import { FieldControl } from "@/components/ui/field-control";
+import { MONEY_INPUT_SUFFIX } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
 export type ClubSettingsFormData = {
@@ -72,17 +73,17 @@ function ToggleRow({
   );
 }
 
-function centsToEurosInput(cents: number): string {
+function centsToMoneyInput(cents: number): string {
   if (cents <= 0) return "";
   return (cents / 100).toFixed(2).replace(".", ",");
 }
 
-function eurosInputToCents(value: string): number {
+function moneyInputToCents(value: string): number {
   const normalized = value.trim().replace(",", ".");
   if (!normalized) return 0;
-  const euros = Number.parseFloat(normalized);
-  if (Number.isNaN(euros) || euros < 0) return Number.NaN;
-  return Math.round(euros * 100);
+  const amount = Number.parseFloat(normalized);
+  if (Number.isNaN(amount) || amount < 0) return Number.NaN;
+  return Math.round(amount * 100);
 }
 
 export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
@@ -100,7 +101,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
   const [maxStaffDiscountPercent, setMaxStaffDiscountPercent] = useState(
     String(initial.maxStaffDiscountPercent),
   );
-  const [debtThresholdEuros, setDebtThresholdEuros] = useState(centsToEurosInput(initial.debtAlertThresholdCents));
+  const [debtThresholdAmount, setDebtThresholdAmount] = useState(centsToMoneyInput(initial.debtAlertThresholdCents));
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -112,9 +113,9 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
       return;
     }
 
-    const debtAlertThresholdCents = eurosInputToCents(debtThresholdEuros);
+    const debtAlertThresholdCents = moneyInputToCents(debtThresholdAmount);
     if (Number.isNaN(debtAlertThresholdCents)) {
-      setMessage("Le seuil de dette doit être un montant positif, par exemple 15 €");
+      setMessage("Le seuil de dette doit être un montant positif, par exemple 15 TND");
       return;
     }
 
@@ -153,7 +154,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
     setAllowWithoutSubscription(json.data.allowCheckInWithoutSubscription);
     setAbsentConsumesSession(json.data.absentConsumesSession);
     setMaxStaffDiscountPercent(String(json.data.maxStaffDiscountPercent));
-    setDebtThresholdEuros(centsToEurosInput(json.data.debtAlertThresholdCents));
+    setDebtThresholdAmount(centsToMoneyInput(json.data.debtAlertThresholdCents));
     setMessage("Club enregistré");
     router.refresh();
   }
@@ -348,14 +349,14 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
             htmlFor="debtThreshold"
             hint="Laissez vide ou saisissez 0 pour afficher toutes les dettes."
           >
-            <FieldControl suffix="€">
+            <FieldControl suffix={MONEY_INPUT_SUFFIX}>
               <input
                 id="debtThreshold"
                 type="text"
                 inputMode="decimal"
                 className="field pr-10"
-                value={debtThresholdEuros}
-                onChange={(e) => setDebtThresholdEuros(e.target.value)}
+                value={debtThresholdAmount}
+                onChange={(e) => setDebtThresholdAmount(e.target.value)}
                 placeholder="0"
               />
             </FieldControl>

@@ -147,7 +147,7 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
 
       <div id="plan-quota" className="form-section-anchor grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Prix (€) *</label>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Prix (TND) *</label>
           <input type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" className="field" required />
         </div>
         <div>

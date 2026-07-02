@@ -20,6 +20,7 @@ import { FormActions, FormField, FormGrid, FormSection, FormSectionNav } from "@
 import { SubscriptionBillingSummary } from "@/components/ui/reception-info-card";
 import { UndoButton } from "@/components/ui/undo-button";
 import { useActionHistory } from "@/hooks/use-action-history";
+import { formatMoney, MONEY_INPUT_SUFFIX } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
 const METHODS = [
@@ -28,10 +29,6 @@ const METHODS = [
   { value: "TRANSFER", label: "Virement", icon: <Wallet className="size-4" /> },
   { value: "CHECK", label: "Chèque", icon: <Banknote className="size-4" /> },
 ];
-
-function formatCurrency(cents: number) {
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
-}
 
 type SubscriptionRow = {
   id: string;
@@ -274,7 +271,7 @@ export function PaymentAddForm({
                     <option value="">Sélectionner un abonnement</option>
                     {memberSubscriptions.map((subscription) => (
                       <option key={subscription.id} value={subscription.id}>
-                        {subscription.planName} · reste {formatCurrency(subscription.amount - subscription.totalPaid)}
+                        {subscription.planName} · reste {formatMoney(subscription.amount - subscription.totalPaid)}
                       </option>
                     ))}
                   </select>
@@ -285,7 +282,7 @@ export function PaymentAddForm({
                 <div className="mt-4 md:hidden">
                   <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-sm">
                     <span className="text-[var(--muted-foreground)]">Reste à encaisser</span>
-                    <strong className="tabular-nums text-[var(--danger)]">{formatCurrency(remaining)}</strong>
+                    <strong className="tabular-nums text-[var(--danger)]">{formatMoney(remaining)}</strong>
                   </div>
                 </div>
               ) : null}
@@ -305,9 +302,9 @@ export function PaymentAddForm({
               title="2. Montant"
               description="Saisissez le versement remis, sans dépasser le reste dû."
             >
-              <FormField label="Montant encaissé (€) *" htmlFor="amount">
+              <FormField label="Montant encaissé (TND) *" htmlFor="amount">
                 <div className="flex flex-col gap-2 sm:flex-row">
-                  <FieldControl suffix="€" className="flex-1">
+                  <FieldControl suffix={MONEY_INPUT_SUFFIX} className="flex-1">
                     <input
                       id="amount"
                       type="number"
@@ -328,19 +325,19 @@ export function PaymentAddForm({
                     disabled={!selected || remaining <= 0}
                     className="btn btn-secondary whitespace-nowrap sm:min-w-36"
                   >
-                    Solder {selected ? formatCurrency(remaining) : ""}
+                    Solder {selected ? formatMoney(remaining) : ""}
                   </button>
                 </div>
                 {selected ? (
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-1 text-xs">
                     <span className="text-[var(--muted-foreground)]">
-                      Maximum autorisé: <strong className="text-[var(--foreground)]">{formatCurrency(remaining)}</strong>
+                      Maximum autorisé: <strong className="text-[var(--foreground)]">{formatMoney(remaining)}</strong>
                     </span>
                     {wouldExceed ? (
                       <span className="font-semibold text-[var(--danger)]">Le montant dépasse le reste dû.</span>
                     ) : amountNum > 0 ? (
                       <span className="font-medium text-[var(--success)]">
-                        Solde après paiement: {formatCurrency(displayBalanceAfter)}
+                        Solde après paiement: {formatMoney(displayBalanceAfter)}
                       </span>
                     ) : null}
                   </div>
@@ -428,12 +425,12 @@ export function PaymentAddForm({
                 </div>
                 <div className="flex items-start justify-between gap-3 py-2.5">
                   <dt className="text-[var(--muted-foreground)]">Reste actuel</dt>
-                  <dd className="text-right font-semibold">{selected ? formatCurrency(remaining) : "—"}</dd>
+                  <dd className="text-right font-semibold">{selected ? formatMoney(remaining) : "—"}</dd>
                 </div>
                 <div className="flex items-start justify-between gap-3 py-2.5">
                   <dt className="text-[var(--muted-foreground)]">Montant reçu</dt>
                   <dd className="text-right text-base font-bold text-[var(--primary)]">
-                    {amountNum > 0 ? formatCurrency(amountNum) : "—"}
+                    {amountNum > 0 ? formatMoney(amountNum) : "—"}
                   </dd>
                 </div>
                 <div className="flex items-start justify-between gap-3 py-2.5">
@@ -451,7 +448,7 @@ export function PaymentAddForm({
                     {wouldExceed
                       ? "Montant invalide"
                       : selected && amountNum > 0
-                        ? formatCurrency(displayBalanceAfter)
+                        ? formatMoney(displayBalanceAfter)
                         : "—"}
                   </dd>
                 </div>
@@ -486,7 +483,7 @@ export function PaymentAddForm({
           ) : (
             <CheckCircle2 className="size-4" />
           )}
-          {amountNum > 0 ? `Encaisser ${formatCurrency(amountNum)}` : "Encaisser le paiement"}
+          {amountNum > 0 ? `Encaisser ${formatMoney(amountNum)}` : "Encaisser le paiement"}
         </button>
       </FormActions> : null}
     </form>

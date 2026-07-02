@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormSectionNav } from "@/components/ui/form-layout";
 import { ReceptionInfoCard } from "@/components/ui/reception-info-card";
+import { formatMoney } from "@/lib/money";
 
 type PlanOption = { id: string; name: string; price: number; totalSessions: number; validityDays: number };
 type StatusValue = "DRAFT" | "ACTIVE" | "EXPIRED" | "CANCELLED";
@@ -123,7 +124,7 @@ export function SubscriptionEditForm({ subscription, plansOptions }: Subscriptio
         <select value={planId} onChange={(e) => handlePlanChange(e.target.value)} className="field" required>
           {plansOptions.map((plan) => (
             <option key={plan.id} value={plan.id}>
-              {plan.name} - {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(plan.price / 100)}
+              {plan.name} - {formatMoney(plan.price)}
             </option>
           ))}
         </select>
@@ -142,7 +143,7 @@ export function SubscriptionEditForm({ subscription, plansOptions }: Subscriptio
 
       <div id="subscription-values" className="form-section-anchor grid gap-4 sm:grid-cols-3">
         <div>
-          <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Montant (€) *</label>
+          <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Montant (TND) *</label>
           <input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className="field" required />
         </div>
         <div>
