@@ -659,9 +659,19 @@ function HeroSection() {
             initial={{ opacity: 0, y: 26 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35, duration: 0.65 }}
-            className="absolute bottom-10 left-2 w-[82%] max-w-[30rem] xl:left-8"
+            className="absolute bottom-3 left-0 w-[94%] max-w-[43rem] xl:left-0"
           >
-            <DashboardMockup compact />
+            <div className="overflow-hidden rounded-lg border border-white/50 bg-white shadow-[0_32px_90px_rgba(15,23,42,0.26)]">
+              <Image
+                src="/we-discipline/hero-dashboard-reception.png"
+                alt="Tableau de bord réception We Discipline avec séances, encaissements et membres"
+                width={1536}
+                height={1024}
+                sizes="(min-width: 1280px) 680px, (min-width: 1024px) 56vw, 100vw"
+                className="h-auto w-full object-cover"
+                priority
+              />
+            </div>
           </motion.div>
         </motion.div>
       </div>
