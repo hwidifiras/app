@@ -61,6 +61,8 @@ export function AppShellDataProvider({ children }: { children: React.ReactNode }
   const [setupGuide, setSetupGuide] = useState<SetupGuideProgress | null>(null);
   const [setupGuideLoading, setSetupGuideLoading] = useState(false);
   const notificationsLoadedRef = useRef(false);
+  const notificationsInFlightRef = useRef<Promise<void> | null>(null);
+  const lastNotificationsFetchRef = useRef(0);
 
   const refreshAccount = useCallback(async () => {
     setAccountLoading(true);
@@ -76,20 +78,41 @@ export function AppShellDataProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const refreshNotifications = useCallback(async () => {
-    if (!notificationsLoadedRef.current) {
-      setNotificationsLoading(true);
+    const now = Date.now();
+    if (notificationsLoadedRef.current && now - lastNotificationsFetchRef.current < 5_000) {
+      return;
     }
-    try {
-      const response = await fetch("/api/notifications", { cache: "no-store" });
-      const json = (await response.json()) as ApiEnvelope<NotificationData>;
-      if (response.ok && json.data) {
-        setNotificationData(json.data);
+    if (notificationsInFlightRef.current) {
+      await notificationsInFlightRef.current;
+      return;
+    }
+
+    const request = (async () => {
+      if (!notificationsLoadedRef.current) {
+        setNotificationsLoading(true);
       }
-    } catch {
-      // The app shell stays usable if notification loading fails.
+      try {
+        const response = await fetch("/api/notifications", { cache: "no-store" });
+        const json = (await response.json()) as ApiEnvelope<NotificationData>;
+        if (response.ok && json.data) {
+          setNotificationData(json.data);
+        }
+      } catch {
+        // The app shell stays usable if notification loading fails.
+      } finally {
+        notificationsLoadedRef.current = true;
+        lastNotificationsFetchRef.current = Date.now();
+        setNotificationsLoading(false);
+      }
+    })();
+
+    notificationsInFlightRef.current = request;
+    try {
+      await request;
     } finally {
-      notificationsLoadedRef.current = true;
-      setNotificationsLoading(false);
+      if (notificationsInFlightRef.current === request) {
+        notificationsInFlightRef.current = null;
+      }
     }
   }, []);
 
