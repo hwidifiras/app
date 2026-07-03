@@ -957,8 +957,8 @@ export function SessionsPlanner({
             </div>
           ) : null}
 
-          <div className="space-y-3 lg:hidden">
-            <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="min-w-0 space-y-3 overflow-hidden lg:hidden">
+            <div className="flex max-w-full min-w-0 gap-2 overflow-x-auto pb-1">
               {visibleWeekDays.map((day) => {
                 const dayStats = dayStatsByDate.get(day.key);
                 const active = activeMobileDay === day.key;
