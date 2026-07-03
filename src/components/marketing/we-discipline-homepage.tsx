@@ -48,11 +48,11 @@ type Stat = {
 };
 
 const assets = {
-  coach: "/we-discipline/coach-portrait.png",
-  dojo: "/we-discipline/wide-dojo-interior.png",
-  mentorship: "/we-discipline/coach-helping-child.png",
-  champion: "/we-discipline/champion-silhouette.png",
-  texture: "/we-discipline/dojo-texture.png",
+  coach: "/we-discipline/coach-portrait.webp",
+  dojo: "/we-discipline/wide-dojo-interior.webp",
+  mentorship: "/we-discipline/coach-helping-child.webp",
+  champion: "/we-discipline/champion-silhouette.webp",
+  texture: "/we-discipline/dojo-texture.webp",
 };
 
 const navItems = [
@@ -95,13 +95,13 @@ const footerGroups = [
 const trustItems = ["Sans carte bancaire", "Configuration en quelques minutes", "Annulation à tout moment"];
 
 const beltJourney = [
-  { name: "Ceinture blanche", image: "/we-discipline/white-belt.png", color: "#F8FAFC", count: "28 élèves" },
-  { name: "Ceinture jaune", image: "/we-discipline/yellow-belt.png", color: "#FACC15", count: "34 élèves" },
-  { name: "Ceinture orange", image: "/we-discipline/orange-belt.png", color: "#FB923C", count: "26 élèves" },
-  { name: "Ceinture verte", image: "/we-discipline/green-belt.png", color: "#22C55E", count: "30 élèves" },
-  { name: "Ceinture bleue", image: "/we-discipline/blue-belt.png", color: "#2563EB", count: "24 élèves" },
-  { name: "Ceinture marron", image: "/we-discipline/brown-belt.png", color: "#7C4A2D", count: "17 élèves" },
-  { name: "Ceinture noire", image: "/we-discipline/black-belt.png", color: "#111827", count: "28 élèves" },
+  { name: "Ceinture blanche", image: "/we-discipline/white-belt.webp", color: "#F8FAFC", count: "28 élèves" },
+  { name: "Ceinture jaune", image: "/we-discipline/yellow-belt.webp", color: "#FACC15", count: "34 élèves" },
+  { name: "Ceinture orange", image: "/we-discipline/orange-belt.webp", color: "#FB923C", count: "26 élèves" },
+  { name: "Ceinture verte", image: "/we-discipline/green-belt.webp", color: "#22C55E", count: "30 élèves" },
+  { name: "Ceinture bleue", image: "/we-discipline/blue-belt.webp", color: "#2563EB", count: "24 élèves" },
+  { name: "Ceinture marron", image: "/we-discipline/brown-belt.webp", color: "#7C4A2D", count: "17 élèves" },
+  { name: "Ceinture noire", image: "/we-discipline/black-belt.webp", color: "#111827", count: "28 élèves" },
 ];
 
 const features: Feature[] = [
@@ -174,7 +174,7 @@ const pricingPlans = [
   {
     name: "Ceinture Blanche",
     price: "29€",
-    beltImage: "/we-discipline/white-belt.png",
+    beltImage: "/we-discipline/white-belt.webp",
     beltColor: "#F8FAFC",
     description: "Pour poser les bases d'un dojo organisé.",
     features: ["Jusqu'à 100 élèves", "Dossiers membres", "Présences du jour", "Abonnements simples", "Support par email"],
@@ -183,7 +183,7 @@ const pricingPlans = [
   {
     name: "Ceinture Marron",
     price: "79€",
-    beltImage: "/we-discipline/brown-belt.png",
+    beltImage: "/we-discipline/brown-belt.webp",
     beltColor: "#7C4A2D",
     description: "Pour les académies en croissance qui veulent piloter avec rigueur.",
     features: [
@@ -198,7 +198,7 @@ const pricingPlans = [
   {
     name: "Ceinture Noire",
     price: "Sur mesure",
-    beltImage: "/we-discipline/black-belt.png",
+    beltImage: "/we-discipline/black-belt.webp",
     beltColor: "#111827",
     description: "Pour les réseaux, fédérations et clubs multisites.",
     features: ["Multi-académies", "Rôles avancés", "Accompagnement dédié", "Pilotage réseau", "Priorité support"],
@@ -273,7 +273,7 @@ function LogoLockup({ variant = "footer" }: { dark?: boolean; variant?: "navbar"
   return (
     <Link href="/accueil" className="relative block h-28 w-48" aria-label="Accueil We Discipline">
       <Image
-        src="/we-discipline/footer-logo.png"
+        src="/we-discipline/footer-logo.webp"
         alt="We Discipline"
         fill
         sizes="192px"
@@ -517,7 +517,7 @@ function HeroSection() {
           >
             <div className="overflow-hidden rounded-lg border border-white/50 bg-white shadow-[0_32px_90px_rgba(15,23,42,0.26)]">
               <Image
-                src="/we-discipline/hero-dashboard-reception.png"
+                src="/we-discipline/hero-dashboard-reception.webp"
                 alt="Tableau de bord réception We Discipline avec séances, encaissements et membres"
                 width={1536}
                 height={1024}
@@ -688,7 +688,7 @@ function AcademyDashboard() {
             <div className="absolute -inset-6 rounded-lg bg-[#2563EB]/10 blur-3xl" />
             <div className="relative overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_32px_90px_rgba(15,23,42,0.18)]">
               <Image
-                src="/we-discipline/hero-dashboard-reception.png"
+                src="/we-discipline/hero-dashboard-reception.webp"
                 alt="Tableau de bord We Discipline avec séances du jour, encaissements et aperçu des membres"
                 width={1536}
                 height={1024}

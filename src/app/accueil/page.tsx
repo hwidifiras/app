@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     locale: "fr_FR",
     images: [
       {
-        url: "/we-discipline/coach-portrait.png",
+        url: "/we-discipline/coach-portrait.webp",
         width: 1536,
         height: 1024,
         alt: "Coach d'arts martiaux We Discipline dans un dojo premium",
