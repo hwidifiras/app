@@ -276,6 +276,7 @@ export function SessionCard({
           ) : (
             <Link
               href={postponeHref}
+              prefetch={false}
               onClick={(e) => e.stopPropagation()}
               className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[0.65rem] font-medium text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
               title="Modifier le créneau ou reporter via le planning du groupe"

@@ -376,7 +376,7 @@ export function CheckInDrawer({
               className="min-h-11 w-full justify-center"
             />
             {!needsFinalization && !isFinalized && checked === 0 ? (
-              <Link href={postponeHref} className="btn btn-secondary min-h-11 w-full">
+              <Link href={postponeHref} prefetch={false} className="btn btn-secondary min-h-11 w-full">
                 <CalendarClock className="size-4" />
                 Reporter la séance
               </Link>
