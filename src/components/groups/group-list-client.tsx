@@ -205,6 +205,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
                   <div className="flex flex-nowrap items-center justify-end gap-1">
                     <Link
                       href={`/groups/${group.id}/schedules`}
+                      prefetch={false}
                       className="btn btn-ghost btn-sm inline-flex size-9 items-center justify-center p-0"
                       title="Planifier"
                       aria-label="Planifier"
@@ -213,6 +214,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
                     </Link>
                     <Link
                       href={`/groups/${group.id}/edit`}
+                      prefetch={false}
                       className="btn btn-ghost btn-sm inline-flex size-9 items-center justify-center p-0"
                       title="Modifier"
                       aria-label="Modifier"

@@ -231,6 +231,7 @@ export default async function LogsPage({
                     {presentation.hasDetailPage ? (
                       <Link
                         href={`/logs/${log.id}`}
+                        prefetch={false}
                         className="inline-flex size-9 items-center justify-center rounded-lg text-[var(--primary)] transition hover:bg-[var(--primary)]/10"
                         aria-label={`Voir le détail : ${presentation.summary}`}
                       >

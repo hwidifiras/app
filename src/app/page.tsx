@@ -254,6 +254,7 @@ function TodaySessionRow({ session }: { session: TodaySession }) {
         </div>
         <Link
           href={`/attendance/today?sessionId=${session.id}`}
+          prefetch={false}
           className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg bg-[#2563EB] px-3 text-sm font-semibold !text-white transition hover:bg-[#1D4ED8]"
         >
           {sessionActionLabel(session)}
@@ -311,6 +312,7 @@ function PrioritySummary({ items }: { items: PriorityItem[] }) {
                 </div>
                 <Link
                   href={item.href}
+                  prefetch={false}
                   className="inline-flex min-h-8 shrink-0 items-center justify-center rounded-lg border border-[#D8E2F0] bg-white px-3 text-xs font-semibold text-[#0B1220] transition hover:border-[#2563EB] hover:text-[#2563EB] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                 >
                   {item.actionLabel}
@@ -625,6 +627,7 @@ function MembersOverviewPanel({
                 <li key={member.id}>
                   <Link
                     href={`/members/${member.id}`}
+                    prefetch={false}
                     className="flex items-center gap-3 rounded-lg border border-[#E2E8F0] bg-white px-3 py-2.5 transition hover:border-[#2563EB] hover:bg-[#F8FAFC]"
                   >
                     <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#EFF6FF] text-xs font-bold text-[#2563EB]">

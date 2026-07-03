@@ -292,6 +292,7 @@ export default async function AttendanceByGroupPage({
                           <td className="px-4 py-3 text-right">
                             <Link
                               href={`/attendance/sessions/${row.id}`}
+                              prefetch={false}
                               className="inline-flex items-center gap-0.5 text-xs font-semibold text-[var(--primary)] hover:underline"
                             >
                               Détail

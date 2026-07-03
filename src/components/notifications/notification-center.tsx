@@ -175,6 +175,7 @@ function NotificationItem({
     <li>
       <Link
         href={notification.href}
+        prefetch={false}
         onClick={onOpen}
         className={cn(
           "group flex min-h-[4.75rem] items-start gap-3 rounded-lg border px-3 py-3 transition",

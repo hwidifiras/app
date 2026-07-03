@@ -342,12 +342,17 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
                 {sub.status === "ACTIVE" && sub.totalPaid < sub.amount ? (
                   <Link
                     href={`/payments/new?memberSubscriptionId=${sub.id}`}
+                    prefetch={false}
                     className="btn btn-primary btn-block-mobile min-h-11 sm:w-auto"
                   >
                     Encaisser
                   </Link>
                 ) : null}
-                <Link href={`/subscriptions/${sub.id}/edit`} className="btn btn-ghost btn-block-mobile min-h-11 sm:w-auto">
+                <Link
+                  href={`/subscriptions/${sub.id}/edit`}
+                  prefetch={false}
+                  className="btn btn-ghost btn-block-mobile min-h-11 sm:w-auto"
+                >
                   Modifier
                 </Link>
               </TableActionsCell>

@@ -243,6 +243,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
         <td className="data-table-primary px-4 py-3 font-medium" data-label="Nom">
           <Link
             href={`/members/${member.id}`}
+            prefetch={false}
             className="text-foreground hover:text-[var(--primary)] hover:underline"
           >
             {member.firstName} {member.lastName}
@@ -289,7 +290,11 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
         </td>
         <td className="hidden px-4 py-3 text-muted-foreground md:table-cell mobile-detail-cell" data-label="Inscrit le">{new Date(member.createdAt).toLocaleDateString("fr-FR")}</td>
         <td className="card-actions-cell px-4 py-3 text-right" data-label="Actions">
-          <Link href={`/members/${member.id}`} className="btn btn-ghost min-h-0 px-2 py-1 text-xs">
+          <Link
+            href={`/members/${member.id}`}
+            prefetch={false}
+            className="btn btn-ghost min-h-0 px-2 py-1 text-xs"
+          >
             Ouvrir
           </Link>
         </td>

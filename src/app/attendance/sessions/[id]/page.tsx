@@ -149,7 +149,7 @@ export default async function SessionAttendanceDetailPage({
         description={`${dateLabel} · ${session.startTime} – ${session.endTime} · ${formatRoomLabel(session.room)}`}
         actions={
           lifecycle.operationalStatus === "NEEDS_FINALIZATION" ? (
-            <Link href={`/attendance/today?sessionId=${session.id}`} className="btn btn-primary">
+            <Link href={`/attendance/today?sessionId=${session.id}`} prefetch={false} className="btn btn-primary">
               Reprendre le pointage
             </Link>
           ) : undefined
@@ -211,6 +211,7 @@ export default async function SessionAttendanceDetailPage({
                   >
                     <Link
                       href={`/members/${gm.member.id}`}
+                      prefetch={false}
                       className="min-w-0 flex-1 font-medium text-[var(--primary)] hover:underline"
                     >
                       {gm.member.firstName} {gm.member.lastName}
@@ -259,7 +260,11 @@ export default async function SessionAttendanceDetailPage({
                       <tr key={a.id} className="hover:bg-[var(--surface-soft)]">
                         <td className="data-table-primary px-3 py-2" data-label="Élève">
                           <div className="flex flex-col items-start gap-1">
-                            <Link href={`/members/${a.member.id}`} className="text-[var(--primary)] hover:underline">
+                            <Link
+                              href={`/members/${a.member.id}`}
+                              prefetch={false}
+                              className="text-[var(--primary)] hover:underline"
+                            >
                               {a.member.firstName} {a.member.lastName}
                             </Link>
                             {!expectedIds.has(a.memberId) ? (

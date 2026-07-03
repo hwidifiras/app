@@ -104,6 +104,7 @@ export function MemberSubscriptionCards({ subscriptions }: { subscriptions: Subs
               {!isPaid ? (
                 <Link
                   href={`/payments/new?memberSubscriptionId=${sub.id}`}
+                  prefetch={false}
                   className="btn btn-primary btn-sm inline-flex w-full justify-center text-xs"
                 >
                   Encaisser
@@ -111,6 +112,7 @@ export function MemberSubscriptionCards({ subscriptions }: { subscriptions: Subs
               ) : null}
               <Link
                 href={`/subscriptions/${sub.id}/edit`}
+                prefetch={false}
                 className={`btn btn-ghost btn-sm inline-flex w-full justify-center text-xs ${
                   isPaid ? "sm:col-span-2" : ""
                 }`}

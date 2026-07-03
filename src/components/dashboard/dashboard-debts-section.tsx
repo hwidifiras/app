@@ -169,7 +169,11 @@ export function DashboardDebtsSection({
                   className={`mobile-collapsible-row transition-colors hover:bg-[var(--surface-soft)] ${expanded ? "is-expanded" : ""}`}
                 >
                   <td className="data-table-primary px-4 py-3 font-medium text-[var(--foreground)]" data-label="Membre">
-                    <Link href={`/members/${item.memberId}`} className="hover:text-[var(--primary)] hover:underline">
+                    <Link
+                      href={`/members/${item.memberId}`}
+                      prefetch={false}
+                      className="hover:text-[var(--primary)] hover:underline"
+                    >
                       {item.memberName}
                     </Link>
                     {item.partialPaid ? (
@@ -192,6 +196,7 @@ export function DashboardDebtsSection({
                     <div className="flex flex-wrap justify-end gap-1.5">
                       <Link
                         href={`/payments/new?memberId=${item.memberId}`}
+                        prefetch={false}
                         className="btn btn-ghost btn-sm inline-flex items-center gap-1.5"
                       >
                         <Wallet className="size-3.5" />

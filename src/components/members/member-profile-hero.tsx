@@ -115,6 +115,7 @@ export function MemberProfileHero({
             <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Link
                 href={`/payments/new?memberId=${member.id}`}
+                prefetch={false}
                 className={`btn btn-block-mobile min-h-11 sm:w-auto ${
                   totalDebtCents > 0 ? "btn-primary" : "btn-ghost"
                 }`}
@@ -124,11 +125,19 @@ export function MemberProfileHero({
               </Link>
               {member.status === "ACTIVE" ? (
                 <>
-                  <Link href={`/subscriptions/new?memberId=${member.id}`} className="btn btn-ghost btn-block-mobile min-h-11 sm:w-auto">
+                  <Link
+                    href={`/subscriptions/new?memberId=${member.id}`}
+                    prefetch={false}
+                    className="btn btn-ghost btn-block-mobile min-h-11 sm:w-auto"
+                  >
                     <CreditCard className="size-4" />
                     Renouveler
                   </Link>
-                  <Link href={`/members/${member.id}/add-to-group`} className="btn btn-ghost btn-block-mobile min-h-11 sm:w-auto">
+                  <Link
+                    href={`/members/${member.id}/add-to-group`}
+                    prefetch={false}
+                    className="btn btn-ghost btn-block-mobile min-h-11 sm:w-auto"
+                  >
                     <UsersRound className="size-4" />
                     Affecter
                   </Link>

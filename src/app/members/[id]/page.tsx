@@ -164,7 +164,11 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                   </h2>
                 </div>
                 {member.status === "ACTIVE" ? (
-                  <Link href={`/members/${member.id}/add-to-group`} className="btn btn-primary btn-block-mobile btn-sm sm:w-auto">
+                  <Link
+                    href={`/members/${member.id}/add-to-group`}
+                    prefetch={false}
+                    className="btn btn-primary btn-block-mobile btn-sm sm:w-auto"
+                  >
                     + Affecter
                   </Link>
                 ) : null}
@@ -177,7 +181,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                   message="Affectez ce membre à un cours pour le retrouver dans le pointage."
                   action={
                     member.status === "ACTIVE" ? (
-                      <Link href={`/members/${member.id}/add-to-group`} className="btn btn-primary">
+                      <Link href={`/members/${member.id}/add-to-group`} prefetch={false} className="btn btn-primary">
                         Affecter
                       </Link>
                     ) : undefined
@@ -211,7 +215,11 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                           <span className="sm:col-span-2">Depuis le {formatDate(assignment.startDate)}</span>
                         </div>
                         <div className="mt-3">
-                          <Link href={`/sessions?groupId=${assignment.group.id}`} className="btn btn-ghost btn-sm w-full">
+                          <Link
+                            href={`/sessions?groupId=${assignment.group.id}`}
+                            prefetch={false}
+                            className="btn btn-ghost btn-sm w-full"
+                          >
                             Voir planning
                           </Link>
                         </div>

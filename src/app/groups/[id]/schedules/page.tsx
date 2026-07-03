@@ -93,11 +93,11 @@ export default async function GroupSchedulesPage({ params }: { params: Promise<{
         description={`${group.sport.name} — Coach ${group.coach.firstName} ${group.coach.lastName} — ${formatRoomLabel(group.room, "Salle par séance")}`}
         actions={
           <div className="flex flex-wrap gap-2">
-            <Link href={`/sessions?groupId=${group.id}`} className="btn btn-primary text-sm">
+            <Link href={`/sessions?groupId=${group.id}`} prefetch={false} className="btn btn-primary text-sm">
               <CalendarDays className="size-3.5" />
               Planning séances
             </Link>
-            <Link href={`/groups/${group.id}/edit`} className="btn btn-ghost text-sm">
+            <Link href={`/groups/${group.id}/edit`} prefetch={false} className="btn btn-ghost text-sm">
               Modifier groupe
             </Link>
           </div>

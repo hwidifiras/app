@@ -143,7 +143,11 @@ function SessionTile({
         <div className="mt-auto grid min-w-0 grid-cols-2 gap-1">
           {item.operationalStatus === "NEEDS_FINALIZATION" ? (
             <>
-              <Link href={`/attendance/today?sessionId=${item.id}`} className="btn btn-primary btn-sm min-w-0">
+              <Link
+                href={`/attendance/today?sessionId=${item.id}`}
+                prefetch={false}
+                className="btn btn-primary btn-sm min-w-0"
+              >
                 <AlertTriangle className="size-3.5" />
                 Finaliser
               </Link>
@@ -152,7 +156,11 @@ function SessionTile({
               </button>
             </>
           ) : item.status === "COMPLETED" ? (
-            <Link href={`/attendance/today?sessionId=${item.id}`} className="btn btn-ghost btn-sm col-span-2 min-w-0">
+            <Link
+              href={`/attendance/today?sessionId=${item.id}`}
+              prefetch={false}
+              className="btn btn-ghost btn-sm col-span-2 min-w-0"
+            >
               Consulter
             </Link>
           ) : (
@@ -724,6 +732,7 @@ export function SessionsPlanner({
                           {item.operationalStatus === "NEEDS_FINALIZATION" ? (
                             <Link
                               href={`/attendance/today?sessionId=${item.id}`}
+                              prefetch={false}
                               className="btn btn-primary btn-sm min-w-0 max-sm:w-full"
                             >
                               <AlertTriangle className="size-3.5" />
@@ -733,6 +742,7 @@ export function SessionsPlanner({
                           {item.status === "COMPLETED" ? (
                             <Link
                               href={`/attendance/today?sessionId=${item.id}`}
+                              prefetch={false}
                               className="btn btn-ghost btn-sm min-w-0 max-sm:w-full"
                             >
                               Consulter

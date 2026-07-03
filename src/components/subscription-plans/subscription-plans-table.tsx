@@ -175,7 +175,11 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
                 <td className="px-4 py-3 text-center mobile-detail-cell" data-label="Souscriptions">{plan._count.subscriptions}</td>
                 <td className="px-4 py-3 text-right card-actions-cell" data-label="Actions">
                   <div className="card-actions-stack">
-                    <Link href={`/subscription-plans/${plan.id}/edit`} className="btn btn-ghost md:min-h-0 md:px-2 md:py-1 md:text-xs">
+                    <Link
+                      href={`/subscription-plans/${plan.id}/edit`}
+                      prefetch={false}
+                      className="btn btn-ghost md:min-h-0 md:px-2 md:py-1 md:text-xs"
+                    >
                       Modifier
                     </Link>
                     <button
