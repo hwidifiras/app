@@ -25,6 +25,7 @@ export type SessionDto = {
   attendanceCount: number;
   operationalStatus?: SessionOperationalStatusDto;
   expectedMemberCount?: number;
+  checkedMemberCount?: number;
   unmarkedCount?: number;
   canFinalize?: boolean;
   createdAt: string;
