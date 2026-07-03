@@ -143,12 +143,9 @@ export function AppShellDataProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     const timer = window.setTimeout(() => void refreshNotifications(), 0);
     const interval = window.setInterval(() => void refreshNotifications(), 60_000);
-    const refreshOnFocus = () => void refreshNotifications();
-    window.addEventListener("focus", refreshOnFocus);
     return () => {
       window.clearTimeout(timer);
       window.clearInterval(interval);
-      window.removeEventListener("focus", refreshOnFocus);
     };
   }, [refreshNotifications]);
 
