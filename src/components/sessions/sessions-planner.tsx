@@ -6,13 +6,12 @@ import {
   AlertTriangle,
   CalendarDays,
   CalendarPlus,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock3,
-  MapPin,
   MoreHorizontal,
   RotateCcw,
-  UsersRound,
 } from "lucide-react";
 
 import { SessionDto, SessionStatusDto } from "@/types/session";
@@ -153,22 +152,37 @@ function attendanceHref(session: SessionDto) {
   return `/attendance/today?sessionId=${session.id}`;
 }
 
+function sessionRailClass(session: SessionDto, hasConflict: boolean) {
+  if (hasConflict) return "bg-[var(--danger)]";
+  if (session.operationalStatus === "NEEDS_FINALIZATION") return "bg-[var(--warning)]";
+  if (session.status === "COMPLETED") return "bg-[var(--success)]";
+  if (session.status === "CANCELLED") return "bg-[var(--muted-foreground)]";
+  return "bg-[var(--primary)]";
+}
+
 function SessionTile({
   item,
   onEdit,
   onCancel,
-  onDetails,
+  onToggle,
+  expanded,
+  conflictReasons,
   hasConflict = false,
 }: {
   item: SessionDto;
   onEdit: (session: SessionDto) => void;
   onCancel: (session: SessionDto) => void;
-  onDetails: (session: SessionDto) => void;
+  onToggle: (session: SessionDto) => void;
+  expanded: boolean;
+  conflictReasons: string[];
   hasConflict?: boolean;
 }) {
   const displayedStatus = displayedSessionStatus(item);
   const canCancel = canCancelSession(item);
   const actionLabel = primaryActionLabel(item);
+  const checkedCount = item.checkedMemberCount ?? item.attendanceCount ?? 0;
+  const expectedCount = item.expectedMemberCount ?? 0;
+  const progress = expectedCount > 0 ? Math.min(100, Math.round((checkedCount / expectedCount) * 100)) : 0;
   const actionIsAttendanceLink =
     item.operationalStatus === "NEEDS_FINALIZATION" ||
     item.status === "COMPLETED" ||
@@ -176,20 +190,30 @@ function SessionTile({
 
   return (
     <li
-      className={`rounded-lg border bg-[var(--surface)] p-2.5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-panel)] ${
-        hasConflict ? "border-[var(--danger)]/45 ring-1 ring-[var(--danger)]/15" : "border-[var(--border)]"
+      className={`relative overflow-visible rounded-lg border bg-[var(--surface)] shadow-sm transition hover:shadow-[var(--shadow-panel)] ${
+        expanded
+          ? "border-[var(--primary)]/45 ring-1 ring-[var(--primary)]/15"
+          : hasConflict
+            ? "border-[var(--danger)]/45 ring-1 ring-[var(--danger)]/10"
+            : "border-[var(--border)]"
       }`}
     >
-      <div className="flex h-full min-w-0 flex-col gap-2">
-        <button type="button" onClick={() => onDetails(item)} className="min-w-0 text-left">
+      <div className={`absolute inset-y-0 left-0 w-1 ${sessionRailClass(item, hasConflict)}`} aria-hidden="true" />
+      <div className="flex h-full min-w-0 flex-col pl-1">
+        <button type="button" onClick={() => onToggle(item)} className="min-w-0 px-2.5 py-2.5 text-left">
           <div className="flex flex-wrap items-start justify-between gap-2">
-            <p className="inline-flex items-center gap-1 rounded-md bg-[var(--surface-soft)] px-2 py-1 text-[0.72rem] font-bold text-[var(--foreground)]">
+            <p className="inline-flex items-center gap-1 rounded-md bg-[var(--surface-soft)] px-1.5 py-1 text-[0.7rem] font-bold text-[var(--foreground)]">
               <Clock3 className="size-3" />
               {item.startTime} - {item.endTime}
             </p>
-            <StatusBadge variant={hasConflict ? "danger" : displayedStatus.variant} className="shrink-0">
-              {hasConflict ? "Conflit" : displayedStatus.label}
-            </StatusBadge>
+            <span className="flex shrink-0 items-center gap-1">
+              <StatusBadge variant={hasConflict ? "danger" : displayedStatus.variant} className="max-w-24 truncate">
+                {hasConflict ? "Conflit" : displayedStatus.label}
+              </StatusBadge>
+              <ChevronDown
+                className={`size-3.5 text-[var(--muted-foreground)] transition-transform ${expanded ? "rotate-180" : ""}`}
+              />
+            </span>
           </div>
           <p className="mt-2 truncate text-sm font-semibold text-[var(--foreground)]">{item.groupName}</p>
           <p className="mt-1 truncate text-xs text-[var(--muted-foreground)]">
@@ -197,20 +221,46 @@ function SessionTile({
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5 text-[0.68rem] text-[var(--muted-foreground)]">
             <span className="rounded-full bg-[var(--surface-soft)] px-2 py-0.5">
-              {item.checkedMemberCount ?? item.attendanceCount ?? 0}/{item.expectedMemberCount ?? 0} pointés
+              {checkedCount}/{expectedCount} pointés
             </span>
-            {item.unmarkedCount ? (
+            {expanded && item.unmarkedCount ? (
               <span className="rounded-full bg-[var(--warning)]/10 px-2 py-0.5 text-[var(--warning)]">
                 {item.unmarkedCount} restant{item.unmarkedCount > 1 ? "s" : ""}
               </span>
             ) : null}
           </div>
-          {item.exceptionReason ? (
+          {hasConflict && conflictReasons[0] ? (
+            <p className="mt-1 truncate text-[0.68rem] font-medium text-[var(--danger)]">{conflictReasons[0]}</p>
+          ) : expanded && item.exceptionReason ? (
             <p className="mt-1 text-xs text-[var(--danger)]">Motif: {item.exceptionReason}</p>
           ) : null}
         </button>
 
-        <div className="mt-auto flex min-w-0 items-center gap-1.5">
+        {expanded ? (
+        <div className="border-t border-[var(--border)] px-2.5 pb-2.5 pt-2">
+          <div className="flex items-center justify-between gap-2 text-[0.68rem] text-[var(--muted-foreground)]">
+            <span>{checkedCount}/{expectedCount} pointés</span>
+            <span>{item.unmarkedCount ?? 0} restant{(item.unmarkedCount ?? 0) > 1 ? "s" : ""}</span>
+          </div>
+          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--surface-soft)]">
+            <div
+              className={`h-full rounded-full ${hasConflict ? "bg-[var(--danger)]" : "bg-[var(--primary)]"}`}
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+
+          {conflictReasons.length > 0 ? (
+            <div className="mt-2 rounded-md border border-[var(--danger)]/20 bg-[var(--danger)]/10 px-2 py-1.5">
+              <p className="text-[0.68rem] font-semibold text-[var(--danger)]">À résoudre</p>
+              <ul className="mt-1 space-y-0.5 text-[0.7rem] text-[var(--foreground)]">
+                {conflictReasons.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+        <div className="mt-2 flex min-w-0 items-center gap-1.5">
           {actionIsAttendanceLink ? (
             <Link
               href={attendanceHref(item)}
@@ -223,8 +273,8 @@ function SessionTile({
               {actionLabel}
             </Link>
           ) : (
-            <button type="button" onClick={() => onDetails(item)} className="btn btn-ghost btn-sm min-w-0 flex-1">
-              {actionLabel}
+            <button type="button" onClick={() => onEdit(item)} className="btn btn-primary btn-sm min-w-0 flex-1">
+              Modifier
             </button>
           )}
           <details className="relative shrink-0">
@@ -253,6 +303,8 @@ function SessionTile({
             </div>
           </details>
         </div>
+        </div>
+        ) : null}
       </div>
     </li>
   );
@@ -278,7 +330,7 @@ export function SessionsPlanner({
   const [generating, setGenerating] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [pendingDeleteSession, setPendingDeleteSession] = useState<SessionDto | null>(null);
-  const [selectedSession, setSelectedSession] = useState<SessionDto | null>(null);
+  const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
 
   const [editingSession, setEditingSession] = useState<SessionDto | null>(null);
   const [editForm, setEditForm] = useState({
@@ -365,7 +417,7 @@ export function SessionsPlanner({
   }
 
   function openEdit(session: SessionDto) {
-    setSelectedSession(null);
+    setExpandedSessionId(null);
     setEditingSession(session);
     setEditForm({
       sessionDate: formatUtcDateOnlyIso(new Date(session.sessionDate)),
@@ -580,9 +632,13 @@ export function SessionsPlanner({
       ),
     );
     setPendingDeleteSession(null);
-    setSelectedSession(null);
+    setExpandedSessionId(null);
     setMessage("Séance annulée avec succès");
     setLoading(false);
+  }
+
+  function toggleExpandedSession(session: SessionDto) {
+    setExpandedSessionId((current) => (current === session.id ? null : session.id));
   }
 
   async function generateSessions() {
@@ -789,9 +845,6 @@ export function SessionsPlanner({
     dayFilter !== "ALL",
     statusFilter !== "ALL",
   ].filter(Boolean).length;
-  const selectedConflictReasons = selectedSession
-    ? conflictDetailsBySessionId.get(selectedSession.id) ?? []
-    : [];
 
   async function resetFilters() {
     setDayFilter("ALL");
@@ -974,7 +1027,9 @@ export function SessionsPlanner({
                             item={item}
                             onEdit={openEdit}
                             onCancel={setPendingDeleteSession}
-                            onDetails={setSelectedSession}
+                            onToggle={toggleExpandedSession}
+                            expanded={expandedSessionId === item.id}
+                            conflictReasons={conflictDetailsBySessionId.get(item.id) ?? []}
                             hasConflict={conflictSessionIds.has(item.id)}
                           />
                         ))}
@@ -1040,7 +1095,9 @@ export function SessionsPlanner({
                           item={item}
                           onEdit={openEdit}
                           onCancel={setPendingDeleteSession}
-                          onDetails={setSelectedSession}
+                          onToggle={toggleExpandedSession}
+                          expanded={expandedSessionId === item.id}
+                          conflictReasons={conflictDetailsBySessionId.get(item.id) ?? []}
                           hasConflict={conflictSessionIds.has(item.id)}
                         />
                       ))}
@@ -1175,112 +1232,6 @@ export function SessionsPlanner({
           </select>
         </FilterField>
       </MobileFilterSheet>
-
-      {/* Modal d'édition de séance */}
-      {selectedSession ? (
-        <div className="mobile-modal-overlay fixed inset-0 z-50 flex justify-end bg-black/35">
-          <aside className="mobile-modal-panel w-full border-l border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-floating)] md:max-w-md">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--primary)]">Détail séance</p>
-                <h3 className="mt-1 truncate text-xl font-semibold text-[var(--foreground)]">{selectedSession.groupName}</h3>
-                <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-                  {formatDateFr(selectedSession.sessionDate)} · {selectedSession.startTime} - {selectedSession.endTime}
-                </p>
-              </div>
-              <button type="button" onClick={() => setSelectedSession(null)} className="btn btn-ghost px-3">
-                Fermer
-              </button>
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              <StatusBadge variant={conflictSessionIds.has(selectedSession.id) ? "danger" : displayedSessionStatus(selectedSession).variant}>
-                {conflictSessionIds.has(selectedSession.id) ? "Conflit" : displayedSessionStatus(selectedSession).label}
-              </StatusBadge>
-              {selectedSession.exceptionReason ? (
-                <span className="rounded-full bg-[var(--danger)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--danger)]">
-                  Motif renseigné
-                </span>
-              ) : null}
-            </div>
-
-            {selectedConflictReasons.length > 0 ? (
-              <div className="mt-4 rounded-lg border border-[var(--danger)]/25 bg-[var(--danger)]/10 p-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--danger)]">
-                  Pourquoi ce conflit ?
-                </p>
-                <ul className="mt-2 space-y-1 text-sm text-[var(--foreground)]">
-                  {selectedConflictReasons.map((reason) => (
-                    <li key={reason}>{reason}</li>
-                  ))}
-                </ul>
-                <button
-                  type="button"
-                  onClick={() => openEdit(selectedSession)}
-                  className="btn btn-primary btn-sm mt-3 w-full"
-                >
-                  Changer coach ou salle
-                </button>
-              </div>
-            ) : null}
-
-            <div className="mt-5 grid gap-3">
-              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">Pointage</p>
-                <p className="mt-1 text-lg font-bold text-[var(--foreground)]">
-                  {selectedSession.checkedMemberCount ?? selectedSession.attendanceCount ?? 0}/{selectedSession.expectedMemberCount ?? 0}
-                </p>
-                <p className="text-xs text-[var(--muted-foreground)]">
-                  {selectedSession.unmarkedCount ?? 0} élève{(selectedSession.unmarkedCount ?? 0) > 1 ? "s" : ""} restant{(selectedSession.unmarkedCount ?? 0) > 1 ? "s" : ""}
-                </p>
-              </div>
-              <div className="grid gap-2 text-sm">
-                <p className="flex items-center gap-2 text-[var(--foreground)]">
-                  <UsersRound className="size-4 text-[var(--muted-foreground)]" />
-                  {selectedSession.coachName ?? "Sans coach"}
-                </p>
-                <p className="flex items-center gap-2 text-[var(--foreground)]">
-                  <MapPin className="size-4 text-[var(--muted-foreground)]" />
-                  {formatRoomLabel(selectedSession.room)}
-                </p>
-              </div>
-              {selectedSession.exceptionReason ? (
-                <p className="rounded-lg border border-[var(--danger)]/25 bg-[var(--danger)]/10 px-3 py-2 text-sm text-[var(--foreground)]">
-                  {selectedSession.exceptionReason}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="mt-6 grid gap-2">
-              {primaryActionLabel(selectedSession) === "Consulter" && !(
-                selectedSession.status === "COMPLETED" || (isTodaySession(selectedSession) && selectedSession.status !== "CANCELLED")
-              ) ? (
-                <button type="button" onClick={() => setSelectedSession(null)} className="btn btn-primary">
-                  Consulter
-                </button>
-              ) : (
-                <Link href={attendanceHref(selectedSession)} prefetch={false} className="btn btn-primary">
-                  {primaryActionLabel(selectedSession)}
-                </Link>
-              )}
-              <button type="button" onClick={() => openEdit(selectedSession)} className="btn btn-ghost">
-                Modifier
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setPendingDeleteSession(selectedSession);
-                  setSelectedSession(null);
-                }}
-                disabled={!canCancelSession(selectedSession)}
-                className="btn btn-ghost border-[var(--danger)]/30 text-[var(--danger)] disabled:opacity-50"
-              >
-                Annuler la séance
-              </button>
-            </div>
-          </aside>
-        </div>
-      ) : null}
 
       {editingSession ? (
         <div className="mobile-modal-overlay fixed inset-0 z-50 flex justify-center bg-black/40">
