@@ -1091,7 +1091,7 @@ export default async function Home() {
         ) : null}
 
         <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(24rem,0.85fr)]">
-          <TodayWorkPanel todaySessions={todaySessions} priorityItems={priorityItems} />
+          <CashTrendPanel trend={cashTrend} weekTotal={revenueWeek} />
           <CashRegisterPanel
             totalToday={revenueToday}
             paymentCountToday={paymentCountToday}
@@ -1105,7 +1105,7 @@ export default async function Home() {
         </section>
 
         <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(24rem,0.85fr)]">
-          <CashTrendPanel trend={cashTrend} weekTotal={revenueWeek} />
+          <TodayWorkPanel todaySessions={todaySessions} priorityItems={priorityItems} />
           <MembersOverviewPanel
             activeMembers={activeMembers}
             newMembersThisMonth={newMembersThisMonth}
