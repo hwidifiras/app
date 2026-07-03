@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createSportSchema, updateSportSchema } from "@/lib/schemas/sport";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
+import { listSportOverviews } from "@/lib/sports-overview";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,16 +19,9 @@ export async function GET(request: Request) {
   const query = searchParams.get("q")?.trim();
   const active = searchParams.get("active");
 
-  const sports = await prisma.sport.findMany({
-    where: {
-      ...(active === "true" ? { isActive: true } : {}),
-      ...(query
-        ? {
-            OR: [{ name: { contains: query } }, { description: { contains: query } }],
-          }
-        : {}),
-    },
-    orderBy: query ? { createdAt: "desc" } : { name: "asc" },
+  const sports = await listSportOverviews({
+    active: active === "true",
+    query,
   });
 
   return NextResponse.json({ data: sports });

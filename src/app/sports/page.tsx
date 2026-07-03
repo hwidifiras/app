@@ -1,42 +1,19 @@
-import { SportManager } from "@/components/sports/sport-manager";
-import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+
+import { SportManager } from "@/components/sports/sport-manager";
 import { PageHeader } from "@/components/ui/page-header";
+import { listSportOverviews } from "@/lib/sports-overview";
+import { SportDto } from "@/types/sport";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-type SportRecord = {
-  id: string;
-  name: string;
-  description: string | null;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
 export default async function SportsPage() {
   let hasSportDataError = false;
-  let initialSports: Array<{
-    id: string;
-    name: string;
-    description: string | null;
-    isActive: boolean;
-    createdAt: string;
-    updatedAt: string;
-  }> = [];
+  let initialSports: SportDto[] = [];
 
   try {
-    const sports: SportRecord[] = await prisma.sport.findMany({
-      orderBy: { createdAt: "desc" },
-    });
-
-    initialSports = sports.map((sport) => ({
-      ...sport,
-      createdAt: sport.createdAt.toISOString(),
-      updatedAt: sport.updatedAt.toISOString(),
-    }));
+    initialSports = await listSportOverviews();
   } catch (error) {
     hasSportDataError = true;
     console.error("Sports page degraded mode due to Prisma model mismatch:", error);
@@ -47,7 +24,7 @@ export default async function SportsPage() {
       <main className="app-shell py-6">
         <div className="panel panel-soft p-6">
           <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted-foreground)]">Mode dégradé</p>
-          <h1 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">Gestion des sports indisponible</h1>
+          <h1 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">Gestion des disciplines indisponible</h1>
           <p className="mt-3 text-sm text-[var(--muted-foreground)]">
             Cette page ne peut pas charger ses données pour le moment. Revenez au tableau de bord puis contactez le
             support si le problème continue.
@@ -68,11 +45,6 @@ export default async function SportsPage() {
         overline="Configuration"
         title="Disciplines"
         description="Gérer les disciplines proposées par le club."
-        actions={
-          <Link href="#sport-create" className="btn btn-primary btn-block-mobile">
-            <Plus className="size-4" /> Ajouter une discipline
-          </Link>
-        }
       />
       <SportManager initialSports={initialSports} />
     </main>
