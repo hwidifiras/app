@@ -13,6 +13,12 @@ const TRUSTED_REQUEST_HEADERS = [
   "x-user-name",
 ];
 
+function setApiNoStoreHeaders(headers: Headers) {
+  headers.set("Cache-Control", "private, no-store, max-age=0, must-revalidate");
+  headers.set("Pragma", "no-cache");
+  headers.set("Expires", "0");
+}
+
 function sanitizedRequestHeaders(request: NextRequest) {
   const headers = new Headers(request.headers);
   for (const header of TRUSTED_REQUEST_HEADERS) {
@@ -23,19 +29,25 @@ function sanitizedRequestHeaders(request: NextRequest) {
 
 function nextWithPathHeader(request: NextRequest, headers = new Headers(request.headers)) {
   headers.set("x-pathname", request.nextUrl.pathname);
-  return NextResponse.next({
+  const response = NextResponse.next({
     request: { headers },
   });
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    setApiNoStoreHeaders(response.headers);
+  }
+  return response;
 }
 
 function loginRedirect(request: NextRequest, reason: "missing" | "invalid") {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/api/")) {
-    return NextResponse.json(
+    const response = NextResponse.json(
       { error: reason === "missing" ? "Non authentifie" : "Session invalide" },
       { status: 401 },
     );
+    setApiNoStoreHeaders(response.headers);
+    return response;
   }
 
   const url = request.nextUrl.clone();
@@ -83,9 +95,13 @@ export async function proxy(request: NextRequest) {
   headers.set("x-user-email", payload.email);
   headers.set("x-user-name", payload.name);
 
-  return NextResponse.next({
+  const response = NextResponse.next({
     request: { headers },
   });
+  if (pathname.startsWith("/api/")) {
+    setApiNoStoreHeaders(response.headers);
+  }
+  return response;
 }
 
 export const config = {

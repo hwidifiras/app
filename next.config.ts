@@ -32,18 +32,31 @@ const productionSecurityHeaders = [
   },
 ];
 
+const apiNoStoreHeaders = [
+  { key: "Cache-Control", value: "private, no-store, max-age=0, must-revalidate" },
+  { key: "Pragma", value: "no-cache" },
+  { key: "Expires", value: "0" },
+];
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   turbopack: {
     root: appRoot,
   },
   async headers() {
-    if (process.env.NODE_ENV !== "production") return [];
+    const apiHeaders = {
+      source: "/api/:path*",
+      headers: apiNoStoreHeaders,
+    };
+
+    if (process.env.NODE_ENV !== "production") return [apiHeaders];
+
     return [
       {
         source: "/:path*",
         headers: productionSecurityHeaders,
       },
+      apiHeaders,
     ];
   },
 };
