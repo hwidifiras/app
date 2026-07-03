@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { createGroupSchema, updateGroupSchema } from "@/lib/schemas/group";
 import { normalizeGroupRoomInput } from "@/lib/group-room";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
+import { utcDateOnlyForTimeZone } from "@/lib/dates";
+import { findCoachSessionConflict, formatSessionSlotLabel } from "@/lib/session-slot-conflict";
 import {
   coachSportOverrideAuditDetails,
   validateCoachSportEligibility,
@@ -283,6 +285,52 @@ export async function PATCH(request: Request) {
     }
   }
 
+  const shouldApplyCoachToFutureSessions = Boolean(
+    payload.applyCoachToFutureSessions &&
+      payload.coachId &&
+      payload.coachId !== existingGroup.coachId,
+  );
+
+  const futureSessionsForCoachPropagation = shouldApplyCoachToFutureSessions
+    ? await prisma.session.findMany({
+        where: {
+          groupId,
+          sessionDate: { gte: utcDateOnlyForTimeZone(new Date()) },
+          status: { in: ["PLANNED", "RESCHEDULED"] },
+          attendances: { none: {} },
+        },
+        select: {
+          id: true,
+          sessionDate: true,
+          startTime: true,
+          endTime: true,
+        },
+        orderBy: [{ sessionDate: "asc" }, { startTime: "asc" }],
+      })
+    : [];
+
+  if (shouldApplyCoachToFutureSessions) {
+    for (const session of futureSessionsForCoachPropagation) {
+      const coachConflict = await findCoachSessionConflict({
+        coachId: targetCoachId,
+        sessionDate: session.sessionDate,
+        startTime: session.startTime,
+        endTime: session.endTime,
+        excludeIds: [session.id],
+      });
+
+      if (coachConflict?.coach) {
+        const coachName = `${coachConflict.coach.firstName} ${coachConflict.coach.lastName}`;
+        return NextResponse.json(
+          {
+            error: `Impossible d'appliquer ce coach aux seances futures: ${coachName} est deja assigne a "${coachConflict.group.name}" le ${formatSessionSlotLabel(session.sessionDate, coachConflict.startTime)}.`,
+          },
+          { status: 409 },
+        );
+      }
+    }
+  }
+
   try {
     const updatedGroup = await prisma.$transaction(async (tx) => {
       const group = await tx.group.update({
@@ -321,6 +369,31 @@ export async function PATCH(request: Request) {
             entityId: group.id,
             userId: actor.id,
             details,
+          },
+        });
+      }
+
+      if (shouldApplyCoachToFutureSessions && futureSessionsForCoachPropagation.length > 0) {
+        const sessionIds = futureSessionsForCoachPropagation.map((session) => session.id);
+        const updateResult = await tx.session.updateMany({
+          where: { id: { in: sessionIds } },
+          data: { coachId: targetCoachId },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            action: "GROUP_COACH_PROPAGATED",
+            entityType: "Group",
+            entityId: group.id,
+            userId: actor.id,
+            details: JSON.stringify({
+              groupId: group.id,
+              groupName: group.name,
+              previousCoachId: existingGroup.coachId,
+              nextCoachId: targetCoachId,
+              affectedSessions: updateResult.count,
+              rule: "future_sessions_without_attendance",
+            }),
           },
         });
       }

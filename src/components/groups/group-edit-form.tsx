@@ -48,6 +48,7 @@ export function GroupEditForm({
   const [groupType, setGroupType] = useState<"KIDS" | "ADULTS">(initialData.groupType);
   const [sportId, setSportId] = useState(initialData.sportId);
   const [coachId, setCoachId] = useState(initialData.coachId);
+  const [applyCoachToFutureSessions, setApplyCoachToFutureSessions] = useState(false);
   const [coachSportOverrideReason, setCoachSportOverrideReason] = useState("");
   const [capacity, setCapacity] = useState(initialData.capacity);
   const [room, setRoom] = useState(initialData.room ?? "");
@@ -70,6 +71,7 @@ export function GroupEditForm({
     return `${member.firstName} ${member.lastName}`.toLowerCase().includes(query) || member.phone.toLowerCase().includes(query);
   }).filter((member) => isMemberAllowed(member.memberType));
   const selectedCoach = coachesOptions.find((coach) => coach.id === coachId);
+  const coachChanged = coachId !== initialData.coachId;
   const coachSportPairChanged = sportId !== initialData.sportId || coachId !== initialData.coachId;
   const needsCoachSportOverride = coachSportPairChanged && !coachIsQualifiedForSport(selectedCoach, sportId);
 
@@ -92,6 +94,7 @@ export function GroupEditForm({
           room,
           isActive,
           coachSportOverrideReason: needsCoachSportOverride ? coachSportOverrideReason : "",
+          applyCoachToFutureSessions: coachChanged ? applyCoachToFutureSessions : false,
         },
       }),
     });
@@ -197,17 +200,38 @@ export function GroupEditForm({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Coach</label>
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Coach par défaut</label>
             <select value={coachId} onChange={(e) => setCoachId(e.target.value)} className="field text-sm" required>
               <option value="">Choisir</option>
               {coachesOptions.map((coach) => (
                 <option key={coach.id} value={coach.id}>{formatCoachOptionLabel(coach)}</option>
               ))}
             </select>
+            <p className="mt-1 text-[0.65rem] text-[var(--muted-foreground)]">
+              Utilisé pour les nouvelles séances générées. Les séances déjà créées gardent leur coach sauf option ci-dessous.
+            </p>
             {needsCoachSportOverride ? (
               <p className="mt-1 text-xs text-[var(--danger)]">
                 Coach hors qualification pour ce sport. Validation admin avec motif obligatoire.
               </p>
+            ) : null}
+            {coachChanged ? (
+              <label className="mt-3 flex gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={applyCoachToFutureSessions}
+                  onChange={(e) => setApplyCoachToFutureSessions(e.target.checked)}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block font-semibold text-[var(--foreground)]">
+                    Appliquer aussi aux séances futures sans pointage
+                  </span>
+                  <span className="mt-0.5 block text-xs text-[var(--muted-foreground)]">
+                    Ne touche pas l&apos;historique, les séances terminées, annulées ou déjà pointées.
+                  </span>
+                </span>
+              </label>
             ) : null}
           </div>
           <div>

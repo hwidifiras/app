@@ -169,13 +169,16 @@ export function GroupAddForm({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Coach</label>
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Coach par défaut</label>
             <select value={coachId} onChange={(e) => setCoachId(e.target.value)} className="field text-sm" required>
               <option value="">Choisir</option>
               {coachesOptions.map((coach) => (
                 <option key={coach.id} value={coach.id}>{formatCoachOptionLabel(coach)}</option>
               ))}
             </select>
+            <p className="mt-1 text-[0.65rem] text-[var(--muted-foreground)]">
+              Utilisé pour générer les séances du cours. Une séance peut ensuite avoir une exception depuis le planning.
+            </p>
             {needsCoachSportOverride ? (
               <p className="mt-1 text-xs text-[var(--danger)]">
                 Coach hors qualification pour ce sport. Validation admin avec motif obligatoire.

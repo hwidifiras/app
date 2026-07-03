@@ -169,7 +169,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
           <tr>
             <Th>Nom</Th>
             <Th>Sport</Th>
-            <Th className="hidden sm:table-cell">Coach</Th>
+            <Th className="hidden sm:table-cell">Coach par défaut</Th>
             <Th className="hidden md:table-cell">Créneau</Th>
             <Th>Statut</Th>
             <Th className="hidden text-right sm:table-cell">Actions</Th>
@@ -190,7 +190,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
                 <Td label="Sport" mobileDetail>
                   {group.sportName}
                 </Td>
-                <Td label="Coach" mobileDetail className="hidden sm:table-cell">
+                <Td label="Coach par défaut" mobileDetail className="hidden sm:table-cell">
                   {group.coachName}
                 </Td>
                 <Td label="Créneau" mobileDetail className="hidden text-muted-foreground md:table-cell">

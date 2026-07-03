@@ -52,6 +52,7 @@ export const updateGroupSchema = z
     room: z.string().trim().max(100).optional().or(z.literal("")).optional(),
     isActive: z.boolean().optional(),
     coachSportOverrideReason: z.string().trim().max(500).optional().or(z.literal("")),
+    applyCoachToFutureSessions: z.boolean().optional(),
   })
   .refine(
     (payload) =>
@@ -61,7 +62,8 @@ export const updateGroupSchema = z
       payload.coachId !== undefined ||
       payload.capacity !== undefined ||
       payload.room !== undefined ||
-      payload.isActive !== undefined,
+      payload.isActive !== undefined ||
+      payload.applyCoachToFutureSessions !== undefined,
     {
       message: "Aucun champ à mettre à jour",
       path: ["_root"],

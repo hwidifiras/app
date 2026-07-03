@@ -672,8 +672,15 @@ export function SessionsPlanner({
     return map;
   }, [filteredSessions, visibleWeekDays]);
 
-  const conflictSessionIds = useMemo(() => {
-    const ids = new Set<string>();
+  const conflictDetailsBySessionId = useMemo(() => {
+    const details = new Map<string, string[]>();
+
+    function addDetail(sessionId: string, reason: string) {
+      const current = details.get(sessionId) ?? [];
+      if (!current.includes(reason)) {
+        details.set(sessionId, [...current, reason]);
+      }
+    }
 
     for (const daySessions of sessionsByDate.values()) {
       for (let i = 0; i < daySessions.length; i += 1) {
@@ -685,16 +692,39 @@ export function SessionsPlanner({
           }
           const sameCoach = a.coachId && b.coachId && a.coachId === b.coachId;
           const sameRoom = formatRoomLabel(a.room) === formatRoomLabel(b.room);
-          if (sameCoach || sameRoom) {
-            ids.add(a.id);
-            ids.add(b.id);
+          if (sameCoach) {
+            const coachName = a.coachName ?? b.coachName ?? "Coach";
+            addDetail(
+              a.id,
+              `${coachName} est déjà affecté à ${b.groupName} (${b.startTime}-${b.endTime}).`,
+            );
+            addDetail(
+              b.id,
+              `${coachName} est déjà affecté à ${a.groupName} (${a.startTime}-${a.endTime}).`,
+            );
+          }
+          if (sameRoom) {
+            const roomLabel = formatRoomLabel(a.room);
+            addDetail(
+              a.id,
+              `${roomLabel} est déjà réservée par ${b.groupName} (${b.startTime}-${b.endTime}).`,
+            );
+            addDetail(
+              b.id,
+              `${roomLabel} est déjà réservée par ${a.groupName} (${a.startTime}-${a.endTime}).`,
+            );
           }
         }
       }
     }
 
-    return ids;
+    return details;
   }, [sessionsByDate]);
+
+  const conflictSessionIds = useMemo(
+    () => new Set(conflictDetailsBySessionId.keys()),
+    [conflictDetailsBySessionId],
+  );
 
   const weekSummary = useMemo(() => {
     const needsAttendance = filteredSessions.filter((session) =>
@@ -759,6 +789,9 @@ export function SessionsPlanner({
     dayFilter !== "ALL",
     statusFilter !== "ALL",
   ].filter(Boolean).length;
+  const selectedConflictReasons = selectedSession
+    ? conflictDetailsBySessionId.get(selectedSession.id) ?? []
+    : [];
 
   async function resetFilters() {
     setDayFilter("ALL");
@@ -1171,6 +1204,26 @@ export function SessionsPlanner({
               ) : null}
             </div>
 
+            {selectedConflictReasons.length > 0 ? (
+              <div className="mt-4 rounded-lg border border-[var(--danger)]/25 bg-[var(--danger)]/10 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--danger)]">
+                  Pourquoi ce conflit ?
+                </p>
+                <ul className="mt-2 space-y-1 text-sm text-[var(--foreground)]">
+                  {selectedConflictReasons.map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  onClick={() => openEdit(selectedSession)}
+                  className="btn btn-primary btn-sm mt-3 w-full"
+                >
+                  Changer coach ou salle
+                </button>
+              </div>
+            ) : null}
+
             <div className="mt-5 grid gap-3">
               <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">Pointage</p>
@@ -1267,7 +1320,7 @@ export function SessionsPlanner({
                 )}
               </div>
               <div>
-                <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Coach</label>
+                <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Coach de cette séance</label>
                 <select
                   value={editForm.coachId}
                   onChange={(e) => setEditForm((f) => ({ ...f, coachId: e.target.value }))}
@@ -1284,6 +1337,9 @@ export function SessionsPlanner({
                     Coach hors qualification pour le sport du groupe. Motif admin obligatoire.
                   </p>
                 ) : null}
+                <p className="mt-1 text-[0.65rem] text-[var(--muted-foreground)]">
+                  Exception = cette séance seule. Permanent = ce créneau et les semaines suivantes.
+                </p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Salle</label>
