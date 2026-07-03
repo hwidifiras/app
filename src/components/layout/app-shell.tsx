@@ -4,6 +4,7 @@ import { createContext, useContext, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import { AppShellDataProvider } from "@/components/layout/app-shell-data-provider";
 import { DesktopTopNav } from "@/components/layout/desktop-top-nav";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import {
@@ -94,19 +95,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarContext.Provider value={{ collapsed, toggleCollapsed, displayMode, setDisplayMode }}>
-      <a href="#main-content" className="skip-link">
-        Aller au contenu
-      </a>
-      <MobileNav />
-      <div className={`grid min-h-screen ${collapsed ? "lg:grid-cols-[72px_1fr]" : "lg:grid-cols-[232px_1fr]"}`}>
-        <AppSidebar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
-        <div className="flex min-w-0 flex-col bg-[var(--background)]">
-          <DesktopTopNav />
-          <div id="main-content" tabIndex={-1}>
-            {children}
+      <AppShellDataProvider>
+        <a href="#main-content" className="skip-link">
+          Aller au contenu
+        </a>
+        <MobileNav />
+        <div className={`grid min-h-screen ${collapsed ? "lg:grid-cols-[72px_1fr]" : "lg:grid-cols-[232px_1fr]"}`}>
+          <AppSidebar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
+          <div className="flex min-w-0 flex-col bg-[var(--background)]">
+            <DesktopTopNav />
+            <div id="main-content" tabIndex={-1}>
+              {children}
+            </div>
           </div>
         </div>
-      </div>
+      </AppShellDataProvider>
     </SidebarContext.Provider>
   );
 }

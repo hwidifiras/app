@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -25,6 +25,7 @@ import {
   Wallet,
 } from "lucide-react";
 
+import { useAppShellData } from "@/components/layout/app-shell-data-provider";
 import { ClubBrandMark } from "@/components/layout/club-brand-mark";
 import { cn } from "@/lib/utils";
 
@@ -110,32 +111,6 @@ export function isLinkActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-function useAccountRole() {
-  const [role, setRole] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadRole() {
-      try {
-        const response = await fetch("/api/account", { cache: "no-store" });
-        if (!response.ok) return;
-        const account = (await response.json()) as { data?: { role?: string }; role?: string };
-        if (!cancelled) setRole(account.data?.role ?? account.role ?? null);
-      } catch {
-        if (!cancelled) setRole(null);
-      }
-    }
-
-    loadRole();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return role;
-}
-
 export function getConfigurationSections(role: string | null) {
   return role === "ADMIN" ? [clubConfigSection, adminSection] : [clubConfigSection];
 }
@@ -184,7 +159,8 @@ export function AppSidebar({
 }) {
   const pathname = usePathname();
   const [configOpen, setConfigOpen] = useState(false);
-  const role = useAccountRole();
+  const { account } = useAppShellData();
+  const role = account?.role ?? null;
   const configurationSections = getConfigurationSections(role);
 
   const inClubConfig = configurationSections.some((section) =>

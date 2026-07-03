@@ -1,19 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Activity, ChevronDown, CircleUser, LogOut, Users } from "lucide-react";
 
-import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { useAppShellData } from "@/components/layout/app-shell-data-provider";
 import { DisplayModeToggle } from "@/components/layout/display-mode-toggle";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { cn } from "@/lib/utils";
-
-type AccountData = {
-  name: string;
-  email: string;
-  role: "ADMIN" | "STAFF";
-};
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -33,23 +28,8 @@ export function UserAccountMenu({
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const [account, setAccount] = useState<AccountData | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/account")
-      .then((r) => r.json())
-      .then((json) => {
-        if (json.data) {
-          setAccount({
-            name: json.data.name,
-            email: json.data.email,
-            role: json.data.role,
-          });
-        }
-      })
-      .catch(() => {});
-  }, []);
+  const { account } = useAppShellData();
 
   useEffect(() => {
     if (!open) return;

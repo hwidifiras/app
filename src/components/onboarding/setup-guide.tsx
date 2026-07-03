@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { Check, ChevronRight, Circle, X } from "lucide-react";
 
+import { useAppShellData } from "@/components/layout/app-shell-data-provider";
 import type { SetupGuideProgress } from "@/lib/setup-guide";
 import { cn } from "@/lib/utils";
 
@@ -93,39 +93,9 @@ function GuidePanel({
 }
 
 export function SetupGuide({ variant, className }: SetupGuideProps) {
-  const pathname = usePathname();
-  const [progress, setProgress] = useState<SetupGuideProgress | null>(null);
   const [open, setOpen] = useState(false);
   const [dismissed, setDismissed] = useState(readDismissedState);
-
-  const load = useCallback(async () => {
-    try {
-      const accountRes = await fetch("/api/account", { cache: "no-store" });
-      const accountJson = (await accountRes.json()) as { data?: { role?: string }; role?: string };
-      if (!accountRes.ok || (accountJson.data?.role ?? accountJson.role) !== "ADMIN") {
-        setOpen(false);
-        setProgress(null);
-        return;
-      }
-
-      const res = await fetch("/api/setup-guide", { cache: "no-store" });
-      const json = await res.json();
-      if (res.ok && json.data) {
-        setProgress(json.data as SetupGuideProgress);
-        if (json.data.isComplete) {
-          setOpen(false);
-        }
-      }
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  useEffect(() => {
-    // The setup guide is a small client-side synchronization surface.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load();
-  }, [load, pathname]);
+  const { setupGuide: progress } = useAppShellData();
 
   if (!progress || progress.isComplete || dismissed) {
     return null;

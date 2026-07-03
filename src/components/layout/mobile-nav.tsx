@@ -12,43 +12,19 @@ import {
   navSections,
   NavLink,
 } from "@/components/layout/app-sidebar";
+import { useAppShellData } from "@/components/layout/app-shell-data-provider";
 import { ClubBrandMark } from "@/components/layout/club-brand-mark";
 import { UserAccountMenu } from "@/components/layout/user-account-menu";
 import { NotificationCenter } from "@/components/notifications/notification-center";
 import { SetupGuide } from "@/components/onboarding/setup-guide";
 import { cn } from "@/lib/utils";
 
-function useAccountRole() {
-  const [role, setRole] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadRole() {
-      try {
-        const response = await fetch("/api/account", { cache: "no-store" });
-        if (!response.ok) return;
-        const account = (await response.json()) as { data?: { role?: string }; role?: string };
-        if (!cancelled) setRole(account.data?.role ?? account.role ?? null);
-      } catch {
-        if (!cancelled) setRole(null);
-      }
-    }
-
-    loadRole();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return role;
-}
-
 export function MobileNav() {
   const [open, setOpen] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
   const pathname = usePathname();
-  const role = useAccountRole();
+  const { account } = useAppShellData();
+  const role = account?.role ?? null;
   const configurationSections = getConfigurationSections(role);
   const inClubConfig = configurationSections.some((section) =>
     section.items.some((item) => isLinkActive(pathname, item.href)),
