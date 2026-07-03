@@ -184,7 +184,7 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
 
   return (
     <>
-    <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
+    <div className="mb-3 grid grid-cols-2 gap-2 sm:flex sm:overflow-x-auto sm:pb-1">
       {OPERATIONAL_MODES.map((mode) => {
         const active = mode.id === operationalMode;
         return (
@@ -192,7 +192,7 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
             key={mode.id}
             type="button"
             onClick={() => setOperationalMode(mode.id)}
-            className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-semibold transition ${
+            className={`inline-flex min-h-10 min-w-0 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-semibold transition sm:shrink-0 sm:justify-start ${
               active
                 ? "border-[var(--primary)] bg-[var(--primary)] text-white"
                 : "border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)] hover:border-[var(--primary)]/35"
