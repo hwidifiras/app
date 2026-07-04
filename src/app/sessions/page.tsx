@@ -8,6 +8,7 @@ import {
   deriveSessionLifecycle,
   expectedMemberIdsAtSession,
 } from "@/lib/session-lifecycle";
+import { getClubSettings } from "@/lib/club-settings";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -60,9 +61,13 @@ export default async function SessionsPage({
     qualifiedSportIds: string[];
     qualifiedSports: Array<{ id: string; name: string; isPrimary: boolean }>;
   }> = [];
+  let planningPreferences = {
+    allowSameRoomConcurrentGroups: false,
+    allowCoachConcurrentSameRoomQualified: false,
+  };
 
   try {
-    const [sessions, groups, coaches] = await Promise.all([
+    const [sessions, groups, coaches, settings] = await Promise.all([
       prisma.session.findMany({
         where: {
           sessionDate: {
@@ -108,6 +113,7 @@ export default async function SessionsPage({
         },
         orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
       }),
+      getClubSettings(),
     ]);
 
     initialSessions = sessions.map((session) => {
@@ -171,6 +177,10 @@ export default async function SessionsPage({
         qualifiedSports,
       };
     });
+    planningPreferences = {
+      allowSameRoomConcurrentGroups: settings.allowSameRoomConcurrentGroups,
+      allowCoachConcurrentSameRoomQualified: settings.allowCoachConcurrentSameRoomQualified,
+    };
   } catch (error) {
     hasSessionsDataError = true;
     console.error("Sessions page degraded mode due to Prisma model mismatch:", error);
@@ -207,6 +217,7 @@ export default async function SessionsPage({
         initialSessions={initialSessions}
         groupsOptions={groupsOptions}
         coachesOptions={coachesOptions}
+        planningPreferences={planningPreferences}
         initialWeekStart={initialWeekStart}
         initialGroupId={groupIdParam ?? ""}
         initialSessionId={sessionIdParam ?? ""}

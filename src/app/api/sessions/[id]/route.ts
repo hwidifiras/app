@@ -263,6 +263,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       coachId: targetCoachId,
       room: targetRoom,
       excludeIds: [id],
+      groupSportId: existing.group.sportId,
     });
 
     if (conflictError) {
@@ -363,6 +364,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           coachId: payload.coachId !== undefined ? payload.coachId : existing.coachId,
           room: payload.room !== undefined ? payload.room : existing.room,
           excludeIds: affectedIds,
+          groupSportId: existing.group.sportId,
         });
 
         if (conflictError) {

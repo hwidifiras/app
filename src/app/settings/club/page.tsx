@@ -51,6 +51,8 @@ export default async function SettingsClubPage() {
             allowCheckInWithPartialPayment: settings.allowCheckInWithPartialPayment,
             allowCheckInWithoutSubscription: settings.allowCheckInWithoutSubscription,
             absentConsumesSession: settings.absentConsumesSession,
+            allowSameRoomConcurrentGroups: settings.allowSameRoomConcurrentGroups,
+            allowCoachConcurrentSameRoomQualified: settings.allowCoachConcurrentSameRoomQualified,
             maxStaffDiscountPercent: settings.maxStaffDiscountPercent,
             debtAlertThresholdCents: settings.debtAlertThresholdCents,
           }}

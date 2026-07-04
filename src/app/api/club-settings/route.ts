@@ -16,6 +16,8 @@ function serializeSettings(settings: Awaited<ReturnType<typeof getClubSettings>>
     allowCheckInWithPartialPayment: settings.allowCheckInWithPartialPayment,
     allowCheckInWithoutSubscription: settings.allowCheckInWithoutSubscription,
     absentConsumesSession: settings.absentConsumesSession,
+    allowSameRoomConcurrentGroups: settings.allowSameRoomConcurrentGroups,
+    allowCoachConcurrentSameRoomQualified: settings.allowCoachConcurrentSameRoomQualified,
     maxStaffDiscountPercent: settings.maxStaffDiscountPercent,
     debtAlertThresholdCents: settings.debtAlertThresholdCents,
     updatedAt: settings.updatedAt.toISOString(),
@@ -85,6 +87,12 @@ export async function PATCH(request: Request) {
         ? { allowCheckInWithoutSubscription: data.allowCheckInWithoutSubscription }
         : {}),
       ...(data.absentConsumesSession !== undefined ? { absentConsumesSession: data.absentConsumesSession } : {}),
+      ...(data.allowSameRoomConcurrentGroups !== undefined
+        ? { allowSameRoomConcurrentGroups: data.allowSameRoomConcurrentGroups }
+        : {}),
+      ...(data.allowCoachConcurrentSameRoomQualified !== undefined
+        ? { allowCoachConcurrentSameRoomQualified: data.allowCoachConcurrentSameRoomQualified }
+        : {}),
       ...(data.maxStaffDiscountPercent !== undefined
         ? { maxStaffDiscountPercent: data.maxStaffDiscountPercent }
         : {}),

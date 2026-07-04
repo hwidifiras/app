@@ -9,6 +9,8 @@ export type ClubSettingsData = {
   allowCheckInWithPartialPayment: boolean;
   allowCheckInWithoutSubscription: boolean;
   absentConsumesSession: boolean;
+  allowSameRoomConcurrentGroups: boolean;
+  allowCoachConcurrentSameRoomQualified: boolean;
   allowPublicRegister: boolean;
   maxStaffDiscountPercent: number;
   debtAlertThresholdCents: number;
@@ -24,6 +26,8 @@ const DEFAULTS = {
   allowCheckInWithPartialPayment: true,
   allowCheckInWithoutSubscription: false,
   absentConsumesSession: true,
+  allowSameRoomConcurrentGroups: false,
+  allowCoachConcurrentSameRoomQualified: false,
   allowPublicRegister: false,
   maxStaffDiscountPercent: 30,
   debtAlertThresholdCents: 0,
@@ -48,6 +52,14 @@ function normalizeClubSettings(row: Record<string, unknown>): ClubSettingsData {
       typeof row.absentConsumesSession === "boolean"
         ? row.absentConsumesSession
         : DEFAULTS.absentConsumesSession,
+    allowSameRoomConcurrentGroups:
+      typeof row.allowSameRoomConcurrentGroups === "boolean"
+        ? row.allowSameRoomConcurrentGroups
+        : DEFAULTS.allowSameRoomConcurrentGroups,
+    allowCoachConcurrentSameRoomQualified:
+      typeof row.allowCoachConcurrentSameRoomQualified === "boolean"
+        ? row.allowCoachConcurrentSameRoomQualified
+        : DEFAULTS.allowCoachConcurrentSameRoomQualified,
     allowPublicRegister:
       typeof row.allowPublicRegister === "boolean" ? row.allowPublicRegister : DEFAULTS.allowPublicRegister,
     maxStaffDiscountPercent:

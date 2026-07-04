@@ -51,6 +51,10 @@ type SessionsPlannerProps = {
     qualifiedSportIds: string[];
     qualifiedSports: Array<{ id: string; name: string; isPrimary: boolean }>;
   }>;
+  planningPreferences: {
+    allowSameRoomConcurrentGroups: boolean;
+    allowCoachConcurrentSameRoomQualified: boolean;
+  };
 };
 
 type PlanningViewMode = "week" | "day" | "coach" | "room";
@@ -455,6 +459,7 @@ export function SessionsPlanner({
   initialSessionId = "",
   groupsOptions,
   coachesOptions,
+  planningPreferences,
 }: SessionsPlannerProps) {
   const [sessions, setSessions] = useState<SessionDto[]>(initialSessions);
   const [weekStart, setWeekStart] = useState(initialWeekStart);
@@ -867,6 +872,10 @@ export function SessionsPlanner({
     return map;
   }, [filteredSessions, visibleWeekDays]);
 
+  const coachesById = useMemo(() => {
+    return new Map(coachesOptions.map((coach) => [coach.id, coach]));
+  }, [coachesOptions]);
+
   const conflictDetailsBySessionId = useMemo(() => {
     const details = new Map<string, string[]>();
 
@@ -887,7 +896,14 @@ export function SessionsPlanner({
           }
           const sameCoach = a.coachId && b.coachId && a.coachId === b.coachId;
           const sameRoom = formatRoomLabel(a.room) === formatRoomLabel(b.room);
-          if (sameCoach) {
+          const coachCanShareSameRoom =
+            Boolean(sameCoach) &&
+            planningPreferences.allowCoachConcurrentSameRoomQualified &&
+            sameRoom &&
+            coachIsQualifiedForSport(coachesById.get(a.coachId!), a.groupSportId) &&
+            coachIsQualifiedForSport(coachesById.get(a.coachId!), b.groupSportId);
+
+          if (sameCoach && !coachCanShareSameRoom) {
             const coachName = a.coachName ?? b.coachName ?? "Coach";
             addDetail(
               a.id,
@@ -898,7 +914,9 @@ export function SessionsPlanner({
               `${coachName} est déjà affecté à ${a.groupName} (${a.startTime}-${a.endTime}).`,
             );
           }
-          if (sameRoom) {
+          const roomCanShare = planningPreferences.allowSameRoomConcurrentGroups || coachCanShareSameRoom;
+
+          if (sameRoom && !roomCanShare) {
             const roomLabel = formatRoomLabel(a.room);
             addDetail(
               a.id,
@@ -914,7 +932,7 @@ export function SessionsPlanner({
     }
 
     return details;
-  }, [sessionsByDate]);
+  }, [coachesById, planningPreferences, sessionsByDate]);
 
   const conflictSessionIds = useMemo(
     () => new Set(conflictDetailsBySessionId.keys()),

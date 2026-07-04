@@ -17,6 +17,8 @@ export type ClubSettingsFormData = {
   allowCheckInWithPartialPayment: boolean;
   allowCheckInWithoutSubscription: boolean;
   absentConsumesSession: boolean;
+  allowSameRoomConcurrentGroups: boolean;
+  allowCoachConcurrentSameRoomQualified: boolean;
   maxStaffDiscountPercent: number;
   debtAlertThresholdCents: number;
 };
@@ -98,6 +100,12 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
     initial.allowCheckInWithoutSubscription,
   );
   const [absentConsumesSession, setAbsentConsumesSession] = useState(initial.absentConsumesSession);
+  const [allowSameRoomConcurrentGroups, setAllowSameRoomConcurrentGroups] = useState(
+    initial.allowSameRoomConcurrentGroups,
+  );
+  const [allowCoachConcurrentSameRoomQualified, setAllowCoachConcurrentSameRoomQualified] = useState(
+    initial.allowCoachConcurrentSameRoomQualified,
+  );
   const [maxStaffDiscountPercent, setMaxStaffDiscountPercent] = useState(
     String(initial.maxStaffDiscountPercent),
   );
@@ -133,6 +141,8 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
         allowCheckInWithPartialPayment: allowPartialPayment,
         allowCheckInWithoutSubscription: allowWithoutSubscription,
         absentConsumesSession,
+        allowSameRoomConcurrentGroups,
+        allowCoachConcurrentSameRoomQualified,
         maxStaffDiscountPercent: discount,
         debtAlertThresholdCents,
       }),
@@ -153,6 +163,8 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
     setAllowPartialPayment(json.data.allowCheckInWithPartialPayment);
     setAllowWithoutSubscription(json.data.allowCheckInWithoutSubscription);
     setAbsentConsumesSession(json.data.absentConsumesSession);
+    setAllowSameRoomConcurrentGroups(json.data.allowSameRoomConcurrentGroups);
+    setAllowCoachConcurrentSameRoomQualified(json.data.allowCoachConcurrentSameRoomQualified);
     setMaxStaffDiscountPercent(String(json.data.maxStaffDiscountPercent));
     setDebtThresholdAmount(centsToMoneyInput(json.data.debtAlertThresholdCents));
     setMessage("Club enregistré");
@@ -213,6 +225,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
         items={[
           { href: "#club-identity", label: "Identité" },
           { href: "#club-checkin", label: "Pointage" },
+          { href: "#club-planning", label: "Planning" },
           { href: "#club-alerts", label: "Alertes" },
         ]}
       />
@@ -334,6 +347,29 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
             description="Lorsqu'elle est activée, une absence déduit une séance du quota restant."
             checked={absentConsumesSession}
             onChange={setAbsentConsumesSession}
+          />
+        </div>
+      </FormSection>
+
+      <FormSection
+        id="club-planning"
+        title="Planning & conflits"
+        description="Choisissez quand le planning doit accepter des chevauchements volontaires."
+      >
+        <div className="space-y-3">
+          <ToggleRow
+            id="allowSameRoomConcurrentGroups"
+            label="Deux groupes dans la meme salle"
+            description="Si activé, deux groupes différents peuvent avoir cours dans la même salle au même horaire sans conflit de salle."
+            checked={allowSameRoomConcurrentGroups}
+            onChange={setAllowSameRoomConcurrentGroups}
+          />
+          <ToggleRow
+            id="allowCoachConcurrentSameRoomQualified"
+            label="Coach multi-groupes dans la meme salle"
+            description="Si activé, un coach peut encadrer deux groupes au même horaire quand ils sont dans la même salle et que les disciplines font partie de ses spécialités."
+            checked={allowCoachConcurrentSameRoomQualified}
+            onChange={setAllowCoachConcurrentSameRoomQualified}
           />
         </div>
       </FormSection>

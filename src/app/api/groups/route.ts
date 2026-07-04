@@ -6,6 +6,7 @@ import { normalizeGroupRoomInput } from "@/lib/group-room";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { utcDateOnlyForTimeZone } from "@/lib/dates";
 import { findCoachSessionConflict, formatSessionSlotLabel } from "@/lib/session-slot-conflict";
+import { getClubSettings } from "@/lib/club-settings";
 import {
   coachSportOverrideAuditDetails,
   validateCoachSportEligibility,
@@ -242,7 +243,7 @@ export async function PATCH(request: Request) {
   const payload = updatePayload.data;
   const existingGroup = await prisma.group.findUnique({
     where: { id: groupId },
-    select: { id: true, name: true, sportId: true, coachId: true },
+    select: { id: true, name: true, sportId: true, coachId: true, room: true },
   });
 
   if (!existingGroup) {
@@ -304,12 +305,14 @@ export async function PATCH(request: Request) {
           sessionDate: true,
           startTime: true,
           endTime: true,
+          room: true,
         },
         orderBy: [{ sessionDate: "asc" }, { startTime: "asc" }],
       })
     : [];
 
   if (shouldApplyCoachToFutureSessions) {
+    const settings = await getClubSettings();
     for (const session of futureSessionsForCoachPropagation) {
       const coachConflict = await findCoachSessionConflict({
         coachId: targetCoachId,
@@ -317,6 +320,9 @@ export async function PATCH(request: Request) {
         startTime: session.startTime,
         endTime: session.endTime,
         excludeIds: [session.id],
+        room: session.room || existingGroup.room,
+        groupSportId: targetSportId,
+        allowConcurrentSameRoomQualified: settings.allowCoachConcurrentSameRoomQualified,
       });
 
       if (coachConflict?.coach) {
