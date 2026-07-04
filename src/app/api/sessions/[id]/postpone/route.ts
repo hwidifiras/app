@@ -85,7 +85,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       room: true,
       postponementDetails: true,
       status: true,
-      group: { select: { name: true, coachId: true } },
+      group: { select: { name: true, coachId: true, sportId: true } },
     },
   });
 
@@ -138,6 +138,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     coachId: existing.coachId ?? existing.group.coachId,
     room: existing.room,
     excludeIds: [id],
+    groupSportId: existing.group.sportId,
   });
 
   if (conflictError) {

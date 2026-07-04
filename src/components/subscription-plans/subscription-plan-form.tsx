@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
-import { FormActions } from "@/components/ui/form-layout";
+import { FormActions, FormSectionNav } from "@/components/ui/form-layout";
 import { ReceptionInfoCard } from "@/components/ui/reception-info-card";
 
 type SportOption = { id: string; name: string };
@@ -29,7 +29,7 @@ type SubscriptionPlanFormProps = {
 export function SubscriptionPlanForm({ mode, planId, initialValues }: SubscriptionPlanFormProps) {
   const router = useRouter();
   const [name, setName] = useState(initialValues?.name ?? "");
-  const [description, setDescription] = useState(initialValues?.description ?? "");
+  const description = initialValues?.description ?? "";
   const [price, setPrice] = useState(
     initialValues ? (initialValues.price / 100).toFixed(2) : "",
   );
@@ -84,12 +84,12 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
     const result = await response.json();
 
     if (!response.ok) {
-      setMessage(result.error ?? (mode === "create" ? "Erreur lors de la création du plan" : "Erreur lors de la modification du plan"));
+      setMessage(result.error ?? (mode === "create" ? "Erreur lors de la création de la formule" : "Erreur lors de la modification de la formule"));
       setLoading(false);
       return;
     }
 
-    setMessage(mode === "create" ? "Plan créé avec succès" : "Plan modifié avec succès");
+    setMessage(mode === "create" ? "Formule créée avec succès" : "Formule modifiée avec succès");
     setLoading(false);
     router.push("/subscription-plans");
     router.refresh();
@@ -112,12 +112,22 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
   return (
     <form onSubmit={onSubmit} className="space-y-5 pb-4 lg:pb-0">
       <ReceptionInfoCard title="Formules" variant="info">
-        Une formule fixe le prix, le quota de séances ({computedTotalSessions || 0} avec {sessionsPerWeek || 0}/sem.) et la validité.
-        Pour 2 mois, préférez une formule 2 mois plutôt qu&apos;un double paiement.
+        Une formule fixe ce que le membre achète : prix, quota de séances ({computedTotalSessions || 0} avec {sessionsPerWeek || 0}/sem.) et validité.
+        Pour 2 mois, créez une formule 2 mois plutôt qu&apos;un double paiement.
       </ReceptionInfoCard>
 
+      <FormSectionNav
+        items={[
+          ...(mode === "create" ? [{ href: "#plan-templates", label: "Modèles" }] : []),
+          { href: "#plan-basics", label: "Infos" },
+          { href: "#plan-quota", label: "Quota" },
+          { href: "#plan-validity", label: "Validité" },
+          ...(mode === "edit" ? [{ href: "#plan-status", label: "Statut" }] : []),
+        ]}
+      />
+
       {mode === "create" && (
-        <div className="flex flex-wrap gap-2">
+        <div id="plan-templates" className="form-section-anchor flex flex-wrap gap-2">
           {([1, 2, 3] as const).map((months) => (
             <button
               key={months}
@@ -130,14 +140,14 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
           ))}
         </div>
       )}
-      <div>
-        <label className="mb-1 block text-xs font-medium text-muted-foreground">Nom du plan *</label>
+      <div id="plan-basics" className="form-section-anchor">
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">Nom de la formule *</label>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Mensuel Standard" className="field" required />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div id="plan-quota" className="form-section-anchor grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Prix (€) *</label>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Prix (TND) *</label>
           <input type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" className="field" required />
         </div>
         <div>
@@ -149,7 +159,7 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div id="plan-validity" className="form-section-anchor grid gap-4 sm:grid-cols-2">
         <div>
           <label className="mb-1 block text-xs font-medium text-muted-foreground">Validité (jours) *</label>
           <input type="number" min="1" value={validityDays} onChange={(e) => setValidityDays(e.target.value)} className="field" required />
@@ -168,7 +178,7 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
       </div>
 
       {mode === "edit" ? (
-        <div>
+        <div id="plan-status" className="form-section-anchor">
           <label className="mb-1 block text-xs font-medium text-muted-foreground">Statut</label>
           <select value={String(isActive)} onChange={(e) => setIsActive(e.target.value === "true")} className="field">
             <option value="true">Actif</option>
@@ -184,7 +194,7 @@ export function SubscriptionPlanForm({ mode, planId, initialValues }: Subscripti
           Annuler
         </button>
         <button type="submit" disabled={loading} className="btn btn-primary btn-block-mobile">
-          {loading ? "Enregistrement..." : mode === "create" ? "Créer plan" : "Enregistrer les modifications"}
+          {loading ? "Enregistrement..." : mode === "create" ? "Créer la formule" : "Enregistrer les modifications"}
         </button>
       </FormActions>
     </form>

@@ -13,8 +13,8 @@ export default async function EnrollmentPage({
     <main className="app-shell py-4 md:py-8">
       <PageHeader
         overline="Réception"
-        title="Inscription"
-        description="Inscrire un ou plusieurs élèves, choisir cours et formule, appliquer une offre."
+        title="Inscrire"
+        description="Créer le dossier, choisir le cours, appliquer une offre et préparer l'encaissement."
       />
       <EnrollmentWizard
         initialMemberId={memberId ?? ""}

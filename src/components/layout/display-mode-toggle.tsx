@@ -17,7 +17,7 @@ export function DisplayModeToggle({
   return (
     <div
       className={cn(
-        "grid grid-cols-2 gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] p-1",
+        "grid grid-cols-2 gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-1",
         className,
       )}
       role="group"
@@ -31,7 +31,7 @@ export function DisplayModeToggle({
         className={cn(
           "inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-semibold transition",
           displayMode === "compact"
-            ? "bg-[var(--surface)] text-[var(--primary)] shadow-sm"
+            ? "bg-[var(--surface)] text-[var(--primary)] shadow-[var(--shadow-panel)]"
             : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
         )}
       >
@@ -46,7 +46,7 @@ export function DisplayModeToggle({
         className={cn(
           "inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-semibold transition",
           displayMode === "wide"
-            ? "bg-[var(--surface)] text-[var(--primary)] shadow-sm"
+            ? "bg-[var(--surface)] text-[var(--primary)] shadow-[var(--shadow-panel)]"
             : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
         )}
       >

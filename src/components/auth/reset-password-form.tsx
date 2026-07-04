@@ -69,7 +69,7 @@ export function ResetPasswordForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="field"
-          placeholder="Min 8 caractères"
+          placeholder="8 caractères minimum"
         />
       </div>
 

@@ -111,19 +111,19 @@ export function SessionCard({
       onClick={onSelect}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onSelect(); }}
       style={{ borderColor: cardTone }}
-      className={`relative w-full overflow-hidden rounded-xl border bg-[var(--surface)] transition-all ${
+      className={`relative w-full overflow-hidden rounded-lg border bg-[var(--surface)] shadow-[var(--shadow-panel)] transition-all ${
         isSelected
-          ? "ring-2 ring-[var(--primary)] shadow-lg"
+          ? "ring-2 ring-[var(--primary)] shadow-[var(--shadow-floating)]"
           : ""
-      } cursor-pointer hover:shadow-lg`}
+      } cursor-pointer hover:shadow-[var(--shadow-floating)]`}
     >
       <div className="p-4">
         {/* Header: Group name + Status badge */}
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-bold text-[var(--foreground)] leading-tight truncate">
+            <h2 className="text-sm font-bold text-[var(--foreground)] leading-tight truncate">
               {session.group.name}
-            </h3>
+            </h2>
           </div>
           <span className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[0.65rem] font-semibold ${badge.className}`}>
             {!isSelected ? (
@@ -140,7 +140,7 @@ export function SessionCard({
 
         {/* Time row - PROMINENT */}
         <div className="mt-3 flex items-center gap-3">
-          <div className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-bold bg-[var(--success)] text-white shadow-sm">
+          <div className="flex items-center gap-1.5 rounded-lg bg-[var(--success)] px-3 py-1.5 text-sm font-bold text-white shadow-[var(--shadow-panel)]">
             <Clock className="size-4" />
             {session.startTime}
             <span className="font-normal text-white/80">– {session.endTime}</span>
@@ -276,6 +276,7 @@ export function SessionCard({
           ) : (
             <Link
               href={postponeHref}
+              prefetch={false}
               onClick={(e) => e.stopPropagation()}
               className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[0.65rem] font-medium text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
               title="Modifier le créneau ou reporter via le planning du groupe"

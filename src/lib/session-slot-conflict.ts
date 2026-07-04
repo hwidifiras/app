@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getAppTimeZone } from "@/lib/dates";
+import { getClubSettings } from "@/lib/club-settings";
 
 function timeToMinutes(time: string): number {
   const [hours, minutes] = time.split(":").map((value) => Number(value));
@@ -63,10 +64,34 @@ type SessionConflictCandidate = {
   id: string;
   startTime: string;
   endTime: string;
-  group: { name: string };
+  coachId: string | null;
+  group: { name: string; sportId: string };
   coach: { firstName: string; lastName: string } | null;
   room: string;
 };
+
+function sameRoom(roomA: string | null | undefined, roomB: string | null | undefined) {
+  return (roomA ?? "").trim().toLowerCase() === (roomB ?? "").trim().toLowerCase();
+}
+
+async function coachIsQualifiedForAllSports(coachId: string, sportIds: string[]) {
+  const coach = await prisma.coach.findUnique({
+    where: { id: coachId },
+    select: {
+      sportId: true,
+      qualifications: { select: { sportId: true } },
+    },
+  });
+
+  if (!coach) return false;
+
+  const qualifiedSportIds = new Set([
+    coach.sportId,
+    ...coach.qualifications.map((qualification) => qualification.sportId),
+  ]);
+
+  return sportIds.every((sportId) => qualifiedSportIds.has(sportId));
+}
 
 async function findOverlappingSessions(params: {
   sessionDate: Date;
@@ -75,7 +100,7 @@ async function findOverlappingSessions(params: {
   excludeIds: string[];
   coachId?: string;
   room?: string;
-}): Promise<SessionConflictCandidate | null> {
+}): Promise<SessionConflictCandidate[]> {
   const where: {
     sessionDate: Date;
     id?: { not: string } | { notIn: string[] };
@@ -106,16 +131,15 @@ async function findOverlappingSessions(params: {
       id: true,
       startTime: true,
       endTime: true,
+      coachId: true,
       room: true,
-      group: { select: { name: true } },
+      group: { select: { name: true, sportId: true } },
       coach: { select: { firstName: true, lastName: true } },
     },
   });
 
-  return (
-    sessions.find((session) =>
-      timesOverlap(params.startTime, params.endTime, session.startTime, session.endTime),
-    ) ?? null
+  return sessions.filter((session) =>
+    timesOverlap(params.startTime, params.endTime, session.startTime, session.endTime),
   );
 }
 
@@ -143,16 +167,33 @@ export async function findCoachSessionConflict(params: {
   startTime: string;
   endTime: string;
   excludeIds: string[];
+  room?: string | null;
+  groupSportId?: string | null;
+  allowConcurrentSameRoomQualified?: boolean;
 }) {
   if (!params.coachId) return null;
 
-  return findOverlappingSessions({
+  const conflicts = await findOverlappingSessions({
     sessionDate: params.sessionDate,
     startTime: params.startTime,
     endTime: params.endTime,
     excludeIds: params.excludeIds,
     coachId: params.coachId,
   });
+
+  for (const conflict of conflicts) {
+    const canShareCoach =
+      params.allowConcurrentSameRoomQualified &&
+      params.groupSportId &&
+      sameRoom(params.room, conflict.room) &&
+      await coachIsQualifiedForAllSports(params.coachId, [params.groupSportId, conflict.group.sportId]);
+
+    if (!canShareCoach) {
+      return conflict;
+    }
+  }
+
+  return null;
 }
 
 export async function findRoomSessionConflict(params: {
@@ -161,17 +202,37 @@ export async function findRoomSessionConflict(params: {
   startTime: string;
   endTime: string;
   excludeIds: string[];
+  allowConcurrentGroups?: boolean;
+  coachId?: string | null;
+  groupSportId?: string | null;
+  allowCoachConcurrentSameRoomQualified?: boolean;
 }) {
   const room = params.room?.trim();
   if (!room) return null;
+  if (params.allowConcurrentGroups) return null;
 
-  return findOverlappingSessions({
+  const conflicts = await findOverlappingSessions({
     sessionDate: params.sessionDate,
     startTime: params.startTime,
     endTime: params.endTime,
     excludeIds: params.excludeIds,
     room,
   });
+
+  for (const conflict of conflicts) {
+    const canShareRoomViaCoach =
+      params.allowCoachConcurrentSameRoomQualified &&
+      params.coachId &&
+      params.groupSportId &&
+      conflict.coachId === params.coachId &&
+      await coachIsQualifiedForAllSports(params.coachId, [params.groupSportId, conflict.group.sportId]);
+
+    if (!canShareRoomViaCoach) {
+      return conflict;
+    }
+  }
+
+  return null;
 }
 
 export async function validateSessionSlot(params: {
@@ -183,7 +244,9 @@ export async function validateSessionSlot(params: {
   coachId: string | null | undefined;
   room: string | null | undefined;
   excludeIds: string[];
+  groupSportId?: string | null;
 }): Promise<string | null> {
+  const settings = await getClubSettings();
   const groupConflict = await findSessionSlotConflict({
     groupId: params.groupId,
     sessionDate: params.sessionDate,
@@ -201,6 +264,9 @@ export async function validateSessionSlot(params: {
     startTime: params.startTime,
     endTime: params.endTime,
     excludeIds: params.excludeIds,
+    room: params.room,
+    groupSportId: params.groupSportId,
+    allowConcurrentSameRoomQualified: settings.allowCoachConcurrentSameRoomQualified,
   });
 
   if (coachConflict?.coach) {
@@ -218,6 +284,10 @@ export async function validateSessionSlot(params: {
     startTime: params.startTime,
     endTime: params.endTime,
     excludeIds: params.excludeIds,
+    allowConcurrentGroups: settings.allowSameRoomConcurrentGroups,
+    coachId: params.coachId,
+    groupSportId: params.groupSportId,
+    allowCoachConcurrentSameRoomQualified: settings.allowCoachConcurrentSameRoomQualified,
   });
 
   if (roomConflict) {

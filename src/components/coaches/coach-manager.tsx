@@ -18,12 +18,29 @@ type CoachManagerProps = {
   sportsOptions: SportDto[];
 };
 
+function withPrimarySport(ids: string[], primarySportId: string) {
+  const normalized = new Set(ids.filter(Boolean));
+  if (primarySportId) normalized.add(primarySportId);
+  return Array.from(normalized);
+}
+
+function toggleSportId(ids: string[], sportId: string) {
+  return ids.includes(sportId)
+    ? ids.filter((id) => id !== sportId)
+    : [...ids, sportId];
+}
+
+function qualifiedSportNames(coach: CoachDto) {
+  return coach.qualifiedSports.map((sport) => sport.name).join(", ");
+}
+
 export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProps) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [sportId, setSportId] = useState("");
+  const [qualifiedSportIds, setQualifiedSportIds] = useState<string[]>([]);
   const [sports, setSports] = useState<SportDto[]>(sportsOptions);
   const [coaches, setCoaches] = useState<CoachDto[]>(initialCoaches);
   const [loading, setLoading] = useState(false);
@@ -34,6 +51,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
   const [editPhone, setEditPhone] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editSportId, setEditSportId] = useState("");
+  const [editQualifiedSportIds, setEditQualifiedSportIds] = useState<string[]>([]);
   const [editIsActive, setEditIsActive] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -70,6 +88,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
         coach.phone,
         coach.email ?? "",
         coach.sportName ?? "",
+        qualifiedSportNames(coach),
       ].some((value) => value.toLocaleLowerCase("fr").includes(query)),
     );
   }, [coaches, searchTerm]);
@@ -83,7 +102,14 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
     const response = await fetch("/api/coaches", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ firstName, lastName, phone, email, sportId }),
+      body: JSON.stringify({
+        firstName,
+        lastName,
+        phone,
+        email,
+        sportId,
+        qualifiedSportIds: withPrimarySport(qualifiedSportIds, sportId),
+      }),
     });
 
     const result = await response.json();
@@ -100,6 +126,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
     setPhone("");
     setEmail("");
     setSportId("");
+    setQualifiedSportIds([]);
     await reloadCoaches();
     setLoading(false);
   }
@@ -111,6 +138,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
     setEditPhone(coach.phone);
     setEditEmail(coach.email ?? "");
     setEditSportId(coach.sportId ?? "");
+    setEditQualifiedSportIds(coach.qualifiedSportIds);
     setEditIsActive(coach.isActive);
     setMessage(null);
   }
@@ -122,6 +150,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
     setEditPhone("");
     setEditEmail("");
     setEditSportId("");
+    setEditQualifiedSportIds([]);
     setEditIsActive(true);
   }
 
@@ -140,6 +169,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
           phone: editPhone,
           email: editEmail,
           sportId: editSportId,
+          qualifiedSportIds: withPrimarySport(editQualifiedSportIds, editSportId),
           isActive: editIsActive,
         },
       }),
@@ -195,9 +225,9 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
 
   return (
     <div>
-      <div className="grid w-full gap-6 md:grid-cols-2">
-        <section className="panel panel-soft p-4 sm:p-6">
-          <h2 className="text-lg font-semibold text-[var(--foreground)]">Ajouter un coach</h2>
+      <div className="grid w-full items-start gap-4 lg:grid-cols-[minmax(20rem,0.85fr)_minmax(0,1.25fr)]">
+        <section id="coach-create" className="panel order-2 scroll-mt-24 p-4 sm:p-5 lg:order-1">
+          <h2 className="text-base font-semibold text-[var(--foreground)]">Ajouter un coach</h2>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">
             Créer un nouveau coach avec sa spécialité sportive.
           </p>
@@ -248,7 +278,13 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                 value={sportId}
                 onFocus={() => void reloadSports()}
                 onClick={() => void reloadSports()}
-                onChange={(e) => setSportId(e.target.value)}
+                onChange={(e) => {
+                  const nextSportId = e.target.value;
+                  setSportId(nextSportId);
+                  if (nextSportId) {
+                    setQualifiedSportIds((current) => withPrimarySport(current, nextSportId));
+                  }
+                }}
                 className="field"
               >
                 <option value="">Spécialité non renseignée</option>
@@ -260,6 +296,25 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
               </select>
             </FormField>
 
+            {sports.length > 0 ? (
+              <div>
+                <p className="mb-2 text-xs font-medium text-[var(--muted-foreground)]">Sports autorises</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {sports.map((sport) => (
+                    <label key={sport.id} className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
+                      <input
+                        type="checkbox"
+                        checked={withPrimarySport(qualifiedSportIds, sportId).includes(sport.id)}
+                        disabled={sport.id === sportId}
+                        onChange={() => setQualifiedSportIds((current) => toggleSportId(current, sport.id))}
+                      />
+                      <span className="truncate text-[var(--foreground)]">{sport.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
             <FormActions>
               <button type="submit" disabled={loading} className="btn btn-primary btn-block-mobile">
                 {loading ? "Enregistrement…" : "Créer le coach"}
@@ -270,10 +325,10 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
           <FeedbackMessage message={message} className="mt-4" />
         </section>
 
-        <section className="panel p-4 sm:p-6">
+        <section className="panel order-1 p-4 sm:p-5 lg:order-2">
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-xl font-semibold text-[var(--foreground)]">Coachs enregistrés</h2>
+              <h2 className="text-base font-semibold text-[var(--foreground)]">Coachs enregistrés</h2>
               <span className="text-xs text-[var(--muted-foreground)]">
                 {filteredCoaches.length} coach{filteredCoaches.length > 1 ? "s" : ""}
               </span>
@@ -287,7 +342,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
 
           <ul className="mt-4 space-y-2">
             {pagination.pageItems.map((coach) => (
-              <li key={coach.id} className="rounded-xl border border-[var(--border)] px-3 py-2.5">
+              <li key={coach.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5">
                 {editingId === coach.id ? (
                   <div className="space-y-2">
                     <input
@@ -323,7 +378,13 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                       value={editSportId}
                       onFocus={() => void reloadSports()}
                       onClick={() => void reloadSports()}
-                      onChange={(e) => setEditSportId(e.target.value)}
+                      onChange={(e) => {
+                        const nextSportId = e.target.value;
+                        setEditSportId(nextSportId);
+                        if (nextSportId) {
+                          setEditQualifiedSportIds((current) => withPrimarySport(current, nextSportId));
+                        }
+                      }}
                       className="field text-xs"
                     >
                       <option value="">Spécialité non renseignée</option>
@@ -333,6 +394,21 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                         </option>
                       ))}
                     </select>
+                    {sports.length > 0 ? (
+                      <div className="grid gap-1 sm:grid-cols-2">
+                        {sports.map((sport) => (
+                          <label key={sport.id} className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
+                            <input
+                              type="checkbox"
+                              checked={withPrimarySport(editQualifiedSportIds, editSportId).includes(sport.id)}
+                              disabled={sport.id === editSportId}
+                              onChange={() => setEditQualifiedSportIds((current) => toggleSportId(current, sport.id))}
+                            />
+                            <span className="truncate text-[var(--foreground)]">{sport.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : null}
                     <label className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
                       <input
                         type="checkbox"
@@ -361,9 +437,9 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
                     <div className="flex min-w-0 flex-1 items-center gap-3">
-                      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-soft)] text-xs font-bold text-[var(--primary)]">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-xs font-bold text-[var(--primary)]">
                         {coach.firstName[0]}
                         {coach.lastName[0]}
                       </div>
@@ -373,36 +449,39 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                         </p>
                       </div>
                     </div>
-                    <div className="grid flex-1 grid-cols-2 gap-x-3 gap-y-1 text-xs text-[var(--muted-foreground)] sm:grid-cols-4">
+                    <div className="grid flex-1 grid-cols-2 gap-x-3 gap-y-1 text-xs text-[var(--muted-foreground)] sm:grid-cols-5">
                       <span className="truncate" data-label="Téléphone">{coach.phone}</span>
                       <span className="truncate" data-label="Email">{coach.email ?? "—"}</span>
                       <span className="truncate" data-label="Spécialité">{coach.sportName ?? "—"}</span>
+                      <span className="truncate" data-label="Autorisations">{qualifiedSportNames(coach) || "-"}</span>
                       <span data-label="Statut">
                         <StatusBadge variant={coach.isActive ? "success" : "muted"}>
                           {coach.isActive ? "Actif" : "Inactif"}
                         </StatusBadge>
                       </span>
                     </div>
-                    <div className="flex shrink-0 items-center justify-end gap-1">
+                    <div className="list-card-actions mt-1 shrink-0 md:mt-0 md:justify-end">
                       <button
                         type="button"
                         onClick={() => startEdit(coach)}
                         disabled={actionLoadingId === coach.id}
-                        className="btn btn-ghost btn-sm inline-flex size-9 items-center justify-center p-0"
+                        className="btn btn-ghost btn-sm inline-flex items-center justify-center md:size-9 md:p-0"
                         title="Modifier"
                         aria-label="Modifier"
                       >
                         <Pencil className="size-4" />
+                        <span className="md:hidden">Modifier</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setPendingDeleteCoach(coach)}
                         disabled={actionLoadingId === coach.id}
-                        className="btn btn-danger btn-sm inline-flex size-9 items-center justify-center p-0"
+                        className="btn btn-danger btn-sm inline-flex items-center justify-center md:size-9 md:p-0"
                         title="Supprimer"
                         aria-label="Supprimer"
                       >
                         <Trash2 className="size-4" />
+                        <span className="md:hidden">Supprimer</span>
                       </button>
                     </div>
                   </div>
@@ -443,7 +522,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
 
       {blockedCoach ? (
         <div className="mobile-modal-overlay fixed inset-0 z-50 flex justify-center bg-black/40">
-          <div className="mobile-modal-panel border border-[var(--border)] bg-[var(--card)] p-5 shadow-lg md:rounded-xl">
+          <div className="mobile-modal-panel border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-floating)] md:rounded-lg">
             <h3 className="text-base font-semibold text-[var(--foreground)]">Suppression impossible</h3>
             <p className="mt-2 text-sm text-[var(--muted-foreground)]">
               Le coach <span className="font-medium text-[var(--foreground)]">{blockedCoach.name}</span> est assigne aux groupes suivants :

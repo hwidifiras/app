@@ -2,9 +2,11 @@ import type { Offer, OfferKind, Prisma, SubscriptionPlan } from "@prisma/client"
 
 import { getAppTimeZone } from "@/lib/dates";
 import { getClubSettings } from "@/lib/club-settings";
+import { businessDayWindow } from "@/lib/assignment-policy";
 import { resolveOfferRules } from "@/lib/offer-rules";
 import type { EnrollmentLineInput } from "@/lib/schemas/enrollment";
 import { prisma } from "@/lib/prisma";
+import { getRequiredTenantId } from "@/lib/tenant-context";
 
 export type ActiveSubscriptionView = {
   id: string;
@@ -15,12 +17,19 @@ export type ActiveSubscriptionView = {
   plan: { sportId: string; sessionsPerWeek: number | null; name: string };
 };
 
+function activeSubscriptionDateWindow(date: Date) {
+  const { dayStart, nextDayStart } = businessDayWindow(date);
+  return {
+    startDate: { lt: nextDayStart },
+    OR: [{ endDate: null }, { endDate: { gte: dayStart } }],
+  };
+}
+
 const activeSubWhere = (memberId: string, sportId: string, now = new Date()) => ({
   memberId,
   sportId,
   status: "ACTIVE" as const,
-  startDate: { lte: now },
-  OR: [{ endDate: null }, { endDate: { gte: now } }],
+  ...activeSubscriptionDateWindow(now),
   remainingSessions: { gt: 0 },
 });
 
@@ -122,11 +131,12 @@ export function isSubscriptionFullyPaid(amount: number, payments: { amount: numb
 
 export async function expireStaleSubscriptions(memberId?: string) {
   const now = new Date();
+  const { dayStart } = businessDayWindow(now);
   await prisma.memberSubscription.updateMany({
     where: {
       status: "ACTIVE",
       ...(memberId ? { memberId } : {}),
-      OR: [{ endDate: { lt: now } }, { remainingSessions: { lte: 0 } }],
+      OR: [{ endDate: { lt: dayStart } }, { remainingSessions: { lte: 0 } }],
     },
     data: { status: "EXPIRED" },
   });
@@ -171,8 +181,7 @@ export async function resolveSubscriptionForAttendance(
       memberId,
       sportId,
       status: { in: ["ACTIVE", "EXPIRED"] },
-      startDate: { lte: sessionDate },
-      OR: [{ endDate: null }, { endDate: { gte: sessionDate } }],
+      ...activeSubscriptionDateWindow(sessionDate),
       remainingSessions: { gt: 0 },
     },
     select: {
@@ -451,6 +460,7 @@ export async function buildEnrollmentQuote(
   offerId?: string,
   startDateInput?: string,
 ): Promise<QuoteResult> {
+  const tenantId = getRequiredTenantId();
   const resolved = await resolveEnrollmentLines(lines, startDateInput);
 
   const memberIds = [...new Set(resolved.map((r) => r.memberId).filter(Boolean))];
@@ -496,7 +506,7 @@ export async function buildEnrollmentQuote(
   for (const r of resolved) {
     const existingAssignment = r.memberId
       ? await prisma.groupMember.findUnique({
-          where: { groupId_memberId: { groupId: r.group.id, memberId: r.memberId } },
+          where: { tenantId_groupId_memberId: { tenantId, groupId: r.group.id, memberId: r.memberId } },
           select: { status: true },
         })
       : null;
@@ -584,6 +594,7 @@ export async function ensureSharedHouseholdForMembers(
   memberIds: string[],
 ): Promise<void> {
   if (memberIds.length < 2) return;
+  const tenantId = getRequiredTenantId();
 
   const links = await tx.householdMember.findMany({
     where: { memberId: { in: memberIds } },
@@ -602,7 +613,7 @@ export async function ensureSharedHouseholdForMembers(
   }
 
   if (!targetHouseholdId) {
-    const created = await tx.household.create({ data: { label: null } });
+    const created = await tx.household.create({ data: { tenantId, label: null } });
     targetHouseholdId = created.id;
   }
 
@@ -611,7 +622,7 @@ export async function ensureSharedHouseholdForMembers(
     const taken = await tx.householdMember.findUnique({ where: { memberId: id } });
     if (taken) throw new Error("HOUSEHOLD_MEMBER_TAKEN");
     await tx.householdMember.create({
-      data: { householdId: targetHouseholdId, memberId: id, relationship: "OTHER" },
+      data: { tenantId, householdId: targetHouseholdId, memberId: id, relationship: "OTHER" },
     });
   }
 }

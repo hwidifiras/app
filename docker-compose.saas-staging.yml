@@ -1,0 +1,46 @@
+# Parallel SaaS staging stack for the VPS.
+# It keeps the current production app untouched and exposes this app only on 127.0.0.1:3002.
+
+services:
+  postgres-saas-staging:
+    image: postgres:16-alpine
+    container_name: dojo-saas-postgres-staging
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-gymday}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: ${POSTGRES_DB:-gymday_saas_staging}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gymday} -d ${POSTGRES_DB:-gymday_saas_staging}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - dojo_saas_staging_postgres:/var/lib/postgresql/data
+
+  dojo-saas-staging:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dojo-saas-staging
+    restart: unless-stopped
+    depends_on:
+      postgres-saas-staging:
+        condition: service_healthy
+    env_file:
+      - path: .env.production
+        required: false
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-gymday}:${POSTGRES_PASSWORD:-change-me}@postgres-saas-staging:5432/${POSTGRES_DB:-gymday_saas_staging}?schema=public
+      NODE_ENV: production
+      PORT: 3000
+      SAAS_ROOT_DOMAIN: ${SAAS_ROOT_DOMAIN:-we-discipline.com}
+      DEFAULT_TENANT_SLUG: ${DEFAULT_TENANT_SLUG:-we-discipline}
+    ports:
+      - "127.0.0.1:3002:3000"
+    volumes:
+      - dojo_saas_staging_branding:/app/public/branding
+
+volumes:
+  dojo_saas_staging_postgres:
+  dojo_saas_staging_branding:

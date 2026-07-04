@@ -67,7 +67,8 @@ export default async function SubscriptionsPage() {
           <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted-foreground)]">Mode dégradé</p>
           <h1 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">Abonnements indisponibles</h1>
           <p className="mt-3 text-sm text-[var(--muted-foreground)]">
-            Données inaccessibles. Lancez `npm run prisma:generate` puis redémarrez le serveur.
+            Cette page ne peut pas charger ses données pour le moment. Revenez au tableau de bord puis contactez le
+            support si le problème continue.
           </p>
           <div className="mt-4">
             <Link href="/" className="btn btn-ghost">
@@ -82,15 +83,15 @@ export default async function SubscriptionsPage() {
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Abonnements & Finance"
+        overline="Membres"
         title="Abonnements"
-        description="Suivi des abonnements membres, statuts et paiements associés."
+        description="Suivre les statuts, soldes, dates et séances restantes."
         actions={
           <Link
             href="/subscriptions/new"
             className="btn btn-primary btn-block-mobile inline-flex items-center justify-center gap-1.5 text-sm"
           >
-            <Plus className="size-4" /> Renouvellement
+            <Plus className="size-4" /> Renouveler
           </Link>
         }
       />

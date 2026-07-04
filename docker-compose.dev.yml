@@ -1,29 +1,51 @@
-# Dev/staging fork — isolated DB and port 3001 (production stays on 3000)
+# Dev/staging fork - isolated Postgres DB and port 3001.
 # Usage:
 #   copy .env.development.example .env.development
 #   docker compose -f docker-compose.dev.yml up -d --build
 #   open http://localhost:3001
 
 services:
+  postgres-dev:
+    image: postgres:16-alpine
+    container_name: dojo-saas-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-gymday}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gymday}
+      POSTGRES_DB: ${POSTGRES_DB:-gymday_dev}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gymday} -d ${POSTGRES_DB:-gymday_dev}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - dojo_postgres_dev:/var/lib/postgresql/data
+
   dojo-dev:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: dojo-saas-dev
     restart: unless-stopped
+    depends_on:
+      postgres-dev:
+        condition: service_healthy
     env_file:
       - path: .env.development
         required: false
     environment:
-      DATABASE_URL: file:/app/data/dev.db
+      DATABASE_URL: postgresql://${POSTGRES_USER:-gymday}:${POSTGRES_PASSWORD:-gymday}@postgres-dev:5432/${POSTGRES_DB:-gymday_dev}?schema=public
       NODE_ENV: production
       PORT: 3000
+      SAAS_ROOT_DOMAIN: ${SAAS_ROOT_DOMAIN:-localhost}
+      DEFAULT_TENANT_SLUG: ${DEFAULT_TENANT_SLUG:-we-discipline}
     ports:
       - "3001:3000"
     volumes:
-      - dojo_data_dev:/app/data
       - dojo_branding_dev:/app/public/branding
 
 volumes:
-  dojo_data_dev:
+  dojo_postgres_dev:
   dojo_branding_dev:

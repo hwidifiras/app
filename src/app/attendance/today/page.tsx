@@ -5,6 +5,7 @@ import { getClubSettings } from "@/lib/club-settings";
 import { canCheckInWithPayment } from "@/lib/membership-rules";
 import { computeWeeklyAllowanceRemainingForMember } from "@/lib/weekly-session-consumption";
 import { utcDateOnlyForTimeZone } from "@/lib/dates";
+import { isDateWithinBusinessDayWindow } from "@/lib/assignment-policy";
 import {
   deriveSessionLifecycle,
   expectedMemberIdsAtSession,
@@ -76,6 +77,10 @@ export default async function AttendanceTodayPage({
           include: {
             sport: { select: { id: true } },
             members: {
+              where: {
+                status: "ACTIVE",
+                member: { status: "ACTIVE" },
+              },
               include: {
                 member: { select: { id: true, firstName: true, lastName: true } },
               },
@@ -165,8 +170,7 @@ export default async function AttendanceTodayPage({
           const memberSubs = subs.filter(
             (s) =>
               s.memberId === member.memberId &&
-              s.startDate <= session.sessionDate &&
-              (!s.endDate || s.endDate >= session.sessionDate),
+              isDateWithinBusinessDayWindow(s.startDate, s.endDate, session.sessionDate),
           );
 
           const matchedSub = await (async () => {
@@ -228,7 +232,8 @@ export default async function AttendanceTodayPage({
           <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted-foreground)]">Mode dégradé</p>
           <h1 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">Pointage indisponible</h1>
           <p className="mt-3 text-sm text-[var(--muted-foreground)]">
-            Données inaccessibles. Lancez `npm run prisma:generate` puis redémarrez le serveur.
+            Cette page ne peut pas charger ses données pour le moment. Revenez au tableau de bord puis contactez le
+            support si le problème continue.
           </p>
           <div className="mt-4">
             <Link href="/attendance" className="btn btn-ghost">Retour aux présences</Link>
@@ -248,12 +253,12 @@ export default async function AttendanceTodayPage({
       </Link>
 
       <PageHeader
-        overline="Suivi"
-        title="Pointage et séances à finaliser"
+        overline="Réception"
+        title="Pointage"
         description={
           sessions.length === 0
             ? "Aucune séance aujourd'hui et aucun pointage en retard."
-            : `${sessions.length} séance${sessions.length > 1 ? "s" : ""} disponible${sessions.length > 1 ? "s" : ""} — les séances passées restent accessibles jusqu'à leur finalisation.`
+            : `${sessions.length} séance${sessions.length > 1 ? "s" : ""} disponible${sessions.length > 1 ? "s" : ""}. Les séances passées restent ouvertes jusqu'à finalisation.`
         }
       />
 

@@ -7,7 +7,12 @@ import { SubscriptionAddForm } from "@/components/subscriptions/subscription-add
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function NewSubscriptionPage() {
+export default async function NewSubscriptionPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ memberId?: string }>;
+}) {
+  const { memberId: requestedMemberId } = await searchParams;
   let hasError = false;
   let membersOptions: Array<{ id: string; firstName: string; lastName: string; phone: string }> = [];
   let plansOptions: Array<{ id: string; name: string; price: number; totalSessions: number; validityDays: number }> = [];
@@ -39,7 +44,8 @@ export default async function NewSubscriptionPage() {
           <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted-foreground)]">Mode dégradé</p>
           <h1 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">Création d&apos;abonnement indisponible</h1>
           <p className="mt-3 text-sm text-[var(--muted-foreground)]">
-            Données inaccessibles. Lancez `npm run prisma:generate` puis redémarrez le serveur.
+            Cette page ne peut pas charger ses données pour le moment. Revenez au tableau de bord puis contactez le
+            support si le problème continue.
           </p>
           <div className="mt-4">
             <Link href="/subscriptions" className="btn btn-ghost">Retour aux abonnements</Link>
@@ -59,14 +65,16 @@ export default async function NewSubscriptionPage() {
       </Link>
 
       <PageHeader
-        overline="Abonnements & Finance"
-        title="Renouvellement d'abonnement"
-        description="Créer un nouvel abonnement pour un membre existant sans perdre l'historique. Le dernier abonnement est affiché avant validation."
+        overline="Membres"
+        title="Renouveler"
+        description="Créer un nouvel abonnement sans perdre l'historique du membre."
       />
 
-      <section className="panel p-4 sm:p-6">
-        <SubscriptionAddForm membersOptions={membersOptions} plansOptions={plansOptions} />
-      </section>
+      <SubscriptionAddForm
+        membersOptions={membersOptions}
+        plansOptions={plansOptions}
+        initialMemberId={membersOptions.some((member) => member.id === requestedMemberId) ? requestedMemberId : ""}
+      />
     </main>
   );
 }

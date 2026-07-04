@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions } from "@/components/ui/form-layout";
 import { formatGroupRoomLabel } from "@/lib/group-room";
+import { formatMoney } from "@/lib/money";
 
 type Plan = {
   id: string;
@@ -224,7 +225,7 @@ export function AddMemberToGroupForm({
       {selectedGroup && (
         <div>
           <label className="mb-2 block text-xs font-medium text-muted-foreground">
-            Plan d'abonnement *
+            Plan d&apos;abonnement *
           </label>
           <select
             value={selectedPlanId}
@@ -259,10 +260,7 @@ export function AddMemberToGroupForm({
             <div className="flex justify-between">
               <span className="text-muted-foreground">Prix:</span>
               <span className="font-medium">
-                {new Intl.NumberFormat("fr-FR", {
-                  style: "currency",
-                  currency: "EUR",
-                }).format(selectedPlan.price / 100)}
+                {formatMoney(selectedPlan.price)}
               </span>
             </div>
             <div className="flex justify-between text-xs">

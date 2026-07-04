@@ -5,15 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Activity, ChevronDown, CircleUser, LogOut, Users } from "lucide-react";
 
-import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { useAppShellData } from "@/components/layout/app-shell-data-provider";
 import { DisplayModeToggle } from "@/components/layout/display-mode-toggle";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { cn } from "@/lib/utils";
-
-type AccountData = {
-  name: string;
-  email: string;
-  role: "ADMIN" | "STAFF";
-};
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -33,23 +28,8 @@ export function UserAccountMenu({
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const [account, setAccount] = useState<AccountData | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/account")
-      .then((r) => r.json())
-      .then((json) => {
-        if (json.data) {
-          setAccount({
-            name: json.data.name,
-            email: json.data.email,
-            role: json.data.role,
-          });
-        }
-      })
-      .catch(() => {});
-  }, []);
+  const { account } = useAppShellData();
 
   useEffect(() => {
     if (!open) return;
@@ -92,10 +72,9 @@ export function UserAccountMenu({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="menu"
-        aria-label="Menu compte"
-        className="flex min-h-11 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] px-2 py-1.5 text-left transition hover:bg-[var(--surface)]"
+        className="flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-1.5 py-1 text-left transition hover:bg-[var(--surface)] sm:min-h-11 sm:gap-2 sm:px-2 sm:py-1.5"
       >
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)]/15 text-xs font-bold text-[var(--primary)]">
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)] text-[0.68rem] font-bold text-white sm:size-8 sm:text-xs">
           {account ? initials(account.name) : "…"}
         </span>
         <span className="hidden max-w-[8rem] truncate text-sm font-medium text-[var(--foreground)] sm:block">
@@ -103,7 +82,7 @@ export function UserAccountMenu({
         </span>
         <ChevronDown
           className={cn(
-            "size-4 shrink-0 text-[var(--muted-foreground)] transition-transform",
+            "size-3.5 shrink-0 text-[var(--muted-foreground)] transition-transform sm:size-4",
             open && "rotate-180",
           )}
         />
@@ -112,7 +91,7 @@ export function UserAccountMenu({
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-[calc(100%+0.35rem)] z-[60] w-[min(calc(100vw-1.5rem),16rem)] rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-lg"
+          className="absolute right-0 top-[calc(100%+0.35rem)] z-[60] w-[min(calc(100vw-1.5rem),16rem)] rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2 shadow-[var(--shadow-floating)]"
         >
           {account && (
             <div className="border-b border-[var(--border)] px-2 pb-2 pt-1">

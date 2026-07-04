@@ -1,144 +1,768 @@
-﻿import { prisma } from "@/lib/prisma";
-import { getClubSettings } from "@/lib/club-settings";
 import Link from "next/link";
 import {
   AlertCircle,
   ArrowRight,
-  BadgeCheck,
-  Banknote,
+  BarChart3,
+  CalendarCheck2,
   CalendarClock,
-  CalendarDays,
+  CheckCircle2,
   ClipboardCheck,
-  TrendingUp,
+  CreditCard,
+  RotateCcw,
   UserPlus,
-  Users,
+  UsersRound,
   Wallet,
 } from "lucide-react";
-import { utcDateOnlyForTimeZone } from "@/lib/dates";
 
-import { cn } from "@/lib/utils";
-import { PageHeader } from "@/components/ui/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardDebtsSection } from "@/components/dashboard/dashboard-debts-section";
+import { getClubSettings } from "@/lib/club-settings";
 import {
   computeFinanceSnapshot,
   computeMemberDebts,
   startOfUtcMonth,
   startOfUtcWeek,
 } from "@/lib/dashboard-finance";
-import { enrichDebtsWithReminderMeta } from "@/lib/payment-reminders";
+import { utcDateOnlyForTimeZone } from "@/lib/dates";
 import { isPaymentReminderEmailConfigured } from "@/lib/email";
+import { enrichDebtsWithReminderMeta } from "@/lib/payment-reminders";
+import { prisma } from "@/lib/prisma";
+import { formatRoomLabel } from "@/lib/group-room";
+import {
+  deriveSessionLifecycle,
+  expectedMemberIdsAtSession,
+  type SessionOperationalStatus,
+} from "@/lib/session-lifecycle";
 import { formatMoney } from "@/lib/subscription-billing";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-type KpiCardProps = {
-  label: string;
-  value: number | string;
-  hint?: string;
-  icon: React.ReactNode;
-  color: string;
-  href?: string;
+type IconComponent = React.ComponentType<{ className?: string }>;
+type DashboardTone = "blue" | "green" | "amber" | "red" | "slate";
+
+type TodaySession = {
+  id: string;
+  groupName: string;
+  coachName: string | null;
+  room: string;
+  startTime: string;
+  endTime: string;
+  operationalStatus: SessionOperationalStatus;
+  expectedMemberCount: number;
+  checkedMemberCount: number;
+  unmarkedCount: number;
+  canFinalize: boolean;
 };
 
-function KpiCard({ label, value, hint, icon, color, href }: KpiCardProps) {
-  const content = (
-    <Card
-      size="sm"
+type PriorityItem = {
+  id: string;
+  title: string;
+  detail: string;
+  meta?: string;
+  href: string;
+  actionLabel: string;
+  icon: IconComponent;
+  tone: DashboardTone;
+};
+
+type PaymentEntryTypeValue = "PAYMENT" | "CORRECTION" | "REVERSAL";
+
+type DashboardPayment = {
+  id: string;
+  amount: number;
+  entryType: PaymentEntryTypeValue;
+  paymentMethod: string | null;
+  paymentDate: Date;
+};
+
+type CashMethodStat = {
+  method: string;
+  label: string;
+  amount: number;
+  count: number;
+  tone: DashboardTone;
+};
+
+type CashTrendDay = {
+  key: string;
+  label: string;
+  amount: number;
+  isToday: boolean;
+};
+
+type RecentMemberPreview = {
+  id: string;
+  name: string;
+  initials: string;
+  planName: string;
+  joinedAt: Date;
+  status: string;
+};
+
+const dashboardToneStyles: Record<
+  DashboardTone,
+  {
+    icon: string;
+    badge: string;
+    text: string;
+    soft: string;
+    border: string;
+  }
+> = {
+  blue: {
+    icon: "bg-[#2563EB] text-white",
+    badge: "bg-[#EFF6FF] text-[#1D4ED8]",
+    text: "text-[#2563EB]",
+    soft: "bg-[#EFF6FF]",
+    border: "border-[#BFDBFE]",
+  },
+  green: {
+    icon: "bg-[#10B981] text-white",
+    badge: "bg-[#ECFDF5] text-[#047857]",
+    text: "text-[#047857]",
+    soft: "bg-[#ECFDF5]",
+    border: "border-[#A7F3D0]",
+  },
+  amber: {
+    icon: "bg-[#F59E0B] text-white",
+    badge: "bg-[#FFFBEB] text-[#B45309]",
+    text: "text-[#B45309]",
+    soft: "bg-[#FFFBEB]",
+    border: "border-[#FDE68A]",
+  },
+  red: {
+    icon: "bg-[#EF4444] text-white",
+    badge: "bg-[#FEF2F2] text-[#B91C1C]",
+    text: "text-[#DC2626]",
+    soft: "bg-[#FEF2F2]",
+    border: "border-[#FECACA]",
+  },
+  slate: {
+    icon: "bg-[#0B1220] text-white",
+    badge: "bg-[#F1F5F9] text-[#334155]",
+    text: "text-[#334155]",
+    soft: "bg-[#F8FAFC]",
+    border: "border-[#CBD5E1]",
+  },
+};
+
+function DashboardPanel({
+  children,
+  className,
+  labelledBy,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  labelledBy?: string;
+}) {
+  return (
+    <section
+      aria-labelledby={labelledBy}
       className={cn(
-        "h-full min-h-[5.75rem] shadow-sm transition active:scale-[0.98]",
-        href && "hover:border-primary/30 hover:shadow-md",
+        "rounded-lg border border-[#DDE7F4] bg-white text-[#111827] shadow-[0_16px_38px_rgba(15,23,42,0.055)] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100",
+        className,
       )}
     >
-      <CardContent className="flex h-full items-center gap-2 p-2.5 sm:gap-3 sm:p-3.5">
-        <div className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg sm:size-9", color)}>
-          {icon}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[0.62rem] font-medium leading-tight text-muted-foreground sm:text-xs">{label}</p>
-          <p className="truncate text-base font-bold leading-tight tracking-tight text-foreground sm:text-xl">{value}</p>
-          {hint ? <p className="mt-0.5 text-[0.6rem] text-muted-foreground sm:text-[0.65rem]">{hint}</p> : null}
-        </div>
-      </CardContent>
-    </Card>
-  );
-
-  if (!href) return content;
-
-  return (
-    <Link href={href} className="block h-full touch-manipulation" aria-label={label}>
-      {content}
-    </Link>
+      {children}
+    </section>
   );
 }
 
-type QuickActionProps = {
+function DashboardSectionHeader({
+  title,
+  eyebrow,
+  action,
+  titleId,
+}: {
   title: string;
-  description: string;
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-  tone: string;
-};
-
-function QuickActionLink({ title, description, href, icon: Icon, tone }: QuickActionProps) {
+  eyebrow?: string;
+  action?: React.ReactNode;
+  titleId?: string;
+}) {
   return (
-    <Link
-      href={href}
-      className="group flex h-full min-h-[4.75rem] items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 transition hover:border-[var(--primary)]/35 hover:bg-[var(--surface-soft)]"
-      aria-label={title}
-    >
-      <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", tone)}>
-        <Icon className="size-4 text-white" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold leading-tight text-foreground">{title}</span>
-        <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">{description}</span>
-      </span>
-      <ArrowRight className="size-4 shrink-0 text-[var(--muted-foreground)] transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--primary)]" />
-    </Link>
+    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#E2E8F0] px-4 py-3 dark:border-slate-800">
+      <div className="min-w-0">
+        {eyebrow ? (
+          <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[#2563EB] dark:text-blue-300">
+            {eyebrow}
+          </p>
+        ) : null}
+        <h2 id={titleId} className="text-base font-semibold leading-tight text-[#0B1220] dark:text-slate-50">
+          {title}
+        </h2>
+      </div>
+      {action}
+    </div>
   );
 }
 
-const receptionQuickLinks = [
-  {
-    title: "Pointer les séances",
-    description: "Marquer les présences et absences du jour.",
-    href: "/attendance/today",
-    icon: BadgeCheck,
-    tone: "bg-rose-500",
-  },
-  {
-    title: "Encaisser",
-    description: "Enregistrer un règlement membre.",
-    href: "/payments/new",
-    icon: Banknote,
-    tone: "bg-emerald-600",
-  },
-  {
-    title: "Nouvelle inscription",
-    description: "Créer le dossier, l'abonnement et le groupe.",
-    href: "/enrollment",
-    icon: UserPlus,
-    tone: "bg-sky-500",
-  },
-  {
-    title: "Consulter les membres",
-    description: "Rechercher ou ouvrir un dossier membre.",
-    href: "/members",
-    icon: Users,
-    tone: "bg-indigo-600",
-  },
-];
+function statusLabel(session: TodaySession): string {
+  if (session.operationalStatus === "COMPLETED") return "Terminée";
+  if (session.operationalStatus === "NEEDS_FINALIZATION") {
+    return session.canFinalize ? "À finaliser" : "À compléter";
+  }
+  return "À pointer";
+}
+
+function sessionTone(session: TodaySession): DashboardTone {
+  if (session.operationalStatus === "COMPLETED") return "green";
+  if (session.operationalStatus === "NEEDS_FINALIZATION") return "amber";
+  return "blue";
+}
+
+function sessionActionLabel(session: TodaySession): string {
+  if (session.operationalStatus === "COMPLETED") return "Voir";
+  if (session.canFinalize) return "Finaliser";
+  return "Pointer";
+}
+
+function TodaySessionRow({ session }: { session: TodaySession }) {
+  const tone = dashboardToneStyles[sessionTone(session)];
+  const progress =
+    session.expectedMemberCount > 0
+      ? Math.min(100, Math.round((session.checkedMemberCount / session.expectedMemberCount) * 100))
+      : 0;
+
+  return (
+    <li className="border-t border-[#E2E8F0] px-4 py-3 first:border-t-0 dark:border-slate-800">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="truncate text-sm font-semibold text-[#0B1220] dark:text-slate-50">{session.groupName}</p>
+            <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[0.66rem] font-semibold", tone.badge)}>
+              {statusLabel(session)}
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-[#64748B] dark:text-slate-400">
+            {session.startTime} - {session.endTime} · {formatRoomLabel(session.room)}
+            {session.coachName ? ` · ${session.coachName}` : ""}
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[#64748B] dark:text-slate-400">
+            <span>
+              {session.checkedMemberCount}/{session.expectedMemberCount} pointés
+            </span>
+            {session.unmarkedCount > 0 ? (
+              <span className={dashboardToneStyles.amber.text}>{session.unmarkedCount} restant(s)</span>
+            ) : (
+              <span className={dashboardToneStyles.green.text}>Complet</span>
+            )}
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#E2E8F0] dark:bg-slate-800">
+            <div className={cn("h-full rounded-full", tone.icon)} style={{ width: `${progress}%` }} />
+          </div>
+        </div>
+        <Link
+          href={`/attendance/today?sessionId=${session.id}`}
+          prefetch={false}
+          className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg bg-[#2563EB] px-3 text-sm font-semibold !text-white transition hover:bg-[#1D4ED8]"
+        >
+          {sessionActionLabel(session)}
+        </Link>
+      </div>
+    </li>
+  );
+}
+
+function PrioritySummary({ items }: { items: PriorityItem[] }) {
+  if (items.length === 0) {
+    return (
+      <div className="mx-4 mb-4 flex items-start gap-3 rounded-lg border border-[#DBEAFE] bg-[#EFF6FF] px-3 py-3">
+        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#2563EB]" />
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-[#0B3B8F]">Rien à traiter</p>
+          <p className="mt-0.5 text-xs leading-snug text-[#64748B]">
+            Aucun impayé urgent, aucune séance à finaliser et aucune échéance critique.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-t border-[#E2E8F0] px-4 py-3 dark:border-slate-800">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[#2563EB]">Priorités</p>
+          <p className="text-sm font-semibold text-[#0B1220] dark:text-slate-50">À traiter</p>
+        </div>
+        <Link href="/subscriptions" className="text-xs font-semibold text-[#2563EB] hover:underline">
+          Voir tout
+        </Link>
+      </div>
+      <ul className="grid gap-2">
+        {items.slice(0, 3).map((item) => {
+          const tone = dashboardToneStyles[item.tone];
+          const Icon = item.icon;
+          return (
+            <li key={item.id} className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 gap-2.5">
+                  <span className={cn("mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg", tone.soft, tone.text)}>
+                    <Icon className="size-4" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-[#0B1220] dark:text-slate-50">
+                      {item.title}
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-snug text-[#64748B] dark:text-slate-400">
+                      {item.detail}
+                    </span>
+                  </span>
+                </div>
+                <Link
+                  href={item.href}
+                  prefetch={false}
+                  className="inline-flex min-h-8 shrink-0 items-center justify-center rounded-lg border border-[#D8E2F0] bg-white px-3 text-xs font-semibold text-[#0B1220] transition hover:border-[#2563EB] hover:text-[#2563EB] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                >
+                  {item.actionLabel}
+                </Link>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function TodayWorkPanel({
+  todaySessions,
+  priorityItems,
+}: {
+  todaySessions: TodaySession[];
+  priorityItems: PriorityItem[];
+}) {
+  return (
+    <DashboardPanel labelledBy="dashboard-today-title" className="min-w-0">
+      <DashboardSectionHeader
+        titleId="dashboard-today-title"
+        title="Séances du jour"
+        eyebrow="Aujourd'hui"
+        action={
+          <Link href="/attendance/today" className="text-xs font-semibold text-[#2563EB] hover:underline">
+            Ouvrir
+          </Link>
+        }
+      />
+      {todaySessions.length === 0 ? (
+        <div className="flex min-h-36 flex-col items-center justify-center px-4 py-6 text-center">
+          <CalendarCheck2 className="size-10 text-[#2563EB]" />
+          <p className="mt-2 text-sm font-semibold text-[#0B1220] dark:text-slate-50">
+            Aucune séance aujourd&apos;hui
+          </p>
+          <p className="mt-1 max-w-sm text-xs text-[#64748B] dark:text-slate-400">
+            Le planning du jour est vide ou toutes les séances ont été annulées.
+          </p>
+        </div>
+      ) : (
+        <ul>
+          {todaySessions.map((session) => (
+            <TodaySessionRow key={session.id} session={session} />
+          ))}
+        </ul>
+      )}
+      <PrioritySummary items={priorityItems} />
+    </DashboardPanel>
+  );
+}
+
+function CashRegisterPanel({
+  totalToday,
+  paymentCountToday,
+  averagePaymentToday,
+  weekTotal,
+  monthTotal,
+  methodStats,
+  correctionsToday,
+  reversalsToday,
+}: {
+  totalToday: number;
+  paymentCountToday: number;
+  averagePaymentToday: number;
+  weekTotal: number;
+  monthTotal: number;
+  methodStats: CashMethodStat[];
+  correctionsToday: number;
+  reversalsToday: number;
+}) {
+  const maxMethodAmount = Math.max(1, ...methodStats.map((stat) => Math.abs(stat.amount)));
+  const hasAdjustments = correctionsToday + reversalsToday > 0;
+
+  return (
+    <DashboardPanel labelledBy="dashboard-cash-title" className="min-w-0">
+      <DashboardSectionHeader
+        titleId="dashboard-cash-title"
+        title="Caisse aujourd'hui"
+        eyebrow="Encaissements"
+        action={
+          <Link href="/payments/new" className="text-xs font-semibold text-[#2563EB] hover:underline">
+            Encaisser
+          </Link>
+        }
+      />
+      <div className="p-3">
+        <Link
+          href="/payments"
+          className="group flex items-center gap-3 rounded-lg border border-[#A7F3D0] bg-[linear-gradient(135deg,#ECFDF5_0%,#F0FDFA_58%,#E0F2FE_100%)] p-4 text-[#0B1220] transition hover:border-[#10B981]"
+        >
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-[#10B981] text-white">
+            <Wallet className="size-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-xs font-semibold uppercase text-[#047857]">Encaisse net</span>
+            <span className="mt-1 block text-2xl font-bold leading-tight">{formatMoney(totalToday)}</span>
+            <span className="mt-1 block text-xs text-[#64748B]">
+              {paymentCountToday} mouvement{paymentCountToday > 1 ? "s" : ""} aujourd&apos;hui
+            </span>
+          </span>
+          <ArrowRight className="size-4 shrink-0 text-[#64748B] transition group-hover:translate-x-0.5 group-hover:text-[#047857]" />
+        </Link>
+
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          <div className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2">
+            <p className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-[#64748B]">Panier moyen</p>
+            <p className="mt-1 text-sm font-bold text-[#0B1220]">{formatMoney(averagePaymentToday)}</p>
+          </div>
+          <div className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2">
+            <p className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-[#64748B]">Semaine</p>
+            <p className="mt-1 text-sm font-bold text-[#0B1220]">{formatMoney(weekTotal)}</p>
+          </div>
+          <div className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2">
+            <p className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-[#64748B]">Mois</p>
+            <p className="mt-1 text-sm font-bold text-[#0B1220]">{formatMoney(monthTotal)}</p>
+          </div>
+        </div>
+
+        {methodStats.length === 0 ? (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-xs">
+            <span className="font-semibold uppercase tracking-[0.12em] text-[#64748B]">Par mode</span>
+            <span className="text-[#64748B]">Aucun mouvement aujourd&apos;hui</span>
+          </div>
+        ) : (
+          <div className="mt-3 rounded-lg border border-[#E2E8F0] p-3">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-[#64748B]">Par mode</p>
+            <div className="space-y-3">
+              {methodStats.map((stat) => {
+                const tone = dashboardToneStyles[stat.amount < 0 ? "red" : stat.tone];
+                const width = Math.max(6, Math.round((Math.abs(stat.amount) / maxMethodAmount) * 100));
+
+                return (
+                  <div key={stat.method}>
+                    <div className="mb-1 flex items-center justify-between gap-3 text-xs">
+                      <span className="truncate font-medium text-[#0B1220]">{stat.label}</span>
+                      <span className={cn("shrink-0 font-semibold", tone.text)}>
+                        {formatMoney(stat.amount)}
+                      </span>
+                    </div>
+                    <div
+                      className="h-2 overflow-hidden rounded-full bg-[#E2E8F0]"
+                      aria-label={`${stat.label}: ${formatMoney(stat.amount)} sur ${stat.count} mouvement${stat.count > 1 ? "s" : ""}`}
+                    >
+                      <div className={cn("h-full rounded-full", tone.icon)} style={{ width: `${width}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {hasAdjustments ? (
+          <div className="mt-3 flex items-center gap-2 rounded-lg border border-[#FDE68A] bg-[#FFFBEB] px-3 py-2 text-xs font-medium text-[#B45309]">
+            <RotateCcw className="size-3.5 shrink-0" />
+            {`${correctionsToday} correction(s), ${reversalsToday} annulation(s) aujourd'hui`}
+          </div>
+        ) : null}
+      </div>
+    </DashboardPanel>
+  );
+}
+
+function CashTrendPanel({ trend, weekTotal }: { trend: CashTrendDay[]; weekTotal: number }) {
+  const maxAmount = Math.max(1, ...trend.map((day) => Math.abs(day.amount)));
+
+  return (
+    <DashboardPanel labelledBy="dashboard-cash-trend-title" className="min-w-0">
+      <DashboardSectionHeader
+        titleId="dashboard-cash-trend-title"
+        title="Encaissements 7 jours"
+        eyebrow="Tendance"
+        action={
+          <Link href="/payments" className="text-xs font-semibold text-[#2563EB] hover:underline">
+            Détail
+          </Link>
+        }
+      />
+      <div className="p-3">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <p className="text-xs text-[#64748B]">Total semaine courante</p>
+            <p className="mt-1 text-2xl font-bold leading-tight text-[#0B1220]">{formatMoney(weekTotal)}</p>
+          </div>
+          <div className="inline-flex items-center gap-1.5 rounded-lg bg-[#EFF6FF] px-2.5 py-1.5 text-xs font-semibold text-[#1D4ED8]">
+            <BarChart3 className="size-3.5" />
+            Net journalier
+          </div>
+        </div>
+
+        <div className="relative h-56 overflow-hidden rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 pb-3 pt-4">
+          <div className="absolute inset-x-3 top-5 bottom-10 flex flex-col justify-between" aria-hidden="true">
+            {Array.from({ length: 5 }).map((_, index) => (
+              <span key={index} className="border-t border-[#DDE7F4]" />
+            ))}
+          </div>
+          <div className="relative flex h-full items-end gap-2">
+            {trend.map((day) => {
+              const height = day.amount === 0 ? 4 : Math.max(12, Math.round((Math.abs(day.amount) / maxAmount) * 152));
+              const tone = day.amount < 0 ? dashboardToneStyles.red : day.isToday ? dashboardToneStyles.green : dashboardToneStyles.blue;
+
+              return (
+                <div key={day.key} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-2">
+                  <div className="flex h-40 w-full items-end justify-center">
+                    <div
+                      className={cn("w-full max-w-10 rounded-t-md shadow-[0_8px_18px_rgba(37,99,235,0.18)]", tone.icon)}
+                      style={{ height: `${height}px` }}
+                      aria-label={`${day.label}: ${formatMoney(day.amount)}`}
+                      title={`${day.label}: ${formatMoney(day.amount)}`}
+                    />
+                  </div>
+                  <p className="w-full truncate text-center text-[0.66rem] font-medium text-[#64748B]">{day.label}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </DashboardPanel>
+  );
+}
+
+function MembersOverviewPanel({
+  activeMembers,
+  newMembersThisMonth,
+  expiringSoon,
+  pendingPayment,
+  recentMembers,
+}: {
+  activeMembers: number;
+  newMembersThisMonth: number;
+  expiringSoon: number;
+  pendingPayment: number;
+  recentMembers: RecentMemberPreview[];
+}) {
+  const stats = [
+    {
+      label: "Membres actifs",
+      value: activeMembers,
+      icon: UsersRound,
+      tone: "blue" as const,
+    },
+    {
+      label: "Nouveaux ce mois",
+      value: newMembersThisMonth,
+      icon: UserPlus,
+      tone: "green" as const,
+    },
+    {
+      label: "Abonnements expirant bientôt",
+      value: expiringSoon,
+      icon: CalendarClock,
+      tone: "amber" as const,
+    },
+    {
+      label: "En attente de paiement",
+      value: pendingPayment,
+      icon: CreditCard,
+      tone: "red" as const,
+    },
+  ];
+
+  return (
+    <DashboardPanel labelledBy="dashboard-members-overview-title" className="min-w-0">
+      <DashboardSectionHeader
+        titleId="dashboard-members-overview-title"
+        title="Aperçu rapide"
+        eyebrow="Membres"
+        action={
+          <Link href="/members" className="text-xs font-semibold text-[#2563EB] hover:underline">
+            Voir tout
+          </Link>
+        }
+      />
+      <div className="p-3">
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {stats.map((stat) => {
+            const tone = dashboardToneStyles[stat.tone];
+            const Icon = stat.icon;
+            return (
+              <Link
+                key={stat.label}
+                href={stat.label === "En attente de paiement" ? "/subscriptions" : "/members"}
+                className="rounded-lg border border-[#E2E8F0] bg-white px-3 py-3 shadow-[0_8px_18px_rgba(15,23,42,0.045)] transition hover:-translate-y-0.5 hover:border-[#2563EB] hover:shadow-[0_12px_26px_rgba(37,99,235,0.10)]"
+              >
+                <span className={cn("flex size-7 items-center justify-center rounded-lg", tone.soft, tone.text)}>
+                  <Icon className="size-4" />
+                </span>
+                <span className="mt-2 block text-lg font-bold leading-none text-[#0B1220]">{stat.value}</span>
+                <span className="mt-1 block text-[0.72rem] leading-snug text-[#475569]">{stat.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+
+        <div className="mt-4">
+          <p className="mb-2 text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[#64748B]">
+            Derniers membres
+          </p>
+          {recentMembers.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-[#D8E2F0] bg-[#F8FAFC] px-4 py-6 text-center">
+              <UsersRound className="mx-auto size-8 text-[#94A3B8]" />
+              <p className="mt-2 text-sm font-semibold text-[#0B1220]">Aucun membre récent</p>
+              <p className="mt-1 text-xs text-[#64748B]">Les nouvelles inscriptions apparaîtront ici.</p>
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {recentMembers.map((member) => (
+                <li key={member.id}>
+                  <Link
+                    href={`/members/${member.id}`}
+                    prefetch={false}
+                    className="flex items-center gap-3 rounded-lg border border-[#E2E8F0] bg-white px-3 py-2.5 transition hover:border-[#2563EB] hover:bg-[#F8FAFC]"
+                  >
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#EFF6FF] text-xs font-bold text-[#2563EB]">
+                      {member.initials}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold text-[#0B1220]">{member.name}</span>
+                      <span className="mt-0.5 block truncate text-xs text-[#64748B]">{member.planName}</span>
+                    </span>
+                    <span className="rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[0.68rem] font-semibold text-[#047857]">
+                      {member.status}
+                    </span>
+                    <span className="hidden shrink-0 text-xs font-medium text-[#64748B] sm:inline">
+                      {member.joinedAt.toLocaleDateString("fr-FR")}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </DashboardPanel>
+  );
+}
+
+function formatDateFr(value: Date) {
+  return value.toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
+function formatLongDateFr(value: Date) {
+  return value.toLocaleDateString("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+}
+
+function sumPaymentAmounts(payments: Array<{ amount: number }>) {
+  return payments.reduce((sum, payment) => sum + payment.amount, 0);
+}
+
+function dateKey(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function formatTrendLabel(date: Date) {
+  return date.toLocaleDateString("fr-FR", {
+    weekday: "short",
+    day: "2-digit",
+  });
+}
+
+function memberInitials(firstName: string, lastName: string) {
+  const first = firstName.trim().charAt(0);
+  const last = lastName.trim().charAt(0);
+  return `${first}${last}`.toUpperCase() || "M";
+}
+
+function formatPaymentMethodLabel(method: string | null) {
+  const normalized = method?.trim().toUpperCase();
+
+  switch (normalized) {
+    case "CASH":
+      return "Espèces";
+    case "CARD":
+      return "Carte";
+    case "BANK_TRANSFER":
+    case "TRANSFER":
+      return "Virement";
+    case "CHECK":
+      return "Chèque";
+    case "REPRISE_EXCEL":
+    case "REPRISE_PAPIER":
+      return "Reprise";
+    case "UNKNOWN":
+      return "Non renseigné";
+    default:
+      return method?.trim() || "Non renseigné";
+  }
+}
+
+function paymentMethodTone(method: string): DashboardTone {
+  switch (method.toUpperCase()) {
+    case "CASH":
+      return "green";
+    case "CARD":
+      return "blue";
+    case "CHECK":
+      return "amber";
+    default:
+      return "slate";
+  }
+}
+
+function buildCashTrend(payments: DashboardPayment[], trendStart: Date, today: Date): CashTrendDay[] {
+  const totalsByDay = new Map<string, number>();
+
+  for (const payment of payments) {
+    const key = dateKey(payment.paymentDate);
+    totalsByDay.set(key, (totalsByDay.get(key) ?? 0) + payment.amount);
+  }
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(trendStart);
+    date.setUTCDate(date.getUTCDate() + index);
+    const key = dateKey(date);
+
+    return {
+      key,
+      label: formatTrendLabel(date),
+      amount: totalsByDay.get(key) ?? 0,
+      isToday: key === dateKey(today),
+    };
+  });
+}
 
 export default async function Home() {
   let hasDataError = false;
   let activeMembers = 0;
-  let attendanceToday = 0;
+  let newMembersThisMonth = 0;
   let sessionsToday = 0;
   let revenueToday = 0;
   let revenueWeek = 0;
   let revenueMonth = 0;
+  let paymentCountToday = 0;
+  let averagePaymentToday = 0;
+  let correctionsToday = 0;
+  let reversalsToday = 0;
+  let cashMethodStats: CashMethodStat[] = [];
+  let cashTrend: CashTrendDay[] = [];
+  let recentMembers: RecentMemberPreview[] = [];
   let finance = {
     totalOutstandingCents: 0,
     debtorsCount: 0,
@@ -148,50 +772,55 @@ export default async function Home() {
     activeSubscriptionsCount: 0,
   };
   let debts: Awaited<ReturnType<typeof enrichDebtsWithReminderMeta>> = [];
+  let todaySessions: TodaySession[] = [];
+  let finalizationSessions: TodaySession[] = [];
+  let priorityItems: PriorityItem[] = [];
   let emailConfigured = false;
+
+  const now = new Date();
+  const today = utcDateOnlyForTimeZone(now);
+  const tomorrow = new Date(today);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+  const weekStart = startOfUtcWeek(today);
+  const monthStart = startOfUtcMonth(today);
+  const trendStart = new Date(today);
+  trendStart.setUTCDate(trendStart.getUTCDate() - 6);
+  const paymentWindowStart = monthStart.getTime() < trendStart.getTime() ? monthStart : trendStart;
+  const overdueSince = new Date(today);
+  overdueSince.setUTCDate(overdueSince.getUTCDate() - 30);
+  const sevenDaysFromToday = new Date(today);
+  sevenDaysFromToday.setUTCDate(sevenDaysFromToday.getUTCDate() + 7);
 
   try {
     const clubSettings = await getClubSettings();
-    const now = new Date();
-    const today = utcDateOnlyForTimeZone(now);
-    const tomorrow = new Date(today);
-    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-    const weekStart = startOfUtcWeek(today);
-    const monthStart = startOfUtcMonth(today);
 
     const [
       fetchedActiveMembers,
-      fetchedAttendanceToday,
+      fetchedNewMembersThisMonth,
       fetchedSessionsToday,
-      fetchedRevenueToday,
-      fetchedRevenueWeek,
-      fetchedRevenueMonth,
+      fetchedPaymentWindow,
       fetchedSubscriptions,
+      fetchedSessions,
+      fetchedRecentMembers,
     ] = await Promise.all([
       prisma.member.count({ where: { status: "ACTIVE" } }),
-      prisma.attendance.count({
-        where: {
-          status: { in: ["PRESENT", "OVERRIDE"] },
-          session: { sessionDate: { gte: today, lt: tomorrow } },
-        },
-      }),
+      prisma.member.count({ where: { status: "ACTIVE", joinedAt: { gte: monthStart, lt: tomorrow } } }),
       prisma.session.count({
         where: {
           sessionDate: { gte: today, lt: tomorrow },
           status: { not: "CANCELLED" },
         },
       }),
-      prisma.payment.aggregate({
-        _sum: { amount: true },
-        where: { paymentDate: { gte: today, lt: tomorrow } },
-      }),
-      prisma.payment.aggregate({
-        _sum: { amount: true },
-        where: { paymentDate: { gte: weekStart, lt: tomorrow } },
-      }),
-      prisma.payment.aggregate({
-        _sum: { amount: true },
-        where: { paymentDate: { gte: monthStart, lt: tomorrow } },
+      prisma.payment.findMany({
+        where: { paymentDate: { gte: paymentWindowStart, lt: tomorrow } },
+        select: {
+          id: true,
+          amount: true,
+          entryType: true,
+          paymentMethod: true,
+          paymentDate: true,
+        },
+        orderBy: [{ paymentDate: "asc" }, { createdAt: "asc" }],
       }),
       prisma.memberSubscription.findMany({
         where: { status: "ACTIVE" },
@@ -203,17 +832,108 @@ export default async function Home() {
           startDate: true,
           endDate: true,
           member: { select: { firstName: true, lastName: true, phone: true } },
+          plan: { select: { name: true } },
           payments: { select: { amount: true } },
+        },
+      }),
+      prisma.session.findMany({
+        where: {
+          sessionDate: { gte: overdueSince, lt: tomorrow },
+          status: { in: ["PLANNED", "RESCHEDULED", "COMPLETED"] },
+        },
+        select: {
+          id: true,
+          sessionDate: true,
+          startTime: true,
+          endTime: true,
+          room: true,
+          status: true,
+          coach: { select: { firstName: true, lastName: true } },
+          group: {
+            select: {
+              name: true,
+              members: {
+                select: { memberId: true, startDate: true, endDate: true },
+              },
+            },
+          },
+          attendances: { select: { memberId: true } },
+        },
+        orderBy: [{ sessionDate: "desc" }, { startTime: "asc" }],
+        take: 200,
+      }),
+      prisma.member.findMany({
+        where: { status: "ACTIVE" },
+        orderBy: [{ joinedAt: "desc" }, { createdAt: "desc" }],
+        take: 3,
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          joinedAt: true,
+          status: true,
+          subscriptions: {
+            where: { status: "ACTIVE" },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: {
+              plan: { select: { name: true } },
+            },
+          },
         },
       }),
     ]);
 
     activeMembers = fetchedActiveMembers;
-    attendanceToday = fetchedAttendanceToday;
+    newMembersThisMonth = fetchedNewMembersThisMonth;
     sessionsToday = fetchedSessionsToday;
-    revenueToday = fetchedRevenueToday._sum.amount ?? 0;
-    revenueWeek = fetchedRevenueWeek._sum.amount ?? 0;
-    revenueMonth = fetchedRevenueMonth._sum.amount ?? 0;
+
+    const paymentWindow: DashboardPayment[] = fetchedPaymentWindow.map((payment) => ({
+      id: payment.id,
+      amount: payment.amount,
+      entryType: payment.entryType as PaymentEntryTypeValue,
+      paymentMethod: payment.paymentMethod,
+      paymentDate: payment.paymentDate,
+    }));
+    recentMembers = fetchedRecentMembers.map((member) => ({
+      id: member.id,
+      name: `${member.firstName} ${member.lastName}`,
+      initials: memberInitials(member.firstName, member.lastName),
+      planName: member.subscriptions[0]?.plan?.name ?? "Sans abonnement actif",
+      joinedAt: member.joinedAt,
+      status: member.status === "ACTIVE" ? "Actif" : member.status,
+    }));
+
+    const paymentsToday = paymentWindow.filter((payment) => payment.paymentDate >= today && payment.paymentDate < tomorrow);
+    const paymentsThisWeek = paymentWindow.filter((payment) => payment.paymentDate >= weekStart && payment.paymentDate < tomorrow);
+    const paymentsThisMonth = paymentWindow.filter((payment) => payment.paymentDate >= monthStart && payment.paymentDate < tomorrow);
+    const positivePaymentsToday = paymentsToday.filter((payment) => payment.amount > 0);
+
+    revenueToday = sumPaymentAmounts(paymentsToday);
+    revenueWeek = sumPaymentAmounts(paymentsThisWeek);
+    revenueMonth = sumPaymentAmounts(paymentsThisMonth);
+    paymentCountToday = paymentsToday.length;
+    averagePaymentToday =
+      positivePaymentsToday.length > 0 ? Math.round(sumPaymentAmounts(positivePaymentsToday) / positivePaymentsToday.length) : 0;
+    correctionsToday = paymentsToday.filter((payment) => payment.entryType === "CORRECTION").length;
+    reversalsToday = paymentsToday.filter((payment) => payment.entryType === "REVERSAL").length;
+
+    const methodStats = new Map<string, CashMethodStat>();
+    for (const payment of paymentsToday) {
+      const method = payment.paymentMethod?.trim() || "UNKNOWN";
+      const existing = methodStats.get(method) ?? {
+        method,
+        label: formatPaymentMethodLabel(method),
+        amount: 0,
+        count: 0,
+        tone: paymentMethodTone(method),
+      };
+      existing.amount += payment.amount;
+      existing.count += 1;
+      methodStats.set(method, existing);
+    }
+    cashMethodStats = Array.from(methodStats.values()).sort((left, right) => Math.abs(right.amount) - Math.abs(left.amount));
+    cashTrend = buildCashTrend(paymentWindow.filter((payment) => payment.paymentDate >= trendStart), trendStart, today);
 
     finance = computeFinanceSnapshot(fetchedSubscriptions, { now });
     const rawDebts = computeMemberDebts(fetchedSubscriptions, {
@@ -222,159 +942,197 @@ export default async function Home() {
     }).slice(0, 15);
     debts = await enrichDebtsWithReminderMeta(rawDebts, { now });
     emailConfigured = isPaymentReminderEmailConfigured();
+
+    const operationalSessions = fetchedSessions.map((session) => {
+      const expectedMemberIds = expectedMemberIdsAtSession(session.group.members, session.sessionDate);
+      const lifecycle = deriveSessionLifecycle({
+        status: session.status,
+        sessionDate: session.sessionDate,
+        endTime: session.endTime,
+        expectedMemberIds,
+        attendanceMemberIds: session.attendances.map((attendance) => attendance.memberId),
+        now,
+      });
+
+      return {
+        id: session.id,
+        groupName: session.group.name,
+        coachName: session.coach ? `${session.coach.firstName} ${session.coach.lastName}` : null,
+        room: session.room,
+        sessionDate: session.sessionDate,
+        startTime: session.startTime,
+        endTime: session.endTime,
+        ...lifecycle,
+      };
+    });
+
+    todaySessions = operationalSessions
+      .filter((session) => session.sessionDate >= today && session.sessionDate < tomorrow)
+      .sort((left, right) => left.startTime.localeCompare(right.startTime))
+      .slice(0, 6);
+
+    finalizationSessions = operationalSessions
+      .filter((session) => session.operationalStatus === "NEEDS_FINALIZATION")
+      .sort((left, right) => {
+        const dateDiff = left.sessionDate.getTime() - right.sessionDate.getTime();
+        return dateDiff || left.startTime.localeCompare(right.startTime);
+      })
+      .slice(0, 4);
+
+    const expiringSubscriptions = fetchedSubscriptions
+      .filter((subscription) => {
+        if (!subscription.endDate) return false;
+        if (subscription.startDate > today) return false;
+        return subscription.endDate >= today && subscription.endDate <= sevenDaysFromToday;
+      })
+      .sort((left, right) => {
+        if (!left.endDate || !right.endDate) return 0;
+        return left.endDate.getTime() - right.endDate.getTime();
+      })
+      .slice(0, 3);
+
+    priorityItems = [
+      ...debts.slice(0, 3).map((debt) => ({
+        id: `debt-${debt.memberId}`,
+        title: debt.memberName,
+        detail: `${formatMoney(debt.totalDebt)} à encaisser`,
+        meta: debt.partialPaid
+          ? "Paiement partiel"
+          : `${debt.subscriptions} abonnement${debt.subscriptions > 1 ? "s" : ""}`,
+        href: `/payments/new?memberId=${debt.memberId}`,
+        actionLabel: "Encaisser",
+        icon: Wallet,
+        tone: "red" as const,
+      })),
+      ...finalizationSessions.slice(0, 2).map((session) => ({
+        id: `session-${session.id}`,
+        title: session.groupName,
+        detail: `${session.startTime} - ${session.endTime} · ${session.unmarkedCount} restant(s)`,
+        meta: session.canFinalize ? "Prête à finaliser" : "Pointage incomplet",
+        href: `/attendance/today?sessionId=${session.id}`,
+        actionLabel: session.canFinalize ? "Finaliser" : "Pointer",
+        icon: ClipboardCheck,
+        tone: "amber" as const,
+      })),
+      ...expiringSubscriptions.slice(0, 2).map((subscription) => ({
+        id: `expiry-${subscription.id}`,
+        title: `${subscription.member.firstName} ${subscription.member.lastName}`,
+        detail: `${subscription.plan.name} · fin le ${subscription.endDate ? formatDateFr(subscription.endDate) : ""}`,
+        meta: "Échéance proche",
+        href: `/members/${subscription.memberId}`,
+        actionLabel: "Voir",
+        icon: CalendarClock,
+        tone: "blue" as const,
+      })),
+    ].slice(0, 6);
   } catch (error) {
     hasDataError = true;
     console.error("Dashboard degraded mode:", error);
   }
 
   return (
-    <main className="app-shell py-4 md:py-8">
-      <PageHeader
-        overline="Pilotage"
-        title="Tableau de bord"
-        description="Les priorités financières et l'activité du club, réunies dans une vue de travail."
-      />
-
-      {hasDataError ? (
-        <div className="mb-5 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-200">
-          Données temporairement indisponibles. Vérifiez la base et redémarrez le serveur.
-        </div>
-      ) : null}
-
-      <section aria-labelledby="dashboard-overview-title">
-        <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          <span id="dashboard-overview-title">Vue d&apos;ensemble</span>
-        </h2>
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          <KpiCard
-            label="Impayés à recouvrer"
-            value={formatMoney(finance.totalOutstandingCents)}
-            hint={`${finance.debtorsCount} membre${finance.debtorsCount > 1 ? "s" : ""}`}
-            icon={<AlertCircle className="size-4 text-white sm:size-5" />}
-            color="bg-[var(--danger)]"
-            href="/subscriptions"
-          />
-          <KpiCard
-            label="CA du mois"
-            value={formatMoney(revenueMonth)}
-            hint={`Cette semaine : ${formatMoney(revenueWeek)}`}
-            icon={<TrendingUp className="size-4 text-white sm:size-5" />}
-            color="bg-emerald-600"
-            href="/payments"
-          />
-          <KpiCard
-            label="Taux de recouvrement"
-            value={finance.collectionRatePercent === null ? "—" : `${finance.collectionRatePercent} %`}
-            hint={`${finance.activeSubscriptionsCount} abonnement${finance.activeSubscriptionsCount > 1 ? "s" : ""} actif${finance.activeSubscriptionsCount > 1 ? "s" : ""}`}
-            icon={<ClipboardCheck className="size-4 text-white sm:size-5" />}
-            color="bg-indigo-600"
-            href="/subscriptions"
-          />
-          <KpiCard
-            label="Échéances sous 7 jours"
-            value={finance.expiringIn7Days}
-            icon={<CalendarClock className="size-4 text-white sm:size-5" />}
-            color="bg-orange-500"
-            href="/subscriptions"
-          />
-        </div>
-      </section>
-
-      <section className="mt-4 sm:mt-6" aria-labelledby="dashboard-operations-title">
-        <h2
-          id="dashboard-operations-title"
-          className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+    <main
+      className="app-shell relative overflow-hidden text-[#111827] dark:bg-[#0B1220] dark:text-slate-100"
+      style={{
+        background:
+          "radial-gradient(circle at 74% 0%, rgba(191,219,254,0.72) 0, rgba(219,234,254,0.46) 13rem, rgba(246,249,255,0) 31rem), #F6F9FF",
+      }}
+    >
+      <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-5">
+        <header
+          className="relative overflow-hidden rounded-lg bg-[#0B1220] px-4 py-5 text-white shadow-[0_18px_48px_rgba(37,99,235,0.20)] sm:px-6 lg:min-h-[12.25rem] lg:px-7 lg:py-7"
+          style={{
+            backgroundImage:
+              "linear-gradient(90deg, rgba(8,22,58,0.94) 0%, rgba(12,43,104,0.78) 38%, rgba(12,44,101,0.24) 66%, rgba(7,18,48,0.50) 100%), linear-gradient(180deg, rgba(7,18,48,0.08) 0%, rgba(7,18,48,0.50) 100%), url('/we-discipline/wide-dojo-interior.webp')",
+            backgroundPosition: "center 48%",
+            backgroundSize: "cover",
+          }}
         >
-          Opérations du jour
-        </h2>
-        <div className="grid items-stretch gap-4 xl:grid-cols-2">
-          <section className="min-w-0" aria-labelledby="dashboard-actions-title">
-            <Card size="sm" className="h-full">
-              <CardHeader className="border-b pb-3">
-                <CardTitle id="dashboard-actions-title">Actions rapides</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-2 pt-0 sm:grid-cols-2">
-                {receptionQuickLinks.map((item) => (
-                  <QuickActionLink key={item.href} {...item} />
-                ))}
-              </CardContent>
-            </Card>
-          </section>
-
-          <section className="min-w-0" aria-labelledby="dashboard-activity-title">
-            <Card size="sm" className="h-full">
-              <CardHeader className="border-b pb-3">
-                <CardTitle id="dashboard-activity-title">Activité et repères</CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-2 pt-0">
-                <KpiCard
-                  label="Séances"
-                  value={sessionsToday}
-                  icon={<CalendarDays className="size-4 text-white" />}
-                  color="bg-violet-600"
-                  href="/attendance/today"
-                />
-                <KpiCard
-                  label="Présences"
-                  value={attendanceToday}
-                  icon={<BadgeCheck className="size-4 text-white" />}
-                  color="bg-sky-500"
-                  href="/attendance/today"
-                />
-                <KpiCard
-                  label="Encaissé aujourd'hui"
-                  value={formatMoney(revenueToday)}
-                  icon={<Wallet className="size-4 text-white" />}
-                  color="bg-emerald-600"
-                  href="/payments"
-                />
-                <KpiCard
-                  label="Membres actifs"
-                  value={activeMembers}
-                  icon={<Users className="size-4 text-white" />}
-                  color="bg-[var(--primary)]"
-                  href="/members"
-                />
-              </CardContent>
-            </Card>
-          </section>
-        </div>
-      </section>
-
-      <section className="mt-4 min-w-0 sm:mt-6" aria-labelledby="dashboard-debts-title">
-        <Card size="sm">
-          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 border-b pb-3">
-            <div>
-              <CardTitle id="dashboard-debts-title" className="text-sm font-semibold sm:text-base">
-                Impayés à traiter
-              </CardTitle>
-              <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
-                {finance.debtorsCount === 0
-                  ? "Aucun membre à relancer."
-                  : `${finance.debtorsCount} membre${finance.debtorsCount > 1 ? "s" : ""} · ${finance.partialPayersCount} paiement${finance.partialPayersCount > 1 ? "s" : ""} partiel${finance.partialPayersCount > 1 ? "s" : ""}`}
+          <div className="relative z-10 flex min-h-full flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="min-w-0 max-w-2xl">
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#93C5FD]">
+                Tableau de bord
+              </p>
+              <h1 className="mt-2 text-3xl font-bold leading-tight tracking-normal sm:text-4xl">
+                Aujourd&apos;hui au club
+              </h1>
+              <p className="mt-4 max-w-xl text-sm leading-7 text-blue-50 sm:text-base">
+                Les séances à pointer, les encaissements à suivre et les priorités qui demandent une action.
               </p>
             </div>
-            {debts.length > 0 ? (
-              <Link href="/subscriptions" className="btn btn-ghost btn-sm">
-                Voir les abonnements
-              </Link>
-            ) : null}
-          </CardHeader>
-          <CardContent className="pt-0">
-            {debts.length === 0 ? (
-              <div className="flex min-h-28 flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-soft)]/45 px-4 text-center">
-                <BadgeCheck className="size-7 text-[var(--success)]" />
-                <p className="mt-2 text-sm font-semibold">Aucun impayé prioritaire</p>
-                <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-                  Tous les soldes sont sous le seuil d&apos;alerte configuré.
+            <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[32rem]">
+              <div className="rounded-lg border border-white/18 bg-[#061A3D]/70 px-4 py-3 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur">
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-blue-200">
+                  Date
                 </p>
+                <p className="mt-2 text-sm font-bold capitalize text-white">{formatLongDateFr(today)}</p>
               </div>
-            ) : (
+              <div className="rounded-lg border border-white/18 bg-[#061A3D]/70 px-4 py-3 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur">
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-blue-200">
+                  Séances
+                </p>
+                <p className="mt-2 text-sm font-bold text-white">{sessionsToday} aujourd&apos;hui</p>
+              </div>
+              <div className="rounded-lg border border-white/18 bg-[#061A3D]/70 px-4 py-3 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur">
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-blue-200">
+                  Membres
+                </p>
+                <p className="mt-2 text-sm font-bold text-white">{activeMembers} actifs</p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {hasDataError ? (
+          <div className="flex items-center gap-2 rounded-lg border border-[#FDE68A] bg-[#FFFBEB] px-4 py-3 text-sm font-medium text-[#B45309]">
+            <AlertCircle className="size-4 shrink-0" />
+            Données temporairement indisponibles. Vérifiez la base et redémarrez le serveur.
+          </div>
+        ) : null}
+
+        <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(24rem,0.85fr)]">
+          <CashTrendPanel trend={cashTrend} weekTotal={revenueWeek} />
+          <CashRegisterPanel
+            totalToday={revenueToday}
+            paymentCountToday={paymentCountToday}
+            averagePaymentToday={averagePaymentToday}
+            weekTotal={revenueWeek}
+            monthTotal={revenueMonth}
+            methodStats={cashMethodStats}
+            correctionsToday={correctionsToday}
+            reversalsToday={reversalsToday}
+          />
+        </section>
+
+        <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(24rem,0.85fr)]">
+          <TodayWorkPanel todaySessions={todaySessions} priorityItems={priorityItems} />
+          <MembersOverviewPanel
+            activeMembers={activeMembers}
+            newMembersThisMonth={newMembersThisMonth}
+            expiringSoon={finance.expiringIn7Days}
+            pendingPayment={finance.debtorsCount}
+            recentMembers={recentMembers}
+          />
+        </section>
+
+        {debts.length > 0 ? (
+          <DashboardPanel labelledBy="dashboard-debts-title" className="min-w-0">
+            <DashboardSectionHeader
+              titleId="dashboard-debts-title"
+              title="Impayés détaillés"
+              eyebrow="Relances"
+              action={
+                <Link href="/subscriptions" className="text-xs font-semibold text-[#2563EB] hover:underline">
+                  Abonnements
+                </Link>
+              }
+            />
+            <div className="p-3">
               <DashboardDebtsSection debts={debts} emailConfigured={emailConfigured} />
-            )}
-          </CardContent>
-        </Card>
-      </section>
+            </div>
+          </DashboardPanel>
+        ) : null}
+      </div>
     </main>
   );
 }

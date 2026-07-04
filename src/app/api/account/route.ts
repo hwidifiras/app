@@ -27,8 +27,8 @@ const updateAccountSchema = z
 export async function GET(request: Request) {
   try {
     const auth = await requireAuth(request);
-    const user = await prisma.user.findUnique({
-      where: { id: auth.id },
+    const user = await prisma.user.findFirst({
+      where: { id: auth.id, tenantId: auth.tenantId },
       select: {
         id: true,
         email: true,
@@ -89,8 +89,8 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Aucune modification fournie" }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: auth.id },
+  const user = await prisma.user.findFirst({
+    where: { id: auth.id, tenantId: auth.tenantId },
     select: {
       id: true,
       email: true,
@@ -115,7 +115,10 @@ export async function PATCH(request: Request) {
 
   const nextEmail = email ? email.toLowerCase() : user.email;
   if (nextEmail !== user.email) {
-    const existing = await prisma.user.findUnique({ where: { email: nextEmail }, select: { id: true } });
+    const existing = await prisma.user.findFirst({
+      where: { tenantId: auth.tenantId, email: nextEmail },
+      select: { id: true },
+    });
     if (existing && existing.id !== user.id) {
       return NextResponse.json({ error: "Cet email est déjà utilisé" }, { status: 409 });
     }
@@ -144,6 +147,8 @@ export async function PATCH(request: Request) {
 
   await setAuthSessionCookie({
     id: updated.id,
+    tenantId: auth.tenantId,
+    tenantSlug: auth.tenantSlug,
     email: updated.email,
     name: updated.name,
     role: updated.role,
@@ -152,6 +157,7 @@ export async function PATCH(request: Request) {
 
   await prisma.auditLog.create({
     data: {
+      tenantId: auth.tenantId,
       action: "ACCOUNT_UPDATED",
       entityType: "User",
       entityId: updated.id,

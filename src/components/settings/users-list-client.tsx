@@ -20,6 +20,17 @@ export type UserRow = {
   permissions: { key: string }[];
 };
 
+function roleIntentLabel(user: UserRow) {
+  if (user.role === "ADMIN") return "Admin";
+  const permissions = parsePermissions(user.permissions.map((permission) => permission.key));
+  const hasReceptionWork =
+    permissions.includes("members.manage") ||
+    permissions.includes("enrollment.manage") ||
+    permissions.includes("payments.manage");
+
+  return hasReceptionWork ? "Réception" : "Coach";
+}
+
 export function UsersListClient({
   users,
   currentUserId,
@@ -101,6 +112,7 @@ export function UsersListClient({
         const isEditing = editingId === u.id;
         const isSelf = u.id === currentUserId;
         const permKeys = u.permissions.map((p) => p.key);
+        const roleIntent = roleIntentLabel(u);
         const rightsLabel =
           u.role === "ADMIN"
             ? "Tous les droits"
@@ -111,7 +123,7 @@ export function UsersListClient({
                   .join(", ") || "Aucun droit";
 
         return (
-          <article key={u.id} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm">
+          <article key={u.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
             {isEditing ? (
               <div className="space-y-3">
                 <FormField label="Nom">
@@ -158,7 +170,7 @@ export function UsersListClient({
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     <StatusBadge variant={u.role === "ADMIN" ? "info" : "muted"}>
-                      {u.role === "ADMIN" ? "Admin" : "Staff"}
+                      {roleIntent}
                     </StatusBadge>
                     <StatusBadge variant={u.isActive ? "success" : "warning"}>
                       {u.isActive ? "Actif" : "Désactivé"}
@@ -178,7 +190,7 @@ export function UsersListClient({
                     onClick={() => sendReset(u.id)}
                   >
                     <Mail className="size-3.5" />
-                    {loadingId === u.id ? "Envoi…" : "Envoyer reset"}
+                    {loadingId === u.id ? "Envoi…" : "Envoyer un lien"}
                   </button>
                 </div>
               </>

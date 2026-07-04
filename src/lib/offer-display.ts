@@ -1,5 +1,6 @@
 import type { OfferKind } from "@prisma/client";
 
+import { formatMoney } from "@/lib/money";
 import { offerToRulesRecord, type OfferRuleSource } from "@/lib/offer-rules";
 import { parseOfferRules } from "@/lib/schemas/offer";
 
@@ -53,7 +54,7 @@ export function formatOfferRulesSummary(offer: OfferLike): string {
           bundlePriceCents: number;
           sportId?: string;
         };
-        const price = (r.bundlePriceCents / 100).toFixed(2).replace(".", ",") + " €";
+        const price = formatMoney(r.bundlePriceCents);
         const foyer = r.requiresHousehold ? "foyer requis" : "sans foyer";
         const sportLabel = offer.sportName ? ` · ${offer.sportName}` : "";
         return `${r.minMembers} pers. min. · forfait ${price} · ${foyer}${sportLabel}`;
@@ -68,8 +69,8 @@ export function formatOfferRulesSummary(offer: OfferLike): string {
       }
       case "FIXED_OFF": {
         const r = parsed as { amountOffCents: number; maxMembers?: number };
-        const euros = (r.amountOffCents / 100).toFixed(2).replace(".", ",") + " €";
-        return r.maxMembers ? `${euros} par ligne (max ${r.maxMembers})` : `${euros} par ligne`;
+        const amount = formatMoney(r.amountOffCents);
+        return r.maxMembers ? `${amount} par ligne (max ${r.maxMembers})` : `${amount} par ligne`;
       }
       default:
         return "";

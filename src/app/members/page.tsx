@@ -113,8 +113,8 @@ export default async function MembersPage() {
           <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted-foreground)]">Mode dégradé</p>
           <h1 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">Gestion des membres indisponible</h1>
           <p className="mt-3 text-sm text-[var(--muted-foreground)]">
-            Le modèle Prisma Member n&apos;est pas accessible pour le moment. Lancez la régénération du client
-            (`npm run prisma:generate`) puis redémarrez le serveur de développement.
+            Cette page ne peut pas charger ses données pour le moment. Revenez au tableau de bord puis contactez le
+            support si le problème continue.
           </p>
           <div className="mt-4">
             <Link href="/" className="btn btn-ghost">
@@ -129,9 +129,9 @@ export default async function MembersPage() {
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Parcours réception"
-        title="Liste des membres"
-        description="Rechercher, filtrer et consulter les dossiers membres."
+        overline="Membres"
+        title="Membres"
+        description="Rechercher, filtrer et ouvrir les dossiers utiles à l'accueil."
       />
 
       <section className="panel p-3 sm:p-5">

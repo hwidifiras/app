@@ -7,6 +7,8 @@ type FeedbackMessageProps = {
   className?: string;
 };
 
+type FeedbackVariant = NonNullable<FeedbackMessageProps["variant"]>;
+
 const variantConfig = {
   success: {
     icon: CheckCircle2,
@@ -22,24 +24,92 @@ const variantConfig = {
   },
 };
 
+const ERROR_CUES = [
+  "erreur",
+  "impossible",
+  "echec",
+  "echoue",
+  "invalide",
+  "obligatoire",
+  "requis",
+  "depasse",
+  "ne peut pas",
+  "doit etre",
+  "choisissez",
+  "entrez",
+  "correspondent pas",
+  "deja annule",
+  "identique",
+  "manquant",
+];
+
+const SUCCESS_CUES = [
+  "succes",
+  "cree",
+  "modifie",
+  "mis a jour",
+  "enregistre",
+  "reussi",
+  "active",
+  "ferme",
+  "annule",
+  "resilie",
+  "desactive",
+  "retire",
+  "finalise",
+  "rouverte",
+  "importe",
+  "envoye",
+  "termine",
+  "ajoute",
+  "affectation reussie",
+  "confirm",
+];
+
+const INFO_CUES = [
+  "aucun",
+  "aucune",
+  "deja",
+  "si ce compte existe",
+];
+
+function normalizeMessage(message: string) {
+  return message
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+export function inferFeedbackVariant(message: string): FeedbackVariant {
+  const normalized = normalizeMessage(message);
+
+  if (ERROR_CUES.some((cue) => normalized.includes(cue))) return "error";
+  if (SUCCESS_CUES.some((cue) => normalized.includes(cue))) return "success";
+  if (INFO_CUES.some((cue) => normalized.includes(cue))) return "info";
+
+  return "error";
+}
+
 export function FeedbackMessage({ message, variant, className }: FeedbackMessageProps) {
   if (!message) return null;
 
-  const resolvedVariant =
-    variant ?? (message.includes("succès") || message.includes("créée") || message.includes("supprimé") ? "success" : "error");
+  const resolvedVariant = variant ?? inferFeedbackVariant(message);
 
   const config = variantConfig[resolvedVariant];
   const Icon = config.icon;
+  const isError = resolvedVariant === "error";
 
   return (
     <div
+      role={isError ? "alert" : "status"}
+      aria-live={isError ? "assertive" : "polite"}
       className={cn(
-        "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium",
+        "flex items-start gap-2 rounded-lg border px-3 py-2 text-sm font-medium",
         config.className,
         className,
       )}
     >
-      <Icon className="size-4 shrink-0" />
+      <Icon className="mt-0.5 size-4 shrink-0" />
       <span>{message}</span>
     </div>
   );

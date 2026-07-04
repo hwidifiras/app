@@ -47,6 +47,9 @@ npm run perf:check:local
 | `LIGHTHOUSE_PATHS` | `/login` | Comma-separated paths |
 | `LIGHTHOUSE_MIN_PERF` | `0` | Fail if performance score below (0 = off) |
 | `LIGHTHOUSE_MIN_A11Y` | `0` | Fail if accessibility score below (0 = off) |
+| `LIGHTHOUSE_LOGIN_EMAIL` | unset | Optional account used to authenticate before the audit |
+| `LIGHTHOUSE_LOGIN_PASSWORD` | unset | Password for `LIGHTHOUSE_LOGIN_EMAIL` |
+| `LIGHTHOUSE_EXTRA_HEADERS` | unset | Optional JSON headers merged into Lighthouse requests |
 
 Example stricter gate:
 
@@ -99,3 +102,18 @@ Example scores when the production server is running (your machine may differ):
 | Desktop | ~95+ | 100 | ~95+ | ~90+ | &lt; 1 s |
 
 Optional CI gate: `LIGHTHOUSE_MIN_PERF=85 LIGHTHOUSE_MIN_A11Y=95 npm run lighthouse`
+
+### Authenticated Private Pages
+
+For private app screens, seed a temporary audit user first, then pass the login credentials to Lighthouse. The script logs in through `/api/auth/login`, forwards the returned cookie to Lighthouse, and audits the configured private paths.
+
+```powershell
+$env:LIGHTHOUSE_BASE_URL='https://we-discipline.com'
+$env:LIGHTHOUSE_PATHS='/,/attendance/today,/enrollment,/payments/new,/members,/settings/data-import'
+$env:LIGHTHOUSE_LOGIN_EMAIL='audit-ux-20260701@we-discipline.test'
+$env:LIGHTHOUSE_LOGIN_PASSWORD='temporary-password'
+$env:LIGHTHOUSE_MIN_A11Y='90'
+npm run lighthouse
+```
+
+Use only temporary audit accounts for this mode, then run the audit cleanup script after capture.

@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, LockKeyhole, RotateCcw, Upload } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, LockKeyhole, RotateCcw, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { FormActions, FormSectionNav } from "@/components/ui/form-layout";
+import { formatMoney } from "@/lib/money";
 
 type GroupOption = {
   id: string;
@@ -56,18 +58,48 @@ type Preview = {
   warnings: string[];
 };
 
+type BulkImportRow = {
+  rowNumber: number;
+  externalId: string;
+  memberName: string;
+  groupName: string;
+  planName: string;
+  status: "OK" | "ERROR" | "IMPORTED";
+  errors: string[];
+  warnings: string[];
+  memberId?: string;
+  remainingBalanceCents?: number;
+};
+
+type BulkImportResult = {
+  totalRows: number;
+  okRows: number;
+  errorRows: number;
+  importedRows: number;
+  rows: BulkImportRow[];
+};
+
 const today = new Date().toISOString().slice(0, 10);
+const templateUrl = "/templates/we-discipline-reprise-membres.xlsx";
 
 function isoDate(value: string) {
   return new Date(`${value}T00:00:00.000Z`).toISOString();
 }
 
-function eurosToCents(value: string) {
+function moneyInputToCents(value: string) {
   return Math.round((Number.parseFloat(value.replace(",", ".")) || 0) * 100);
 }
 
-function formatMoney(cents: number) {
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
+function bulkRowStatusText(row: BulkImportRow) {
+  if (row.status === "ERROR") return row.errors.join("; ");
+  if (row.status === "IMPORTED") return "Importé";
+  return row.warnings.join("; ") || "Valide";
+}
+
+function bulkRowStatusClass(row: BulkImportRow) {
+  if (row.status === "ERROR") return "text-red-700";
+  if (row.status === "IMPORTED") return "text-blue-700";
+  return "text-emerald-700";
 }
 
 export function DataImportWizard({
@@ -87,8 +119,11 @@ export function DataImportWizard({
   });
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
+  const [bulkFile, setBulkFile] = useState<File | null>(null);
+  const [bulkPreview, setBulkPreview] = useState<BulkImportResult | null>(null);
 
   const [member, setMember] = useState({
     firstName: "",
@@ -113,7 +148,7 @@ export function DataImportWizard({
   const [remainingSessions, setRemainingSessions] = useState("");
   const [paymentDate, setPaymentDate] = useState(today);
   const [paymentMethod, setPaymentMethod] = useState("REPRISE_PAPIER");
-  const [note, setNote] = useState("Reprise initiale depuis le registre papier");
+  const [note, setNote] = useState("Import ancien fichier depuis le registre papier");
   const [attendanceStatuses, setAttendanceStatuses] = useState<
     Record<string, "PRESENT" | "ABSENT">
   >({});
@@ -142,8 +177,8 @@ export function DataImportWizard({
       assignmentStartDate: isoDate(assignmentStartDate),
       subscriptionStartDate: isoDate(subscriptionStartDate),
       subscriptionEndDate: subscriptionEndDate ? isoDate(subscriptionEndDate) : "",
-      amountCents: eurosToCents(amount),
-      paidCents: eurosToCents(paid),
+      amountCents: moneyInputToCents(amount),
+      paidCents: moneyInputToCents(paid),
       remainingSessions: Math.max(0, Math.round(Number(remainingSessions) || 0)),
       paymentDate: paymentDate ? isoDate(paymentDate) : "",
       paymentMethod,
@@ -177,7 +212,7 @@ export function DataImportWizard({
     if (response.ok && json.data) {
       setStatus(json.data);
     } else {
-      setMessage(json.error ?? "Impossible de charger le mode de reprise.");
+      setMessage(json.error ?? "Impossible de charger l'import ancien fichier.");
     }
     setLoadingStatus(false);
   }
@@ -238,7 +273,7 @@ export function DataImportWizard({
     }
     setStatus((current) => ({ ...current, ...json.data }));
     setPreview(null);
-    setMessage(action === "activate" ? "Session de reprise activée." : "Session de reprise fermée.");
+    setMessage(action === "activate" ? "Import ancien fichier ouvert." : "Import ancien fichier fermé.");
   }
 
   async function submit(action: "preview" | "apply") {
@@ -253,7 +288,7 @@ export function DataImportWizard({
     setBusy(false);
     if (!response.ok || !json.data) {
       setPreview(null);
-      setMessage(json.error ?? "La reprise n'a pas pu être validée.");
+      setMessage(json.error ?? "L'import ancien fichier n'a pas pu être validé.");
       return;
     }
     if (action === "preview") {
@@ -271,7 +306,7 @@ export function DataImportWizard({
   }
 
   async function rollback(auditLogId: string) {
-    if (!window.confirm("Annuler entièrement cette reprise ?")) return;
+    if (!window.confirm("Annuler entièrement cet import ?")) return;
     setBusy(true);
     const response = await fetch("/api/data-import", {
       method: "POST",
@@ -284,13 +319,54 @@ export function DataImportWizard({
       setMessage(json.error ?? "Annulation impossible.");
       return;
     }
-    setMessage("Reprise annulée.");
+    setMessage("Import annulé.");
+    await loadStatus();
+    router.refresh();
+  }
+
+  async function submitBulk(action: "preview" | "apply") {
+    if (!bulkFile) {
+      setMessage("Choisissez le fichier Excel d'import.");
+      return;
+    }
+
+    setBulkBusy(true);
+    setMessage(null);
+    const formData = new FormData();
+    formData.append("action", action);
+    formData.append("cutoverDate", cutoverDate);
+    formData.append("file", bulkFile);
+
+    const response = await fetch("/api/data-import/bulk", {
+      method: "POST",
+      body: formData,
+    });
+    const json = (await response.json()) as { data?: BulkImportResult; error?: string };
+    setBulkBusy(false);
+
+    if (!response.ok || !json.data) {
+      setBulkPreview(null);
+      setMessage(json.error ?? "Import Excel impossible.");
+      return;
+    }
+
+    setBulkPreview(json.data);
+    if (action === "preview") {
+      setMessage(
+        json.data.errorRows > 0
+          ? `${json.data.errorRows} ligne(s) a corriger avant import.`
+          : "Prevalidation Excel reussie. Vous pouvez appliquer l'import.",
+      );
+      return;
+    }
+
+    setMessage(`${json.data.importedRows} membre(s) importe(s) avec succes.`);
     await loadStatus();
     router.refresh();
   }
 
   if (loadingStatus) {
-    return <section className="panel p-5 text-sm text-[var(--muted-foreground)]">Chargement du mode de reprise…</section>;
+    return <section className="panel p-5 text-sm text-[var(--muted-foreground)]">Chargement de l&apos;import ancien fichier…</section>;
   }
 
   return (
@@ -298,37 +374,146 @@ export function DataImportWizard({
       <section className="panel p-4 sm:p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
-            <div className={`rounded-xl p-2.5 ${status.active ? "bg-emerald-500/10 text-emerald-600" : "bg-[var(--surface-soft)] text-[var(--muted-foreground)]"}`}>
+            <div className={`rounded-lg p-2.5 ${status.active ? "bg-emerald-500/10 text-emerald-600" : "bg-[var(--surface-soft)] text-[var(--muted-foreground)]"}`}>
               {status.active ? <CheckCircle2 className="size-5" /> : <LockKeyhole className="size-5" />}
             </div>
             <div>
               <h2 className="font-semibold text-[var(--foreground)]">
-                {status.active ? "Session de reprise ouverte" : "Mode de reprise fermé"}
+                {status.active ? "Import ancien fichier ouvert" : "Import ancien fichier fermé"}
               </h2>
               <p className="mt-1 text-sm text-[var(--muted-foreground)]">
                 {status.active
                   ? `Réservé à cet administrateur jusqu'à ${expiresLabel}.`
-                  : "Aucune donnée spéciale ne peut être importée tant que ce mode est fermé."}
+                  : "Aucune donnée d'ancien registre ne peut être importée tant que ce mode est fermé."}
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void modeAction(status.active ? "deactivate" : "activate")}
-            className={`btn ${status.active ? "btn-ghost" : "btn-primary"} btn-block-mobile`}
-          >
-            {status.active ? "Fermer maintenant" : "Activer pour 4 heures"}
-          </button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            {!status.active ? (
+              <a href={templateUrl} className="btn btn-ghost btn-block-mobile" download>
+                <Download className="size-4" /> Télécharger le modèle
+              </a>
+            ) : null}
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void modeAction(status.active ? "deactivate" : "activate")}
+              className={`btn ${status.active ? "btn-ghost" : "btn-primary"} btn-block-mobile`}
+            >
+              {status.active ? "Fermer maintenant" : "Activer pour 4 heures"}
+            </button>
+          </div>
         </div>
       </section>
 
       <FeedbackMessage
         message={message}
-        variant={message?.includes("réuss") || message?.includes("activée") || message?.includes("annulée") ? "success" : undefined}
+        variant={
+          message?.includes("réuss") ||
+          message?.includes("ouvert") ||
+          message?.includes("fermé") ||
+          message?.includes("annulé")
+            ? "success"
+            : undefined
+        }
       />
 
       {status.active ? (
+        <>
+          <section className="panel p-4 sm:p-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-wider text-[var(--primary)]">Import Excel</p>
+                <h2 className="mt-1 text-lg font-semibold">Import en masse</h2>
+                <p className="mt-1 max-w-3xl text-sm text-[var(--muted-foreground)]">
+                  Utilisez le modèle, gardez les noms de groupes/formules tels qu&apos;ils existent dans le club, puis lancez la prévalidation avant d&apos;importer.
+                </p>
+                <p className="mt-2 max-w-3xl rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-800">
+                  Aucun code membre à inventer : le modèle commence par Prénom et l&apos;application génère une référence pendant Vérifier Excel.
+                </p>
+              </div>
+              <a href={templateUrl} className="btn btn-ghost btn-block-mobile" download>
+                Télécharger le modèle
+              </a>
+            </div>
+
+            <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-end">
+              <label className="text-sm font-medium">
+                Fichier .xlsx ou .csv
+                <input
+                  type="file"
+                  accept=".xlsx,.csv"
+                  className="field mt-1"
+                  onChange={(event) => {
+                    setBulkFile(event.target.files?.[0] ?? null);
+                    setBulkPreview(null);
+                    setMessage(null);
+                  }}
+                />
+              </label>
+              <button type="button" disabled={bulkBusy || !bulkFile} onClick={() => void submitBulk("preview")} className="btn btn-ghost btn-block-mobile">
+                Vérifier Excel
+              </button>
+              <button
+                type="button"
+                disabled={bulkBusy || !bulkPreview || bulkPreview.errorRows > 0 || bulkPreview.okRows === 0}
+                onClick={() => void submitBulk("apply")}
+                className="btn btn-primary btn-block-mobile"
+              >
+                <Upload className="size-4" /> Importer {bulkPreview?.okRows ? `(${bulkPreview.okRows})` : ""}
+              </button>
+            </div>
+
+            {bulkPreview ? (
+              <div className="mt-5 space-y-3">
+                <div className="grid gap-2 text-sm sm:grid-cols-4">
+                  <div className="rounded-lg bg-[var(--surface-soft)] p-3"><span className="text-[var(--muted-foreground)]">Lignes</span><strong className="block">{bulkPreview.totalRows}</strong></div>
+                  <div className="rounded-lg bg-emerald-500/10 p-3 text-emerald-700"><span>Valides</span><strong className="block">{bulkPreview.okRows}</strong></div>
+                  <div className="rounded-lg bg-red-500/10 p-3 text-red-700"><span>Erreurs</span><strong className="block">{bulkPreview.errorRows}</strong></div>
+                  <div className="rounded-lg bg-blue-500/10 p-3 text-blue-700"><span>Importées</span><strong className="block">{bulkPreview.importedRows}</strong></div>
+                </div>
+
+                <div className="data-table overflow-x-auto rounded-lg border border-[var(--border)]">
+                  <table className="w-full min-w-[760px] text-left text-sm">
+                    <thead className="bg-[var(--surface-soft)] text-xs uppercase text-[var(--muted-foreground)]">
+                      <tr>
+                        <th className="px-3 py-2">Ligne</th>
+                        <th className="px-3 py-2">Membre</th>
+                        <th className="px-3 py-2">Groupe</th>
+                        <th className="px-3 py-2">Formule</th>
+                        <th className="px-3 py-2">Solde</th>
+                        <th className="px-3 py-2">Statut</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {bulkPreview.rows.slice(0, 50).map((row) => (
+                        <tr key={`${row.rowNumber}-${row.externalId}`}>
+                          <td className="px-3 py-2" data-label="Ligne">{row.rowNumber}</td>
+                          <td className="data-table-primary px-3 py-2 font-medium" data-label="Membre">
+                            <span>{row.memberName || "Membre sans nom"}</span>
+                            {row.externalId ? (
+                              <span className="mt-0.5 block text-[0.68rem] font-medium text-[var(--muted-foreground)]">
+                                Réf. générée {row.externalId}
+                              </span>
+                            ) : null}
+                          </td>
+                          <td className="px-3 py-2" data-label="Groupe">{row.groupName || "-"}</td>
+                          <td className="px-3 py-2" data-label="Formule">{row.planName || "-"}</td>
+                          <td className="px-3 py-2" data-label="Solde">{formatMoney(row.remainingBalanceCents ?? 0)}</td>
+                          <td className="px-3 py-2" data-label="Statut">
+                            <span className={bulkRowStatusClass(row)}>
+                              {bulkRowStatusText(row)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : null}
+          </section>
+
         <form
           className="space-y-5"
           onSubmit={(event) => {
@@ -336,10 +521,18 @@ export function DataImportWizard({
             void submit("preview");
           }}
         >
-          <section className="panel p-4 sm:p-6">
+          <FormSectionNav
+            items={[
+              { href: "#reprise-identity", label: "Identité" },
+              { href: "#reprise-current", label: "État réel" },
+              { href: "#reprise-attendance", label: "Pointages" },
+            ]}
+          />
+
+          <section id="reprise-identity" className="form-section-anchor panel p-4 sm:p-6">
             <div className="mb-5">
               <p className="text-xs font-bold uppercase tracking-wider text-[var(--primary)]">1. Identité</p>
-              <h2 className="mt-1 text-lg font-semibold">Membre à reprendre</h2>
+              <h2 className="mt-1 text-lg font-semibold">Membre à importer</h2>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <label className="text-sm font-medium">Prénom *
@@ -377,7 +570,7 @@ export function DataImportWizard({
             </div>
           </section>
 
-          <section className="panel p-4 sm:p-6">
+          <section id="reprise-current" className="form-section-anchor panel p-4 sm:p-6">
             <div className="mb-5">
               <p className="text-xs font-bold uppercase tracking-wider text-[var(--primary)]">2. État réel</p>
               <h2 className="mt-1 text-lg font-semibold">Affectation et abonnement en cours</h2>
@@ -410,10 +603,10 @@ export function DataImportWizard({
               <label className="text-sm font-medium">Séances restantes *
                 <input type="number" min="1" max={selectedPlan?.totalSessions} className="field mt-1" value={remainingSessions} onChange={(event) => { setRemainingSessions(event.target.value); invalidatePreview(); }} required />
               </label>
-              <label className="text-sm font-medium">Montant total dû (€) *
+              <label className="text-sm font-medium">Montant total dû (TND) *
                 <input type="number" min="0" step="0.01" className="field mt-1" value={amount} onChange={(event) => { setAmount(event.target.value); invalidatePreview(); }} required />
               </label>
-              <label className="text-sm font-medium">Déjà payé (€) *
+              <label className="text-sm font-medium">Déjà payé (TND) *
                 <input type="number" min="0" step="0.01" className="field mt-1" value={paid} onChange={(event) => { setPaid(event.target.value); invalidatePreview(); }} required />
               </label>
               <label className="text-sm font-medium">Date du solde repris
@@ -421,20 +614,20 @@ export function DataImportWizard({
               </label>
               <label className="text-sm font-medium">Origine du règlement
                 <select className="field mt-1" value={paymentMethod} onChange={(event) => { setPaymentMethod(event.target.value); invalidatePreview(); }}>
-                  <option value="REPRISE_PAPIER">Reprise papier</option>
+                  <option value="REPRISE_PAPIER">Ancien registre papier</option>
                   <option value="CASH">Espèces</option>
                   <option value="CARD">Carte</option>
                   <option value="TRANSFER">Virement</option>
                   <option value="CHECK">Chèque</option>
                 </select>
               </label>
-              <label className="text-sm font-medium sm:col-span-2">Note de reprise *
+              <label className="text-sm font-medium sm:col-span-2">Note d&apos;import *
                 <input className="field mt-1" value={note} onChange={(event) => { setNote(event.target.value); invalidatePreview(); }} required />
               </label>
             </div>
           </section>
 
-          <section className="panel p-4 sm:p-6">
+          <section id="reprise-attendance" className="form-section-anchor panel p-4 sm:p-6">
             <div className="mb-4">
               <p className="text-xs font-bold uppercase tracking-wider text-[var(--primary)]">3. Semaine de bascule</p>
               <h2 className="mt-1 text-lg font-semibold">Pointages déjà réalisés sur papier</h2>
@@ -443,7 +636,7 @@ export function DataImportWizard({
               </p>
             </div>
             {eligibleSessions.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-[var(--border)] p-4 text-sm text-[var(--muted-foreground)]">
+              <div className="rounded-lg border border-dashed border-[var(--border)] p-4 text-sm text-[var(--muted-foreground)]">
                 Aucune séance passée disponible cette semaine pour ce groupe.
               </div>
             ) : (
@@ -451,7 +644,7 @@ export function DataImportWizard({
                 {eligibleSessions.map((session) => {
                   const selected = attendanceStatuses[session.id];
                   return (
-                    <div key={session.id} className="rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+                    <div key={session.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
                       <p className="text-sm font-semibold">{new Date(session.sessionDate).toLocaleDateString("fr-FR")} · {session.startTime}</p>
                       <div className="mt-3 grid grid-cols-3 gap-2">
                         {(["PRESENT", "ABSENT", "NONE"] as const).map((choice) => (
@@ -499,34 +692,35 @@ export function DataImportWizard({
             </section>
           ) : null}
 
-          <div className="sticky bottom-20 z-20 flex flex-col-reverse gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)]/95 p-3 shadow-lg backdrop-blur sm:bottom-4 sm:flex-row sm:justify-end">
+          <FormActions sticky className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button type="submit" disabled={busy} className="btn btn-ghost btn-block-mobile">
               Vérifier toutes les contraintes
             </button>
             <button type="button" disabled={busy || !preview} onClick={() => void submit("apply")} className="btn btn-primary btn-block-mobile">
-              <Upload className="size-4" /> Appliquer la reprise
+              <Upload className="size-4" /> Appliquer l&apos;import
             </button>
-          </div>
+          </FormActions>
         </form>
+        </>
       ) : null}
 
       <section className="panel p-4 sm:p-5">
-        <h2 className="font-semibold">Dernières reprises</h2>
+        <h2 className="font-semibold">Derniers imports</h2>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
                 L&apos;annulation reste disponible seulement tant qu&apos;aucune nouvelle activité n&apos;est liée au membre.
         </p>
         <div className="mt-4 space-y-2">
           {status.recentImports.length === 0 ? (
-            <p className="text-sm text-[var(--muted-foreground)]">Aucune reprise enregistrée.</p>
+            <p className="text-sm text-[var(--muted-foreground)]">Aucun import enregistré.</p>
           ) : status.recentImports.map((item) => (
-            <div key={item.id} className="flex flex-col gap-3 rounded-xl border border-[var(--border)] p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div key={item.id} className="flex flex-col gap-3 rounded-lg border border-[var(--border)] p-3 shadow-[var(--shadow-panel)] sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-semibold">{item.memberName}</p>
                 <p className="text-xs text-[var(--muted-foreground)]">{new Date(item.createdAt).toLocaleString("fr-FR")}</p>
               </div>
               {item.canRollback && status.active ? (
                 <button type="button" disabled={busy} onClick={() => void rollback(item.id)} className="btn btn-ghost text-[var(--danger)]">
-                  <RotateCcw className="size-4" /> Annuler la reprise
+                  <RotateCcw className="size-4" /> Annuler l&apos;import
                 </button>
               ) : (
                 <span className="text-xs text-[var(--muted-foreground)]">Annulation indisponible</span>

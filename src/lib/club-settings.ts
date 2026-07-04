@@ -9,6 +9,8 @@ export type ClubSettingsData = {
   allowCheckInWithPartialPayment: boolean;
   allowCheckInWithoutSubscription: boolean;
   absentConsumesSession: boolean;
+  allowSameRoomConcurrentGroups: boolean;
+  allowCoachConcurrentSameRoomQualified: boolean;
   allowPublicRegister: boolean;
   maxStaffDiscountPercent: number;
   debtAlertThresholdCents: number;
@@ -24,6 +26,8 @@ const DEFAULTS = {
   allowCheckInWithPartialPayment: true,
   allowCheckInWithoutSubscription: false,
   absentConsumesSession: true,
+  allowSameRoomConcurrentGroups: false,
+  allowCoachConcurrentSameRoomQualified: false,
   allowPublicRegister: false,
   maxStaffDiscountPercent: 30,
   debtAlertThresholdCents: 0,
@@ -48,6 +52,14 @@ function normalizeClubSettings(row: Record<string, unknown>): ClubSettingsData {
       typeof row.absentConsumesSession === "boolean"
         ? row.absentConsumesSession
         : DEFAULTS.absentConsumesSession,
+    allowSameRoomConcurrentGroups:
+      typeof row.allowSameRoomConcurrentGroups === "boolean"
+        ? row.allowSameRoomConcurrentGroups
+        : DEFAULTS.allowSameRoomConcurrentGroups,
+    allowCoachConcurrentSameRoomQualified:
+      typeof row.allowCoachConcurrentSameRoomQualified === "boolean"
+        ? row.allowCoachConcurrentSameRoomQualified
+        : DEFAULTS.allowCoachConcurrentSameRoomQualified,
     allowPublicRegister:
       typeof row.allowPublicRegister === "boolean" ? row.allowPublicRegister : DEFAULTS.allowPublicRegister,
     maxStaffDiscountPercent:
@@ -62,37 +74,34 @@ function normalizeClubSettings(row: Record<string, unknown>): ClubSettingsData {
   };
 }
 
-/** Read logo URL via SQL (works before `prisma generate` picks up `clubLogoUrl`). */
 export async function readClubLogoUrl(): Promise<string> {
-  try {
-    const rows = await prisma.$queryRaw<Array<{ clubLogoUrl: string }>>`
-      SELECT "clubLogoUrl" FROM "ClubSettings" WHERE id = 'default' LIMIT 1
-    `;
-    const value = rows[0]?.clubLogoUrl;
-    return typeof value === "string" ? value : "";
-  } catch {
-    return "";
-  }
+  const row = await prisma.clubSettings.findFirst({
+    select: { clubLogoUrl: true },
+  });
+  return row?.clubLogoUrl ?? "";
 }
 
-/** Persist logo URL via SQL (works before `prisma generate` picks up `clubLogoUrl`). */
 export async function writeClubLogoUrl(clubLogoUrl: string): Promise<void> {
-  await prisma.$executeRaw`
-    UPDATE "ClubSettings" SET "clubLogoUrl" = ${clubLogoUrl} WHERE id = 'default'
-  `;
+  const row = await prisma.clubSettings.findFirst({ select: { tenantId: true } });
+
+  if (row?.tenantId) {
+    await prisma.clubSettings.update({
+      where: { tenantId: row.tenantId },
+      data: { clubLogoUrl },
+    });
+    return;
+  }
+
+  await prisma.clubSettings.create({ data: { clubLogoUrl } });
 }
 
 export async function getClubSettings(): Promise<ClubSettingsData> {
-  const row = await prisma.clubSettings.findUnique({ where: { id: "default" } });
+  const row = await prisma.clubSettings.findFirst();
   if (!row) {
-    const created = await prisma.clubSettings.create({ data: { id: "default" } });
-    const settings = normalizeClubSettings(created as Record<string, unknown>);
-    settings.clubLogoUrl = await readClubLogoUrl();
-    return settings;
+    const created = await prisma.clubSettings.create({ data: {} });
+    return normalizeClubSettings(created as Record<string, unknown>);
   }
-  const settings = normalizeClubSettings(row as Record<string, unknown>);
-  settings.clubLogoUrl = await readClubLogoUrl();
-  return settings;
+  return normalizeClubSettings(row as Record<string, unknown>);
 }
 
 export { DEFAULTS as CLUB_SETTINGS_DEFAULTS };
