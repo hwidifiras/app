@@ -12,6 +12,7 @@ import {
   navSections,
   NavLink,
 } from "@/components/layout/app-sidebar";
+import { AppRefreshButton } from "@/components/layout/app-refresh-button";
 import { useAppShellData } from "@/components/layout/app-shell-data-provider";
 import { ClubBrandMark } from "@/components/layout/club-brand-mark";
 import { UserAccountMenu } from "@/components/layout/user-account-menu";
@@ -69,6 +70,7 @@ export function MobileNav() {
         </Link>
         <div className="flex items-center gap-1.5 sm:gap-2">
           <SetupGuide variant="header" />
+          <AppRefreshButton />
           <NotificationCenter />
           <UserAccountMenu onNavigate={close} />
           <button
