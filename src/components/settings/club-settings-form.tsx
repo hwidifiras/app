@@ -169,7 +169,19 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
     setSaving(false);
 
     if (!res.ok || !json.data) {
-      setMessage(json?.error ?? "Erreur lors de l'enregistrement");
+      const blockedDays = Array.isArray(json?.details?.blockedDays)
+        ? json.details.blockedDays.filter((day: unknown): day is ClubDay => WORKING_DAY_ORDER.includes(day as ClubDay))
+        : [];
+      if (blockedDays.length > 0) {
+        setWorkingDays((current) => {
+          const selected = new Set([...current, ...blockedDays]);
+          return WORKING_DAY_ORDER.filter((day) => selected.has(day));
+        });
+      }
+      const details = Array.isArray(json?.details?.workingDays)
+        ? json.details.workingDays.filter((line: unknown): line is string => typeof line === "string")
+        : [];
+      setMessage([json?.error ?? "Erreur lors de l'enregistrement", ...details].join(" "));
       return;
     }
 
