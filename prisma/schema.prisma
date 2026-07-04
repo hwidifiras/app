@@ -93,35 +93,37 @@ enum OfferKind {
 }
 
 model Tenant {
-  id                  String                    @id @default(cuid())
-  slug                String                    @unique
-  name                String
-  status              TenantStatus              @default(ACTIVE)
-  rootDomainAlias     String?                   @unique
-  users               User[]
-  userPermissions     UserPermission[]
-  passwordResetTokens PasswordResetToken[]
-  notificationReads   NotificationRead[]
-  clubSettings        ClubSettings?
-  members             Member[]
-  households          Household[]
-  householdMembers    HouseholdMember[]
-  sports              Sport[]
-  coaches             Coach[]
-  coachQualifications CoachSportQualification[]
-  groups              Group[]
-  groupMembers        GroupMember[]
-  groupSchedules      GroupSchedule[]
-  sessions            Session[]
-  subscriptionPlans   SubscriptionPlan[]
-  memberSubscriptions MemberSubscription[]
-  payments            Payment[]
-  offers              Offer[]
-  offerApplications   OfferApplication[]
-  attendances         Attendance[]
-  auditLogs           AuditLog[]
-  createdAt           DateTime                  @default(now())
-  updatedAt           DateTime                  @updatedAt
+  id                    String                    @id @default(cuid())
+  slug                  String                    @unique
+  name                  String
+  status                TenantStatus              @default(ACTIVE)
+  rootDomainAlias       String?                   @unique
+  users                 User[]
+  userPermissions       UserPermission[]
+  passwordResetTokens   PasswordResetToken[]
+  notificationReads     NotificationRead[]
+  clubSettings          ClubSettings?
+  members               Member[]
+  households            Household[]
+  householdMembers      HouseholdMember[]
+  sports                Sport[]
+  coaches               Coach[]
+  coachQualifications   CoachSportQualification[]
+  groups                Group[]
+  groupMembers          GroupMember[]
+  groupSchedules        GroupSchedule[]
+  scheduleTemplates     ScheduleTemplate[]
+  scheduleTemplateSlots ScheduleTemplateSlot[]
+  sessions              Session[]
+  subscriptionPlans     SubscriptionPlan[]
+  memberSubscriptions   MemberSubscription[]
+  payments              Payment[]
+  offers                Offer[]
+  offerApplications     OfferApplication[]
+  attendances           Attendance[]
+  auditLogs             AuditLog[]
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
 }
 
 model User {
@@ -190,23 +192,23 @@ model NotificationRead {
 }
 
 model ClubSettings {
-  id                                    String   @id @default(cuid())
-  tenantId                              String?  @unique
-  tenant                                Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  clubName                              String   @default("")
-  clubLogoUrl                           String   @default("")
-  clubAddress                           String   @default("")
-  clubPhone                             String   @default("")
-  allowCheckInWithPartialPayment        Boolean  @default(true)
-  allowCheckInWithoutSubscription       Boolean  @default(false)
-  absentConsumesSession                 Boolean  @default(true)
-  allowSameRoomConcurrentGroups         Boolean  @default(false)
-  allowCoachConcurrentSameRoomQualified Boolean  @default(false)
-  allowPublicRegister                   Boolean  @default(false)
+  id                                    String      @id @default(cuid())
+  tenantId                              String?     @unique
+  tenant                                Tenant?     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clubName                              String      @default("")
+  clubLogoUrl                           String      @default("")
+  clubAddress                           String      @default("")
+  clubPhone                             String      @default("")
+  allowCheckInWithPartialPayment        Boolean     @default(true)
+  allowCheckInWithoutSubscription       Boolean     @default(false)
+  absentConsumesSession                 Boolean     @default(true)
+  allowSameRoomConcurrentGroups         Boolean     @default(false)
+  allowCoachConcurrentSameRoomQualified Boolean     @default(false)
+  allowPublicRegister                   Boolean     @default(false)
   workingDays                           DayOfWeek[] @default([MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY])
-  maxStaffDiscountPercent               Int      @default(30)
-  debtAlertThresholdCents               Int      @default(0)
-  updatedAt                             DateTime @updatedAt
+  maxStaffDiscountPercent               Int         @default(30)
+  debtAlertThresholdCents               Int         @default(0)
+  updatedAt                             DateTime    @updatedAt
 }
 
 model Member {
@@ -380,6 +382,38 @@ model GroupSchedule {
   updatedAt       DateTime  @updatedAt
 
   @@index([tenantId])
+}
+
+model ScheduleTemplate {
+  id          String                 @id @default(cuid())
+  tenantId    String?
+  tenant      Tenant?                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  description String                 @default("")
+  isActive    Boolean                @default(true)
+  slots       ScheduleTemplateSlot[]
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model ScheduleTemplateSlot {
+  id              String           @id @default(cuid())
+  tenantId        String?
+  tenant          Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  templateId      String
+  template        ScheduleTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  dayOfWeek       DayOfWeek
+  startTime       String
+  durationMinutes Int
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([tenantId, templateId, dayOfWeek, startTime])
+  @@index([tenantId])
+  @@index([templateId])
 }
 
 model Session {

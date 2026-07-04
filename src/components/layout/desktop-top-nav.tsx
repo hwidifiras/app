@@ -25,6 +25,7 @@ const pageLabels: Array<{ prefix: string; label: string }> = [
   { prefix: "/offers", label: "Offres" },
   { prefix: "/logs", label: "Journal actions" },
   { prefix: "/settings/users", label: "Utilisateurs" },
+  { prefix: "/settings/schedules", label: "Horaires & saisons" },
   { prefix: "/settings/data-import", label: "Import ancien fichier" },
   { prefix: "/settings", label: "Réglages" },
 ];

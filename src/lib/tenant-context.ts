@@ -24,6 +24,8 @@ export const TENANT_SCOPED_MODELS = new Set([
   "Group",
   "GroupMember",
   "GroupSchedule",
+  "ScheduleTemplate",
+  "ScheduleTemplateSlot",
   "Session",
   "SubscriptionPlan",
   "MemberSubscription",

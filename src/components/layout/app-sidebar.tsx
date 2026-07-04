@@ -7,6 +7,7 @@ import {
   Activity,
   Banknote,
   CalendarDays,
+  CalendarClock,
   CalendarRange,
   ChevronDown,
   ChevronLeft,
@@ -82,6 +83,7 @@ export const settingsSection: NavSection = {
   title: "Réglages",
   items: [
     { href: "/settings/club", label: "Club", icon: SlidersHorizontal },
+    { href: "/settings/schedules", label: "Horaires & saisons", icon: CalendarClock },
     { href: "/subscription-plans", label: "Formules", icon: ClipboardCheck },
     { href: "/offers", label: "Offres", icon: CreditCard },
     { href: "/settings/data-import", label: "Import ancien fichier", icon: Import },
