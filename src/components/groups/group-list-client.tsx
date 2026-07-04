@@ -152,7 +152,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
         <EmptyState
           icon={<UsersRound className="size-8 opacity-45" />}
           title={groups.length === 0 ? "Aucun groupe" : "Aucun résultat"}
-          message={groups.length === 0 ? "Créez le premier cours et ses créneaux." : "Modifiez la recherche ou le filtre de statut."}
+          message={groups.length === 0 ? "Créez le premier cours et ses horaires." : "Modifiez la recherche ou le filtre de statut."}
           action={
             groups.length === 0 ? (
               <Link href="/groups/new" className="btn btn-primary">Créer un cours</Link>
@@ -170,7 +170,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
             <Th>Nom</Th>
             <Th>Sport</Th>
             <Th className="hidden sm:table-cell">Coach par défaut</Th>
-            <Th className="hidden md:table-cell">Créneau</Th>
+            <Th className="hidden md:table-cell">Horaire</Th>
             <Th>Statut</Th>
             <Th className="hidden text-right sm:table-cell">Actions</Th>
             <Th className="px-2 text-center md:hidden"> </Th>
@@ -193,7 +193,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
                 <Td label="Coach par défaut" mobileDetail className="hidden sm:table-cell">
                   {group.coachName}
                 </Td>
-                <Td label="Créneau" mobileDetail className="hidden text-muted-foreground md:table-cell">
+                <Td label="Horaire" mobileDetail className="hidden text-muted-foreground md:table-cell">
                   {formatSchedules(group.schedules)}
                 </Td>
                 <Td label="Statut" mobileDetail>

@@ -73,7 +73,7 @@ export default async function GroupsPage() {
       <PageHeader
         overline="Club"
         title="Groupes & horaires"
-        description="Organiser les groupes, coachs, salles, capacités et créneaux visibles au planning."
+        description="Organiser les groupes, coachs, salles, capacités et horaires visibles au planning."
       />
 
       <section className="panel p-3 sm:p-5">

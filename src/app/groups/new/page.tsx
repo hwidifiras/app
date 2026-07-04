@@ -125,7 +125,7 @@ export default async function NewGroupPage() {
       <PageHeader
         overline="Club"
         title="Nouveau groupe"
-        description="Créer le groupe, puis planifier ses créneaux."
+        description="Créer le groupe, puis planifier ses horaires."
       />
 
       <GroupAddForm sportsOptions={sportsOptions} coachesOptions={coachesOptions} membersOptions={membersOptions} />

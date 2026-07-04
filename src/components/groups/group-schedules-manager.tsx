@@ -126,14 +126,14 @@ export function GroupSchedulesManager({
     const result = await response.json();
 
     if (!response.ok) {
-      setMessage(result.error ?? "Erreur lors de l'ajout des créneaux");
+      setMessage(result.error ?? "Erreur lors de l'ajout des horaires");
       setLoading(false);
       return;
     }
 
     setSchedules((current) => [...current, ...result.data]);
     setMessage(
-      `${result.data?.length ?? 0} créneau(x) ajouté(s) — ${result.sessions?.createdCount ?? 0} séance(s) générée(s)`
+      `${result.data?.length ?? 0} horaire(s) ajouté(s) — ${result.sessions?.createdCount ?? 0} séance(s) générée(s)`
     );
     setLoading(false);
     setDaySelections(dayOrder.map((day) => ({ day, checked: false, startTime: "18:00" })));
@@ -160,7 +160,7 @@ export function GroupSchedulesManager({
 
     setSchedules((current) => current.filter((s) => s.id !== scheduleId));
     setPendingDeleteSchedule(null);
-    setMessage("Créneau supprimé");
+    setMessage("Horaire supprimé");
     setDeletingId(null);
   }
 
@@ -168,16 +168,16 @@ export function GroupSchedulesManager({
     <div className="space-y-6">
       <FormSectionNav
         items={[
-          { href: "#schedule-current", label: "Créneaux" },
+          { href: "#schedule-current", label: "Horaires" },
           { href: "#schedule-new", label: "Ajouter" },
         ]}
       />
 
       <div id="schedule-current" className="form-section-anchor rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)] sm:p-6">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-[var(--foreground)]">Créneaux hebdomadaires</h2>
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">Horaires hebdomadaires</h2>
           <p className="text-sm text-[var(--muted-foreground)]">
-            {schedules.length} jour(s) programmé(s)
+            {schedules.length} horaire(s) actif(s) ou planifié(s)
           </p>
         </div>
 
@@ -188,8 +188,8 @@ export function GroupSchedulesManager({
                 <th className="px-3 py-2 text-left font-semibold">Jour</th>
                 <th className="px-3 py-2 text-left font-semibold">Heure</th>
                 <th className="px-3 py-2 text-left font-semibold hidden md:table-cell">Durée</th>
-                <th className="px-3 py-2 text-left font-semibold hidden md:table-cell">Valide du</th>
-                <th className="px-3 py-2 text-left font-semibold hidden md:table-cell">Valide jusqu&apos;au</th>
+                <th className="px-3 py-2 text-left font-semibold hidden md:table-cell">Appliqué du</th>
+                <th className="px-3 py-2 text-left font-semibold hidden md:table-cell">Appliqué jusqu&apos;au</th>
                 <th className="px-3 py-2 text-right font-semibold">Actions</th>
               </tr>
             </thead>
@@ -208,10 +208,10 @@ export function GroupSchedulesManager({
                     <td className="px-3 py-2 mobile-detail-cell" data-label="Durée">
                       {row.durationMinutes} min
                     </td>
-                    <td className="px-3 py-2 mobile-detail-cell text-[var(--muted-foreground)]" data-label="Valide du">
+                    <td className="px-3 py-2 mobile-detail-cell text-[var(--muted-foreground)]" data-label="Appliqué du">
                       {new Date(row.effectiveFrom).toLocaleDateString("fr-FR")}
                     </td>
-                    <td className="px-3 py-2 mobile-detail-cell text-[var(--muted-foreground)]" data-label="Valide jusqu'au">
+                    <td className="px-3 py-2 mobile-detail-cell text-[var(--muted-foreground)]" data-label="Appliqué jusqu'au">
                       {row.effectiveTo ? new Date(row.effectiveTo).toLocaleDateString("fr-FR") : "—"}
                     </td>
                     <td className="card-actions-cell px-3 py-2 text-right" data-label="Actions">
@@ -241,7 +241,7 @@ export function GroupSchedulesManager({
               {schedules.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-3 py-5 text-center text-[var(--muted-foreground)]">
-                    Aucun créneau défini. Sélectionnez les jours ci-dessous.
+                    Aucun horaire défini. Sélectionnez les jours ci-dessous.
                   </td>
                 </tr>
               ) : null}
@@ -251,9 +251,9 @@ export function GroupSchedulesManager({
       </div>
 
       <div id="schedule-new" className="form-section-anchor rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)] sm:p-6">
-        <h2 className="text-lg font-semibold text-[var(--foreground)]">Définir les créneaux hebdomadaires</h2>
+        <h2 className="text-lg font-semibold text-[var(--foreground)]">Définir les horaires hebdomadaires</h2>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-          Cochez les jours d&apos;entraînement et définissez l&apos;heure pour chacun. Les séances seront automatiquement générées.
+          Cochez les jours d&apos;entraînement et définissez l&apos;heure pour chacun. La période ci-dessous s&apos;applique à ces horaires, pas au groupe lui-même. Les séances seront automatiquement générées.
         </p>
 
         <form onSubmit={onAddSchedules} className="mt-5 space-y-5">
@@ -305,7 +305,7 @@ export function GroupSchedulesManager({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Valide du</label>
+              <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Appliquer cet horaire à partir du</label>
               <input
                 type="date"
                 value={effectiveFrom}
@@ -314,13 +314,16 @@ export function GroupSchedulesManager({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Valide jusqu&apos;au (optionnel)</label>
+              <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Arrêter cet horaire le (optionnel)</label>
               <input
                 type="date"
                 value={effectiveTo}
                 onChange={(e) => setEffectiveTo(e.target.value)}
                 className="field text-sm"
               />
+              <p className="mt-1 text-[0.68rem] text-[var(--muted-foreground)]">
+                Laisser vide si cet horaire reste actif sans date de fin.
+              </p>
             </div>
           </div>
 
@@ -336,13 +339,13 @@ export function GroupSchedulesManager({
 
       <ConfirmDialog
         open={pendingDeleteSchedule !== null}
-        title="Supprimer ce créneau ?"
+        title="Supprimer cet horaire ?"
         description={
           pendingDeleteSchedule
             ? `${dayLabels[pendingDeleteSchedule.dayOfWeek as DayOfWeekValue] ?? pendingDeleteSchedule.dayOfWeek} à ${pendingDeleteSchedule.startTime}. Les séances déjà générées ne seront pas automatiquement recréées.`
             : ""
         }
-        confirmLabel="Supprimer le créneau"
+        confirmLabel="Supprimer l'horaire"
         loading={deletingId === pendingDeleteSchedule?.id}
         onCancel={() => setPendingDeleteSchedule(null)}
         onConfirm={() => pendingDeleteSchedule ? onDeleteSchedule(pendingDeleteSchedule.id) : undefined}

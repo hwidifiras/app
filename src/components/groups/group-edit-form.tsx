@@ -247,9 +247,12 @@ export function GroupEditForm({
             <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Capacité</label>
             <input type="number" min={1} max={200} value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} className="field text-sm" required />
           </div>
-          <div className="sm:col-span-2 lg:col-span-1 flex items-center gap-2 pt-5">
+          <div className="sm:col-span-2 lg:col-span-1 flex items-start gap-2 pt-5">
             <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
-            <span className="text-sm text-[var(--muted-foreground)]">Groupe actif</span>
+            <span className="text-sm text-[var(--muted-foreground)]">
+              <span className="block font-medium text-[var(--foreground)]">Groupe actif</span>
+              <span className="block text-xs">Désactiver masque le groupe sans supprimer l&apos;historique.</span>
+            </span>
           </div>
         </div>
         {needsCoachSportOverride ? (
