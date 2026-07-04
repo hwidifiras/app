@@ -18,7 +18,7 @@ export default async function OffersPage() {
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Réception"
+        overline="Réglages"
         title="Offres"
         description="Gérer les réductions famille, deuxième discipline et offres rapides."
         actions={

@@ -125,7 +125,7 @@ export default async function EditGroupPage({ params }: { params: Promise<{ id: 
       </Link>
 
       <PageHeader
-        overline="Configuration"
+        overline="Club"
         title="Modifier le cours"
         description={group.name}
       />

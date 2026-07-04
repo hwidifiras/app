@@ -12,7 +12,7 @@ export default async function EnrollmentPage({
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Réception"
+        overline="Ventes"
         title="Inscrire"
         description="Créer le dossier, choisir le cours, appliquer une offre et préparer l'encaissement."
       />

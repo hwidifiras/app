@@ -16,7 +16,7 @@ export default async function SettingsClubPage() {
     return (
       <main className="app-shell py-4 md:py-8">
         <PageHeader
-          overline="Configuration"
+          overline="Réglages"
           title="Club"
           description="Seul un administrateur peut modifier ces réglages."
         />
@@ -32,7 +32,7 @@ export default async function SettingsClubPage() {
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Configuration"
+        overline="Réglages"
         title="Club"
         description="Personnaliser logo, coordonnées et règles de pointage utilisées par la réception."
       />

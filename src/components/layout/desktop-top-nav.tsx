@@ -21,18 +21,18 @@ const pageLabels: Array<{ prefix: string; label: string }> = [
   { prefix: "/subscription-plans", label: "Formules" },
   { prefix: "/sports", label: "Disciplines" },
   { prefix: "/coaches", label: "Coachs" },
-  { prefix: "/groups", label: "Cours" },
+  { prefix: "/groups", label: "Cours / groupes" },
   { prefix: "/offers", label: "Offres" },
   { prefix: "/logs", label: "Journal actions" },
   { prefix: "/settings/users", label: "Utilisateurs" },
   { prefix: "/settings/data-import", label: "Import ancien fichier" },
-  { prefix: "/settings", label: "Paramètres" },
+  { prefix: "/settings", label: "Réglages" },
 ];
 
 export function DesktopTopNav() {
   const pathname = usePathname();
   const pageLabel =
-    pathname === "/" ? "Dashboard" : pageLabels.find((item) => pathname.startsWith(item.prefix))?.label ?? "Gestion";
+    pathname === "/" ? "Accueil" : pageLabels.find((item) => pathname.startsWith(item.prefix))?.label ?? "Gestion";
 
   return (
     <header className="sticky top-0 z-40 hidden border-b border-[var(--border)] bg-[var(--surface)]/96 backdrop-blur lg:block">

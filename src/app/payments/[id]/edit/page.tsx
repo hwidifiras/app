@@ -46,7 +46,7 @@ export default async function EditPaymentPage({ params }: { params: Promise<{ id
       </Link>
 
       <PageHeader
-        overline="Finance"
+        overline="Ventes"
         title="Correction paiement"
         description="Créer une correction tracée avec le motif et le nouveau montant."
       />

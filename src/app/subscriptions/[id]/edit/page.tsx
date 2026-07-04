@@ -49,7 +49,7 @@ export default async function EditSubscriptionPage({ params }: { params: Promise
       </Link>
 
       <PageHeader
-        overline="Membres"
+        overline="Ventes"
         title="Modifier l'abonnement"
         description="Ajuster dates, séances et statut avec un suivi clair du solde."
       />

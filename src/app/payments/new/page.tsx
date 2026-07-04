@@ -82,7 +82,7 @@ export default async function NewPaymentPage({
       </Link>
 
       <PageHeader
-        overline="Finance"
+        overline="Ventes"
         title="Encaisser"
         description="Choisir le membre, vérifier l'abonnement et confirmer le montant reçu."
       />

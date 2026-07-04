@@ -118,7 +118,7 @@ export default async function CoachesPage() {
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Configuration"
+        overline="Club"
         title="Coachs"
         description="Gérer les coachs, leurs spécialités et leur disponibilité."
         actions={

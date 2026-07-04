@@ -123,8 +123,8 @@ export default async function NewGroupPage() {
       </Link>
 
       <PageHeader
-        overline="Configuration"
-        title="Nouveau cours"
+        overline="Club"
+        title="Nouveau cours / groupe"
         description="Créer le groupe, puis planifier ses créneaux."
       />
 

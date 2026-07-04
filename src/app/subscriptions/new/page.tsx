@@ -65,7 +65,7 @@ export default async function NewSubscriptionPage({
       </Link>
 
       <PageHeader
-        overline="Membres"
+        overline="Ventes"
         title="Renouveler"
         description="Créer un nouvel abonnement sans perdre l'historique du membre."
       />

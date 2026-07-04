@@ -191,7 +191,7 @@ export default async function PaymentsPage() {
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Finance"
+        overline="Ventes"
         title="Paiements"
         description={`${totalCount} versement(s) enregistrés, total ${formatMoney(totalPayments)}.`}
         actions={

@@ -83,7 +83,7 @@ export default async function SubscriptionsPage() {
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Membres"
+        overline="Ventes"
         title="Abonnements"
         description="Suivre les statuts, soldes, dates et séances restantes."
         actions={

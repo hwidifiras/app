@@ -253,7 +253,7 @@ export default async function AttendanceTodayPage({
       </Link>
 
       <PageHeader
-        overline="Réception"
+        overline="Aujourd'hui"
         title="Pointage"
         description={
           sessions.length === 0

@@ -6,11 +6,11 @@ import { usePathname } from "next/navigation";
 import { Banknote, ChevronDown, Clock, Home, Menu, PlusCircle, Search, X } from "lucide-react";
 
 import {
-  clubConfigSection,
   getConfigurationSections,
   isLinkActive,
   navSections,
   NavLink,
+  settingsSection,
 } from "@/components/layout/app-sidebar";
 import { AppRefreshButton } from "@/components/layout/app-refresh-button";
 import { useAppShellData } from "@/components/layout/app-shell-data-provider";
@@ -114,7 +114,7 @@ export function MobileNav() {
               className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-[0.82rem] font-medium text-[var(--muted-foreground)] transition-all hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]"
             >
               <span className="text-[0.6rem] font-bold uppercase tracking-[0.16em] opacity-60">
-                {clubConfigSection.title}
+                {settingsSection.title}
               </span>
               <ChevronDown className={cn("size-4 shrink-0 transition-transform", showClubConfig ? "rotate-180" : "")} />
             </button>

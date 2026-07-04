@@ -57,7 +57,7 @@ export default async function SubscriptionPlansPage() {
       </Link>
 
       <PageHeader
-        overline="Configuration"
+        overline="Réglages"
         title="Formules"
         description={`${plans.length} formule${plans.length > 1 ? "s" : ""} configurée${plans.length > 1 ? "s" : ""}. Gérez les prix, quotas et validités vendus aux membres.`}
         actions={

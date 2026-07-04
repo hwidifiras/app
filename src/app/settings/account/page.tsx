@@ -7,7 +7,7 @@ export default function SettingsAccountPage() {
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Paramètres"
+        overline="Réglages"
         title="Mon compte"
         description="Modifiez votre nom, votre email de connexion et votre mot de passe."
       />

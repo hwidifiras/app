@@ -11,7 +11,7 @@ export default function NewPlanPage() {
       </Link>
 
       <PageHeader
-        overline="Configuration"
+        overline="Réglages"
         title="Nouvelle formule"
         description="Créer une formule avec tarif, durée et nombre de séances."
       />

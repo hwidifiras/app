@@ -42,40 +42,46 @@ export type NavSection = {
 };
 
 export const dailySection: NavSection = {
-  title: "Accueil",
+  title: "Aujourd'hui",
   items: [
-    { href: "/", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/", label: "Accueil", icon: LayoutDashboard },
     { href: "/attendance/today", label: "Pointage", icon: Clock },
-    { href: "/enrollment", label: "Inscrire", icon: UserPlus },
-    { href: "/payments/new", label: "Encaisser", icon: Banknote },
     { href: "/sessions", label: "Planning", icon: CalendarRange },
   ],
 };
 
-export const membersSection: NavSection = {
-  title: "Membres",
+export const salesSection: NavSection = {
+  title: "Ventes",
   items: [
-    { href: "/members", label: "Membres", icon: Users },
+    { href: "/enrollment", label: "Inscrire", icon: UserPlus },
+    { href: "/payments/new", label: "Encaisser", icon: Banknote },
     { href: "/subscriptions", label: "Abonnements", icon: CreditCard },
+    { href: "/payments", label: "Paiements", icon: Wallet },
   ],
 };
 
-export const cashSection: NavSection = {
-  title: "Suivi",
+export const studentsSection: NavSection = {
+  title: "Élèves",
   items: [
-    { href: "/payments", label: "Paiements", icon: Wallet },
+    { href: "/members", label: "Membres", icon: Users },
     { href: "/attendance", label: "Présences", icon: Activity },
     { href: "/attendance/groups", label: "Rapports groupes", icon: ClipboardCheck },
   ],
 };
 
-export const clubConfigSection: NavSection = {
-  title: "Configuration",
+export const clubSection: NavSection = {
+  title: "Club",
+  items: [
+    { href: "/groups", label: "Cours / groupes", icon: CalendarDays },
+    { href: "/coaches", label: "Coachs", icon: User },
+    { href: "/sports", label: "Disciplines", icon: Dumbbell },
+  ],
+};
+
+export const settingsSection: NavSection = {
+  title: "Réglages",
   items: [
     { href: "/settings/club", label: "Club", icon: SlidersHorizontal },
-    { href: "/sports", label: "Disciplines", icon: Dumbbell },
-    { href: "/coaches", label: "Coachs", icon: User },
-    { href: "/groups", label: "Cours", icon: CalendarDays },
     { href: "/subscription-plans", label: "Formules", icon: ClipboardCheck },
     { href: "/offers", label: "Offres", icon: CreditCard },
     { href: "/settings/data-import", label: "Import ancien fichier", icon: Import },
@@ -90,10 +96,18 @@ export const adminSection: NavSection = {
   ],
 };
 
-/** @deprecated Use clubConfigSection */
-export const settingsSection = clubConfigSection;
+export const clubConfigSection: NavSection = {
+  title: "Configuration",
+  items: [...clubSection.items, ...settingsSection.items],
+};
 
-export const navSections: NavSection[] = [dailySection, membersSection, cashSection];
+/** @deprecated Use studentsSection */
+export const membersSection = studentsSection;
+
+/** @deprecated Use salesSection */
+export const cashSection = salesSection;
+
+export const navSections: NavSection[] = [dailySection, salesSection, studentsSection, clubSection];
 
 export function isLinkActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -112,7 +126,7 @@ export function isLinkActive(pathname: string, href: string) {
 }
 
 export function getConfigurationSections(role: string | null) {
-  return role === "ADMIN" ? [clubConfigSection, adminSection] : [clubConfigSection];
+  return role === "ADMIN" ? [settingsSection, adminSection] : [settingsSection];
 }
 
 export function NavLink({
@@ -214,7 +228,7 @@ export function AppSidebar({
           <button
             onClick={() => setConfigOpen((v) => !v)}
             aria-expanded={configOpen || inClubConfig}
-            aria-label={collapsed ? clubConfigSection.title : undefined}
+            aria-label={collapsed ? settingsSection.title : undefined}
             className={cn(
               "flex w-full items-center rounded-lg py-2 text-[0.82rem] font-medium transition-all lg:mb-1",
               collapsed ? "justify-center px-2" : "justify-between px-3",
@@ -222,16 +236,16 @@ export function AppSidebar({
                 ? "text-[var(--primary)]"
                 : "text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]",
             )}
-            title={collapsed ? clubConfigSection.title : undefined}
+            title={collapsed ? settingsSection.title : undefined}
           >
             {collapsed ? (
               <SlidersHorizontal className="size-[1.1rem] shrink-0 opacity-60" />
             ) : (
               <>
                 <span className="hidden text-[0.6rem] font-bold uppercase tracking-[0.16em] lg:block">
-                  {clubConfigSection.title}
+                  {settingsSection.title}
                 </span>
-                <span className="lg:hidden">{clubConfigSection.title}</span>
+                <span className="lg:hidden">{settingsSection.title}</span>
                 <ChevronDown
                   className={cn("size-4 shrink-0 transition-transform", configOpen || inClubConfig ? "rotate-180" : "")}
                 />

@@ -42,7 +42,7 @@ export default async function SportsPage() {
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Configuration"
+        overline="Club"
         title="Disciplines"
         description="Gérer les disciplines proposées par le club."
       />

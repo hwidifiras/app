@@ -122,7 +122,7 @@ export function SetupGuide({ variant, className }: SetupGuideProps) {
             {nextStep.order}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="font-semibold text-foreground">Configuration : {nextStep.label}</p>
+            <p className="font-semibold text-foreground">Réglages : {nextStep.label}</p>
             <p className="hidden text-xs text-muted-foreground sm:block">{nextStep.description}</p>
           </div>
           <Link href={nextStep.href} className="btn btn-primary shrink-0 px-3 py-1.5 text-xs sm:text-sm">

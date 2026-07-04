@@ -70,7 +70,7 @@ export default async function AttendancePage() {
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Suivi"
+        overline="Élèves"
         title="Présences"
         description={`${rows.length} pointage(s) enregistrés pour le suivi réception.`}
         actions={

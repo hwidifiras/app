@@ -14,7 +14,7 @@ export default async function DataImportPage() {
     return (
       <main className="app-shell py-4 md:py-8">
         <PageHeader
-          overline="Administration"
+          overline="Réglages"
           title="Import ancien fichier"
           description="Seul un administrateur peut ouvrir un import depuis un ancien registre."
         />
@@ -68,7 +68,7 @@ export default async function DataImportPage() {
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Administration"
+        overline="Réglages"
         title="Import ancien fichier"
         description="Importer l'état réel d'un adhérent actif depuis un registre papier ou Excel, sans recréer artificiellement un abonnement neuf."
       />

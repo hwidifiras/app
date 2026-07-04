@@ -71,8 +71,8 @@ export default async function GroupsPage() {
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Configuration"
-        title="Cours"
+        overline="Club"
+        title="Cours / groupes"
         description="Organiser les groupes, coachs, salles, capacités et horaires visibles au planning."
       />
 
