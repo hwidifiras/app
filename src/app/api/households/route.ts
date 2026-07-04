@@ -63,8 +63,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "members.manage");
+    actor = await requirePermission(request, "members.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -94,9 +95,11 @@ export async function POST(request: Request) {
   try {
     const household = await prisma.household.create({
       data: {
+        tenantId: actor.tenantId,
         label: parsed.data.label?.trim() || null,
         members: {
           create: {
+            tenantId: actor.tenantId,
             memberId: parsed.data.memberId,
             relationship: parsed.data.relationship,
           },
@@ -120,8 +123,9 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "members.manage");
+    actor = await requirePermission(request, "members.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -151,6 +155,7 @@ export async function PATCH(request: Request) {
   try {
     const link = await prisma.householdMember.create({
       data: {
+        tenantId: actor.tenantId,
         householdId: addParsed.data.householdId,
         memberId: addParsed.data.memberId,
         relationship: addParsed.data.relationship,

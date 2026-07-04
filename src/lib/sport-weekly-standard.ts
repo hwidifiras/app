@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 
-/** Max weekly schedule slots among active groups for a sport (the « standard » cadence). */
+/** Max weekly schedule slots among active groups for a sport. */
 export async function getSportMaxWeeklySessions(sportId: string): Promise<number | null> {
   const groups = await prisma.group.findMany({
     where: { sportId, isActive: true },
@@ -25,16 +25,12 @@ export async function validatePlanSessionsPerWeekForSport(
 ): Promise<string | null> {
   const sportMax = await getSportMaxWeeklySessions(sportId);
 
-  if (sportMax === null) {
+  if (sportMax === null || sportMax === 0) {
     return null;
   }
 
-  if (sportMax === 0) {
-    return "Aucun créneau hebdomadaire configuré sur les groupes de cette discipline — ajoutez des horaires avant de créer une formule.";
-  }
-
   if (sessionsPerWeek > sportMax) {
-    return `Cette formule prévoit ${sessionsPerWeek} séance(s)/semaine, mais le standard de la discipline est ${sportMax} séance(s)/semaine maximum.`;
+    return `Cette formule prevoit ${sessionsPerWeek} seance(s)/semaine, mais le standard de la discipline est ${sportMax} seance(s)/semaine maximum.`;
   }
 
   return null;

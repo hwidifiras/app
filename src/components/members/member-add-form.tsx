@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions } from "@/components/ui/form-layout";
+import { formatMoney } from "@/lib/money";
 
 type GroupOption = { id: string; name: string };
 type PlanOption = { id: string; name: string; price: number; totalSessions: number; validityDays: number };
@@ -168,7 +169,7 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
       </div>
 
       {memberType === "KID" ? (
-        <div className="rounded-xl border border-[var(--border)] p-4">
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
             Responsable légal
           </p>
@@ -237,7 +238,7 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
               <option value="">Sélectionner un plan</option>
               {plansOptions.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.name} — {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(p.price / 100)}
+                  {p.name} — {formatMoney(p.price)}
                 </option>
               ))}
             </select>
@@ -249,19 +250,19 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
             <p className="text-xs text-[var(--muted-foreground)]">
               <span className="font-medium text-[var(--foreground)]">{selectedPlan.name}</span> —{" "}
               {selectedPlan.totalSessions} séances — Validité {selectedPlan.validityDays} jours —{" "}
-              {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(selectedPlan.price / 100)}
+              {formatMoney(selectedPlan.price)}
             </p>
           </div>
         )}
 
         {selectedPlan ? (
-          <div className="rounded-xl border border-[var(--border)] p-4">
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
               Paiement à l&apos;inscription (optionnel)
             </p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Montant (€)</label>
+                <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Montant (TND)</label>
                 <input
                   type="number"
                   step="0.01"
@@ -272,7 +273,7 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
                   placeholder="Ex: 49.90"
                 />
                 <p className="mt-1 text-[0.7rem] text-[var(--muted-foreground)]">
-                  Montant dû: {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(selectedPlan.price / 100)}
+                  Montant dû: {formatMoney(selectedPlan.price)}
                 </p>
               </div>
               <div>

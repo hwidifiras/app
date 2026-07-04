@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { formatMoney } from "@/lib/money";
 
 import type { AuditDetailRow, AuditDetailSection, AuditLogRow, AuditPresentation } from "@/lib/audit-log-presenter";
 import { presentAuditLog } from "@/lib/audit-log-presenter";
@@ -28,9 +29,9 @@ function parseIdList(value: unknown): string[] {
   return [];
 }
 
-function formatEurosFromCents(cents: unknown): string | null {
+function formatMoneyFromCents(cents: unknown): string | null {
   if (typeof cents !== "number" || Number.isNaN(cents)) return null;
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
+  return formatMoney(cents);
 }
 
 function formatDateFr(value: unknown): string {
@@ -51,15 +52,6 @@ async function loadMembers(ids: string[]) {
     select: { id: true, firstName: true, lastName: true, phone: true },
   });
   return new Map(rows.map((m) => [m.id, m]));
-}
-
-async function loadUsers(ids: string[]) {
-  if (ids.length === 0) return new Map<string, { name: string; email: string }>();
-  const rows = await prisma.user.findMany({
-    where: { id: { in: ids } },
-    select: { id: true, name: true, email: true },
-  });
-  return new Map(rows.map((u) => [u.id, u]));
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -100,10 +92,10 @@ export async function enrichAuditLogPresentation(
           const group = typeof l.groupName === "string" ? l.groupName : "";
           const plan = typeof l.planName === "string" ? l.planName : "";
           const sport = typeof l.sportName === "string" ? l.sportName : "";
-          const amount = formatEurosFromCents(l.finalAmountCents);
+          const amount = formatMoneyFromCents(l.finalAmountCents);
           const discount =
             typeof l.discountCents === "number" && l.discountCents > 0
-              ? ` (−${formatEurosFromCents(l.discountCents)})`
+              ? ` (−${formatMoneyFromCents(l.discountCents)})`
               : "";
           list.push(
             `${name} — ${group || sport}${plan ? ` · ${plan}` : ""}${amount ? ` · ${amount}${discount}` : ""}`,
@@ -156,7 +148,7 @@ export async function enrichAuditLogPresentation(
         }
       }
 
-      const total = formatEurosFromCents(details?.totalFinalCents);
+      const total = formatMoneyFromCents(details?.totalFinalCents);
       if (total) rows.push({ label: "Total encaissé (devis)", value: total });
 
       if (rows.length) sections.push({ title: "Détail de l'inscription", rows });
@@ -180,7 +172,7 @@ export async function enrichAuditLogPresentation(
       if (sub) {
         rows.push({ label: "Élève", value: `${memberLabel(sub.member)} · ${sub.member.phone}` });
         rows.push({ label: "Formule", value: `${sub.plan.sport.name} — ${sub.plan.name}` });
-        const amount = formatEurosFromCents(sub.amount);
+        const amount = formatMoneyFromCents(sub.amount);
         if (amount) rows.push({ label: "Montant abonnement", value: amount });
         if (details?.startDate) rows.push({ label: "Début", value: formatDateFr(details.startDate) });
         if (details?.source) rows.push({ label: "Origine", value: String(details.source) });
@@ -202,6 +194,8 @@ export async function enrichAuditLogPresentation(
 
     case "PAYMENT_CREATED":
     case "PAYMENT_UPDATED":
+    case "PAYMENT_CORRECTED":
+    case "PAYMENT_REVERSED":
     case "PAYMENT_DELETED": {
       const rows: AuditDetailRow[] = [];
       const paymentId = log.entityType === "Payment" ? log.entityId : null;
@@ -219,8 +213,29 @@ export async function enrichAuditLogPresentation(
           })
         : null;
 
-      const amount = formatEurosFromCents(details?.amount ?? payment?.amount);
-      if (amount) rows.push({ label: "Montant", value: amount });
+      const amount = formatMoneyFromCents(details?.amount ?? details?.delta ?? payment?.amount);
+      if (amount) {
+        rows.push({ label: log.action === "PAYMENT_CORRECTED" ? "Correction" : "Montant", value: amount });
+      }
+
+      const reversedAmount = formatMoneyFromCents(details?.reversedAmount);
+      if (reversedAmount) rows.push({ label: "Montant annulé", value: reversedAmount });
+
+      if (typeof details?.reason === "string") {
+        rows.push({ label: "Motif", value: details.reason });
+      }
+
+      const amountBefore = formatMoneyFromCents(details?.amountBefore);
+      const amountAfter = formatMoneyFromCents(details?.amountAfter);
+      if (amountBefore && amountAfter) rows.push({ label: "Paiement corrigé", value: `${amountBefore} → ${amountAfter}` });
+
+      const totalBefore = formatMoneyFromCents(details?.totalBefore);
+      const totalAfter = formatMoneyFromCents(details?.totalAfter);
+      if (totalBefore && totalAfter) rows.push({ label: "Total encaissé", value: `${totalBefore} → ${totalAfter}` });
+
+      if (typeof details?.originalPaymentId === "string") {
+        rows.push({ label: "Paiement original", value: details.originalPaymentId });
+      }
 
       if (payment?.memberSubscription) {
         const m = payment.memberSubscription.member;

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { bulkCreateGroupMembersSchema, bulkDeleteGroupMembersSchema } from "@/lib/schemas/group-member";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
+import { activeAssignmentWindow, checkScheduleConflictOnDate } from "@/lib/assignment-policy";
 
 export const runtime = "nodejs";
 
@@ -22,6 +23,7 @@ function intervalsOverlap(start1: number, end1: number, start2: number, end2: nu
   return start1 < end2 && start2 < end1;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function checkScheduleConflict(groupId: string, memberId: string) {
   const newGroupSchedules = await prisma.groupSchedule.findMany({
     where: { groupId },
@@ -98,6 +100,7 @@ export async function POST(request: Request) {
 
   const payload = parsed.data;
   const uniqueMemberIds = Array.from(new Set(payload.memberIds));
+  const assignmentStartDate = new Date(payload.startDate);
 
   const group = await prisma.group.findUnique({
     where: { id: payload.groupId },
@@ -132,7 +135,7 @@ export async function POST(request: Request) {
   const activeCount = await prisma.groupMember.count({
     where: {
       groupId: payload.groupId,
-      status: "ACTIVE",
+      ...activeAssignmentWindow(assignmentStartDate),
     },
   });
 
@@ -171,6 +174,7 @@ export async function POST(request: Request) {
     const activeSub = await prisma.memberSubscription.findFirst({
       where: {
         memberId,
+        sportId: group.sportId,
         status: "ACTIVE",
         startDate: { lte: now },
         OR: [{ endDate: null }, { endDate: { gte: now } }],
@@ -207,7 +211,7 @@ export async function POST(request: Request) {
       continue;
     }
 
-    const scheduleCheck = await checkScheduleConflict(payload.groupId, memberId);
+    const scheduleCheck = await checkScheduleConflictOnDate(payload.groupId, memberId, assignmentStartDate);
     if (!scheduleCheck.ok) {
       skippedScheduleConflictCount += 1;
       continue;
@@ -265,8 +269,9 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "enrollment.manage");
+    actor = await requirePermission(request, "enrollment.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -293,19 +298,43 @@ export async function DELETE(request: Request) {
 
   const payload = parsed.data;
   const uniqueMemberIds = Array.from(new Set(payload.memberIds));
+  const now = new Date();
 
-  const deleted = await prisma.groupMember.deleteMany({
-    where: {
-      groupId: payload.groupId,
-      memberId: { in: uniqueMemberIds },
-    },
+  const closed = await prisma.$transaction(async (tx) => {
+    const result = await tx.groupMember.updateMany({
+      where: {
+        groupId: payload.groupId,
+        memberId: { in: uniqueMemberIds },
+        status: "ACTIVE",
+      },
+      data: {
+        status: "INACTIVE",
+        endDate: now,
+      },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        action: "GROUP_MEMBERS_CLOSED",
+        entityType: "GroupMember",
+        entityId: payload.groupId,
+        userId: actor.id,
+        details: JSON.stringify({
+          memberIds: uniqueMemberIds,
+          closedAt: now.toISOString(),
+          closedCount: result.count,
+        }),
+      },
+    });
+
+    return result;
   });
 
   return NextResponse.json({
     data: {
       groupId: payload.groupId,
       requestedCount: uniqueMemberIds.length,
-      deletedCount: deleted.count,
+      closedCount: closed.count,
     },
   });
 }

@@ -8,6 +8,8 @@ import {
   deriveSessionLifecycle,
   expectedMemberIdsAtSession,
 } from "@/lib/session-lifecycle";
+import { formatAttendanceOperator, isLikelyInternalId } from "@/lib/attendance-display";
+import { formatRoomLabel } from "@/lib/group-room";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -19,6 +21,14 @@ function statusVariant(status: string) {
   if (status === "COMPLETED") return "success";
   if (status === "CANCELLED") return "danger";
   return "muted";
+}
+
+function sessionStatusLabel(status: string) {
+  if (status === "PLANNED") return "Planifiée";
+  if (status === "RESCHEDULED") return "Reportée";
+  if (status === "COMPLETED") return "Finalisée";
+  if (status === "CANCELLED") return "Annulée";
+  return status;
 }
 
 function attendanceLabel(status: string) {
@@ -49,6 +59,10 @@ export default async function SessionAttendanceDetailPage({
         select: {
           name: true,
           members: {
+            where: {
+              status: "ACTIVE",
+              member: { status: "ACTIVE" },
+            },
             include: {
               member: { select: { id: true, firstName: true, lastName: true } },
             },
@@ -68,24 +82,46 @@ export default async function SessionAttendanceDetailPage({
 
   if (!session) notFound();
 
+  const operatorIds = Array.from(
+    new Set(
+      session.attendances
+        .map((attendance) => attendance.checkedBy)
+        .filter((value): value is string => isLikelyInternalId(value)),
+    ),
+  );
+  const operators = operatorIds.length
+    ? await prisma.user.findMany({
+        where: { id: { in: operatorIds } },
+        select: { id: true, name: true },
+      })
+    : [];
+  const operatorNamesById = new Map(operators.map((operator) => [operator.id, operator.name]));
+  const attendanceRows = session.attendances.map((attendance) => ({
+    ...attendance,
+    checkedBy: formatAttendanceOperator(attendance.checkedBy, operatorNamesById),
+  }));
+
   const expectedIds = new Set(
     expectedMemberIdsAtSession(session.group.members, session.sessionDate),
   );
   const expectedMembers = session.group.members.filter((member) =>
     expectedIds.has(member.memberId),
   );
+  const activeAttendanceRows = attendanceRows.filter((attendance) =>
+    expectedIds.has(attendance.memberId),
+  );
   const lifecycle = deriveSessionLifecycle({
     status: session.status,
     sessionDate: session.sessionDate,
     endTime: session.endTime,
     expectedMemberIds: [...expectedIds],
-    attendanceMemberIds: session.attendances.map((attendance) => attendance.memberId),
+    attendanceMemberIds: attendanceRows.map((attendance) => attendance.memberId),
   });
-  const attByMember = new Map(session.attendances.map((a) => [a.memberId, a]));
+  const attByMember = new Map(attendanceRows.map((a) => [a.memberId, a]));
   const enrolled = expectedMembers.length;
-  const present = session.attendances.filter((a) => a.status === "PRESENT").length;
-  const absent = session.attendances.filter((a) => a.status === "ABSENT").length;
-  const override = session.attendances.filter((a) => a.status === "OVERRIDE").length;
+  const present = activeAttendanceRows.filter((a) => a.status === "PRESENT").length;
+  const absent = activeAttendanceRows.filter((a) => a.status === "ABSENT").length;
+  const override = activeAttendanceRows.filter((a) => a.status === "OVERRIDE").length;
   const checked = present + absent + override;
   const notMarked = Math.max(0, enrolled - checked);
 
@@ -110,10 +146,10 @@ export default async function SessionAttendanceDetailPage({
       <PageHeader
         overline="Détail séance"
         title={session.group.name}
-        description={`${dateLabel} · ${session.startTime} – ${session.endTime} · ${session.room}`}
+        description={`${dateLabel} · ${session.startTime} – ${session.endTime} · ${formatRoomLabel(session.room)}`}
         actions={
           lifecycle.operationalStatus === "NEEDS_FINALIZATION" ? (
-            <Link href={`/attendance/today?sessionId=${session.id}`} className="btn btn-primary">
+            <Link href={`/attendance/today?sessionId=${session.id}`} prefetch={false} className="btn btn-primary">
               Reprendre le pointage
             </Link>
           ) : undefined
@@ -121,19 +157,19 @@ export default async function SessionAttendanceDetailPage({
       />
 
       <section className="panel mb-4 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl bg-[var(--surface-soft)] p-3">
+        <div className="rounded-lg bg-[var(--surface-soft)] p-3 shadow-[var(--shadow-panel)]">
           <p className="text-xs font-medium text-[var(--muted-foreground)]">Inscrits au cours</p>
           <p className="mt-1 text-2xl font-semibold text-[var(--foreground)]">{enrolled}</p>
         </div>
-        <div className="rounded-xl bg-[var(--success)]/10 p-3">
+        <div className="rounded-lg bg-[var(--success)]/10 p-3 shadow-[var(--shadow-panel)]">
           <p className="text-xs font-medium text-[var(--success)]">Présents</p>
           <p className="mt-1 text-2xl font-semibold text-[var(--success)]">{present}</p>
         </div>
-        <div className="rounded-xl bg-[var(--danger)]/10 p-3">
+        <div className="rounded-lg bg-[var(--danger)]/10 p-3 shadow-[var(--shadow-panel)]">
           <p className="text-xs font-medium text-[var(--danger)]">Absents</p>
           <p className="mt-1 text-2xl font-semibold text-[var(--danger)]">{absent}</p>
         </div>
-        <div className="rounded-xl bg-[var(--surface-soft)] p-3">
+        <div className="rounded-lg bg-[var(--surface-soft)] p-3 shadow-[var(--shadow-panel)]">
           <p className="text-xs font-medium text-[var(--muted-foreground)]">Non pointés</p>
           <p className="mt-1 text-2xl font-semibold text-[var(--foreground)]">{notMarked}</p>
         </div>
@@ -158,14 +194,14 @@ export default async function SessionAttendanceDetailPage({
               ? lifecycle.unmarkedCount > 0
                 ? `Pointage incomplet (${lifecycle.unmarkedCount})`
                 : "À finaliser"
-              : session.status}
+              : sessionStatusLabel(session.status)}
           </StatusBadge>
         </div>
 
         <div className="space-y-6">
           <div>
             <h2 className="mb-2 text-sm font-semibold text-[var(--foreground)]">Liste du cours</h2>
-            <ul className="divide-y divide-[var(--border)] rounded-xl border border-[var(--border)]">
+            <ul className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)] shadow-[var(--shadow-panel)]">
               {expectedMembers.map((gm) => {
                 const att = attByMember.get(gm.memberId);
                 return (
@@ -175,6 +211,7 @@ export default async function SessionAttendanceDetailPage({
                   >
                     <Link
                       href={`/members/${gm.member.id}`}
+                      prefetch={false}
                       className="min-w-0 flex-1 font-medium text-[var(--primary)] hover:underline"
                     >
                       {gm.member.firstName} {gm.member.lastName}
@@ -205,7 +242,7 @@ export default async function SessionAttendanceDetailPage({
             </ul>
           </div>
 
-          {session.attendances.length > 0 && (
+          {attendanceRows.length > 0 && (
             <div>
               <h2 className="mb-2 text-sm font-semibold text-[var(--foreground)]">Historique des pointages</h2>
               <div className="data-table overflow-x-auto">
@@ -219,12 +256,23 @@ export default async function SessionAttendanceDetailPage({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--border)]">
-                    {session.attendances.map((a) => (
+                    {attendanceRows.map((a) => (
                       <tr key={a.id} className="hover:bg-[var(--surface-soft)]">
                         <td className="data-table-primary px-3 py-2" data-label="Élève">
-                          <Link href={`/members/${a.member.id}`} className="text-[var(--primary)] hover:underline">
-                            {a.member.firstName} {a.member.lastName}
-                          </Link>
+                          <div className="flex flex-col items-start gap-1">
+                            <Link
+                              href={`/members/${a.member.id}`}
+                              prefetch={false}
+                              className="text-[var(--primary)] hover:underline"
+                            >
+                              {a.member.firstName} {a.member.lastName}
+                            </Link>
+                            {!expectedIds.has(a.memberId) ? (
+                              <StatusBadge variant="muted" className="text-[0.62rem]">
+                                Hors liste active
+                              </StatusBadge>
+                            ) : null}
+                          </div>
                         </td>
                         <td className="px-3 py-2" data-label="Statut">
                           <StatusBadge variant={attendanceVariant(a.status)}>

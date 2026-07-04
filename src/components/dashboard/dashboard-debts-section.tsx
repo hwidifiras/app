@@ -5,8 +5,10 @@ import Link from "next/link";
 import { ChevronDown, Mail, Wallet } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
-import type { DashboardDebtReminderRow } from "@/lib/payment-reminders";
-import { PAYMENT_REMINDER_COOLDOWN_DAYS } from "@/lib/payment-reminders";
+import {
+  PAYMENT_REMINDER_COOLDOWN_DAYS,
+  type DashboardDebtReminderRow,
+} from "@/lib/payment-reminder-types";
 import { formatMoney } from "@/lib/subscription-billing";
 
 export function DashboardDebtsSection({
@@ -167,7 +169,11 @@ export function DashboardDebtsSection({
                   className={`mobile-collapsible-row transition-colors hover:bg-[var(--surface-soft)] ${expanded ? "is-expanded" : ""}`}
                 >
                   <td className="data-table-primary px-4 py-3 font-medium text-[var(--foreground)]" data-label="Membre">
-                    <Link href={`/members/${item.memberId}`} className="hover:text-[var(--primary)] hover:underline">
+                    <Link
+                      href={`/members/${item.memberId}`}
+                      prefetch={false}
+                      className="hover:text-[var(--primary)] hover:underline"
+                    >
                       {item.memberName}
                     </Link>
                     {item.partialPaid ? (
@@ -190,6 +196,7 @@ export function DashboardDebtsSection({
                     <div className="flex flex-wrap justify-end gap-1.5">
                       <Link
                         href={`/payments/new?memberId=${item.memberId}`}
+                        prefetch={false}
                         className="btn btn-ghost btn-sm inline-flex items-center gap-1.5"
                       >
                         <Wallet className="size-3.5" />

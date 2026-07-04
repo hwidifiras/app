@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 
-import { prisma } from "@/lib/prisma";
 import { listRecoveryCandidatesForSession } from "@/lib/attendance-rules";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 

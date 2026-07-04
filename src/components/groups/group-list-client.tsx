@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Clock, Pencil, RotateCcw, Trash2, UsersRound } from "lucide-react";
-import { formatGroupRoomLabel } from "@/lib/group-room";
+import { CircleOff, Clock, Pencil, RotateCcw, UsersRound } from "lucide-react";
+import { formatRoomLabel } from "@/lib/group-room";
 import { GroupDto } from "@/types/group";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
@@ -35,7 +35,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [expandedGroupIds, setExpandedGroupIds] = useState<string[]>([]);
   const [message, setMessage] = useState<string | null>(null);
-  const [pendingDeleteGroup, setPendingDeleteGroup] = useState<GroupDto | null>(null);
+  const [pendingDeactivateGroup, setPendingDeactivateGroup] = useState<GroupDto | null>(null);
 
   function toggleExpand(groupId: string) {
     setExpandedGroupIds((current) =>
@@ -60,7 +60,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
   const activeFilterCount = statusFilter === "ALL" ? 0 : 1;
   const pagination = usePagination(filteredGroups, 20, `${searchTerm}|${statusFilter}`);
 
-  async function deleteGroup(groupId: string) {
+  async function deactivateGroup(groupId: string) {
     setActionLoadingId(groupId);
     setMessage(null);
 
@@ -73,14 +73,19 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
     const result = await response.json();
 
     if (!response.ok) {
-      setMessage(result.error ?? "Erreur lors de la suppression");
+      setMessage(result.error ?? "Erreur lors de la désactivation");
       setActionLoadingId(null);
       return;
     }
 
-    setGroups((current) => current.filter((g) => g.id !== groupId));
-    setPendingDeleteGroup(null);
-    setMessage("Groupe supprimé avec succès");
+    const deactivatedGroup = (result.data as GroupDto | undefined) ?? null;
+    setGroups((current) =>
+      current.map((group) =>
+        group.id === groupId ? (deactivatedGroup ?? { ...group, isActive: false }) : group,
+      ),
+    );
+    setPendingDeactivateGroup(null);
+    setMessage("Cours désactivé. Les séances et l'historique restent consultables.");
     setActionLoadingId(null);
   }
 
@@ -104,7 +109,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
 
   return (
     <div>
-      <div className="sticky top-[57px] z-20 -mx-2 mb-4 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[3.5rem]">
+      <div className="list-toolbar sticky top-[57px] z-20 -mx-2 mb-4 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[3.5rem]">
         <div className="flex flex-col gap-2 md:flex-row md:items-end">
         <div className="min-w-0 flex-1">
           <label className="mb-1 block text-xs font-medium text-muted-foreground">Recherche</label>
@@ -132,7 +137,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
         </div>
         <div>
           <Link href="/groups/new" className="btn btn-primary btn-block-mobile">
-            + Créer un groupe
+            + Nouveau cours
           </Link>
         </div>
         </div>
@@ -147,10 +152,10 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
         <EmptyState
           icon={<UsersRound className="size-8 opacity-45" />}
           title={groups.length === 0 ? "Aucun groupe" : "Aucun résultat"}
-          message={groups.length === 0 ? "Créez le premier groupe et ses créneaux." : "Modifiez la recherche ou le filtre de statut."}
+          message={groups.length === 0 ? "Créez le premier cours et ses créneaux." : "Modifiez la recherche ou le filtre de statut."}
           action={
             groups.length === 0 ? (
-              <Link href="/groups/new" className="btn btn-primary">Créer un groupe</Link>
+              <Link href="/groups/new" className="btn btn-primary">Créer un cours</Link>
             ) : (
               <button type="button" onClick={() => { setSearchTerm(""); setStatusFilter("ALL"); }} className="btn btn-ghost">
                 Réinitialiser
@@ -164,7 +169,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
           <tr>
             <Th>Nom</Th>
             <Th>Sport</Th>
-            <Th className="hidden sm:table-cell">Coach</Th>
+            <Th className="hidden sm:table-cell">Coach par défaut</Th>
             <Th className="hidden md:table-cell">Créneau</Th>
             <Th>Statut</Th>
             <Th className="hidden text-right sm:table-cell">Actions</Th>
@@ -179,13 +184,13 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
                 <Td label="Nom" primary className="font-medium text-foreground">
                   {group.name}
                   <p className="text-xs text-muted-foreground">
-                    Salle {formatGroupRoomLabel(group.room)} • Cap. {group.capacity}
+                    {formatRoomLabel(group.room, "Salle par séance")} • Cap. {group.capacity}
                   </p>
                 </Td>
                 <Td label="Sport" mobileDetail>
                   {group.sportName}
                 </Td>
-                <Td label="Coach" mobileDetail className="hidden sm:table-cell">
+                <Td label="Coach par défaut" mobileDetail className="hidden sm:table-cell">
                   {group.coachName}
                 </Td>
                 <Td label="Créneau" mobileDetail className="hidden text-muted-foreground md:table-cell">
@@ -196,10 +201,11 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
                     {group.isActive ? "Actif" : "Inactif"}
                   </StatusBadge>
                 </Td>
-                <TableActionsCell className="mobile-detail-cell">
+                <TableActionsCell>
                   <div className="flex flex-nowrap items-center justify-end gap-1">
                     <Link
                       href={`/groups/${group.id}/schedules`}
+                      prefetch={false}
                       className="btn btn-ghost btn-sm inline-flex size-9 items-center justify-center p-0"
                       title="Planifier"
                       aria-label="Planifier"
@@ -208,6 +214,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
                     </Link>
                     <Link
                       href={`/groups/${group.id}/edit`}
+                      prefetch={false}
                       className="btn btn-ghost btn-sm inline-flex size-9 items-center justify-center p-0"
                       title="Modifier"
                       aria-label="Modifier"
@@ -216,13 +223,13 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
                     </Link>
                     <button
                       type="button"
-                      onClick={() => setPendingDeleteGroup(group)}
+                      onClick={() => setPendingDeactivateGroup(group)}
                       disabled={actionLoadingId === group.id}
-                      className="btn btn-ghost btn-sm inline-flex size-9 items-center justify-center border-[var(--danger)]/30 p-0 text-[var(--danger)]"
-                      title="Supprimer"
-                      aria-label="Supprimer"
+                      className="btn btn-ghost btn-sm inline-flex size-9 items-center justify-center border-[var(--warning)]/35 p-0 text-[var(--warning)]"
+                      title="Désactiver"
+                      aria-label="Désactiver"
                     >
-                      <Trash2 className="size-4" />
+                      <CircleOff className="size-4" />
                     </button>
                   </div>
                 </TableActionsCell>
@@ -259,13 +266,13 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
       </MobileFilterSheet>
 
       <ConfirmDialog
-        open={pendingDeleteGroup !== null}
-        title="Supprimer ce groupe ?"
-        description={`Le groupe « ${pendingDeleteGroup?.name ?? ""} » et ses séances planifiées seront supprimés.`}
-        confirmLabel="Supprimer le groupe"
-        loading={actionLoadingId === pendingDeleteGroup?.id}
-        onCancel={() => setPendingDeleteGroup(null)}
-        onConfirm={() => pendingDeleteGroup ? deleteGroup(pendingDeleteGroup.id) : undefined}
+        open={pendingDeactivateGroup !== null}
+        title="Désactiver ce cours ?"
+        description={`Le cours « ${pendingDeactivateGroup?.name ?? ""} » ne sera plus proposé aux nouvelles inscriptions. Les séances et l'historique restent consultables.`}
+        confirmLabel="Désactiver le cours"
+        loading={actionLoadingId === pendingDeactivateGroup?.id}
+        onCancel={() => setPendingDeactivateGroup(null)}
+        onConfirm={() => pendingDeactivateGroup ? deactivateGroup(pendingDeactivateGroup.id) : undefined}
       />
     </div>
   );

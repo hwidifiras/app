@@ -1,4 +1,6 @@
 import { Suspense } from "react";
+import Link from "next/link";
+import { Plus } from "lucide-react";
 
 import { OffersManager } from "@/components/offers/offers-manager";
 import { PageHeader } from "@/components/ui/page-header";
@@ -17,8 +19,13 @@ export default async function OffersPage() {
     <main className="app-shell py-4 md:py-8">
       <PageHeader
         overline="Réception"
-        title="Offres promotionnelles"
-        description="Réductions famille, 2e discipline, ou offre rapide en %."
+        title="Offres"
+        description="Gérer les réductions famille, deuxième discipline et offres rapides."
+        actions={
+          <Link href="#offer-create" className="btn btn-primary btn-block-mobile">
+            <Plus className="size-4" /> Ajouter une offre
+          </Link>
+        }
       />
       <Suspense fallback={<p className="text-sm text-[var(--muted-foreground)]">Chargement…</p>}>
         <OffersManager sportsOptions={sports} />

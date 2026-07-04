@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { formatMoney } from "@/lib/money";
+
 type ReceptionInfoCardProps = {
   title?: string;
   children: ReactNode;
@@ -21,7 +23,7 @@ export function ReceptionInfoCard({
 }: ReceptionInfoCardProps) {
   return (
     <aside
-      className={`rounded-2xl border p-3 text-sm shadow-sm sm:p-4 ${variantClasses[variant]} ${className}`}
+      className={`rounded-lg border p-3 text-sm shadow-[var(--shadow-panel)] sm:p-4 ${variantClasses[variant]} ${className}`}
     >
       {title ? <p className="mb-1.5 text-xs font-bold uppercase tracking-wide opacity-80">{title}</p> : null}
       <div className="space-y-1 leading-relaxed">{children}</div>
@@ -44,16 +46,12 @@ export function SubscriptionBillingSummary({
 }) {
   const remainingDue = Math.max(0, amountDueCents - totalPaidCents);
 
-  function formatEur(cents: number) {
-    return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
-  }
-
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
       {[
-        { label: "Dû", value: formatEur(amountDueCents) },
-        { label: "Payé", value: formatEur(totalPaidCents) },
-        { label: "Reste", value: formatEur(remainingDue), highlight: remainingDue > 0 },
+        { label: "Dû", value: formatMoney(amountDueCents) },
+        { label: "Payé", value: formatMoney(totalPaidCents) },
+        { label: "Reste", value: formatMoney(remainingDue), highlight: remainingDue > 0 },
         {
           label: "Séances",
           value:
@@ -64,7 +62,7 @@ export function SubscriptionBillingSummary({
       ].map((item) => (
         <div
           key={item.label}
-          className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-center"
+          className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-center"
         >
           <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
             {item.label}

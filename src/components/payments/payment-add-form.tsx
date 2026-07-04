@@ -16,10 +16,11 @@ import {
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FieldControl } from "@/components/ui/field-control";
-import { FormActions, FormField, FormGrid, FormSection } from "@/components/ui/form-layout";
+import { FormActions, FormField, FormGrid, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import { SubscriptionBillingSummary } from "@/components/ui/reception-info-card";
 import { UndoButton } from "@/components/ui/undo-button";
 import { useActionHistory } from "@/hooks/use-action-history";
+import { formatMoney, MONEY_INPUT_SUFFIX } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
 const METHODS = [
@@ -28,10 +29,6 @@ const METHODS = [
   { value: "TRANSFER", label: "Virement", icon: <Wallet className="size-4" /> },
   { value: "CHECK", label: "Chèque", icon: <Banknote className="size-4" /> },
 ];
-
-function formatCurrency(cents: number) {
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
-}
 
 type SubscriptionRow = {
   id: string;
@@ -66,8 +63,10 @@ export function PaymentAddForm({
   const selected = subscriptions.find((s) => s.id === subscriptionId);
   const remaining = selected ? selected.amount - selected.totalPaid : 0;
   const amountNum = Math.round(parseFloat(amount.replace(",", ".")) * 100) || 0;
-  const wouldExceed = selected && amountNum > remaining;
-  const balanceAfter = Math.max(0, remaining - amountNum);
+  const wouldExceed = Boolean(selected && amountNum > remaining);
+  const balanceAfter = remaining - amountNum;
+  const displayBalanceAfter = Math.max(0, balanceAfter);
+  const canSubmit = Boolean(subscriptionId && amountNum > 0 && !wouldExceed);
   const members = useMemo(
     () =>
       Array.from(
@@ -141,7 +140,7 @@ export function PaymentAddForm({
           const deleteRes = await fetch("/api/payments", {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ paymentId }),
+            body: JSON.stringify({ paymentId, correctionReason: "Annulation immediate apres encaissement" }),
           });
           const deleteJson = (await deleteRes.json()) as { error?: string };
           if (!deleteRes.ok) {
@@ -187,6 +186,17 @@ export function PaymentAddForm({
     setMessage(null);
   }
 
+  function fillHalfBalance() {
+    if (remaining <= 0) return;
+    setAmount((Math.ceil(remaining / 2) / 100).toFixed(2));
+    setMessage(null);
+  }
+
+  function clearAmount() {
+    setAmount("");
+    setMessage(null);
+  }
+
   return (
     <form onSubmit={handleSubmit}>
       {message && (
@@ -212,7 +222,7 @@ export function PaymentAddForm({
       ) : null}
 
       {subscriptions.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-5 py-10 text-center">
+        <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface)] px-5 py-10 text-center shadow-[var(--shadow-panel)]">
           <CheckCircle2 className="mx-auto size-9 text-[var(--success)]" />
           <h2 className="mt-3 text-base font-semibold">Aucun solde à encaisser</h2>
           <p className="mx-auto mt-1 max-w-md text-sm text-[var(--muted-foreground)]">
@@ -223,11 +233,51 @@ export function PaymentAddForm({
           </Link>
         </div>
       ) : (
+        <>
+          <FormSectionNav
+            items={[
+              { href: "#payment-member", label: "Dette" },
+              { href: "#payment-amount", label: "Montant reçu" },
+              { href: "#payment-method", label: "Mode" },
+              { href: "#payment-summary", label: "Confirmer" },
+            ]}
+            className="mb-4"
+          />
+
+          {selected ? (
+            <div className="mb-4 grid gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-panel)] sm:grid-cols-3">
+              <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-900">
+                <p className="text-[0.65rem] font-bold uppercase tracking-wide text-red-600">Reste à encaisser</p>
+                <p className="mt-1 text-lg font-black tabular-nums">{formatMoney(remaining)}</p>
+              </div>
+              <div className="rounded-lg bg-[var(--primary)]/10 px-3 py-2 text-sm text-[var(--primary)]">
+                <p className="text-[0.65rem] font-bold uppercase tracking-wide">Montant reçu</p>
+                <p className="mt-1 text-lg font-black tabular-nums">{amountNum > 0 ? formatMoney(amountNum) : "0,00 TND"}</p>
+              </div>
+              <div className="rounded-lg bg-[var(--surface-soft)] px-3 py-2 text-sm">
+                <p className="text-[0.65rem] font-bold uppercase tracking-wide text-[var(--muted-foreground)]">Après encaissement</p>
+                <p
+                  className={cn(
+                    "mt-1 text-lg font-black tabular-nums",
+                    amountNum > 0 && !wouldExceed && displayBalanceAfter === 0
+                      ? "text-[var(--success)]"
+                      : wouldExceed
+                        ? "text-[var(--danger)]"
+                        : "text-[var(--foreground)]",
+                  )}
+                >
+                  {wouldExceed ? "Invalide" : amountNum > 0 ? formatMoney(displayBalanceAfter) : "À calculer"}
+                </p>
+              </div>
+            </div>
+          ) : null}
+
         <div className="grid min-w-0 items-start gap-4 lg:grid-cols-12">
           <div className="space-y-4 lg:col-span-8">
             <FormSection
-              title="1. Membre et abonnement"
-              description="Identifiez d'abord le dossier concerné, puis la formule à régler."
+              id="payment-member"
+              title="1. Dette"
+              description="Choisissez le membre puis l'abonnement qui a encore un solde."
             >
               <FormGrid>
                 <FormField label="Membre *" htmlFor="member">
@@ -261,7 +311,7 @@ export function PaymentAddForm({
                     <option value="">Sélectionner un abonnement</option>
                     {memberSubscriptions.map((subscription) => (
                       <option key={subscription.id} value={subscription.id}>
-                        {subscription.planName} · reste {formatCurrency(subscription.amount - subscription.totalPaid)}
+                        {subscription.planName} · reste {formatMoney(subscription.amount - subscription.totalPaid)}
                       </option>
                     ))}
                   </select>
@@ -269,7 +319,19 @@ export function PaymentAddForm({
               </FormGrid>
 
               {selected ? (
-                <div className="mt-4">
+                <div className="mt-4 md:hidden">
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-sm">
+                    <span className="text-[var(--muted-foreground)]">Reste à encaisser</span>
+                    <strong className="tabular-nums text-[var(--danger)]">{formatMoney(remaining)}</strong>
+                  </div>
+                  <a href="#payment-amount" className="btn btn-primary btn-block-mobile mt-2 min-h-11">
+                    Saisir le montant
+                  </a>
+                </div>
+              ) : null}
+
+              {selected ? (
+                <div className="mt-4 hidden md:block">
                   <SubscriptionBillingSummary
                     amountDueCents={selected.amount}
                     totalPaidCents={selected.totalPaid}
@@ -279,12 +341,13 @@ export function PaymentAddForm({
             </FormSection>
 
             <FormSection
+              id="payment-amount"
               title="2. Montant reçu"
-              description="Saisissez le versement remis par le membre, sans dépasser le reste dû."
+              description="Saisissez ce que la réception vient réellement d'encaisser."
             >
-              <FormField label="Montant encaissé (€) *" htmlFor="amount">
+              <FormField label="Montant encaissé (TND) *" htmlFor="amount">
                 <div className="flex flex-col gap-2 sm:flex-row">
-                  <FieldControl suffix="€" className="flex-1">
+                  <FieldControl suffix={MONEY_INPUT_SUFFIX} className="flex-1">
                     <input
                       id="amount"
                       type="number"
@@ -299,25 +362,43 @@ export function PaymentAddForm({
                       placeholder="0,00"
                     />
                   </FieldControl>
-                  <button
-                    type="button"
-                    onClick={fillRemainingBalance}
-                    disabled={!selected || remaining <= 0}
-                    className="btn btn-secondary whitespace-nowrap sm:min-w-36"
-                  >
-                    Solder {selected ? formatCurrency(remaining) : ""}
-                  </button>
+                  <div className="grid grid-cols-3 gap-2 sm:w-auto sm:min-w-72">
+                    <button
+                      type="button"
+                      onClick={fillRemainingBalance}
+                      disabled={!selected || remaining <= 0}
+                      className="btn btn-secondary whitespace-nowrap px-3"
+                    >
+                      Solder
+                    </button>
+                    <button
+                      type="button"
+                      onClick={fillHalfBalance}
+                      disabled={!selected || remaining <= 0}
+                      className="btn btn-ghost whitespace-nowrap px-3"
+                    >
+                      Moitié
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearAmount}
+                      disabled={!amount}
+                      className="btn btn-ghost whitespace-nowrap px-3"
+                    >
+                      Effacer
+                    </button>
+                  </div>
                 </div>
                 {selected ? (
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-1 text-xs">
                     <span className="text-[var(--muted-foreground)]">
-                      Maximum autorisé: <strong className="text-[var(--foreground)]">{formatCurrency(remaining)}</strong>
+                      Maximum autorisé: <strong className="text-[var(--foreground)]">{formatMoney(remaining)}</strong>
                     </span>
                     {wouldExceed ? (
                       <span className="font-semibold text-[var(--danger)]">Le montant dépasse le reste dû.</span>
                     ) : amountNum > 0 ? (
                       <span className="font-medium text-[var(--success)]">
-                        Solde après paiement: {formatCurrency(balanceAfter)}
+                        Solde après paiement: {formatMoney(displayBalanceAfter)}
                       </span>
                     ) : null}
                   </div>
@@ -326,8 +407,9 @@ export function PaymentAddForm({
             </FormSection>
 
             <FormSection
-              title="3. Détails du règlement"
-              description="La date et le moyen de paiement apparaîtront dans l'historique."
+              id="payment-method"
+              title="3. Mode"
+              description="Choisissez le moyen de paiement visible dans l'historique."
             >
               <FormField label="Moyen de paiement *">
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -337,7 +419,7 @@ export function PaymentAddForm({
                       type="button"
                       onClick={() => setMethod(paymentMethod.value)}
                       className={cn(
-                        "relative flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-xs font-semibold transition",
+                        "relative flex min-h-16 flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2 text-xs font-semibold transition",
                         method === paymentMethod.value
                           ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)] ring-1 ring-[var(--primary)]/20"
                           : "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-soft)]",
@@ -381,15 +463,15 @@ export function PaymentAddForm({
             </FormSection>
           </div>
 
-          <aside className="lg:sticky lg:top-20 lg:col-span-4">
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
+          <aside id="payment-summary" className="form-section-anchor lg:sticky lg:top-20 lg:col-span-4">
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
               <div className="flex items-center gap-2">
-                <span className="flex size-9 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">
+                <span className="flex size-9 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-[var(--primary)]">
                   <ReceiptText className="size-4" />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold">Récapitulatif</p>
-                  <p className="text-xs text-[var(--muted-foreground)]">À vérifier avant validation</p>
+                  <p className="text-sm font-semibold">Reçu à confirmer</p>
+                  <p className="text-xs text-[var(--muted-foreground)]">Vérification avant encaissement</p>
                 </div>
               </div>
 
@@ -404,28 +486,48 @@ export function PaymentAddForm({
                 </div>
                 <div className="flex items-start justify-between gap-3 py-2.5">
                   <dt className="text-[var(--muted-foreground)]">Reste actuel</dt>
-                  <dd className="text-right font-semibold">{selected ? formatCurrency(remaining) : "—"}</dd>
+                  <dd className="text-right font-semibold">{selected ? formatMoney(remaining) : "—"}</dd>
                 </div>
                 <div className="flex items-start justify-between gap-3 py-2.5">
                   <dt className="text-[var(--muted-foreground)]">Montant reçu</dt>
                   <dd className="text-right text-base font-bold text-[var(--primary)]">
-                    {amountNum > 0 ? formatCurrency(amountNum) : "—"}
+                    {amountNum > 0 ? formatMoney(amountNum) : "—"}
                   </dd>
                 </div>
                 <div className="flex items-start justify-between gap-3 py-2.5">
                   <dt className="text-[var(--muted-foreground)]">Solde après</dt>
-                  <dd className={cn("text-right font-bold", balanceAfter > 0 ? "text-[var(--danger)]" : "text-[var(--success)]")}>
-                    {selected && amountNum > 0 ? formatCurrency(balanceAfter) : "—"}
+                  <dd
+                    className={cn(
+                      "text-right font-bold",
+                      wouldExceed
+                        ? "text-[var(--danger)]"
+                        : displayBalanceAfter > 0
+                          ? "text-[var(--danger)]"
+                          : "text-[var(--success)]",
+                    )}
+                  >
+                    {wouldExceed
+                      ? "Montant invalide"
+                      : selected && amountNum > 0
+                        ? formatMoney(displayBalanceAfter)
+                        : "—"}
                   </dd>
                 </div>
               </dl>
 
-              <p className="mt-3 rounded-xl bg-[var(--surface-soft)] px-3 py-2 text-xs leading-relaxed text-[var(--muted-foreground)]">
-                Cet encaissement réduit uniquement le solde de l&apos;abonnement. Il n&apos;ajoute pas de séances.
+              <p className="mt-3 rounded-lg bg-[var(--surface-soft)] px-3 py-2 text-xs leading-relaxed text-[var(--muted-foreground)]">
+                Cet encaissement réduit le solde de l&apos;abonnement. Il n&apos;ajoute pas de séances.
               </p>
+
+              {!canSubmit ? (
+                <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
+                  Sélectionnez une dette et saisissez un montant valide pour activer la confirmation.
+                </p>
+              ) : null}
             </div>
           </aside>
         </div>
+        </>
       )}
 
       {subscriptions.length > 0 ? <FormActions sticky>
@@ -433,17 +535,22 @@ export function PaymentAddForm({
           <ArrowLeft className="size-4" />
           Retour
         </button>
+        {amountNum <= 0 ? (
+          <p className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-center text-xs font-medium text-[var(--muted-foreground)] md:hidden">
+            Saisissez le montant avant d&apos;encaisser.
+          </p>
+        ) : null}
         <button
           type="submit"
-          disabled={loading || !subscriptionId || amountNum <= 0 || wouldExceed}
-          className="btn btn-primary btn-block-mobile"
+          disabled={loading || !canSubmit}
+          className={cn("btn btn-primary btn-block-mobile", amountNum <= 0 && "max-md:hidden")}
         >
           {loading ? (
             <span className="inline-block size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
           ) : (
             <CheckCircle2 className="size-4" />
           )}
-          {amountNum > 0 ? `Encaisser ${formatCurrency(amountNum)}` : "Encaisser le paiement"}
+          {amountNum > 0 ? `Encaisser ${formatMoney(amountNum)}` : "Encaisser le paiement"}
         </button>
       </FormActions> : null}
     </form>

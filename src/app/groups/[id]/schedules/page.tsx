@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { GroupSchedulesManager } from "@/components/groups/group-schedules-manager";
 import { PageHeader } from "@/components/ui/page-header";
-import { formatGroupRoomLabel } from "@/lib/group-room";
+import { formatRoomLabel } from "@/lib/group-room";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -51,8 +51,8 @@ export default async function GroupSchedulesPage({ params }: { params: Promise<{
           <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted-foreground)]">Mode dégradé</p>
           <h1 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">Planning indisponible</h1>
           <p className="mt-3 text-sm text-[var(--muted-foreground)]">
-            Le modèle Prisma n&apos;est pas accessible pour le moment. Lancez la régénération du client
-            (`npm run prisma:generate`) puis redémarrez le serveur de développement.
+            Cette page ne peut pas charger ses données pour le moment. Revenez au tableau de bord puis contactez le
+            support si le problème continue.
           </p>
           <div className="mt-4">
             <Link href="/groups" className="btn btn-ghost">
@@ -88,16 +88,16 @@ export default async function GroupSchedulesPage({ params }: { params: Promise<{
       </Link>
 
       <PageHeader
-        overline="Planification"
+        overline="Planning"
         title={group.name}
-        description={`${group.sport.name} — Coach ${group.coach.firstName} ${group.coach.lastName} — Salle ${formatGroupRoomLabel(group.room)}`}
+        description={`${group.sport.name} — Coach ${group.coach.firstName} ${group.coach.lastName} — ${formatRoomLabel(group.room, "Salle par séance")}`}
         actions={
           <div className="flex flex-wrap gap-2">
-            <Link href={`/sessions?groupId=${group.id}`} className="btn btn-primary text-sm">
+            <Link href={`/sessions?groupId=${group.id}`} prefetch={false} className="btn btn-primary text-sm">
               <CalendarDays className="size-3.5" />
               Planning séances
             </Link>
-            <Link href={`/groups/${group.id}/edit`} className="btn btn-ghost text-sm">
+            <Link href={`/groups/${group.id}/edit`} prefetch={false} className="btn btn-ghost text-sm">
               Modifier groupe
             </Link>
           </div>

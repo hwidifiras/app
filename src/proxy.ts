@@ -1,85 +1,107 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { AUTH_COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
-import { isAdminOnlyPath, requiredPermissionForPath } from "@/lib/route-permissions";
+import { isPublicPath } from "@/lib/public-paths";
+import { tenantSlugFromHost } from "@/lib/tenant-host";
 
-function isPublicPath(pathname: string): boolean {
-  if (pathname === "/login") return true;
-  if (pathname === "/register") return true;
-  if (pathname === "/forgot-password") return true;
-  if (pathname === "/reset-password") return true;
-  if (pathname.startsWith("/api/auth")) return true;
-  if (pathname.startsWith("/_next")) return true;
-  if (pathname === "/favicon.ico") return true;
-  if (pathname === "/icon.png") return true;
-  if (pathname === "/apple-icon.png") return true;
-  return false;
+const TRUSTED_REQUEST_HEADERS = [
+  "x-tenant-id",
+  "x-tenant-slug",
+  "x-user-id",
+  "x-user-role",
+  "x-user-email",
+  "x-user-name",
+];
+
+function setApiNoStoreHeaders(headers: Headers) {
+  headers.set("Cache-Control", "private, no-store, max-age=0, must-revalidate");
+  headers.set("Pragma", "no-cache");
+  headers.set("Expires", "0");
 }
 
-function forbiddenResponse(request: NextRequest) {
-  if (request.nextUrl.pathname.startsWith("/api/")) {
-    return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+function sanitizedRequestHeaders(request: NextRequest) {
+  const headers = new Headers(request.headers);
+  for (const header of TRUSTED_REQUEST_HEADERS) {
+    headers.delete(header);
   }
+  return headers;
+}
+
+function nextWithPathHeader(request: NextRequest, headers = new Headers(request.headers)) {
+  headers.set("x-pathname", request.nextUrl.pathname);
+  const response = NextResponse.next({
+    request: { headers },
+  });
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    setApiNoStoreHeaders(response.headers);
+  }
+  return response;
+}
+
+function loginRedirect(request: NextRequest, reason: "missing" | "invalid") {
+  const { pathname } = request.nextUrl;
+
+  if (pathname.startsWith("/api/")) {
+    const response = NextResponse.json(
+      { error: reason === "missing" ? "Non authentifie" : "Session invalide" },
+      { status: 401 },
+    );
+    setApiNoStoreHeaders(response.headers);
+    return response;
+  }
+
   const url = request.nextUrl.clone();
-  url.pathname = "/";
-  url.searchParams.set("denied", "1");
+  if (pathname === "/") {
+    url.pathname = "/accueil";
+    return NextResponse.redirect(url);
+  }
+
+  url.pathname = "/login";
+  url.searchParams.set("next", pathname);
   return NextResponse.redirect(url);
 }
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const tenantSlug = tenantSlugFromHost(request.headers.get("x-forwarded-host") ?? request.headers.get("host"));
 
   if (isPublicPath(pathname)) {
-    return NextResponse.next();
+    const headers = sanitizedRequestHeaders(request);
+    headers.set("x-pathname", pathname);
+    if (tenantSlug) headers.set("x-tenant-slug", tenantSlug);
+    return nextWithPathHeader(request, headers);
   }
 
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
-
   if (!token) {
-    if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
+    return loginRedirect(request, "missing");
   }
 
   const payload = await verifyAuthToken(token);
-
   if (!payload) {
-    if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "Session invalide" }, { status: 401 });
-    }
-
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
+    return loginRedirect(request, "invalid");
   }
 
-  if (isAdminOnlyPath(pathname) && payload.role !== "ADMIN") {
-    return forbiddenResponse(request);
+  if (!payload.tenantId || !payload.tenantSlug || (tenantSlug && payload.tenantSlug !== tenantSlug)) {
+    return loginRedirect(request, "invalid");
   }
 
-  if (payload.role !== "ADMIN") {
-    const requiredPermission = requiredPermissionForPath(pathname);
-    const permissions = payload.permissions ?? [];
-    if (requiredPermission && !permissions.includes(requiredPermission)) {
-      return forbiddenResponse(request);
-    }
-  }
-
-  const headers = new Headers(request.headers);
+  const headers = sanitizedRequestHeaders(request);
+  headers.set("x-pathname", pathname);
+  headers.set("x-tenant-id", payload.tenantId);
+  headers.set("x-tenant-slug", payload.tenantSlug);
   headers.set("x-user-id", payload.userId);
   headers.set("x-user-role", payload.role);
   headers.set("x-user-email", payload.email);
   headers.set("x-user-name", payload.name);
 
-  return NextResponse.next({
+  const response = NextResponse.next({
     request: { headers },
   });
+  if (pathname.startsWith("/api/")) {
+    setApiNoStoreHeaders(response.headers);
+  }
+  return response;
 }
 
 export const config = {

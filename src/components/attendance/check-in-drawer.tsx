@@ -6,6 +6,7 @@ import Link from "next/link";
 import { CalendarClock, Check, CheckCircle2, LockOpen, RotateCcw, Users, X, XIcon } from "lucide-react";
 
 import { UndoButton } from "@/components/ui/undo-button";
+import { formatMoney } from "@/lib/money";
 import type { SessionCardData } from "./session-card";
 
 const MARK_ALL_MAX = 8;
@@ -51,20 +52,6 @@ export function CheckInDrawer({
   postponeHref: string;
 }) {
   const [modalMember, setModalMember] = useState<{ memberId: string; name: string; status: string } | null>(null);
-  const [recoveryOpen, setRecoveryOpen] = useState(false);
-  const [recoveryCandidates, setRecoveryCandidates] = useState<
-    Array<{
-      memberId: string;
-      firstName: string;
-      lastName: string;
-      phone: string;
-      absentGroupName: string;
-      absentDate: string;
-    }>
-  >([]);
-  const [recoveryLoading, setRecoveryLoading] = useState(false);
-  const [recoveryMember, setRecoveryMember] = useState<(typeof recoveryCandidates)[number] | null>(null);
-  const [recoveryNote, setRecoveryNote] = useState("");
   const [reason, setReason] = useState("");
   const [markingAll, setMarkingAll] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -80,7 +67,7 @@ export function CheckInDrawer({
   function remainingDebtLabel(mid: string) {
     const cents = partialPaymentDebtsCents[`${session.id}_${mid}`];
     if (!cents || cents <= 0) return null;
-    return `Solde ${(cents / 100).toFixed(2)} €`;
+    return `Solde ${formatMoney(cents)}`;
   }
 
   function getAtt(mid: string) {
@@ -95,6 +82,9 @@ export function CheckInDrawer({
   const remaining = total - checked;
   const isFinalized = session.status === "COMPLETED";
   const needsFinalization = session.operationalStatus === "NEEDS_FINALIZATION";
+  const hasPaymentPolicyWarning = session.group.members.some(
+    (gm) => !hasSub(gm.memberId) || hasPartialDebt(gm.memberId),
+  );
 
   const unmarkedWithSub = session.group.members.filter((gm) => {
     const att = getAtt(gm.memberId);
@@ -113,23 +103,6 @@ export function CheckInDrawer({
       window.removeEventListener("keydown", onKey);
     };
   }, [onClose, modalMember]);
-
-  async function openRecoveryPanel() {
-    setRecoveryOpen(true);
-    setRecoveryLoading(true);
-    setRecoveryMember(null);
-    setRecoveryNote("");
-
-    try {
-      const res = await fetch(`/api/attendances/recovery-candidates?sessionId=${session.id}`);
-      const json = await res.json();
-      setRecoveryCandidates(Array.isArray(json.data) ? json.data : []);
-    } catch {
-      setRecoveryCandidates([]);
-    } finally {
-      setRecoveryLoading(false);
-    }
-  }
 
   function statusLabel(status: string, overrideReason?: string | null) {
     if (status === "PRESENT") return "Présent";
@@ -173,7 +146,7 @@ export function CheckInDrawer({
     >
       <div
         ref={sheetRef}
-        className="drawer-sheet drawer-sheet-adaptive flex w-full max-w-3xl flex-col overflow-hidden rounded-t-3xl bg-[var(--surface)] shadow-2xl md:h-full md:max-h-none md:rounded-none"
+        className="drawer-sheet drawer-sheet-adaptive flex w-full max-w-3xl flex-col overflow-hidden rounded-t-lg bg-[var(--surface)] shadow-[var(--shadow-floating)] md:h-full md:max-h-none md:rounded-none"
         role="dialog"
         aria-modal="true"
         aria-labelledby="check-in-drawer-title"
@@ -237,7 +210,7 @@ export function CheckInDrawer({
         </div>
 
         <div className="shrink-0 border-b border-[var(--border)] bg-[var(--surface-soft)]/55 px-4 py-3 sm:px-5">
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid gap-2">
           {!isFinalized && total <= MARK_ALL_MAX && unmarkedWithSub.length > 0 ? (
             <button
               type="button"
@@ -246,17 +219,14 @@ export function CheckInDrawer({
               className="btn btn-primary inline-flex min-h-11 w-full items-center justify-center gap-2 text-sm"
             >
               <Users className="size-4" />
-              {markingAll ? "Pointage en cours…" : `Tous présents (${unmarkedWithSub.length})`}
+              {markingAll ? "Pointage en cours…" : `Pointer les restants présents (${unmarkedWithSub.length})`}
             </button>
           ) : <div />}
-          <button
-            type="button"
-            onClick={openRecoveryPanel}
-            disabled={isFinalized || loadingId !== null || markingAll}
-            className="btn btn-secondary min-h-11 w-full text-sm"
-          >
-            Rattrapage d&apos;absence
-          </button>
+          {hasPaymentPolicyWarning ? (
+            <div className="rounded-lg border border-[var(--warning)]/25 bg-[var(--warning)]/10 px-3 py-2 text-xs leading-relaxed text-[var(--foreground)]">
+              <strong>Règle de paiement.</strong> Sans abonnement actif ou solde non réglé, le pointage normal peut être bloqué. Utilisez un passage exceptionnel uniquement avec un motif clair.
+            </div>
+          ) : null}
           </div>
         </div>
 
@@ -305,7 +275,9 @@ export function CheckInDrawer({
                       </p>
                       <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
                         {!activeSub && (
-                          <span className="text-[0.7rem] font-medium text-[var(--warning)]">Accès restreint</span>
+                          <span className="text-[0.7rem] font-medium text-[var(--warning)]">
+                            Pointage normal bloqué · passage exceptionnel requis
+                          </span>
                         )}
                         {activeSub && hasPartialDebt(mid) && (
                           <span className="text-[0.7rem] font-medium text-[var(--warning)]">
@@ -330,7 +302,7 @@ export function CheckInDrawer({
                       type="button"
                       onClick={() => handleClick(mid, "PRESENT")}
                       disabled={isFinalized || loadingId === mid || markingAll}
-                      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 sm:min-w-[7rem] ${
+                      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 sm:min-w-[7rem] ${
                         att?.status === "PRESENT"
                           ? "ring-2 ring-[var(--success)] ring-offset-2 ring-offset-[var(--surface)] bg-[var(--success)] text-white"
                           : "bg-[var(--success)] text-white hover:bg-[var(--success)]/90"
@@ -343,7 +315,7 @@ export function CheckInDrawer({
                       type="button"
                       onClick={() => handleClick(mid, "ABSENT")}
                       disabled={isFinalized || loadingId === mid || markingAll}
-                      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 sm:min-w-[7rem] ${
+                      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 sm:min-w-[7rem] ${
                         att?.status === "ABSENT"
                           ? "ring-2 ring-[var(--danger)] ring-offset-2 ring-offset-[var(--surface)] bg-[var(--danger)] text-white"
                           : "bg-[var(--danger)] text-white hover:bg-[var(--danger)]/90"
@@ -404,7 +376,7 @@ export function CheckInDrawer({
               className="min-h-11 w-full justify-center"
             />
             {!needsFinalization && !isFinalized && checked === 0 ? (
-              <Link href={postponeHref} className="btn btn-secondary min-h-11 w-full">
+              <Link href={postponeHref} prefetch={false} className="btn btn-secondary min-h-11 w-full">
                 <CalendarClock className="size-4" />
                 Reporter la séance
               </Link>
@@ -437,7 +409,7 @@ export function CheckInDrawer({
           }}
         >
           <div
-            className="mobile-modal-panel border border-[var(--border)] bg-[var(--surface)] p-5 shadow-lg md:max-w-sm md:rounded-xl"
+            className="mobile-modal-panel border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-floating)] md:max-w-sm md:rounded-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-base font-semibold text-[var(--foreground)]">Passage exceptionnel</h3>
@@ -473,92 +445,6 @@ export function CheckInDrawer({
                 className="btn btn-primary btn-block-mobile min-h-11"
               >
                 Valider passage
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {recoveryOpen && (
-        <div
-          className="mobile-modal-overlay fixed inset-0 z-[60] flex justify-center bg-black/50"
-          onClick={() => {
-            setRecoveryOpen(false);
-            setRecoveryMember(null);
-            setRecoveryNote("");
-          }}
-        >
-          <div
-            className="mobile-modal-panel border border-[var(--border)] bg-[var(--surface)] p-5 shadow-lg md:max-w-md md:rounded-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-base font-semibold text-[var(--foreground)]">Rattrapage d&apos;absence</h3>
-            <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-              Pour un élève absent cette semaine sur un cours équivalent (même discipline), sans consommer une séance supplémentaire.
-            </p>
-
-            {recoveryLoading ? (
-              <p className="mt-4 text-sm text-[var(--muted-foreground)]">Recherche des absences récupérables…</p>
-            ) : recoveryCandidates.length === 0 ? (
-              <p className="mt-4 text-sm text-[var(--muted-foreground)]">Aucun élève éligible pour ce cours.</p>
-            ) : (
-              <ul className="mt-4 max-h-56 space-y-2 overflow-y-auto">
-                {recoveryCandidates.map((candidate) => (
-                  <li key={candidate.memberId}>
-                    <button
-                      type="button"
-                      onClick={() => setRecoveryMember(candidate)}
-                      className={`w-full rounded-xl border px-3 py-2 text-left text-sm transition ${
-                        recoveryMember?.memberId === candidate.memberId
-                          ? "border-[var(--primary)] bg-[var(--primary)]/5"
-                          : "border-[var(--border)] hover:bg-[var(--surface-soft)]"
-                      }`}
-                    >
-                      <span className="font-medium text-[var(--foreground)]">
-                        {candidate.firstName} {candidate.lastName}
-                      </span>
-                      <span className="mt-0.5 block text-xs text-[var(--muted-foreground)]">
-                        Absent — {candidate.absentGroupName}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            {recoveryMember ? (
-              <textarea
-                value={recoveryNote}
-                onChange={(e) => setRecoveryNote(e.target.value)}
-                placeholder="Note optionnelle (ex. créneau proposé par le coach)"
-                className="field mt-3 min-h-[70px]"
-              />
-            ) : null}
-
-            <div className="form-actions mt-4 border-t-0 pt-0">
-              <button
-                type="button"
-                onClick={() => {
-                  setRecoveryOpen(false);
-                  setRecoveryMember(null);
-                  setRecoveryNote("");
-                }}
-                className="btn btn-ghost btn-block-mobile min-h-11"
-              >
-                Fermer
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!recoveryMember) return;
-                  onCheckIn(recoveryMember.memberId, "OVERRIDE", recoveryNote.trim(), "RECOVERY");
-                  setRecoveryOpen(false);
-                  setRecoveryMember(null);
-                  setRecoveryNote("");
-                }}
-                disabled={!recoveryMember}
-                className="btn btn-primary btn-block-mobile min-h-11"
-              >
-                Valider la récupération
               </button>
             </div>
           </div>

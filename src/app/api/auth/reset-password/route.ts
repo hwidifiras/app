@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
 import { hashResetToken } from "@/lib/password-reset";
+import { prisma } from "@/lib/prisma";
+import { enterTenantContext } from "@/lib/tenant-context";
+import { resolveTenantFromRequest } from "@/lib/tenant-resolver";
 
 export const runtime = "nodejs";
 
@@ -13,6 +15,12 @@ const resetPasswordSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const tenant = await resolveTenantFromRequest(request);
+  if (!tenant.ok) {
+    return NextResponse.json({ error: "Lien invalide ou expire" }, { status: 400 });
+  }
+  enterTenantContext(tenant.context);
+
   let body: unknown;
   try {
     body = await request.json();
@@ -22,12 +30,12 @@ export async function POST(request: Request) {
 
   const parsed = resetPasswordSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Validation échouée", details: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json({ error: "Validation echouee", details: parsed.error.flatten() }, { status: 400 });
   }
 
   const tokenHash = hashResetToken(parsed.data.token);
-  const resetToken = await prisma.passwordResetToken.findUnique({
-    where: { tokenHash },
+  const resetToken = await prisma.passwordResetToken.findFirst({
+    where: { tenantId: tenant.context.tenantId, tokenHash },
     include: { user: { select: { id: true, isActive: true } } },
   });
 
@@ -37,7 +45,7 @@ export async function POST(request: Request) {
     resetToken.expiresAt < new Date() ||
     !resetToken.user.isActive
   ) {
-    return NextResponse.json({ error: "Lien invalide ou expiré" }, { status: 400 });
+    return NextResponse.json({ error: "Lien invalide ou expire" }, { status: 400 });
   }
 
   const passwordHash = await hashPassword(parsed.data.password);
@@ -53,6 +61,7 @@ export async function POST(request: Request) {
     }),
     prisma.auditLog.create({
       data: {
+        tenantId: tenant.context.tenantId,
         action: "PASSWORD_RESET_COMPLETED",
         entityType: "User",
         entityId: resetToken.userId,

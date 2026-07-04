@@ -1,0 +1,197 @@
+{
+  "generatedAt": "2026-07-01T02:56:45.645Z",
+  "baseUrl": "https://we-discipline.com",
+  "prefix": "audit-ux",
+  "email": "audit-ux-20260701@we-discipline.test",
+  "summary": {
+    "total": 23,
+    "passed": 23,
+    "failed": 0
+  },
+  "results": [
+    {
+      "name": "Unauthenticated /api/auth/me is empty",
+      "passed": true,
+      "status": 200,
+      "expected": "200 with data=null before login.",
+      "actual": "{\"data\":null}",
+      "notes": ""
+    },
+    {
+      "name": "Audit admin can log in",
+      "passed": true,
+      "status": 200,
+      "expected": "200, audit email returned, and gym_auth cookie set.",
+      "actual": "{\"body\":{\"data\":{\"id\":\"audit-ux-admin\",\"tenantId\":\"tenant_we_discipline\",\"tenantSlug\":\"we-discipline\",\"email\":\"audit-ux-20260701@we-discipline.test\",\"name\":\"Audit UX\",\"role\":\"ADMIN\",\"permissions\":[]}},\"cookies\":[\"gym_auth\"]}",
+      "notes": ""
+    },
+    {
+      "name": "Authenticated /api/auth/me reloads current user",
+      "passed": true,
+      "status": 200,
+      "expected": "200 with the current audit admin from the database.",
+      "actual": "{\"id\":\"audit-ux-admin\",\"tenantId\":\"tenant_we_discipline\",\"tenantSlug\":\"we-discipline\",\"role\":\"ADMIN\",\"email\":\"audit-ux-20260701@we-discipline.test\",\"name\":\"Audit UX\",\"permissions\":[]}",
+      "notes": ""
+    },
+    {
+      "name": "Overpayment is rejected before mutation",
+      "passed": true,
+      "status": 409,
+      "expected": "409 because existing 2000 + 3000 exceeds the 4000 subscription amount.",
+      "actual": "{\"error\":\"Depassement du montant du\"}",
+      "notes": ""
+    },
+    {
+      "name": "Partial payment can be collected",
+      "passed": true,
+      "status": 201,
+      "expected": "201 with a new positive PAYMENT ledger row.",
+      "actual": "{\"id\":\"cmr1hi7hm0001qo2ioxtoiend\",\"data\":{\"id\":\"cmr1hi7hm0001qo2ioxtoiend\",\"tenantId\":\"tenant_we_discipline\",\"memberSubscriptionId\":\"audit-ux-sub-partial\",\"amount\":500,\"entryType\":\"PAYMENT\",\"correctsPaymentId\":null,\"correctionReason\":null,\"createdById\":\"audit-ux-admin\",\"paymentDate\":\"2026-07-01T02:56:42.343Z\",\"paymentMethod\":\"CASH\",\"notes\":\"Audit functional payment\",\"createdAt\":\"2026-07-01T02:56:42.346Z\",\"updatedAt\":\"2026-07-01T02:56:42.346Z\",\"memberSubscription\":{\"id\":\"audit-ux-sub-partial\",\"member\":{\"id\":\"audit-ux-member-partial\",\"firstName\":\"Audit Sami\",\"lastName\":\"Partiel\"},\"plan\":{\"id\":\"audit-ux-plan\",\"name\":\"Audit UX 8 seances\"}}}}",
+      "notes": ""
+    },
+    {
+      "name": "Payment correction requires a reason",
+      "passed": true,
+      "status": 400,
+      "expected": "400 validation failure when correctionReason is missing.",
+      "actual": "{\"error\":\"Validation echouee\",\"details\":{\"formErrors\":[],\"fieldErrors\":{\"correctionReason\":[\"Invalid input: expected string, received undefined\"]}}}",
+      "notes": ""
+    },
+    {
+      "name": "Payment correction creates a ledger row",
+      "passed": true,
+      "status": 200,
+      "expected": "200 with CORRECTION row linked to the original payment and signed -200 amount.",
+      "actual": "{\"id\":\"cmr1hi7nx0005qo2i3gr5jaoi\",\"tenantId\":\"tenant_we_discipline\",\"memberSubscriptionId\":\"audit-ux-sub-partial\",\"amount\":-200,\"entryType\":\"CORRECTION\",\"correctsPaymentId\":\"audit-ux-pay-partial\",\"correctionReason\":\"Audit functional correction\",\"createdById\":\"audit-ux-admin\",\"paymentDate\":\"2026-07-01T02:56:42.572Z\",\"paymentMethod\":\"CASH\",\"notes\":\"Audit functional corrected amount\",\"createdAt\":\"2026-07-01T02:56:42.573Z\",\"updatedAt\":\"2026-07-01T02:56:42.573Z\",\"memberSubscription\":{\"id\":\"audit-ux-sub-partial\",\"member\":{\"id\":\"audit-ux-member-partial\",\"firstName\":\"Audit Sami\",\"lastName\":\"Partiel\"},\"plan\":{\"id\":\"audit-ux-plan\",\"name\":\"Audit UX 8 seances\"}}}",
+      "notes": ""
+    },
+    {
+      "name": "Payment reversal requires a reason",
+      "passed": true,
+      "status": 400,
+      "expected": "400 when correctionReason is missing.",
+      "actual": "{\"error\":\"Motif obligatoire pour annuler un paiement\"}",
+      "notes": ""
+    },
+    {
+      "name": "Payment reversal creates a signed ledger row",
+      "passed": true,
+      "status": 200,
+      "expected": "200 with REVERSAL row linked to the created payment and signed -500 amount.",
+      "actual": "{\"id\":\"cmr1hi7u90009qo2inkewkbw3\",\"tenantId\":\"tenant_we_discipline\",\"memberSubscriptionId\":\"audit-ux-sub-partial\",\"amount\":-500,\"entryType\":\"REVERSAL\",\"correctsPaymentId\":\"cmr1hi7hm0001qo2ioxtoiend\",\"correctionReason\":\"Audit functional reversal\",\"createdById\":\"audit-ux-admin\",\"paymentDate\":\"2026-07-01T02:56:42.800Z\",\"paymentMethod\":\"CASH\",\"notes\":\"Audit functional payment\",\"createdAt\":\"2026-07-01T02:56:42.801Z\",\"updatedAt\":\"2026-07-01T02:56:42.801Z\",\"memberSubscription\":{\"id\":\"audit-ux-sub-partial\",\"member\":{\"id\":\"audit-ux-member-partial\",\"firstName\":\"Audit Sami\",\"lastName\":\"Partiel\"},\"plan\":{\"id\":\"audit-ux-plan\",\"name\":\"Audit UX 8 seances\"}}}",
+      "notes": ""
+    },
+    {
+      "name": "Payment audit reasons appear in admin log UI",
+      "passed": true,
+      "status": 200,
+      "expected": "Logs search finds payment audit entries; detail pages contain correction/reversal reasons and actor email.",
+      "actual": "List and 2 detail page(s) verified.",
+      "notes": ""
+    },
+    {
+      "name": "Unpaid normal attendance is rejected",
+      "passed": true,
+      "status": 403,
+      "expected": "403 SUBSCRIPTION_UNPAID for normal pointage with no payment.",
+      "actual": "{\"error\":\"Abonnement non payé — passage exceptionnel requis\",\"code\":\"SUBSCRIPTION_UNPAID\"}",
+      "notes": ""
+    },
+    {
+      "name": "Override attendance requires a reason",
+      "passed": true,
+      "status": 400,
+      "expected": "400 when OVERRIDE has no overrideReason.",
+      "actual": "{\"error\":\"Motif obligatoire pour un passage exceptionnel\"}",
+      "notes": ""
+    },
+    {
+      "name": "Past session cannot finalize while incomplete",
+      "passed": true,
+      "status": 409,
+      "expected": "409 SESSION_ATTENDANCE_INCOMPLETE before all expected active members are pointed.",
+      "actual": "{\"error\":\"3 membres restent à pointer\",\"code\":\"SESSION_ATTENDANCE_INCOMPLETE\",\"unmarkedCount\":3}",
+      "notes": ""
+    },
+    {
+      "name": "Past paid attendance can be recorded",
+      "passed": true,
+      "status": 201,
+      "expected": "201 for paid member attendance on the past session.",
+      "actual": "{\"id\":\"cmr1hi92m000dqo2iq9bqihak\",\"tenantId\":\"tenant_we_discipline\",\"sessionId\":\"audit-ux-session-past\",\"memberId\":\"audit-ux-member-paid\",\"memberSubscriptionId\":\"audit-ux-sub-paid\",\"status\":\"PRESENT\",\"overrideReason\":null,\"checkedBy\":\"Audit UX\",\"checkedAt\":\"2026-07-01T02:56:44.398Z\",\"createdAt\":\"2026-07-01T02:56:44.398Z\",\"updatedAt\":\"2026-07-01T02:56:44.398Z\",\"session\":{\"id\":\"audit-ux-session-past\",\"sessionDate\":\"2026-06-30T00:00:00.000Z\",\"startTime\":\"08:00\",\"group\":{\"id\":\"audit-ux-group\",\"name\":\"Audit UX Adultes\",\"sport\":{\"name\":\"Audit UX Kickboxing\"}}},\"member\":{\"id\":\"audit-ux-member-paid\",\"firstName\":\"Audit Lina\",\"lastName\":\"Payee\"},\"memberSubscription\":{\"id\":\"audit-ux-sub-paid\",\"sport\":{\"name\":\"Audit UX Kickboxing\"}}}",
+      "notes": ""
+    },
+    {
+      "name": "Past partial-paid attendance is allowed by club setting",
+      "passed": true,
+      "status": 201,
+      "expected": "201 because allowCheckInWithPartialPayment is enabled in the audit club settings.",
+      "actual": "{\"id\":\"cmr1hi96l000hqo2iov7pofjy\",\"tenantId\":\"tenant_we_discipline\",\"sessionId\":\"audit-ux-session-past\",\"memberId\":\"audit-ux-member-partial\",\"memberSubscriptionId\":\"audit-ux-sub-partial\",\"status\":\"ABSENT\",\"overrideReason\":null,\"checkedBy\":\"Audit UX\",\"checkedAt\":\"2026-07-01T02:56:44.541Z\",\"createdAt\":\"2026-07-01T02:56:44.541Z\",\"updatedAt\":\"2026-07-01T02:56:44.541Z\",\"session\":{\"id\":\"audit-ux-session-past\",\"sessionDate\":\"2026-06-30T00:00:00.000Z\",\"startTime\":\"08:00\",\"group\":{\"id\":\"audit-ux-group\",\"name\":\"Audit UX Adultes\",\"sport\":{\"name\":\"Audit UX Kickboxing\"}}},\"member\":{\"id\":\"audit-ux-member-partial\",\"firstName\":\"Audit Sami\",\"lastName\":\"Partiel\"},\"memberSubscription\":{\"id\":\"audit-ux-sub-partial\",\"sport\":{\"name\":\"Audit UX Kickboxing\"}}}",
+      "notes": ""
+    },
+    {
+      "name": "Unpaid exceptional attendance can be recorded with reason",
+      "passed": true,
+      "status": 201,
+      "expected": "201 OVERRIDE when a manager reason is supplied.",
+      "actual": "{\"id\":\"cmr1hi99z000lqo2ilkrwtzxb\",\"tenantId\":\"tenant_we_discipline\",\"sessionId\":\"audit-ux-session-past\",\"memberId\":\"audit-ux-member-unpaid\",\"memberSubscriptionId\":null,\"status\":\"OVERRIDE\",\"overrideReason\":\"Audit functional exception\",\"checkedBy\":\"Audit UX\",\"checkedAt\":\"2026-07-01T02:56:44.663Z\",\"createdAt\":\"2026-07-01T02:56:44.663Z\",\"updatedAt\":\"2026-07-01T02:56:44.663Z\",\"session\":{\"id\":\"audit-ux-session-past\",\"sessionDate\":\"2026-06-30T00:00:00.000Z\",\"startTime\":\"08:00\",\"group\":{\"id\":\"audit-ux-group\",\"name\":\"Audit UX Adultes\",\"sport\":{\"name\":\"Audit UX Kickboxing\"}}},\"member\":{\"id\":\"audit-ux-member-unpaid\",\"firstName\":\"Audit Noor\",\"lastName\":\"Dette\"},\"memberSubscription\":null}",
+      "notes": ""
+    },
+    {
+      "name": "Complete past session can be finalized",
+      "passed": true,
+      "status": 200,
+      "expected": "200 and status COMPLETED after all expected active members are pointed.",
+      "actual": "{\"data\":{\"id\":\"audit-ux-session-past\",\"status\":\"COMPLETED\"}}",
+      "notes": ""
+    },
+    {
+      "name": "Finalized attendance cannot be edited without reopening",
+      "passed": true,
+      "status": 409,
+      "expected": "409 SESSION_REOPEN_REQUIRED after finalization.",
+      "actual": "{\"error\":\"Cette seance est finalisee. Rouvrez-la avant de corriger le pointage.\",\"code\":\"SESSION_REOPEN_REQUIRED\"}",
+      "notes": ""
+    },
+    {
+      "name": "Bulk import preview requires temporary mode",
+      "passed": true,
+      "status": 409,
+      "expected": "409 until the reprise mode is explicitly activated.",
+      "actual": "{\"error\":\"Activez d'abord la session temporaire de reprise.\"}",
+      "notes": ""
+    },
+    {
+      "name": "Bulk import mode can be activated",
+      "passed": true,
+      "status": 200,
+      "expected": "200 with active=true and the temporary import cookie set.",
+      "actual": "{\"body\":{\"data\":{\"active\":true,\"expiresAt\":\"2026-07-01T06:56:45.073Z\"}},\"cookies\":[\"gym_auth\",\"we_discipline_data_import\"]}",
+      "notes": ""
+    },
+    {
+      "name": "Bulk import preview accepts French headers and auto-generates code",
+      "passed": true,
+      "status": 200,
+      "expected": "200 preview with one valid row and generated M001-auditimport-* code.",
+      "actual": "{\"totalRows\":1,\"okRows\":1,\"errorRows\":0,\"importedRows\":0,\"rows\":[{\"rowNumber\":2,\"externalId\":\"M001-auditimport-5235\",\"memberName\":\"Audit Import\",\"groupName\":\"Audit UX Adultes\",\"planName\":\"Audit UX 8 seances\",\"status\":\"OK\",\"errors\":[],\"warnings\":[\"Aucun règlement historique ne sera créé.\"],\"remainingBalanceCents\":4000}]}",
+      "notes": ""
+    },
+    {
+      "name": "Bulk import mode can be deactivated",
+      "passed": true,
+      "status": 200,
+      "expected": "200 with active=false.",
+      "actual": "{\"data\":{\"active\":false,\"expiresAt\":null}}",
+      "notes": ""
+    },
+    {
+      "name": "Logout clears auth",
+      "passed": true,
+      "status": 200,
+      "expected": "Logout returns 200 and the next /api/auth/me has data=null.",
+      "actual": "{\"logout\":{\"data\":{\"ok\":true}},\"me\":{\"data\":null},\"cookies\":[]}",
+      "notes": ""
+    }
+  ]
+}

@@ -49,9 +49,9 @@ export default async function EditSubscriptionPage({ params }: { params: Promise
       </Link>
 
       <PageHeader
-        overline="Abonnements & Finance"
+        overline="Membres"
         title="Modifier l'abonnement"
-        description="Ajustez le plan, les dates, les séances restantes ou résiliez proprement l'abonnement."
+        description="Ajuster dates, séances et statut avec un suivi clair du solde."
       />
 
       <section className="panel p-4 sm:p-6">

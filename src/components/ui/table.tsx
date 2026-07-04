@@ -8,7 +8,7 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto rounded-2xl border border-border/80 bg-card shadow-[0_8px_22px_rgba(16,36,63,0.07)]"
+      className="relative w-full overflow-x-auto rounded-lg border border-border/80 bg-card shadow-[var(--shadow-panel)]"
     >
       <table
         data-slot="table"
@@ -23,7 +23,7 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("bg-[linear-gradient(180deg,rgba(244,248,255,0.94)_0%,rgba(236,244,255,0.92)_100%)] [&_tr]:border-b [&_tr]:border-border/80", className)}
+      className={cn("bg-[var(--surface-soft)] [&_tr]:border-b [&_tr]:border-border/80", className)}
       {...props}
     />
   )
@@ -57,7 +57,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "border-b border-border/70 transition-colors duration-150 hover:bg-[rgba(234,241,252,0.72)] has-aria-expanded:bg-muted/50 data-[state=selected]:bg-[rgba(227,238,252,0.88)]",
+        "border-b border-border/70 transition-colors duration-150 hover:bg-[var(--surface-soft)] has-aria-expanded:bg-muted/50 data-[state=selected]:bg-[var(--secondary)]",
         className
       )}
       {...props}
@@ -70,7 +70,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
     <th
       data-slot="table-head"
       className={cn(
-        "h-11 px-4 text-left align-middle text-[0.72rem] font-semibold tracking-[0.08em] whitespace-nowrap text-muted-foreground uppercase [&:has([role=checkbox])]:pr-0",
+        "h-10 px-4 text-left align-middle text-[0.7rem] font-semibold tracking-[0.08em] whitespace-nowrap text-muted-foreground uppercase [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}
@@ -83,7 +83,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
     <td
       data-slot="table-cell"
       className={cn(
-        "px-4 py-3 align-middle whitespace-nowrap text-[0.86rem] [&:has([role=checkbox])]:pr-0",
+        "px-4 py-3 align-middle whitespace-nowrap text-[0.86rem] text-[var(--foreground)] [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}

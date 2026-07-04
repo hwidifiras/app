@@ -1,27 +1,33 @@
 import { execSync } from "node:child_process";
-import { closeSync, existsSync, openSync, unlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const appDir = join(currentDir, "..");
-const dbPath = join(appDir, "prisma", "test.db");
-const journalPath = `${dbPath}-journal`;
+const databaseUrl =
+  process.env.TEST_DATABASE_URL ||
+  process.env.DATABASE_URL ||
+  "postgresql://gymday:gymday@localhost:5432/gymday_test?schema=public";
 
-for (const file of [dbPath, journalPath]) {
-  if (existsSync(file)) unlinkSync(file);
+const url = new URL(databaseUrl);
+const databaseName = url.pathname.replace(/^\//, "");
+const safeLocal =
+  ["localhost", "127.0.0.1", "::1"].includes(url.hostname) &&
+  /test/i.test(`${databaseName}${url.search}`);
+
+if (!safeLocal && process.env.ALLOW_NON_TEST_DB_RESET !== "true") {
+  console.error(
+    `Refusing to reset non-test database ${url.hostname}/${databaseName}. Set ALLOW_NON_TEST_DB_RESET=true to override.`,
+  );
+  process.exit(1);
 }
 
-// Prisma's Windows schema engine can fail creating a missing SQLite file.
-// Touch the file first, then let migrations initialize the schema.
-closeSync(openSync(dbPath, "w"));
-
-execSync("npx prisma migrate deploy", {
+execSync("npx prisma migrate reset --force --skip-seed", {
   cwd: appDir,
   stdio: "inherit",
   shell: true,
   env: {
     ...process.env,
-    DATABASE_URL: "file:./test.db",
+    DATABASE_URL: databaseUrl,
   },
 });

@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
-import { FormActions } from "@/components/ui/form-layout";
+import { FormActions, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import { GroupMemberSelector } from "@/components/groups/group-member-selector";
 import { CoachDto } from "@/types/coach";
 import { MemberDto } from "@/types/member";
@@ -11,7 +11,13 @@ import { SportDto } from "@/types/sport";
 
 function formatCoachOptionLabel(coach: CoachDto) {
   const name = `${coach.firstName} ${coach.lastName}`;
-  return coach.sportName ? `${name} - ${coach.sportName}` : name;
+  const qualified = coach.qualifiedSports.map((sport) => sport.name).join(", ");
+  return qualified ? `${name} - ${qualified}` : coach.sportName ? `${name} - ${coach.sportName}` : name;
+}
+
+function coachIsQualifiedForSport(coach: CoachDto | undefined, sportId: string) {
+  if (!coach || !sportId) return true;
+  return coach.qualifiedSportIds.includes(sportId);
 }
 
 export function GroupEditForm({
@@ -42,6 +48,8 @@ export function GroupEditForm({
   const [groupType, setGroupType] = useState<"KIDS" | "ADULTS">(initialData.groupType);
   const [sportId, setSportId] = useState(initialData.sportId);
   const [coachId, setCoachId] = useState(initialData.coachId);
+  const [applyCoachToFutureSessions, setApplyCoachToFutureSessions] = useState(false);
+  const [coachSportOverrideReason, setCoachSportOverrideReason] = useState("");
   const [capacity, setCapacity] = useState(initialData.capacity);
   const [room, setRoom] = useState(initialData.room ?? "");
   const [isActive, setIsActive] = useState(initialData.isActive);
@@ -62,6 +70,10 @@ export function GroupEditForm({
     if (!query) return true;
     return `${member.firstName} ${member.lastName}`.toLowerCase().includes(query) || member.phone.toLowerCase().includes(query);
   }).filter((member) => isMemberAllowed(member.memberType));
+  const selectedCoach = coachesOptions.find((coach) => coach.id === coachId);
+  const coachChanged = coachId !== initialData.coachId;
+  const coachSportPairChanged = sportId !== initialData.sportId || coachId !== initialData.coachId;
+  const needsCoachSportOverride = coachSportPairChanged && !coachIsQualifiedForSport(selectedCoach, sportId);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -81,6 +93,8 @@ export function GroupEditForm({
           capacity,
           room,
           isActive,
+          coachSportOverrideReason: needsCoachSportOverride ? coachSportOverrideReason : "",
+          applyCoachToFutureSessions: coachChanged ? applyCoachToFutureSessions : false,
         },
       }),
     });
@@ -121,7 +135,7 @@ export function GroupEditForm({
       });
       const removeResult = await removeResponse.json();
       if (removeResponse.ok) {
-        removeMsg = `${removeResult.data?.deletedCount ?? 0} retiré(s)`;
+        removeMsg = `${removeResult.data?.closedCount ?? 0} retiré(s)`;
       } else {
         removeMsg = `Erreur retrait: ${removeResult.error ?? ""}`;
       }
@@ -136,10 +150,15 @@ export function GroupEditForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
-      {/* Compact group info form */}
-      <div className="rounded-xl border border-[var(--border)] p-4">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Informations groupe</p>
+    <form onSubmit={onSubmit} className="space-y-5 pb-4 lg:pb-0">
+      <FormSectionNav
+        items={[
+          { href: "#group-info", label: "Infos" },
+          { href: "#group-members", label: "Membres" },
+        ]}
+      />
+
+      <FormSection id="group-info" title="Informations" description="Sport, coach, salle, capacité et statut du cours.">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div className="sm:col-span-2 lg:col-span-1">
             <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Nom</label>
@@ -181,13 +200,39 @@ export function GroupEditForm({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Coach</label>
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Coach par défaut</label>
             <select value={coachId} onChange={(e) => setCoachId(e.target.value)} className="field text-sm" required>
               <option value="">Choisir</option>
               {coachesOptions.map((coach) => (
                 <option key={coach.id} value={coach.id}>{formatCoachOptionLabel(coach)}</option>
               ))}
             </select>
+            <p className="mt-1 text-[0.65rem] text-[var(--muted-foreground)]">
+              Utilisé pour les nouvelles séances générées. Les séances déjà créées gardent leur coach sauf option ci-dessous.
+            </p>
+            {needsCoachSportOverride ? (
+              <p className="mt-1 text-xs text-[var(--danger)]">
+                Coach hors qualification pour ce sport. Validation admin avec motif obligatoire.
+              </p>
+            ) : null}
+            {coachChanged ? (
+              <label className="mt-3 flex gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={applyCoachToFutureSessions}
+                  onChange={(e) => setApplyCoachToFutureSessions(e.target.checked)}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block font-semibold text-[var(--foreground)]">
+                    Appliquer aussi aux séances futures sans pointage
+                  </span>
+                  <span className="mt-0.5 block text-xs text-[var(--muted-foreground)]">
+                    Ne touche pas l&apos;historique, les séances terminées, annulées ou déjà pointées.
+                  </span>
+                </span>
+              </label>
+            ) : null}
           </div>
           <div>
             <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Salle par défaut</label>
@@ -207,9 +252,24 @@ export function GroupEditForm({
             <span className="text-sm text-[var(--muted-foreground)]">Groupe actif</span>
           </div>
         </div>
-      </div>
+        {needsCoachSportOverride ? (
+          <div className="mt-3">
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">
+              Motif admin d&apos;exception
+            </label>
+            <textarea
+              value={coachSportOverrideReason}
+              onChange={(e) => setCoachSportOverrideReason(e.target.value)}
+              maxLength={500}
+              className="field min-h-20 text-sm"
+              required
+            />
+          </div>
+        ) : null}
+      </FormSection>
 
       <GroupMemberSelector
+        id="group-members"
         members={filteredMembers}
         selectedIds={selectedMemberIds}
         search={membersSearch}
@@ -226,7 +286,7 @@ export function GroupEditForm({
         <button type="button" onClick={() => router.push("/groups")} className="btn btn-ghost btn-block-mobile">
           Annuler
         </button>
-        <button type="submit" disabled={loading} className="btn btn-primary btn-block-mobile">
+        <button type="submit" disabled={loading || (needsCoachSportOverride && !coachSportOverrideReason.trim())} className="btn btn-primary btn-block-mobile">
           {loading ? "Enregistrement…" : "Enregistrer les modifications"}
         </button>
       </FormActions>

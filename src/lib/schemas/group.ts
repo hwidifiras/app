@@ -37,6 +37,7 @@ export const createGroupSchema = z.object({
   coachId: z.string().trim().min(1, "Coach requis"),
   capacity: z.number().int().min(1, "Capacité invalide").max(200, "Capacité invalide"),
   room: z.string().trim().max(100).optional().or(z.literal("")),
+  coachSportOverrideReason: z.string().trim().max(500).optional().or(z.literal("")),
 });
 
 export type CreateGroupInput = z.infer<typeof createGroupSchema>;
@@ -50,6 +51,8 @@ export const updateGroupSchema = z
     capacity: z.number().int().min(1, "Capacité invalide").max(200, "Capacité invalide").optional(),
     room: z.string().trim().max(100).optional().or(z.literal("")).optional(),
     isActive: z.boolean().optional(),
+    coachSportOverrideReason: z.string().trim().max(500).optional().or(z.literal("")),
+    applyCoachToFutureSessions: z.boolean().optional(),
   })
   .refine(
     (payload) =>
@@ -59,7 +62,8 @@ export const updateGroupSchema = z
       payload.coachId !== undefined ||
       payload.capacity !== undefined ||
       payload.room !== undefined ||
-      payload.isActive !== undefined,
+      payload.isActive !== undefined ||
+      payload.applyCoachToFutureSessions !== undefined,
     {
       message: "Aucun champ à mettre à jour",
       path: ["_root"],

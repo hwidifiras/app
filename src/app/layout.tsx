@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { ClubBrandingProvider } from "@/components/layout/club-branding-provider";
@@ -7,6 +9,11 @@ import { ThemeProvider } from "@/components/theme/theme-provider";
 import { getAppName } from "@/lib/app-name";
 import { resolveClubBranding } from "@/lib/club-branding";
 import { getClubSettings } from "@/lib/club-settings";
+import { isPublicPath } from "@/lib/public-paths";
+import { getAuthUser } from "@/lib/request-user";
+import { isAdminOnlyPath, requiredPermissionForPath } from "@/lib/route-permissions";
+import { enterTenantContext, getTenantContext } from "@/lib/tenant-context";
+import { resolveTenantFromHost } from "@/lib/tenant-resolver";
 import { THEME_INIT_SCRIPT } from "@/lib/theme-init-script";
 import "./globals.css";
 
@@ -47,8 +54,34 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const settings = await getClubSettings();
-  const branding = resolveClubBranding(settings);
+  const requestHeaders = await headers();
+  const pathname = requestHeaders.get("x-pathname");
+  const resolvedTenant = await resolveTenantFromHost(
+    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host"),
+  );
+
+  if (resolvedTenant.ok) {
+    enterTenantContext(resolvedTenant.context);
+  }
+
+  if (pathname && !isPublicPath(pathname)) {
+    const user = await getAuthUser();
+    if (!user) {
+      redirect(`/login?next=${encodeURIComponent(pathname)}`);
+    }
+
+    const requiredPermission = requiredPermissionForPath(pathname);
+    const denied =
+      (isAdminOnlyPath(pathname) && user.role !== "ADMIN") ||
+      (user.role !== "ADMIN" && requiredPermission !== null && !user.permissions.includes(requiredPermission));
+
+    if (denied) {
+      redirect("/?denied=1");
+    }
+  }
+
+  const settings = getTenantContext() ? await getClubSettings() : null;
+  const branding = resolveClubBranding(settings ?? {});
 
   return (
     <html

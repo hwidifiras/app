@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import {
   Bell,
   CalendarClock,
@@ -12,13 +11,9 @@ import {
   LoaderCircle,
 } from "lucide-react";
 
+import { useAppShellData } from "@/components/layout/app-shell-data-provider";
 import type { AppNotification } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
-
-type NotificationResponse = {
-  notifications: AppNotification[];
-  unreadCount: number;
-};
 
 const severityStyles = {
   critical: {
@@ -36,43 +31,15 @@ const severityStyles = {
 } as const;
 
 export function NotificationCenter({ className }: { className?: string }) {
-  const pathname = usePathname();
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<NotificationResponse>({
-    notifications: [],
-    unreadCount: 0,
-  });
-
-  const load = useCallback(async () => {
-    try {
-      const response = await fetch("/api/notifications", { cache: "no-store" });
-      const json = await response.json();
-      if (response.ok && json.data) {
-        setData(json.data as NotificationResponse);
-      }
-    } catch {
-      // The header must stay usable if notification loading fails.
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => void load(), 0);
-    return () => window.clearTimeout(timer);
-  }, [load, pathname]);
-
-  useEffect(() => {
-    const interval = window.setInterval(() => void load(), 60_000);
-    const refresh = () => void load();
-    window.addEventListener("focus", refresh);
-    return () => {
-      window.clearInterval(interval);
-      window.removeEventListener("focus", refresh);
-    };
-  }, [load]);
+  const {
+    notifications,
+    unreadCount,
+    notificationsLoading: loading,
+    markNotificationRead,
+    markAllNotificationsRead,
+  } = useAppShellData();
 
   useEffect(() => {
     if (!open) return;
@@ -93,36 +60,11 @@ export function NotificationCenter({ className }: { className?: string }) {
   }, [open]);
 
   async function markRead(key: string) {
-    setData((current) => ({
-      notifications: current.notifications.map((item) =>
-        item.key === key ? { ...item, read: true } : item,
-      ),
-      unreadCount: Math.max(
-        0,
-        current.unreadCount -
-          (current.notifications.some((item) => item.key === key && !item.read) ? 1 : 0),
-      ),
-    }));
-    await fetch("/api/notifications", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "mark-read", key }),
-      keepalive: true,
-    }).catch(() => {});
+    await markNotificationRead(key);
   }
 
   async function markAllRead() {
-    const keys = data.notifications.filter((item) => !item.read).map((item) => item.key);
-    if (keys.length === 0) return;
-    setData((current) => ({
-      notifications: current.notifications.map((item) => ({ ...item, read: true })),
-      unreadCount: 0,
-    }));
-    await fetch("/api/notifications", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "mark-all-read", keys }),
-    }).catch(() => {});
+    await markAllNotificationsRead();
   }
 
   return (
@@ -132,9 +74,9 @@ export function NotificationCenter({ className }: { className?: string }) {
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-haspopup="dialog"
-        aria-label={`${data.unreadCount} notification${data.unreadCount > 1 ? "s" : ""} non lue${data.unreadCount > 1 ? "s" : ""}`}
+        aria-label={`${unreadCount} notification${unreadCount > 1 ? "s" : ""} non lue${unreadCount > 1 ? "s" : ""}`}
         className={cn(
-          "relative flex size-10 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)] shadow-sm transition hover:bg-[var(--surface)]",
+          "relative flex size-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)] shadow-[var(--shadow-panel)] transition hover:bg-[var(--surface)] sm:size-10",
           open && "border-[var(--primary)]/45 ring-2 ring-[var(--primary)]/15",
         )}
       >
@@ -143,9 +85,9 @@ export function NotificationCenter({ className }: { className?: string }) {
         ) : (
           <Bell className="size-4.5" />
         )}
-        {data.unreadCount > 0 ? (
-          <span className="absolute -right-1.5 -top-1.5 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[0.62rem] font-bold leading-none text-white ring-2 ring-[var(--surface)]">
-            {data.unreadCount > 99 ? "99+" : data.unreadCount}
+        {unreadCount > 0 ? (
+          <span className="absolute -right-1.5 -top-1.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[0.55rem] font-bold leading-none text-white ring-2 ring-[var(--surface)] sm:min-h-5 sm:min-w-5 sm:text-[0.62rem]">
+            {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         ) : null}
       </button>
@@ -154,18 +96,18 @@ export function NotificationCenter({ className }: { className?: string }) {
         <div
           role="dialog"
           aria-label="Centre de notifications"
-          className="fixed inset-x-3 top-[4.2rem] z-[70] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl sm:left-auto sm:right-3 sm:w-[24rem] lg:absolute lg:right-0 lg:top-full lg:mt-2"
+          className="fixed inset-x-3 top-[4.2rem] z-[70] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-floating)] sm:left-auto sm:right-3 sm:w-[24rem] lg:absolute lg:right-0 lg:top-full lg:mt-2"
         >
           <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
             <div>
               <p className="font-semibold text-[var(--foreground)]">Notifications</p>
               <p className="text-xs text-[var(--muted-foreground)]">
-                {data.unreadCount > 0
-                  ? `${data.unreadCount} priorité${data.unreadCount > 1 ? "s" : ""} à consulter`
+                {unreadCount > 0
+                  ? `${unreadCount} priorité${unreadCount > 1 ? "s" : ""} à consulter`
                   : "Vous êtes à jour"}
               </p>
             </div>
-            {data.unreadCount > 0 ? (
+            {unreadCount > 0 ? (
               <button
                 type="button"
                 onClick={() => void markAllRead()}
@@ -183,7 +125,7 @@ export function NotificationCenter({ className }: { className?: string }) {
                 <LoaderCircle className="mr-2 size-4 animate-spin" />
                 Chargement…
               </div>
-            ) : data.notifications.length === 0 ? (
+            ) : notifications.length === 0 ? (
               <div className="flex min-h-44 flex-col items-center justify-center px-5 text-center">
                 <span className="flex size-11 items-center justify-center rounded-full bg-emerald-500/12 text-emerald-600 dark:text-emerald-300">
                   <CheckCheck className="size-5" />
@@ -195,7 +137,7 @@ export function NotificationCenter({ className }: { className?: string }) {
               </div>
             ) : (
               <ul className="space-y-1">
-                {data.notifications.map((notification) => (
+                {notifications.map((notification) => (
                   <NotificationItem
                     key={notification.key}
                     notification={notification}
@@ -233,9 +175,10 @@ function NotificationItem({
     <li>
       <Link
         href={notification.href}
+        prefetch={false}
         onClick={onOpen}
         className={cn(
-          "group flex min-h-[4.75rem] items-start gap-3 rounded-xl border px-3 py-3 transition",
+          "group flex min-h-[4.75rem] items-start gap-3 rounded-lg border px-3 py-3 transition",
           notification.read
             ? "border-transparent text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)]"
             : "border-[var(--primary)]/15 bg-[var(--primary)]/[0.045] hover:border-[var(--primary)]/30 hover:bg-[var(--primary)]/[0.075]",

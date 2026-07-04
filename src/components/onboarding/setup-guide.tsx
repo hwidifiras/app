@@ -1,14 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { Check, ChevronRight, Circle, X } from "lucide-react";
 
+import { useAppShellData } from "@/components/layout/app-shell-data-provider";
 import type { SetupGuideProgress } from "@/lib/setup-guide";
 import { cn } from "@/lib/utils";
 
 const DISMISS_KEY = "gymday-setup-guide-dismissed";
+
+function readDismissedState() {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(DISMISS_KEY) === "1";
+}
 
 type SetupGuideProps = {
   variant: "bar" | "header";
@@ -33,7 +38,7 @@ function GuidePanel({
   return (
     <div
       className={cn(
-        "rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-xl",
+        "rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-floating)]",
         className,
       )}
     >
@@ -88,33 +93,9 @@ function GuidePanel({
 }
 
 export function SetupGuide({ variant, className }: SetupGuideProps) {
-  const pathname = usePathname();
-  const [progress, setProgress] = useState<SetupGuideProgress | null>(null);
   const [open, setOpen] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
-
-  const load = useCallback(async () => {
-    try {
-      const res = await fetch("/api/setup-guide", { cache: "no-store" });
-      const json = await res.json();
-      if (res.ok && json.data) {
-        setProgress(json.data as SetupGuideProgress);
-        if (json.data.isComplete) {
-          setOpen(false);
-        }
-      }
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  useEffect(() => {
-    setDismissed(typeof window !== "undefined" && localStorage.getItem(DISMISS_KEY) === "1");
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load, pathname]);
+  const [dismissed, setDismissed] = useState(readDismissedState);
+  const { setupGuide: progress } = useAppShellData();
 
   if (!progress || progress.isComplete || dismissed) {
     return null;
@@ -169,15 +150,15 @@ export function SetupGuide({ variant, className }: SetupGuideProps) {
           aria-expanded={open}
           aria-label={`Premiers pas, ${pendingCount} étape(s) restante(s)`}
           className={cn(
-            "inline-flex min-h-10 max-w-full items-center gap-2 rounded-xl border-2 border-[var(--primary)]/40 bg-[var(--primary)]/10 px-3 py-2 text-sm font-semibold text-[var(--primary)] shadow-sm transition",
-            "hover:border-[var(--primary)] hover:bg-[var(--primary)]/18 active:scale-[0.98]",
-            open && "border-[var(--primary)] bg-[var(--primary)]/20 ring-2 ring-[var(--primary)]/25",
+            "inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-1.5 py-1 text-xs font-semibold text-[var(--muted-foreground)] shadow-[var(--shadow-panel)] transition sm:min-h-10 sm:gap-2 sm:border-[var(--primary)]/35 sm:bg-[var(--primary)]/10 sm:px-3 sm:py-2 sm:text-sm sm:text-[var(--primary)]",
+            "hover:border-[var(--primary)]/60 hover:bg-[var(--primary)]/10 active:scale-[0.98]",
+            open && "border-[var(--primary)] bg-[var(--primary)]/12 text-[var(--primary)] ring-2 ring-[var(--primary)]/20",
           )}
         >
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)] text-xs font-bold text-white">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-xs font-bold text-[var(--primary)] sm:bg-[var(--primary)] sm:text-white">
             {nextStep.order}
           </span>
-          <span className="font-semibold lg:hidden">Guide</span>
+          <span className="hidden font-semibold sm:inline lg:hidden">Guide</span>
           <span className="hidden min-w-0 text-left leading-tight lg:block">
             <span className="block text-[0.62rem] font-bold uppercase tracking-wide text-[var(--primary)]">
               Premiers pas
@@ -186,7 +167,7 @@ export function SetupGuide({ variant, className }: SetupGuideProps) {
               {nextStep.label}
             </span>
           </span>
-          <span className="flex min-w-[1.35rem] shrink-0 items-center justify-center rounded-full bg-[var(--primary)] px-1.5 text-xs font-bold text-white">
+          <span className="hidden min-w-[1.35rem] shrink-0 items-center justify-center rounded-full bg-[var(--primary)] px-1.5 text-xs font-bold text-white sm:flex">
             {pendingCount}
           </span>
         </button>

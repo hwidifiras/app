@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/list-controls";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Pagination, usePagination } from "@/components/ui/pagination";
+import { formatMoney } from "@/lib/money";
 
 type PlanRow = {
   id: string;
@@ -91,7 +92,7 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
 
   return (
     <div>
-      <div className="sticky top-[57px] z-20 border-b border-[var(--border)] bg-[var(--surface)]/96 p-3 backdrop-blur lg:top-[3.5rem]">
+      <div className="list-toolbar sticky top-[57px] z-20 border-b border-[var(--border)] bg-[var(--surface)]/96 p-3 backdrop-blur lg:top-[3.5rem]">
         <div className="flex flex-col gap-2 md:flex-row md:items-end">
           <div className="min-w-0 flex-1">
             <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Recherche</label>
@@ -139,7 +140,7 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
       ) : (
       <div className="data-table overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-(--surface-soft) text-xs uppercase tracking-wider text-muted-foreground">
+          <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-muted-foreground">
             <tr>
               <th className="px-4 py-3 text-left font-semibold">Nom</th>
               <th className="px-4 py-3 text-left font-semibold">Description</th>
@@ -157,12 +158,12 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
             {pagination.pageItems.map((plan) => (
               <tr
                 key={plan.id}
-                className={`mobile-collapsible-row hover:bg-(--surface-soft) ${expandedPlanIds.includes(plan.id) ? "is-expanded" : ""}`}
+                className={`mobile-collapsible-row hover:bg-[var(--surface-soft)] ${expandedPlanIds.includes(plan.id) ? "is-expanded" : ""}`}
               >
                 <td className="data-table-primary px-4 py-3 font-medium" data-label="Nom">{plan.name}</td>
                 <td className="px-4 py-3 text-muted-foreground mobile-detail-cell" data-label="Description">{plan.description ?? "—"}</td>
                 <td className="px-4 py-3 text-right" data-label="Prix">
-                  {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(plan.price / 100)}
+                  {formatMoney(plan.price)}
                 </td>
                 <td className="px-4 py-3 text-center mobile-detail-cell" data-label="/ semaine">{plan.sessionsPerWeek ?? "—"}</td>
                 <td className="px-4 py-3 text-center mobile-detail-cell" data-label="/ mois">{plan.totalSessions}</td>
@@ -172,9 +173,13 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
                   <StatusBadge variant={plan.isActive ? "success" : "muted"}>{plan.isActive ? "Actif" : "Inactif"}</StatusBadge>
                 </td>
                 <td className="px-4 py-3 text-center mobile-detail-cell" data-label="Souscriptions">{plan._count.subscriptions}</td>
-                <td className="px-4 py-3 text-right card-actions-cell">
+                <td className="px-4 py-3 text-right card-actions-cell" data-label="Actions">
                   <div className="card-actions-stack">
-                    <Link href={`/subscription-plans/${plan.id}/edit`} className="btn btn-ghost md:min-h-0 md:px-2 md:py-1 md:text-xs">
+                    <Link
+                      href={`/subscription-plans/${plan.id}/edit`}
+                      prefetch={false}
+                      className="btn btn-ghost md:min-h-0 md:px-2 md:py-1 md:text-xs"
+                    >
                       Modifier
                     </Link>
                     <button
@@ -192,7 +197,7 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
                     onClick={() => toggleExpand(plan.id)}
                     aria-expanded={expandedPlanIds.includes(plan.id)}
                   >
-                    Détails
+                    {expandedPlanIds.includes(plan.id) ? "Réduire" : "Infos"}
                     <ChevronDown className={`size-3 transition-transform ${expandedPlanIds.includes(plan.id) ? "rotate-180" : ""}`} />
                   </button>
                 </td>

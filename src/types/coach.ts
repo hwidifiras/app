@@ -7,6 +7,8 @@ export type CoachDto = {
   isActive: boolean;
   sportId: string | null;
   sportName: string | null;
+  qualifiedSportIds: string[];
+  qualifiedSports: Array<{ id: string; name: string; isPrimary: boolean }>;
   createdAt: string;
   updatedAt: string;
 };

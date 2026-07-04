@@ -1,0 +1,2030 @@
+{
+  "generatedAt": "2026-07-01T05:11:45.721Z",
+  "baseUrl": "https://we-discipline.com",
+  "paths": [
+    "/",
+    "/attendance/today",
+    "/enrollment",
+    "/payments/new",
+    "/members",
+    "/subscriptions",
+    "/payments",
+    "/sessions",
+    "/groups",
+    "/coaches",
+    "/sports",
+    "/subscription-plans",
+    "/offers",
+    "/settings/club",
+    "/settings/data-import",
+    "/settings/users",
+    "/logs"
+  ],
+  "summary": {
+    "total": 34,
+    "passed": 34,
+    "failed": 0
+  },
+  "results": [
+    {
+      "path": "/",
+      "profile": "Mobile",
+      "url": "https://we-discipline.com/",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\mobile-root-screen-reader.png",
+      "stats": {
+        "headings": 3,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 13,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 137,
+          "link": 30,
+          "StaticText": 109,
+          "InlineTextBox": 113,
+          "generic": 15,
+          "image": 43,
+          "button": 8,
+          "navigation": 1,
+          "main": 1,
+          "sectionheader": 1,
+          "paragraph": 16,
+          "heading": 6,
+          "region": 6,
+          "list": 2,
+          "listitem": 4,
+          "table": 1,
+          "row": 2,
+          "cell": 8,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Aujourd'hui au club"
+          },
+          {
+            "level": 2,
+            "text": "Séances du jour"
+          },
+          {
+            "level": 2,
+            "text": "Actions rapides"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/",
+      "profile": "Desktop",
+      "url": "https://we-discipline.com/",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\desktop-root-screen-reader.png",
+      "stats": {
+        "headings": 5,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 31,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 145,
+          "link": 35,
+          "StaticText": 129,
+          "InlineTextBox": 133,
+          "complementary": 1,
+          "image": 49,
+          "button": 9,
+          "navigation": 1,
+          "paragraph": 25,
+          "banner": 1,
+          "group": 1,
+          "generic": 10,
+          "main": 1,
+          "sectionheader": 1,
+          "heading": 6,
+          "region": 6,
+          "list": 2,
+          "listitem": 4,
+          "table": 1,
+          "rowgroup": 1,
+          "row": 3,
+          "columnheader": 5,
+          "cell": 10,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Aujourd'hui au club"
+          },
+          {
+            "level": 2,
+            "text": "Séances du jour"
+          },
+          {
+            "level": 2,
+            "text": "Actions rapides"
+          },
+          {
+            "level": 2,
+            "text": "À traiter"
+          },
+          {
+            "level": 2,
+            "text": "Argent"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/attendance/today",
+      "profile": "Mobile",
+      "url": "https://we-discipline.com/attendance/today",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\mobile-attendance-today-screen-reader.png",
+      "stats": {
+        "headings": 3,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 13,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 74,
+          "link": 9,
+          "StaticText": 54,
+          "InlineTextBox": 55,
+          "generic": 8,
+          "image": 22,
+          "button": 5,
+          "navigation": 1,
+          "main": 1,
+          "paragraph": 5,
+          "heading": 3,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Pointage"
+          },
+          {
+            "level": 2,
+            "text": "Audit UX Adultes"
+          },
+          {
+            "level": 2,
+            "text": "Audit UX Adultes"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/attendance/today",
+      "profile": "Desktop",
+      "url": "https://we-discipline.com/attendance/today",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\desktop-attendance-today-screen-reader.png",
+      "stats": {
+        "headings": 3,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 21,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 90,
+          "link": 14,
+          "StaticText": 68,
+          "InlineTextBox": 71,
+          "complementary": 1,
+          "image": 30,
+          "button": 8,
+          "navigation": 1,
+          "paragraph": 10,
+          "banner": 1,
+          "group": 1,
+          "generic": 6,
+          "main": 1,
+          "heading": 3,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Pointage"
+          },
+          {
+            "level": 2,
+            "text": "Audit UX Adultes"
+          },
+          {
+            "level": 2,
+            "text": "Audit UX Adultes"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/enrollment",
+      "profile": "Mobile",
+      "url": "https://we-discipline.com/enrollment",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\mobile-enrollment-screen-reader.png",
+      "stats": {
+        "headings": 2,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 13,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 36,
+          "link": 7,
+          "StaticText": 31,
+          "InlineTextBox": 35,
+          "generic": 9,
+          "image": 9,
+          "button": 5,
+          "navigation": 1,
+          "main": 1,
+          "paragraph": 6,
+          "heading": 2,
+          "form": 1,
+          "complementary": 1,
+          "group": 1,
+          "Legend": 1,
+          "radio": 2,
+          "LabelText": 3,
+          "combobox": 3,
+          "MenuListPopup": 3,
+          "option": 19,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Inscrire"
+          },
+          {
+            "level": 2,
+            "text": "Élèves et cours"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/enrollment",
+      "profile": "Desktop",
+      "url": "https://we-discipline.com/enrollment",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\desktop-enrollment-screen-reader.png",
+      "stats": {
+        "headings": 2,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 22,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 52,
+          "link": 12,
+          "StaticText": 45,
+          "InlineTextBox": 45,
+          "complementary": 2,
+          "image": 17,
+          "button": 8,
+          "navigation": 1,
+          "paragraph": 11,
+          "banner": 1,
+          "group": 2,
+          "generic": 7,
+          "main": 1,
+          "heading": 2,
+          "form": 1,
+          "Legend": 1,
+          "radio": 2,
+          "LabelText": 3,
+          "combobox": 3,
+          "MenuListPopup": 3,
+          "option": 19,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Inscrire"
+          },
+          {
+            "level": 2,
+            "text": "Élèves et cours"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/payments/new",
+      "profile": "Mobile",
+      "url": "https://we-discipline.com/payments/new",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\mobile-payments-new-screen-reader.png",
+      "stats": {
+        "headings": 4,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 4,
+        "visibleControls": 18,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 55,
+          "link": 12,
+          "StaticText": 63,
+          "InlineTextBox": 66,
+          "generic": 15,
+          "image": 19,
+          "button": 11,
+          "navigation": 2,
+          "main": 1,
+          "paragraph": 10,
+          "heading": 4,
+          "form": 1,
+          "LabelText": 6,
+          "combobox": 2,
+          "MenuListPopup": 2,
+          "option": 5,
+          "strong": 2,
+          "spinbutton": 4,
+          "Date": 1,
+          "textbox": 1,
+          "complementary": 1,
+          "DescriptionList": 1,
+          "term": 5,
+          "definition": 5,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Encaisser"
+          },
+          {
+            "level": 2,
+            "text": "1. Dossier"
+          },
+          {
+            "level": 2,
+            "text": "2. Montant"
+          },
+          {
+            "level": 2,
+            "text": "3. Règlement"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/payments/new",
+      "profile": "Desktop",
+      "url": "https://we-discipline.com/payments/new",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\desktop-payments-new-screen-reader.png",
+      "stats": {
+        "headings": 4,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 4,
+        "visibleControls": 31,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 74,
+          "link": 17,
+          "StaticText": 82,
+          "InlineTextBox": 83,
+          "complementary": 2,
+          "image": 27,
+          "button": 14,
+          "navigation": 2,
+          "paragraph": 22,
+          "banner": 1,
+          "group": 1,
+          "generic": 13,
+          "main": 1,
+          "heading": 4,
+          "form": 1,
+          "LabelText": 6,
+          "combobox": 2,
+          "MenuListPopup": 2,
+          "option": 5,
+          "spinbutton": 4,
+          "strong": 1,
+          "Date": 1,
+          "textbox": 1,
+          "DescriptionList": 1,
+          "term": 5,
+          "definition": 5,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Encaisser"
+          },
+          {
+            "level": 2,
+            "text": "1. Dossier"
+          },
+          {
+            "level": 2,
+            "text": "2. Montant"
+          },
+          {
+            "level": 2,
+            "text": "3. Règlement"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/members",
+      "profile": "Mobile",
+      "url": "https://we-discipline.com/members",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\mobile-members-screen-reader.png",
+      "stats": {
+        "headings": 1,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 18,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 145,
+          "link": 20,
+          "StaticText": 69,
+          "InlineTextBox": 70,
+          "generic": 11,
+          "image": 17,
+          "button": 10,
+          "navigation": 1,
+          "main": 1,
+          "paragraph": 2,
+          "heading": 1,
+          "LabelText": 1,
+          "searchbox": 1,
+          "table": 1,
+          "row": 6,
+          "cell": 18,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Membres"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/members",
+      "profile": "Desktop",
+      "url": "https://we-discipline.com/members",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\desktop-members-screen-reader.png",
+      "stats": {
+        "headings": 1,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 43,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 69,
+          "link": 25,
+          "StaticText": 101,
+          "InlineTextBox": 116,
+          "complementary": 1,
+          "image": 19,
+          "button": 7,
+          "navigation": 1,
+          "paragraph": 7,
+          "banner": 1,
+          "group": 1,
+          "generic": 9,
+          "main": 1,
+          "heading": 1,
+          "LabelText": 5,
+          "searchbox": 1,
+          "combobox": 4,
+          "MenuListPopup": 4,
+          "option": 20,
+          "table": 1,
+          "rowgroup": 1,
+          "row": 7,
+          "columnheader": 9,
+          "checkbox": 7,
+          "cell": 54,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Membres"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/subscriptions",
+      "profile": "Mobile",
+      "url": "https://we-discipline.com/subscriptions",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\mobile-subscriptions-screen-reader.png",
+      "stats": {
+        "headings": 1,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 16,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 98,
+          "link": 15,
+          "StaticText": 63,
+          "InlineTextBox": 68,
+          "generic": 20,
+          "image": 17,
+          "button": 9,
+          "navigation": 1,
+          "main": 1,
+          "paragraph": 8,
+          "heading": 1,
+          "LabelText": 1,
+          "searchbox": 1,
+          "table": 1,
+          "row": 5,
+          "cell": 25,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Abonnements"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/subscriptions",
+      "profile": "Desktop",
+      "url": "https://we-discipline.com/subscriptions",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\desktop-subscriptions-screen-reader.png",
+      "stats": {
+        "headings": 1,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 29,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 70,
+          "link": 20,
+          "StaticText": 116,
+          "InlineTextBox": 116,
+          "complementary": 1,
+          "image": 20,
+          "button": 7,
+          "navigation": 1,
+          "paragraph": 13,
+          "banner": 1,
+          "group": 1,
+          "generic": 9,
+          "main": 1,
+          "heading": 1,
+          "LabelText": 1,
+          "searchbox": 1,
+          "combobox": 2,
+          "MenuListPopup": 2,
+          "option": 8,
+          "table": 1,
+          "rowgroup": 1,
+          "row": 6,
+          "columnheader": 9,
+          "cell": 45,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Abonnements"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/payments",
+      "profile": "Mobile",
+      "url": "https://we-discipline.com/payments",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\mobile-payments-screen-reader.png",
+      "stats": {
+        "headings": 1,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 16,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 129,
+          "link": 8,
+          "StaticText": 53,
+          "InlineTextBox": 53,
+          "generic": 10,
+          "image": 15,
+          "button": 8,
+          "navigation": 1,
+          "main": 1,
+          "paragraph": 3,
+          "heading": 1,
+          "LabelText": 1,
+          "searchbox": 1,
+          "list": 1,
+          "listitem": 4,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Paiements"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/payments",
+      "profile": "Desktop",
+      "url": "https://we-discipline.com/payments",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\desktop-payments-screen-reader.png",
+      "stats": {
+        "headings": 1,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 26,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 61,
+          "link": 13,
+          "StaticText": 74,
+          "InlineTextBox": 74,
+          "complementary": 1,
+          "image": 24,
+          "button": 12,
+          "navigation": 1,
+          "paragraph": 8,
+          "banner": 1,
+          "group": 1,
+          "generic": 8,
+          "main": 1,
+          "heading": 1,
+          "LabelText": 2,
+          "searchbox": 1,
+          "combobox": 1,
+          "MenuListPopup": 1,
+          "option": 3,
+          "table": 1,
+          "rowgroup": 1,
+          "row": 5,
+          "columnheader": 7,
+          "cell": 28,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Paiements"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/sessions",
+      "profile": "Mobile",
+      "url": "https://we-discipline.com/sessions",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\mobile-sessions-screen-reader.png",
+      "stats": {
+        "headings": 4,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 17,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 83,
+          "link": 8,
+          "StaticText": 63,
+          "InlineTextBox": 64,
+          "generic": 13,
+          "image": 14,
+          "button": 13,
+          "navigation": 1,
+          "main": 1,
+          "paragraph": 13,
+          "heading": 5,
+          "LabelText": 1,
+          "searchbox": 1,
+          "list": 3,
+          "listitem": 3,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Planning"
+          },
+          {
+            "level": 2,
+            "text": "Vue semaine filtrable"
+          },
+          {
+            "level": 3,
+            "text": "mardi 30/06/2026"
+          },
+          {
+            "level": 3,
+            "text": "mercredi 01/07/2026"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/sessions",
+      "profile": "Desktop",
+      "url": "https://we-discipline.com/sessions",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\desktop-sessions-screen-reader.png",
+      "stats": {
+        "headings": 5,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 29,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 65,
+          "link": 13,
+          "StaticText": 80,
+          "InlineTextBox": 81,
+          "complementary": 1,
+          "image": 22,
+          "button": 16,
+          "navigation": 1,
+          "paragraph": 18,
+          "banner": 1,
+          "group": 1,
+          "generic": 11,
+          "main": 1,
+          "heading": 5,
+          "LabelText": 4,
+          "searchbox": 1,
+          "combobox": 3,
+          "MenuListPopup": 3,
+          "option": 24,
+          "list": 3,
+          "listitem": 3,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Planning"
+          },
+          {
+            "level": 2,
+            "text": "Vue semaine filtrable"
+          },
+          {
+            "level": 3,
+            "text": "mardi 30/06/2026"
+          },
+          {
+            "level": 3,
+            "text": "mercredi 01/07/2026"
+          },
+          {
+            "level": 3,
+            "text": "jeudi 02/07/2026"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/groups",
+      "profile": "Mobile",
+      "url": "https://we-discipline.com/groups",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\mobile-groups-screen-reader.png",
+      "stats": {
+        "headings": 1,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 20,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 101,
+          "link": 28,
+          "StaticText": 101,
+          "InlineTextBox": 104,
+          "generic": 41,
+          "image": 51,
+          "button": 24,
+          "navigation": 1,
+          "main": 1,
+          "paragraph": 13,
+          "heading": 1,
+          "LabelText": 1,
+          "searchbox": 1,
+          "table": 1,
+          "row": 10,
+          "cell": 30,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Cours"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/groups",
+      "profile": "Desktop",
+      "url": "https://we-discipline.com/groups",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\desktop-groups-screen-reader.png",
+      "stats": {
+        "headings": 1,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 56,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 88,
+          "link": 42,
+          "StaticText": 132,
+          "InlineTextBox": 132,
+          "complementary": 1,
+          "image": 58,
+          "button": 17,
+          "navigation": 1,
+          "paragraph": 19,
+          "banner": 1,
+          "group": 1,
+          "generic": 9,
+          "main": 1,
+          "heading": 1,
+          "LabelText": 2,
+          "searchbox": 1,
+          "combobox": 1,
+          "MenuListPopup": 1,
+          "option": 3,
+          "table": 1,
+          "rowgroup": 1,
+          "row": 11,
+          "columnheader": 6,
+          "cell": 60,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Cours"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/coaches",
+      "profile": "Mobile",
+      "url": "https://we-discipline.com/coaches",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\mobile-coaches-screen-reader.png",
+      "stats": {
+        "headings": 2,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 15,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 177,
+          "link": 8,
+          "StaticText": 149,
+          "InlineTextBox": 151,
+          "generic": 14,
+          "image": 31,
+          "button": 24,
+          "navigation": 1,
+          "main": 1,
+          "paragraph": 16,
+          "heading": 3,
+          "form": 1,
+          "LabelText": 15,
+          "textbox": 4,
+          "combobox": 1,
+          "MenuListPopup": 1,
+          "option": 11,
+          "checkbox": 10,
+          "searchbox": 1,
+          "list": 1,
+          "listitem": 10,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Coachs"
+          },
+          {
+            "level": 2,
+            "text": "Coachs enregistrés"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/coaches",
+      "profile": "Desktop",
+      "url": "https://we-discipline.com/coaches",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\desktop-coaches-screen-reader.png",
+      "stats": {
+        "headings": 3,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 61,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 185,
+          "link": 22,
+          "StaticText": 153,
+          "InlineTextBox": 207,
+          "complementary": 1,
+          "image": 48,
+          "button": 27,
+          "navigation": 1,
+          "paragraph": 22,
+          "banner": 1,
+          "group": 1,
+          "generic": 12,
+          "main": 1,
+          "heading": 3,
+          "form": 1,
+          "LabelText": 15,
+          "textbox": 4,
+          "combobox": 1,
+          "MenuListPopup": 1,
+          "option": 11,
+          "checkbox": 10,
+          "searchbox": 1,
+          "list": 1,
+          "listitem": 10,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Coachs"
+          },
+          {
+            "level": 2,
+            "text": "Ajouter un coach"
+          },
+          {
+            "level": 2,
+            "text": "Coachs enregistrés"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/sports",
+      "profile": "Mobile",
+      "url": "https://we-discipline.com/sports",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\mobile-sports-screen-reader.png",
+      "stats": {
+        "headings": 2,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 17,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 73,
+          "link": 8,
+          "StaticText": 74,
+          "InlineTextBox": 74,
+          "generic": 12,
+          "image": 11,
+          "button": 24,
+          "navigation": 1,
+          "main": 1,
+          "paragraph": 24,
+          "heading": 3,
+          "form": 1,
+          "LabelText": 2,
+          "textbox": 2,
+          "searchbox": 1,
+          "list": 1,
+          "listitem": 10,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Disciplines"
+          },
+          {
+            "level": 2,
+            "text": "Sports enregistrés"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/sports",
+      "profile": "Desktop",
+      "url": "https://we-discipline.com/sports",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\desktop-sports-screen-reader.png",
+      "stats": {
+        "headings": 3,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 40,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 101,
+          "link": 22,
+          "StaticText": 98,
+          "InlineTextBox": 98,
+          "complementary": 1,
+          "image": 28,
+          "button": 27,
+          "navigation": 1,
+          "paragraph": 30,
+          "banner": 1,
+          "group": 1,
+          "generic": 10,
+          "main": 1,
+          "heading": 3,
+          "form": 1,
+          "LabelText": 2,
+          "textbox": 2,
+          "searchbox": 1,
+          "list": 1,
+          "listitem": 10,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Disciplines"
+          },
+          {
+            "level": 2,
+            "text": "Ajouter un sport"
+          },
+          {
+            "level": 2,
+            "text": "Sports enregistrés"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/subscription-plans",
+      "profile": "Mobile",
+      "url": "https://we-discipline.com/subscription-plans",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\mobile-subscription-plans-screen-reader.png",
+      "stats": {
+        "headings": 1,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 16,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 77,
+          "link": 13,
+          "StaticText": 54,
+          "InlineTextBox": 56,
+          "generic": 18,
+          "image": 17,
+          "button": 12,
+          "navigation": 1,
+          "main": 1,
+          "paragraph": 3,
+          "heading": 1,
+          "LabelText": 1,
+          "searchbox": 1,
+          "table": 1,
+          "row": 4,
+          "cell": 16,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Formules"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/subscription-plans",
+      "profile": "Desktop",
+      "url": "https://we-discipline.com/subscription-plans",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\desktop-subscription-plans-screen-reader.png",
+      "stats": {
+        "headings": 1,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 38,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 62,
+          "link": 27,
+          "StaticText": 105,
+          "InlineTextBox": 112,
+          "complementary": 1,
+          "image": 30,
+          "button": 11,
+          "navigation": 1,
+          "paragraph": 9,
+          "banner": 1,
+          "group": 1,
+          "generic": 8,
+          "main": 1,
+          "heading": 1,
+          "LabelText": 2,
+          "searchbox": 1,
+          "combobox": 1,
+          "MenuListPopup": 1,
+          "option": 3,
+          "table": 1,
+          "rowgroup": 1,
+          "row": 5,
+          "columnheader": 10,
+          "cell": 40,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Formules"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/offers",
+      "profile": "Mobile",
+      "url": "https://we-discipline.com/offers",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\mobile-offers-screen-reader.png",
+      "stats": {
+        "headings": 3,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 14,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 35,
+          "link": 8,
+          "StaticText": 37,
+          "InlineTextBox": 41,
+          "generic": 15,
+          "image": 12,
+          "button": 5,
+          "navigation": 1,
+          "main": 1,
+          "paragraph": 11,
+          "heading": 3,
+          "strong": 1,
+          "form": 1,
+          "LabelText": 4,
+          "textbox": 3,
+          "combobox": 1,
+          "MenuListPopup": 1,
+          "option": 4,
+          "searchbox": 1,
+          "list": 1,
+          "listitem": 1,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Offres"
+          },
+          {
+            "level": 2,
+            "text": "Créer une offre"
+          },
+          {
+            "level": 2,
+            "text": "Offres actives"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/offers",
+      "profile": "Desktop",
+      "url": "https://we-discipline.com/offers",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\desktop-offers-screen-reader.png",
+      "stats": {
+        "headings": 3,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 33,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 63,
+          "link": 22,
+          "StaticText": 61,
+          "InlineTextBox": 62,
+          "complementary": 1,
+          "image": 29,
+          "button": 8,
+          "navigation": 1,
+          "paragraph": 17,
+          "banner": 1,
+          "group": 1,
+          "generic": 13,
+          "main": 1,
+          "heading": 3,
+          "strong": 1,
+          "form": 1,
+          "LabelText": 4,
+          "textbox": 3,
+          "combobox": 1,
+          "MenuListPopup": 1,
+          "option": 4,
+          "searchbox": 1,
+          "list": 1,
+          "listitem": 1,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Offres"
+          },
+          {
+            "level": 2,
+            "text": "Créer une offre"
+          },
+          {
+            "level": 2,
+            "text": "Offres actives"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/settings/club",
+      "profile": "Mobile",
+      "url": "https://we-discipline.com/settings/club",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\mobile-settings-club-screen-reader.png",
+      "stats": {
+        "headings": 2,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 4,
+        "visibleControls": 15,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 67,
+          "link": 10,
+          "StaticText": 51,
+          "InlineTextBox": 65,
+          "generic": 19,
+          "image": 9,
+          "button": 5,
+          "navigation": 2,
+          "main": 1,
+          "paragraph": 10,
+          "heading": 4,
+          "list": 1,
+          "listitem": 5,
+          "ListMarker": 5,
+          "form": 1,
+          "LabelText": 10,
+          "textbox": 4,
+          "checkbox": 3,
+          "spinbutton": 1,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Club"
+          },
+          {
+            "level": 2,
+            "text": "Identité du club"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/settings/club",
+      "profile": "Desktop",
+      "url": "https://we-discipline.com/settings/club",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\desktop-settings-club-screen-reader.png",
+      "stats": {
+        "headings": 3,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 4,
+        "visibleControls": 33,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 95,
+          "link": 24,
+          "StaticText": 75,
+          "InlineTextBox": 75,
+          "complementary": 1,
+          "image": 26,
+          "button": 8,
+          "navigation": 2,
+          "paragraph": 16,
+          "banner": 1,
+          "group": 1,
+          "generic": 17,
+          "main": 1,
+          "heading": 4,
+          "list": 1,
+          "listitem": 5,
+          "ListMarker": 5,
+          "form": 1,
+          "LabelText": 10,
+          "textbox": 4,
+          "checkbox": 3,
+          "spinbutton": 1,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Club"
+          },
+          {
+            "level": 2,
+            "text": "Identité du club"
+          },
+          {
+            "level": 2,
+            "text": "Pointage & paiements"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/settings/data-import",
+      "profile": "Mobile",
+      "url": "https://we-discipline.com/settings/data-import",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\mobile-settings-data-import-screen-reader.png",
+      "stats": {
+        "headings": 3,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 11,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 27,
+          "link": 8,
+          "StaticText": 20,
+          "InlineTextBox": 23,
+          "generic": 8,
+          "image": 11,
+          "button": 4,
+          "navigation": 1,
+          "main": 1,
+          "paragraph": 5,
+          "heading": 3,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Reprise"
+          },
+          {
+            "level": 2,
+            "text": "Mode de reprise fermé"
+          },
+          {
+            "level": 2,
+            "text": "Dernières reprises"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/settings/data-import",
+      "profile": "Desktop",
+      "url": "https://we-discipline.com/settings/data-import",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\desktop-settings-data-import-screen-reader.png",
+      "stats": {
+        "headings": 3,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 27,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 55,
+          "link": 22,
+          "StaticText": 44,
+          "InlineTextBox": 44,
+          "complementary": 1,
+          "image": 28,
+          "button": 7,
+          "navigation": 1,
+          "paragraph": 11,
+          "banner": 1,
+          "group": 1,
+          "generic": 6,
+          "main": 1,
+          "heading": 3,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Reprise"
+          },
+          {
+            "level": 2,
+            "text": "Mode de reprise fermé"
+          },
+          {
+            "level": 2,
+            "text": "Dernières reprises"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/settings/users",
+      "profile": "Mobile",
+      "url": "https://we-discipline.com/settings/users",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\mobile-settings-users-screen-reader.png",
+      "stats": {
+        "headings": 2,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 13,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 81,
+          "link": 8,
+          "StaticText": 81,
+          "InlineTextBox": 82,
+          "generic": 15,
+          "image": 24,
+          "button": 18,
+          "navigation": 1,
+          "main": 1,
+          "paragraph": 26,
+          "heading": 3,
+          "article": 7,
+          "form": 1,
+          "LabelText": 10,
+          "textbox": 3,
+          "combobox": 2,
+          "MenuListPopup": 2,
+          "option": 4,
+          "checkbox": 6,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Utilisateurs"
+          },
+          {
+            "level": 2,
+            "text": "Liste (7)"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/settings/users",
+      "profile": "Desktop",
+      "url": "https://we-discipline.com/settings/users",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\desktop-settings-users-screen-reader.png",
+      "stats": {
+        "headings": 3,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 3,
+        "visibleControls": 38,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 109,
+          "link": 22,
+          "StaticText": 105,
+          "InlineTextBox": 105,
+          "complementary": 1,
+          "image": 41,
+          "button": 21,
+          "navigation": 1,
+          "paragraph": 32,
+          "banner": 1,
+          "group": 1,
+          "generic": 13,
+          "main": 1,
+          "heading": 3,
+          "article": 7,
+          "form": 1,
+          "LabelText": 10,
+          "textbox": 3,
+          "combobox": 2,
+          "MenuListPopup": 2,
+          "option": 4,
+          "checkbox": 6,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Utilisateurs"
+          },
+          {
+            "level": 2,
+            "text": "Liste (7)"
+          },
+          {
+            "level": 2,
+            "text": "Créer un utilisateur"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/logs",
+      "profile": "Mobile",
+      "url": "https://we-discipline.com/logs",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\mobile-logs-screen-reader.png",
+      "stats": {
+        "headings": 1,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 4,
+        "visibleControls": 14,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 152,
+          "link": 34,
+          "StaticText": 269,
+          "InlineTextBox": 288,
+          "generic": 128,
+          "image": 33,
+          "button": 4,
+          "navigation": 2,
+          "main": 1,
+          "paragraph": 3,
+          "heading": 1,
+          "form": 1,
+          "textbox": 1,
+          "table": 1,
+          "row": 30,
+          "cell": 120,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Journal actions"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    },
+    {
+      "path": "/logs",
+      "profile": "Desktop",
+      "url": "https://we-discipline.com/logs",
+      "passed": true,
+      "failures": [],
+      "screenshot": "docs\\audits\\ui-ux-current-sweep-2026-07-01\\screenshots\\screen-reader-semantics-adbf397\\desktop-logs-screen-reader.png",
+      "stats": {
+        "headings": 1,
+        "h1": 1,
+        "mainCount": 1,
+        "skipLinkCount": 1,
+        "navCount": 4,
+        "visibleControls": 35,
+        "unnamedControls": 0,
+        "ariaHiddenControls": 0,
+        "imageNameIssues": 0,
+        "axRoles": {
+          "RootWebArea": 1,
+          "none": 86,
+          "link": 48,
+          "StaticText": 177,
+          "InlineTextBox": 177,
+          "complementary": 1,
+          "image": 50,
+          "button": 7,
+          "navigation": 2,
+          "paragraph": 9,
+          "banner": 1,
+          "group": 1,
+          "generic": 6,
+          "main": 1,
+          "heading": 1,
+          "form": 1,
+          "textbox": 1,
+          "table": 1,
+          "rowgroup": 1,
+          "row": 31,
+          "columnheader": 4,
+          "cell": 120,
+          "alert": 1
+        }
+      },
+      "samples": {
+        "headings": [
+          {
+            "level": 1,
+            "text": "Journal actions"
+          }
+        ],
+        "unnamedControls": [],
+        "ariaHiddenControls": [],
+        "imageNameIssues": []
+      }
+    }
+  ]
+}

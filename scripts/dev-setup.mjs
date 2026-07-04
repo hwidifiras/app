@@ -25,7 +25,8 @@ function readEnvValue(key) {
   return match[1].trim().replace(/^["']|["']$/g, "");
 }
 
-const databaseUrl = readEnvValue("DATABASE_URL") ?? "file:./prisma/dev.db";
+const databaseUrl =
+  readEnvValue("DATABASE_URL") ?? "postgresql://gymday:gymday@localhost:5432/gymday_dev?schema=public";
 
 console.log(`Applying migrations to dev database: ${databaseUrl}`);
 
@@ -44,4 +45,4 @@ execSync("node scripts/run-prisma-generate.mjs", {
 console.log("\nDev fork ready.");
 console.log("  Local hot reload:  npm run dev");
 console.log("  Create admin:      npm run admin:create");
-console.log("  Docker sandbox:    npm run docker:dev:up  → http://localhost:3001");
+console.log("  Docker sandbox:    npm run docker:dev:up -> http://localhost:3001");

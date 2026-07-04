@@ -106,8 +106,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "members.manage");
+    actor = await requirePermission(request, "members.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -238,6 +239,7 @@ export async function POST(request: Request) {
           action: "MEMBER_SUBSCRIPTION_CREATED",
           entityType: "MemberSubscription",
           entityId: subscription.id,
+          userId: actor.id,
           details: JSON.stringify({
             memberId: created.id,
             planId: planIdValue,
@@ -254,6 +256,7 @@ export async function POST(request: Request) {
           data: {
             memberSubscriptionId: subscription.id,
             amount: paymentCents,
+            createdById: actor.id,
             paymentDate: paymentDateValue ?? new Date(),
             paymentMethod: paymentMethodValue,
             notes: paymentNotesValue,
@@ -265,6 +268,7 @@ export async function POST(request: Request) {
             action: "PAYMENT_CREATED",
             entityType: "Payment",
             entityId: payment.id,
+            userId: actor.id,
             details: JSON.stringify({ amount: paymentCents, memberId: created.id }),
           },
         });

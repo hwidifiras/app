@@ -4,6 +4,7 @@ import { createContext, useContext, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import { AppShellDataProvider } from "@/components/layout/app-shell-data-provider";
 import { DesktopTopNav } from "@/components/layout/desktop-top-nav";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import {
@@ -82,23 +83,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/register/") ||
     pathname === "/forgot-password" ||
     pathname === "/reset-password";
+  const isMarketingRoute =
+    pathname === "/accueil" ||
+    pathname.startsWith("/accueil/") ||
+    pathname === "/homepage" ||
+    pathname.startsWith("/homepage/");
 
-  if (isAuthRoute) {
+  if (isAuthRoute || isMarketingRoute) {
     return <div className="relative min-h-screen">{children}</div>;
   }
 
   return (
     <SidebarContext.Provider value={{ collapsed, toggleCollapsed, displayMode, setDisplayMode }}>
-      <MobileNav />
-      <div
-        className={`grid min-h-screen ${collapsed ? "lg:grid-cols-[72px_1fr]" : "lg:grid-cols-[240px_1fr]"}`}
-      >
-        <AppSidebar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
-        <div className="flex min-w-0 flex-col bg-gradient-to-b from-[var(--surface)]/40 via-transparent to-transparent dark:from-[var(--background)]/80">
-          <DesktopTopNav />
-          {children}
+      <AppShellDataProvider>
+        <a href="#main-content" className="skip-link">
+          Aller au contenu
+        </a>
+        <MobileNav />
+        <div className={`grid min-h-screen ${collapsed ? "lg:grid-cols-[72px_1fr]" : "lg:grid-cols-[232px_1fr]"}`}>
+          <AppSidebar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
+          <div className="flex min-w-0 flex-col bg-[var(--background)]">
+            <DesktopTopNav />
+            <div id="main-content" tabIndex={-1}>
+              {children}
+            </div>
+          </div>
         </div>
-      </div>
+      </AppShellDataProvider>
     </SidebarContext.Provider>
   );
 }

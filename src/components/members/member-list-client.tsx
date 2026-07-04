@@ -63,7 +63,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
   const [currentPage, setCurrentPage] = useState(1);
   const [message, setMessage] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkArchiveOpen, setBulkArchiveOpen] = useState(false);
 
   useEffect(() => {
     if (!filtersOpen) return;
@@ -185,18 +185,18 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
     });
   }
 
-  async function bulkDeleteSelectedMembers() {
+  async function bulkArchiveSelectedMembers() {
     if (selectedMemberIds.length === 0) return;
 
     setMessage(null);
-    setActionLoadingId("bulk-delete");
+    setActionLoadingId("bulk-archive");
 
     const results = await Promise.allSettled(
       selectedMemberIds.map(async (memberId) => {
         const response = await fetch(`/api/members/${memberId}`, { method: "DELETE" });
         if (!response.ok) {
           const result = await response.json();
-          throw new Error(result.error ?? "Erreur lors de la suppression");
+          throw new Error(result.error ?? "Erreur lors de la résiliation");
         }
         return memberId;
       }),
@@ -205,24 +205,29 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
     const failedCount = results.filter((result) => result.status === "rejected").length;
 
     if (failedCount > 0) {
-      setMessage(`Suppression terminée avec ${failedCount} erreur(s)`);
+      setMessage(`Résiliation terminée avec ${failedCount} erreur(s)`);
     } else {
-      setMessage("Membres supprimés avec succès");
+      setMessage("Membres résiliés avec succès");
     }
 
     setSelectedMemberIds([]);
-    setBulkDeleteOpen(false);
+    setBulkArchiveOpen(false);
     await reloadMembers();
     setActionLoadingId(null);
   }
 
   function renderMemberRow(member: MemberWithGroups, selectable = false) {
     const isExpanded = expandedMemberIds.includes(member.id);
+    const payment = paymentBadge(member.paymentStatus);
+    const firstGroupName =
+      member.groupIds.length > 0
+        ? groupsOptions.find((group) => group.id === member.groupIds[0])?.name ?? "Groupe"
+        : "Sans groupe";
 
     return (
       <tr
         key={member.id}
-        className={`mobile-collapsible-row transition-colors hover:bg-(--surface-soft) ${isExpanded ? "is-expanded" : ""}`}
+        className={`mobile-collapsible-row transition-colors hover:bg-[var(--surface-soft)] ${isExpanded ? "is-expanded" : ""}`}
       >
         {selectable ? (
           <td className="hidden px-4 py-3 align-top sm:table-cell">
@@ -231,16 +236,31 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
               checked={selectedMemberIds.includes(member.id)}
               onChange={() => toggleMemberSelection(member.id)}
               className="size-4 rounded border-border text-primary focus:ring-primary"
+              aria-label={`Sélectionner ${member.firstName} ${member.lastName}`}
             />
           </td>
         ) : null}
         <td className="data-table-primary px-4 py-3 font-medium" data-label="Nom">
           <Link
             href={`/members/${member.id}`}
+            prefetch={false}
             className="text-foreground hover:text-[var(--primary)] hover:underline"
           >
             {member.firstName} {member.lastName}
           </Link>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 md:hidden">
+            <span className="chip chip-muted px-1.5 py-0.5 text-[10px]">{member.phone}</span>
+            <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${payment.className}`}>
+              {payment.label}
+            </span>
+            <StatusBadge
+              variant={member.status === "ACTIVE" ? "success" : "muted"}
+              className="px-1.5 py-0.5 text-[10px]"
+            >
+              {member.status === "ACTIVE" ? "Actif" : "Résilié"}
+            </StatusBadge>
+            <span className="chip chip-muted max-w-full truncate px-1.5 py-0.5 text-[10px]">{firstGroupName}</span>
+          </div>
         </td>
         <td className="px-4 py-3 mobile-detail-cell" data-label="Téléphone">{member.phone}</td>
         <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell mobile-detail-cell" data-label="Email">{member.email ?? "-"}</td>
@@ -269,19 +289,23 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
           <StatusBadge variant={member.status === "ACTIVE" ? "success" : "muted"}>{member.status === "ACTIVE" ? "Actif" : "Résilié"}</StatusBadge>
         </td>
         <td className="hidden px-4 py-3 text-muted-foreground md:table-cell mobile-detail-cell" data-label="Inscrit le">{new Date(member.createdAt).toLocaleDateString("fr-FR")}</td>
-        <td className="hidden px-4 py-3 text-right md:table-cell" data-label="Actions">
-          <Link href={`/members/${member.id}`} className="btn btn-ghost min-h-0 px-2 py-1 text-xs">
-            Détails
+        <td className="card-actions-cell px-4 py-3 text-right" data-label="Actions">
+          <Link
+            href={`/members/${member.id}`}
+            prefetch={false}
+            className="btn btn-ghost min-h-0 px-2 py-1 text-xs"
+          >
+            Ouvrir
           </Link>
         </td>
         <td className="px-4 py-3 text-center md:hidden mobile-toggle-cell">
           <button
             type="button"
-            className="mobile-card-toggle"
+            className="mobile-card-toggle w-full"
             onClick={() => toggleExpandMember(member.id)}
             aria-expanded={isExpanded}
           >
-            {isExpanded ? "Voir moins" : "Voir plus"}
+            {isExpanded ? "Réduire" : "Infos"}
             <ChevronDown className={`size-3 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
           </button>
         </td>
@@ -291,7 +315,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
 
   return (
     <div>
-      <div className="sticky top-[57px] z-20 -mx-2 mb-4 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[3.5rem]">
+      <div className="list-toolbar sticky top-[57px] z-20 -mx-2 mb-4 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[3.5rem]">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           <div className="min-w-0 flex-1">
             <label className="mb-1 block text-xs font-medium text-muted-foreground">Recherche</label>
@@ -324,22 +348,22 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
 
         <div className="mt-3 hidden grid-cols-4 gap-2 md:grid">
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Statut</label>
+            <label htmlFor="member-status-filter" className="mb-1 block text-xs font-medium text-muted-foreground">Statut</label>
             <select value={statusFilter} onChange={(e) => {
               setStatusFilter(e.target.value as typeof statusFilter);
               resetPagingAndSelection();
-            }} className="field text-xs">
+            }} id="member-status-filter" className="field text-xs">
               <option value="ALL">Tous les statuts</option>
               <option value="ACTIVE">Actifs</option>
               <option value="ARCHIVED">Résiliés</option>
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Paiement</label>
+            <label htmlFor="member-payment-filter" className="mb-1 block text-xs font-medium text-muted-foreground">Paiement</label>
             <select value={paymentFilter} onChange={(e) => {
               setPaymentFilter(e.target.value as typeof paymentFilter);
               resetPagingAndSelection();
-            }} className="field text-xs">
+            }} id="member-payment-filter" className="field text-xs">
               <option value="ALL">Tous les paiements</option>
               <option value="PAID">Payé</option>
               <option value="PARTIAL">Partiel</option>
@@ -347,11 +371,11 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Discipline</label>
+            <label htmlFor="member-sport-filter" className="mb-1 block text-xs font-medium text-muted-foreground">Discipline</label>
             <select value={sportFilter} onChange={(e) => {
               setSportFilter(e.target.value);
               resetPagingAndSelection();
-            }} className="field text-xs">
+            }} id="member-sport-filter" className="field text-xs">
               <option value="ALL">Toutes les disciplines</option>
               {sportsOptions.map((sport) => (
                 <option key={sport.id} value={sport.id}>{sport.name}</option>
@@ -359,12 +383,12 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Affichage</label>
+            <label htmlFor="member-view-filter" className="mb-1 block text-xs font-medium text-muted-foreground">Affichage</label>
             <div className="flex gap-2">
               <select value={viewMode} onChange={(e) => {
                 setViewMode(e.target.value as typeof viewMode);
                 resetPagingAndSelection();
-              }} className="field min-w-0 flex-1 text-xs">
+              }} id="member-view-filter" className="field min-w-0 flex-1 text-xs">
                 <option value="LIST">Liste</option>
                 <option value="GROUPED">Par groupe</option>
               </select>
@@ -396,8 +420,8 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
               {selectedMemberIds.length > 0 ? (
                 <>
                   <span className="text-xs font-medium text-muted-foreground">{selectedMemberIds.length} sélectionné(s)</span>
-                  <button type="button" onClick={() => setBulkDeleteOpen(true)} disabled={actionLoadingId === "bulk-delete"} className="btn btn-danger btn-block-mobile min-h-11 px-3 py-2 text-xs sm:w-auto">
-                    {actionLoadingId === "bulk-delete" ? "Suppression..." : "Supprimer la sélection"}
+                  <button type="button" onClick={() => setBulkArchiveOpen(true)} disabled={actionLoadingId === "bulk-archive"} className="btn btn-danger btn-block-mobile min-h-11 px-3 py-2 text-xs sm:w-auto">
+                    {actionLoadingId === "bulk-archive" ? "Résiliation..." : "Résilier la sélection"}
                   </button>
                   <button type="button" onClick={() => setSelectedMemberIds([])} className="btn btn-ghost btn-block-mobile min-h-11 px-3 py-2 text-xs sm:w-auto">
                     Effacer
@@ -409,9 +433,9 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
 
           <div className="data-table overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-(--surface-soft) text-xs uppercase tracking-wider text-muted-foreground">
+              <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
-                  <th className="w-10 px-4 py-3 text-left font-semibold">
+                  <th scope="col" className="w-10 px-4 py-3 text-left font-semibold">
                     <input
                       type="checkbox"
                       checked={pageMembers.length > 0 && pageMembers.every((member) => selectedMemberIds.includes(member.id))}
@@ -420,15 +444,17 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
                       aria-label="Sélectionner la page"
                     />
                   </th>
-                  <th className="px-4 py-3 text-left font-semibold">Nom</th>
-                  <th className="px-4 py-3 text-left font-semibold">Téléphone</th>
-                  <th className="hidden px-4 py-3 text-left font-semibold sm:table-cell">Email</th>
-                  <th className="hidden px-4 py-3 text-left font-semibold lg:table-cell">Groupes</th>
-                  <th className="hidden px-4 py-3 text-left font-semibold sm:table-cell">Paiement</th>
-                  <th className="hidden px-4 py-3 text-left font-semibold sm:table-cell">Statut</th>
-                  <th className="hidden px-4 py-3 text-left font-semibold md:table-cell">Inscrit le</th>
-                  <th className="hidden px-4 py-3 text-right font-semibold md:table-cell">Actions</th>
-                  <th className="px-4 py-3 text-center md:hidden font-semibold"> </th>
+                  <th scope="col" className="px-4 py-3 text-left font-semibold">Nom</th>
+                  <th scope="col" className="px-4 py-3 text-left font-semibold">Téléphone</th>
+                  <th scope="col" className="hidden px-4 py-3 text-left font-semibold sm:table-cell">Email</th>
+                  <th scope="col" className="hidden px-4 py-3 text-left font-semibold lg:table-cell">Groupes</th>
+                  <th scope="col" className="hidden px-4 py-3 text-left font-semibold sm:table-cell">Paiement</th>
+                  <th scope="col" className="hidden px-4 py-3 text-left font-semibold sm:table-cell">Statut</th>
+                  <th scope="col" className="hidden px-4 py-3 text-left font-semibold md:table-cell">Inscrit le</th>
+                  <th scope="col" className="hidden px-4 py-3 text-right font-semibold md:table-cell">Actions</th>
+                  <th scope="col" className="px-4 py-3 text-center font-semibold md:hidden">
+                    <span className="sr-only">Détails</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -456,14 +482,14 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
       ) : (
         <div className="space-y-4">
           {Array.from(groupedMembers.entries()).map(([groupId, rows]) => (
-            <section key={groupId} className="rounded-xl border-border p-4">
+            <section key={groupId} className="rounded-lg border border-border bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-foreground">{groupLabel(groupId)}</h3>
                 <span className="text-xs text-muted-foreground">{rows.length} membre(s)</span>
               </div>
-              <div className="data-table mt-3 overflow-x-auto rounded-xl border-border">
+              <div className="data-table mt-3 overflow-x-auto rounded-lg border border-border shadow-[var(--shadow-panel)]">
                 <table className="w-full text-sm">
-                  <thead className="bg-(--surface-soft) text-xs uppercase tracking-wider text-muted-foreground">
+                  <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-muted-foreground">
                     <tr>
                       <th className="px-4 py-3 text-left font-semibold">Nom</th>
                       <th className="px-4 py-3 text-left font-semibold">Téléphone</th>
@@ -490,7 +516,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
           role="presentation"
         >
           <div
-            className="max-h-[86dvh] w-full overflow-y-auto rounded-t-3xl border border-[var(--border)] bg-[var(--surface)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[var(--shadow-floating)]"
+            className="max-h-[86dvh] w-full overflow-y-auto rounded-t-lg border border-[var(--border)] bg-[var(--surface)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[var(--shadow-floating)]"
             role="dialog"
             aria-modal="true"
             aria-labelledby="member-filters-title"
@@ -575,13 +601,13 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
       ) : null}
 
       <ConfirmDialog
-        open={bulkDeleteOpen}
-        title={`Supprimer ${selectedMemberIds.length} membre${selectedMemberIds.length > 1 ? "s" : ""} ?`}
-        description="Les dossiers sélectionnés et toutes leurs données associées seront supprimés définitivement."
-        confirmLabel="Supprimer définitivement"
-        loading={actionLoadingId === "bulk-delete"}
-        onCancel={() => setBulkDeleteOpen(false)}
-        onConfirm={bulkDeleteSelectedMembers}
+        open={bulkArchiveOpen}
+        title={`Résilier ${selectedMemberIds.length} membre${selectedMemberIds.length > 1 ? "s" : ""} ?`}
+        description="Les dossiers sélectionnés seront archivés. L'historique, les abonnements et les paiements resteront consultables."
+        confirmLabel="Résilier la sélection"
+        loading={actionLoadingId === "bulk-archive"}
+        onCancel={() => setBulkArchiveOpen(false)}
+        onConfirm={bulkArchiveSelectedMembers}
       />
     </div>
   );

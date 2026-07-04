@@ -29,7 +29,7 @@ export default function LoginPage() {
       <div className="grid min-h-screen lg:grid-cols-[minmax(0,1.04fr)_minmax(29rem,0.96fr)]">
         <section className="relative hidden overflow-hidden bg-[#0B1220] text-white lg:block">
           <Image
-            src="/we-discipline/wide-dojo-interior.png"
+            src="/we-discipline/wide-dojo-interior.webp"
             alt=""
             fill
             priority

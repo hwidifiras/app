@@ -55,8 +55,8 @@ export default async function GroupsPage() {
           <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted-foreground)]">Mode dégradé</p>
           <h1 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">Gestion des groupes indisponible</h1>
           <p className="mt-3 text-sm text-[var(--muted-foreground)]">
-            Le modèle Prisma Group n&apos;est pas accessible pour le moment. Lancez la régénération du client
-            (`npm run prisma:generate`) puis redémarrez le serveur de développement.
+            Cette page ne peut pas charger ses données pour le moment. Revenez au tableau de bord puis contactez le
+            support si le problème continue.
           </p>
           <div className="mt-4">
             <Link href="/" className="btn btn-ghost">
@@ -71,9 +71,9 @@ export default async function GroupsPage() {
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Référentiels"
-        title="Liste des groupes"
-        description="Consulter, modifier ou supprimer les groupes d'entraînement."
+        overline="Configuration"
+        title="Cours"
+        description="Organiser les groupes, coachs, salles, capacités et horaires visibles au planning."
       />
 
       <section className="panel p-3 sm:p-5">

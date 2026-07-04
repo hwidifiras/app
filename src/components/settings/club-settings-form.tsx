@@ -4,8 +4,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
-import { FormActions, FormField, FormGrid, FormSection } from "@/components/ui/form-layout";
+import { FormActions, FormField, FormGrid, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import { FieldControl } from "@/components/ui/field-control";
+import { MONEY_INPUT_SUFFIX } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
 export type ClubSettingsFormData = {
@@ -16,6 +17,8 @@ export type ClubSettingsFormData = {
   allowCheckInWithPartialPayment: boolean;
   allowCheckInWithoutSubscription: boolean;
   absentConsumesSession: boolean;
+  allowSameRoomConcurrentGroups: boolean;
+  allowCoachConcurrentSameRoomQualified: boolean;
   maxStaffDiscountPercent: number;
   debtAlertThresholdCents: number;
 };
@@ -41,7 +44,7 @@ function ToggleRow({
     <label
       htmlFor={id}
       className={cn(
-        "flex cursor-pointer items-start justify-between gap-4 rounded-xl border p-3.5 transition sm:p-4",
+        "flex cursor-pointer items-start justify-between gap-4 rounded-lg border p-3.5 shadow-[var(--shadow-panel)] transition sm:p-4",
         checked
           ? "border-primary/30 bg-primary/5"
           : "border-border/80 bg-[var(--surface-soft)]/60 hover:border-primary/25",
@@ -72,17 +75,17 @@ function ToggleRow({
   );
 }
 
-function centsToEurosInput(cents: number): string {
+function centsToMoneyInput(cents: number): string {
   if (cents <= 0) return "";
   return (cents / 100).toFixed(2).replace(".", ",");
 }
 
-function eurosInputToCents(value: string): number {
+function moneyInputToCents(value: string): number {
   const normalized = value.trim().replace(",", ".");
   if (!normalized) return 0;
-  const euros = Number.parseFloat(normalized);
-  if (Number.isNaN(euros) || euros < 0) return Number.NaN;
-  return Math.round(euros * 100);
+  const amount = Number.parseFloat(normalized);
+  if (Number.isNaN(amount) || amount < 0) return Number.NaN;
+  return Math.round(amount * 100);
 }
 
 export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
@@ -97,10 +100,16 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
     initial.allowCheckInWithoutSubscription,
   );
   const [absentConsumesSession, setAbsentConsumesSession] = useState(initial.absentConsumesSession);
+  const [allowSameRoomConcurrentGroups, setAllowSameRoomConcurrentGroups] = useState(
+    initial.allowSameRoomConcurrentGroups,
+  );
+  const [allowCoachConcurrentSameRoomQualified, setAllowCoachConcurrentSameRoomQualified] = useState(
+    initial.allowCoachConcurrentSameRoomQualified,
+  );
   const [maxStaffDiscountPercent, setMaxStaffDiscountPercent] = useState(
     String(initial.maxStaffDiscountPercent),
   );
-  const [debtThresholdEuros, setDebtThresholdEuros] = useState(centsToEurosInput(initial.debtAlertThresholdCents));
+  const [debtThresholdAmount, setDebtThresholdAmount] = useState(centsToMoneyInput(initial.debtAlertThresholdCents));
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -112,9 +121,9 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
       return;
     }
 
-    const debtAlertThresholdCents = eurosInputToCents(debtThresholdEuros);
+    const debtAlertThresholdCents = moneyInputToCents(debtThresholdAmount);
     if (Number.isNaN(debtAlertThresholdCents)) {
-      setMessage("Le seuil de dette doit être un montant positif, par exemple 15 €");
+      setMessage("Le seuil de dette doit être un montant positif, par exemple 15 TND");
       return;
     }
 
@@ -132,6 +141,8 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
         allowCheckInWithPartialPayment: allowPartialPayment,
         allowCheckInWithoutSubscription: allowWithoutSubscription,
         absentConsumesSession,
+        allowSameRoomConcurrentGroups,
+        allowCoachConcurrentSameRoomQualified,
         maxStaffDiscountPercent: discount,
         debtAlertThresholdCents,
       }),
@@ -152,9 +163,11 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
     setAllowPartialPayment(json.data.allowCheckInWithPartialPayment);
     setAllowWithoutSubscription(json.data.allowCheckInWithoutSubscription);
     setAbsentConsumesSession(json.data.absentConsumesSession);
+    setAllowSameRoomConcurrentGroups(json.data.allowSameRoomConcurrentGroups);
+    setAllowCoachConcurrentSameRoomQualified(json.data.allowCoachConcurrentSameRoomQualified);
     setMaxStaffDiscountPercent(String(json.data.maxStaffDiscountPercent));
-    setDebtThresholdEuros(centsToEurosInput(json.data.debtAlertThresholdCents));
-    setMessage("Règles du club enregistrées");
+    setDebtThresholdAmount(centsToMoneyInput(json.data.debtAlertThresholdCents));
+    setMessage("Club enregistré");
     router.refresh();
   }
 
@@ -208,7 +221,17 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
     <form onSubmit={submit} className="space-y-5">
       <FeedbackMessage message={message} />
 
+      <FormSectionNav
+        items={[
+          { href: "#club-identity", label: "Identité" },
+          { href: "#club-checkin", label: "Pointage" },
+          { href: "#club-planning", label: "Planning" },
+          { href: "#club-alerts", label: "Alertes" },
+        ]}
+      />
+
       <FormSection
+        id="club-identity"
         title="Identité du club"
         description="Ces informations apparaissent dans l'application et sur les écrans d'accueil."
       >
@@ -234,7 +257,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
             className="md:col-span-2"
           >
             <div className="flex flex-wrap items-start gap-4">
-              <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-[var(--surface-soft)]">
+              <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-[var(--surface-soft)] shadow-[var(--shadow-panel)]">
                 {clubLogoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={clubLogoUrl} alt="" className="size-full object-contain p-1" />
@@ -299,6 +322,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
       </FormSection>
 
       <FormSection
+        id="club-checkin"
         title="Pointage & paiements"
         description="Définissez ce que l'équipe peut accepter pendant le pointage."
       >
@@ -328,6 +352,30 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
       </FormSection>
 
       <FormSection
+        id="club-planning"
+        title="Planning & conflits"
+        description="Choisissez quand le planning doit accepter des chevauchements volontaires."
+      >
+        <div className="space-y-3">
+          <ToggleRow
+            id="allowSameRoomConcurrentGroups"
+            label="Deux groupes dans la meme salle"
+            description="Si activé, deux groupes différents peuvent avoir cours dans la même salle au même horaire sans conflit de salle."
+            checked={allowSameRoomConcurrentGroups}
+            onChange={setAllowSameRoomConcurrentGroups}
+          />
+          <ToggleRow
+            id="allowCoachConcurrentSameRoomQualified"
+            label="Coach multi-groupes dans la meme salle"
+            description="Si activé, un coach peut encadrer deux groupes au même horaire quand ils sont dans la même salle et que les disciplines font partie de ses spécialités."
+            checked={allowCoachConcurrentSameRoomQualified}
+            onChange={setAllowCoachConcurrentSameRoomQualified}
+          />
+        </div>
+      </FormSection>
+
+      <FormSection
+        id="club-alerts"
         title="Alertes et remises"
         description="Réglez les montants visibles et la marge de remise accordée à l'équipe."
       >
@@ -337,14 +385,14 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
             htmlFor="debtThreshold"
             hint="Laissez vide ou saisissez 0 pour afficher toutes les dettes."
           >
-            <FieldControl suffix="€">
+            <FieldControl suffix={MONEY_INPUT_SUFFIX}>
               <input
                 id="debtThreshold"
                 type="text"
                 inputMode="decimal"
                 className="field pr-10"
-                value={debtThresholdEuros}
-                onChange={(e) => setDebtThresholdEuros(e.target.value)}
+                value={debtThresholdAmount}
+                onChange={(e) => setDebtThresholdAmount(e.target.value)}
                 placeholder="0"
               />
             </FieldControl>

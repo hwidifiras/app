@@ -148,12 +148,14 @@ export async function PATCH(request: Request) {
       keys.map((notificationKey) =>
         prisma.notificationRead.upsert({
           where: {
-            userId_notificationKey: {
+            tenantId_userId_notificationKey: {
+              tenantId: user.tenantId,
               userId: user.id,
               notificationKey,
             },
           },
           create: {
+            tenantId: user.tenantId,
             userId: user.id,
             notificationKey,
           },

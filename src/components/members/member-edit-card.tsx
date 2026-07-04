@@ -48,7 +48,7 @@ function computeAge(date: string | null) {
 function memberTypeLabel(value: MemberEditCardProps["member"]["memberType"]) {
   if (value === "KID") return "Enfant";
   if (value === "ADULT") return "Adulte";
-  return "Non specifie";
+  return "Non spécifié";
 }
 
 export function MemberEditCard({ member }: MemberEditCardProps) {
@@ -111,18 +111,18 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
     const result = await response.json();
 
     if (!response.ok) {
-      setMessage(result.error ?? "Erreur lors de la mise a jour");
+      setMessage(result.error ?? "Erreur lors de la mise à jour");
       setLoading(false);
       return;
     }
 
-    setMessage("Dossier membre mis a jour");
+    setMessage("Dossier membre mis à jour");
     setLoading(false);
     setIsEditing(false);
   }
 
   return (
-    <section className="panel panel-soft h-full min-w-0 p-4 sm:p-5">
+    <section className="panel h-full min-w-0 p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <h2 className="text-lg font-semibold text-[var(--foreground)]">Informations</h2>
         {isEditing ? null : (
@@ -137,62 +137,62 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
           <div className="grid gap-3">
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Prenom *</label>
+                <label className="mb-1 block text-xs font-semibold text-[var(--foreground)]">Prénom *</label>
                 <input value={firstName} onChange={(e) => setFirstName(e.target.value)} className="field" required />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Nom *</label>
+                <label className="mb-1 block text-xs font-semibold text-[var(--foreground)]">Nom *</label>
                 <input value={lastName} onChange={(e) => setLastName(e.target.value)} className="field" required />
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Telephone *</label>
+                <label className="mb-1 block text-xs font-semibold text-[var(--foreground)]">Téléphone *</label>
                 <input value={phone} onChange={(e) => setPhone(e.target.value)} className="field" required />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Email</label>
+                <label className="mb-1 block text-xs font-semibold text-[var(--foreground)]">Email</label>
                 <input value={email} onChange={(e) => setEmail(e.target.value)} className="field" />
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Type de membre</label>
+                <label className="mb-1 block text-xs font-semibold text-[var(--foreground)]">Type de membre</label>
                 <select value={memberType} onChange={(e) => setMemberType(e.target.value as typeof memberType)} className="field">
                   <option value="ADULT">Adulte</option>
                   <option value="KID">Enfant</option>
-                  <option value="NOT_SPECIFIED">Non specifie</option>
+                  <option value="NOT_SPECIFIED">Non spécifié</option>
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Date de naissance</label>
+                <label className="mb-1 block text-xs font-semibold text-[var(--foreground)]">Date de naissance</label>
                 <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className="field" />
                 {editAge !== null ? (
-                  <p className="mt-1 text-[0.7rem] text-[var(--muted-foreground)]">Age estime: {editAge} ans</p>
+                  <p className="mt-1 text-[0.7rem] text-[var(--muted-foreground)]">Âge estimé: {editAge} ans</p>
                 ) : null}
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Adresse</label>
+              <label className="mb-1 block text-xs font-semibold text-[var(--foreground)]">Adresse</label>
               <input value={address} onChange={(e) => setAddress(e.target.value)} className="field" />
             </div>
 
             {memberType === "KID" ? (
-              <div className="rounded-xl border border-[var(--border)] p-3">
+              <div className="rounded-lg border border-[var(--border)] p-3">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-                  Responsable legal
+                  Responsable légal
                 </p>
                 <div className="grid gap-3">
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Nom complet</label>
+                    <label className="mb-1 block text-xs font-semibold text-[var(--foreground)]">Nom complet</label>
                     <input value={parentName} onChange={(e) => setParentName(e.target.value)} className="field" required />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Telephone</label>
+                    <label className="mb-1 block text-xs font-semibold text-[var(--foreground)]">Téléphone</label>
                     <input value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} className="field" required />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Adresse</label>
+                    <label className="mb-1 block text-xs font-semibold text-[var(--foreground)]">Adresse</label>
                     <input value={parentAddress} onChange={(e) => setParentAddress(e.target.value)} className="field" />
                   </div>
                 </div>
@@ -225,12 +225,12 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
             <dt className="text-[var(--muted-foreground)]">Statut</dt>
             <dd>
               <StatusBadge variant={member.status === "ACTIVE" ? "success" : "muted"}>
-                {member.status === "ACTIVE" ? "Actif" : "Archive"}
+                {member.status === "ACTIVE" ? "Actif" : "Archivé"}
               </StatusBadge>
             </dd>
           </div>
           <div className="flex min-w-0 justify-between gap-3">
-            <dt className="text-[var(--muted-foreground)]">Telephone</dt>
+            <dt className="text-[var(--muted-foreground)]">Téléphone</dt>
             <dd className="min-w-0 break-words text-right font-medium">{member.phone}</dd>
           </div>
           <div className="flex min-w-0 justify-between gap-3">
@@ -258,13 +258,13 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
           </div>
           {member.archivedAt ? (
             <div className="flex min-w-0 justify-between gap-3">
-              <dt className="text-[var(--muted-foreground)]">Archive le</dt>
+              <dt className="text-[var(--muted-foreground)]">Archivé le</dt>
               <dd className="font-medium text-[var(--danger)]">{formatDate(member.archivedAt)}</dd>
             </div>
           ) : null}
           {member.memberType === "KID" ? (
             <div className="rounded-lg border border-[var(--border)] p-3 text-xs sm:col-span-2 lg:col-span-1">
-              <p className="mb-2 text-[var(--muted-foreground)]">Responsable legal</p>
+              <p className="mb-2 text-[var(--muted-foreground)]">Responsable légal</p>
               <p className="font-medium">{member.parentName ?? "-"}</p>
               <p className="text-[var(--muted-foreground)]">{member.parentPhone ?? "-"}</p>
               <p className="text-[var(--muted-foreground)]">{member.parentAddress ?? "-"}</p>

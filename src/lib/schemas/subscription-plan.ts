@@ -2,10 +2,12 @@ import { z } from "zod";
 
 import { totalSessionsFromWeekly } from "@/lib/subscription-plan-utils";
 
+const optionalDescriptionSchema = z.string().trim().max(500).nullable().optional();
+
 export const createSubscriptionPlanSchema = z
   .object({
     name: z.string().trim().min(2, "Nom trop court").max(100),
-    description: z.string().trim().max(500).optional().or(z.literal("")),
+    description: optionalDescriptionSchema,
     price: z.number().int().min(0, "Prix invalide").max(99999999, "Prix invalide"),
     sessionsPerWeek: z
       .number()
@@ -25,7 +27,7 @@ export type CreateSubscriptionPlanInput = z.infer<typeof createSubscriptionPlanS
 export const updateSubscriptionPlanSchema = z
   .object({
     name: z.string().trim().min(2).max(100).optional(),
-    description: z.string().trim().max(500).optional().or(z.literal("")).optional(),
+    description: optionalDescriptionSchema,
     price: z.number().int().min(0).max(99999999).optional(),
     sessionsPerWeek: z.number().int().min(1).max(7).optional(),
     validityDays: z.number().int().min(1).max(3650).optional(),

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { config } from "dotenv";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -8,7 +8,7 @@ if (!process.env.DATABASE_URL && existsSync(".env.development")) {
   config({ path: ".env.development" });
 }
 if (!process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = "file:./prisma/dev.db";
+  process.env.DATABASE_URL = "postgresql://gymday:gymday@localhost:5432/gymday_dev?schema=public";
 }
 
 const prisma = new PrismaClient();
@@ -31,12 +31,29 @@ function utcDateOnlyForTimeZone(date: Date, timeZone: string): Date {
 }
 
 async function main() {
-  console.log("Seeding dojo v0 demo data...");
+  console.log("Seeding tenant demo data...");
+
+  const tenantSlug = process.env.DEFAULT_TENANT_SLUG?.trim() || "we-discipline";
+  const tenantId = process.env.DEFAULT_TENANT_ID?.trim() || `tenant_${tenantSlug.replace(/[^a-z0-9_-]/gi, "_")}`;
+  const tenant = await prisma.tenant.upsert({
+    where: { slug: tenantSlug },
+    create: {
+      id: tenantId,
+      slug: tenantSlug,
+      name: process.env.DEFAULT_TENANT_NAME?.trim() || "We Discipline",
+      rootDomainAlias: process.env.DEFAULT_TENANT_ROOT_ALIAS?.trim() || null,
+    },
+    update: {
+      name: process.env.DEFAULT_TENANT_NAME?.trim() || "We Discipline",
+      rootDomainAlias: process.env.DEFAULT_TENANT_ROOT_ALIAS?.trim() || null,
+      status: "ACTIVE",
+    },
+  });
 
   await prisma.clubSettings.upsert({
-    where: { id: "default" },
+    where: { tenantId: tenant.id },
     create: {
-      id: "default",
+      tenantId: tenant.id,
       allowCheckInWithPartialPayment: true,
       allowPublicRegister: false,
       maxStaffDiscountPercent: 30,
@@ -46,8 +63,9 @@ async function main() {
 
   const passwordHash = await bcrypt.hash("admin1234", 10);
   await prisma.user.upsert({
-    where: { email: "admin@gym.local" },
+    where: { tenantId_email: { tenantId: tenant.id, email: "admin@gym.local" } },
     create: {
+      tenantId: tenant.id,
       email: "admin@gym.local",
       name: "Admin",
       role: "ADMIN",
@@ -58,20 +76,21 @@ async function main() {
   });
 
   const bjj = await prisma.sport.upsert({
-    where: { name: "Jiu-Jitsu" },
-    create: { name: "Jiu-Jitsu", description: "BJJ", isActive: true },
+    where: { tenantId_name: { tenantId: tenant.id, name: "Jiu-Jitsu" } },
+    create: { tenantId: tenant.id, name: "Jiu-Jitsu", description: "BJJ", isActive: true },
     update: {},
   });
 
   const karate = await prisma.sport.upsert({
-    where: { name: "Karate" },
-    create: { name: "Karate", description: "Karate", isActive: true },
+    where: { tenantId_name: { tenantId: tenant.id, name: "Karate" } },
+    create: { tenantId: tenant.id, name: "Karate", description: "Karate", isActive: true },
     update: {},
   });
 
   const coach = await prisma.coach.upsert({
-    where: { phone: "06-87-65-43-21" },
+    where: { tenantId_phone: { tenantId: tenant.id, phone: "06-87-65-43-21" } },
     create: {
+      tenantId: tenant.id,
       firstName: "Ahmed",
       lastName: "Coach",
       phone: "06-87-65-43-21",
@@ -81,10 +100,22 @@ async function main() {
     update: {},
   });
 
+  await prisma.coachSportQualification.upsert({
+    where: { tenantId_coachId_sportId: { tenantId: tenant.id, coachId: coach.id, sportId: bjj.id } },
+    create: {
+      tenantId: tenant.id,
+      coachId: coach.id,
+      sportId: bjj.id,
+      isPrimary: true,
+    },
+    update: { isPrimary: true },
+  });
+
   const group = await prisma.group.upsert({
     where: { id: "seed-group-bjj" },
     create: {
       id: "seed-group-bjj",
+      tenantId: tenant.id,
       name: "BJJ Soir",
       sportId: bjj.id,
       coachId: coach.id,
@@ -96,9 +127,10 @@ async function main() {
   });
 
   const planBjj = await prisma.subscriptionPlan.upsert({
-    where: { name: "BJJ 12 séances / mois" },
+    where: { tenantId_name: { tenantId: tenant.id, name: "BJJ 12 seances / mois" } },
     create: {
-      name: "BJJ 12 séances / mois",
+      tenantId: tenant.id,
+      name: "BJJ 12 seances / mois",
       price: 50000,
       totalSessions: 12,
       sessionsPerWeek: 3,
@@ -110,9 +142,10 @@ async function main() {
   });
 
   const planKarate = await prisma.subscriptionPlan.upsert({
-    where: { name: "Karate 8 séances" },
+    where: { tenantId_name: { tenantId: tenant.id, name: "Karate 8 seances" } },
     create: {
-      name: "Karate 8 séances",
+      tenantId: tenant.id,
+      name: "Karate 8 seances",
       price: 40000,
       totalSessions: 8,
       validityDays: 30,
@@ -123,8 +156,9 @@ async function main() {
   });
 
   const member1 = await prisma.member.upsert({
-    where: { phone: "06-11-11-11-11" },
+    where: { tenantId_phone: { tenantId: tenant.id, phone: "06-11-11-11-11" } },
     create: {
+      tenantId: tenant.id,
       firstName: "Karim",
       lastName: "Test",
       phone: "06-11-11-11-11",
@@ -134,8 +168,9 @@ async function main() {
   });
 
   const member2 = await prisma.member.upsert({
-    where: { phone: "06-22-22-22-22" },
+    where: { tenantId_phone: { tenantId: tenant.id, phone: "06-22-22-22-22" } },
     create: {
+      tenantId: tenant.id,
       firstName: "Sami",
       lastName: "Test",
       phone: "06-22-22-22-22",
@@ -146,7 +181,7 @@ async function main() {
   });
 
   const household = await prisma.household.create({
-    data: { label: "Famille Test" },
+    data: { tenantId: tenant.id, label: "Famille Test" },
   });
 
   for (const row of [
@@ -155,7 +190,7 @@ async function main() {
   ]) {
     await prisma.householdMember.upsert({
       where: { memberId: row.memberId },
-      create: row,
+      create: { tenantId: tenant.id, ...row },
       update: row,
     });
   }
@@ -168,6 +203,7 @@ async function main() {
     where: { id: "seed-schedule-bjj" },
     create: {
       id: "seed-schedule-bjj",
+      tenantId: tenant.id,
       groupId: group.id,
       dayOfWeek: todayDay,
       startTime: "18:00",
@@ -178,13 +214,15 @@ async function main() {
 
   await prisma.session.upsert({
     where: {
-      groupId_sessionDate_startTime: {
+      tenantId_groupId_sessionDate_startTime: {
+        tenantId: tenant.id,
         groupId: group.id,
         sessionDate: today,
         startTime: "18:00",
       },
     },
     create: {
+      tenantId: tenant.id,
       groupId: group.id,
       coachId: coach.id,
       sessionDate: today,
@@ -200,6 +238,7 @@ async function main() {
     where: { id: "seed-sub-karim-bjj" },
     create: {
       id: "seed-sub-karim-bjj",
+      tenantId: tenant.id,
       memberId: member1.id,
       planId: planBjj.id,
       sportId: bjj.id,
@@ -213,8 +252,9 @@ async function main() {
   });
 
   await prisma.groupMember.upsert({
-    where: { groupId_memberId: { groupId: group.id, memberId: member1.id } },
+    where: { tenantId_groupId_memberId: { tenantId: tenant.id, groupId: group.id, memberId: member1.id } },
     create: {
+      tenantId: tenant.id,
       groupId: group.id,
       memberId: member1.id,
       startDate: new Date(),
@@ -227,6 +267,7 @@ async function main() {
     where: { id: "seed-pay-karim" },
     create: {
       id: "seed-pay-karim",
+      tenantId: tenant.id,
       memberSubscriptionId: "seed-sub-karim-bjj",
       amount: 50000,
       paymentMethod: "CASH",
@@ -238,6 +279,7 @@ async function main() {
     where: { id: "seed-offer-family" },
     create: {
       id: "seed-offer-family",
+      tenantId: tenant.id,
       name: "Forfait fratrie / famille",
       kind: "FAMILY_BUNDLE",
       rules: JSON.stringify({
@@ -254,6 +296,7 @@ async function main() {
     where: { id: "seed-offer-second" },
     create: {
       id: "seed-offer-second",
+      tenantId: tenant.id,
       name: "2e discipline -15%",
       kind: "SECOND_DISCIPLINE",
       rules: JSON.stringify({ percentOff: 15 }),

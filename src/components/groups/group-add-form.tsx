@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
-import { FormActions } from "@/components/ui/form-layout";
+import { FormActions, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import { GroupMemberSelector } from "@/components/groups/group-member-selector";
 import { CoachDto } from "@/types/coach";
 import { MemberDto } from "@/types/member";
@@ -11,7 +11,13 @@ import { SportDto } from "@/types/sport";
 
 function formatCoachOptionLabel(coach: CoachDto) {
   const name = `${coach.firstName} ${coach.lastName}`;
-  return coach.sportName ? `${name} - ${coach.sportName}` : name;
+  const qualified = coach.qualifiedSports.map((sport) => sport.name).join(", ");
+  return qualified ? `${name} - ${qualified}` : coach.sportName ? `${name} - ${coach.sportName}` : name;
+}
+
+function coachIsQualifiedForSport(coach: CoachDto | undefined, sportId: string) {
+  if (!coach || !sportId) return true;
+  return coach.qualifiedSportIds.includes(sportId);
 }
 
 export function GroupAddForm({
@@ -29,6 +35,7 @@ export function GroupAddForm({
   const [groupType, setGroupType] = useState<"KIDS" | "ADULTS">("ADULTS");
   const [sportId, setSportId] = useState("");
   const [coachId, setCoachId] = useState("");
+  const [coachSportOverrideReason, setCoachSportOverrideReason] = useState("");
   const [capacity, setCapacity] = useState(20);
   const [room, setRoom] = useState("");
   const [membersSearch, setMembersSearch] = useState("");
@@ -57,6 +64,8 @@ export function GroupAddForm({
     const matchesQuery = `${member.firstName} ${member.lastName}`.toLowerCase().includes(query) || member.phone.toLowerCase().includes(query);
     return matchesQuery;
   }).filter((member) => isMemberAllowed(member.memberType));
+  const selectedCoach = coachesOptions.find((coach) => coach.id === coachId);
+  const needsCoachSportOverride = !coachIsQualifiedForSport(selectedCoach, sportId);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -73,6 +82,7 @@ export function GroupAddForm({
         coachId,
         capacity,
         room,
+        coachSportOverrideReason: needsCoachSportOverride ? coachSportOverrideReason : "",
       }),
     });
 
@@ -108,10 +118,15 @@ export function GroupAddForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
-      {/* Compact group info form */}
-      <div className="rounded-xl border border-[var(--border)] p-4">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Informations groupe</p>
+    <form onSubmit={onSubmit} className="space-y-5 pb-4 lg:pb-0">
+      <FormSectionNav
+        items={[
+          { href: "#group-info", label: "Infos" },
+          { href: "#group-members", label: "Membres" },
+        ]}
+      />
+
+      <FormSection id="group-info" title="Informations" description="Sport, coach, salle et capacité du cours.">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div className="sm:col-span-2 lg:col-span-1">
             <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Nom</label>
@@ -154,13 +169,21 @@ export function GroupAddForm({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Coach</label>
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Coach par défaut</label>
             <select value={coachId} onChange={(e) => setCoachId(e.target.value)} className="field text-sm" required>
               <option value="">Choisir</option>
               {coachesOptions.map((coach) => (
                 <option key={coach.id} value={coach.id}>{formatCoachOptionLabel(coach)}</option>
               ))}
             </select>
+            <p className="mt-1 text-[0.65rem] text-[var(--muted-foreground)]">
+              Utilisé pour générer les séances du cours. Une séance peut ensuite avoir une exception depuis le planning.
+            </p>
+            {needsCoachSportOverride ? (
+              <p className="mt-1 text-xs text-[var(--danger)]">
+                Coach hors qualification pour ce sport. Validation admin avec motif obligatoire.
+              </p>
+            ) : null}
           </div>
           <div>
             <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Salle par défaut</label>
@@ -179,9 +202,24 @@ export function GroupAddForm({
             <input type="number" min={1} max={200} value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} className="field text-sm" required />
           </div>
         </div>
-      </div>
+        {needsCoachSportOverride ? (
+          <div className="mt-3">
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">
+              Motif admin d&apos;exception
+            </label>
+            <textarea
+              value={coachSportOverrideReason}
+              onChange={(e) => setCoachSportOverrideReason(e.target.value)}
+              maxLength={500}
+              className="field min-h-20 text-sm"
+              required
+            />
+          </div>
+        ) : null}
+      </FormSection>
 
       <GroupMemberSelector
+        id="group-members"
         members={filteredMembers}
         selectedIds={selectedMemberIds}
         search={membersSearch}
@@ -198,7 +236,7 @@ export function GroupAddForm({
         <button type="button" onClick={() => router.push("/groups")} className="btn btn-ghost btn-block-mobile">
           Annuler
         </button>
-        <button type="submit" disabled={loading} className="btn btn-primary btn-block-mobile">
+        <button type="submit" disabled={loading || (needsCoachSportOverride && !coachSportOverrideReason.trim())} className="btn btn-primary btn-block-mobile">
           {loading ? "Enregistrement…" : "Créer le groupe"}
         </button>
       </FormActions>

@@ -16,6 +16,8 @@ export const updateClubSettingsSchema = z.object({
   allowCheckInWithPartialPayment: z.boolean().optional(),
   allowCheckInWithoutSubscription: z.boolean().optional(),
   absentConsumesSession: z.boolean().optional(),
+  allowSameRoomConcurrentGroups: z.boolean().optional(),
+  allowCoachConcurrentSameRoomQualified: z.boolean().optional(),
   maxStaffDiscountPercent: z.number().int().min(0).max(100).optional(),
   debtAlertThresholdCents: z.number().int().min(0).max(100_000_000).optional(),
 });

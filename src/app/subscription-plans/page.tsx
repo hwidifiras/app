@@ -40,8 +40,11 @@ export default async function SubscriptionPlansPage() {
       <main className="app-shell py-6">
         <div className="panel panel-soft p-6">
           <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Mode dégradé</p>
-          <h1 className="mt-2 text-2xl font-semibold text-foreground">Plans indisponibles</h1>
-          <p className="mt-3 text-sm text-muted-foreground">Données inaccessibles.</p>
+          <h1 className="mt-2 text-2xl font-semibold text-foreground">Formules indisponibles</h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Cette page ne peut pas charger ses données pour le moment. Revenez au tableau de bord puis contactez le
+            support si le problème continue.
+          </p>
         </div>
       </main>
     );
@@ -54,15 +57,15 @@ export default async function SubscriptionPlansPage() {
       </Link>
 
       <PageHeader
-        overline="Abonnements & Finance"
-        title="Plans d'abonnement"
-        description={`${plans.length} plan${plans.length > 1 ? "s" : ""} configuré${plans.length > 1 ? "s" : ""}. Créez et gérez les forfaits proposés aux membres.`}
+        overline="Configuration"
+        title="Formules"
+        description={`${plans.length} formule${plans.length > 1 ? "s" : ""} configurée${plans.length > 1 ? "s" : ""}. Gérez les prix, quotas et validités vendus aux membres.`}
         actions={
           <Link
             href="/subscription-plans/new"
             className="btn btn-primary btn-block-mobile inline-flex items-center justify-center gap-1.5"
           >
-            <Plus className="size-4" /> Nouveau plan
+            <Plus className="size-4" /> Nouvelle formule
           </Link>
         }
       />

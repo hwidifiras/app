@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { POST as createAttendance, PATCH as patchAttendance, DELETE as deleteAttendance } from "@/app/api/attendances/route";
 import { POST as createPayment, PATCH as patchPayment, DELETE as deletePayment } from "@/app/api/payments/route";
 import { DELETE as archiveMember } from "@/app/api/members/route";
+import { DELETE as deleteMemberDetail } from "@/app/api/members/[id]/route";
 import { PATCH as postponeSession } from "@/app/api/sessions/[id]/postpone/route";
 import { POST as finalizeSession } from "@/app/api/attendances/sessions/[id]/finalize/route";
 import { PATCH as patchSession, DELETE as deleteSession } from "@/app/api/sessions/[id]/route";
@@ -20,16 +21,21 @@ import { DELETE as deleteSubscriptionPlan, POST as createSubscriptionPlan } from
 import { POST as applyEnrollment } from "@/app/api/enrollment/apply/route";
 import { POST as revertEnrollment } from "@/app/api/enrollment/revert/route";
 import {
+  DELETE as deleteMemberSubscription,
   PATCH as patchMemberSubscription,
   POST as createMemberSubscription,
 } from "@/app/api/member-subscriptions/route";
+import { DELETE as bulkCloseGroupMembers, POST as bulkCreateGroupMembers } from "@/app/api/group-members/bulk/route";
+import { DELETE as closeGroupMember } from "@/app/api/group-members/route";
 import { PATCH as patchClubSettings } from "@/app/api/club-settings/route";
 import { POST as createUser } from "@/app/api/users/route";
 import { POST as requestPasswordReset } from "@/app/api/auth/forgot-password/route";
 import { POST as resetPassword } from "@/app/api/auth/reset-password/route";
+import { GET as getAuthMe } from "@/app/api/auth/me/route";
 import { signAuthToken, type AuthRole } from "@/lib/auth";
 import { resetRateLimitsForTests } from "@/lib/rate-limit";
 import { hashPassword, verifyPassword } from "@/lib/password";
+import { FULL_STAFF_PERMISSIONS } from "@/lib/permission-definitions";
 import {
   buildEnrollmentQuote,
   canCheckInWithPayment,
@@ -39,7 +45,7 @@ import {
 import { enrollmentQuoteSchema } from "@/lib/schemas/enrollment";
 import { createGroupSchema } from "@/lib/schemas/group";
 import { createSubscriptionPlanSchema } from "@/lib/schemas/subscription-plan";
-import { POST as createGroup } from "@/app/api/groups/route";
+import { DELETE as deactivateGroup, PATCH as patchGroup, POST as createGroup } from "@/app/api/groups/route";
 import { validateSessionSlot } from "@/lib/session-slot-conflict";
 import {
   sessionAdjustmentDelta,
@@ -59,8 +65,15 @@ import {
   inspectDataImport,
   rollbackDataImport,
 } from "@/lib/data-import-service";
+import { previewBulkDataImport } from "@/lib/bulk-data-import";
 import type { DataImportPayload } from "@/lib/schemas/data-import";
 import { getWeekRangeUtc } from "@/lib/dates";
+import { setFallbackTenantContext } from "@/lib/tenant-context";
+
+const TEST_TENANT_ID = "tenant_test";
+const TEST_TENANT_SLUG = "we-discipline";
+
+setFallbackTenantContext({ tenantId: TEST_TENANT_ID, tenantSlug: TEST_TENANT_SLUG, host: "test.local" });
 
 async function resetData() {
   await prisma.$transaction([
@@ -85,9 +98,20 @@ async function resetData() {
     prisma.user.deleteMany(),
     prisma.clubSettings.deleteMany(),
   ]);
+  await prisma.tenant.upsert({
+    where: { slug: TEST_TENANT_SLUG },
+    create: {
+      id: TEST_TENANT_ID,
+      slug: TEST_TENANT_SLUG,
+      name: "Test Tenant",
+      rootDomainAlias: "test.local",
+    },
+    update: { status: "ACTIVE" },
+  });
   await prisma.clubSettings.create({
     data: {
       id: "default",
+      tenantId: TEST_TENANT_ID,
       allowCheckInWithPartialPayment: true,
       allowCheckInWithoutSubscription: false,
       absentConsumesSession: true,
@@ -235,11 +259,43 @@ async function dojoFixture() {
 }
 
 async function signIn(role: AuthRole = "ADMIN") {
+  const userId = `${role.toLowerCase()}-test-user`;
+  const email = `${role.toLowerCase()}@test.local`;
+  const name = `${role} Test`;
+  const permissions = role === "STAFF" ? FULL_STAFF_PERMISSIONS : [];
+  const user = await prisma.user.upsert({
+    where: { tenantId_email: { tenantId: TEST_TENANT_ID, email } },
+    update: {
+      name,
+      role,
+      isActive: true,
+      passwordHash: await hashPassword("password123"),
+      permissions: {
+        deleteMany: {},
+        create: permissions.map((key) => ({ tenantId: TEST_TENANT_ID, key })),
+      },
+    },
+    create: {
+      id: userId,
+      tenantId: TEST_TENANT_ID,
+      email,
+      name,
+      role,
+      passwordHash: await hashPassword("password123"),
+      permissions: {
+        create: permissions.map((key) => ({ tenantId: TEST_TENANT_ID, key })),
+      },
+    },
+  });
+
   authState.token = await signAuthToken({
-    userId: `${role.toLowerCase()}-test-user`,
-    email: `${role.toLowerCase()}@test.local`,
-    name: `${role} Test`,
-    role,
+    userId: user.id,
+    tenantId: TEST_TENANT_ID,
+    tenantSlug: TEST_TENANT_SLUG,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    permissions,
   });
 }
 
@@ -279,6 +335,7 @@ async function createActiveSubscription(
 ) {
   return prisma.memberSubscription.create({
     data: {
+      tenantId: TEST_TENANT_ID,
       memberId: overrides.memberId ?? fx.adult.id,
       planId: overrides.planId ?? fx.bjjPlan.id,
       sportId: overrides.sportId ?? fx.bjj.id,
@@ -305,6 +362,7 @@ async function createSessionForGroup(
 
   return prisma.session.create({
     data: {
+      tenantId: TEST_TENANT_ID,
       groupId,
       sessionDate: overrides.sessionDate ?? new Date("2026-05-18T18:00:00.000Z"),
       startTime: overrides.startTime ?? "18:00",
@@ -319,13 +377,14 @@ async function createSessionForGroup(
 async function setupTwoPerWeekPlanWithThreeSessions(fx: Awaited<ReturnType<typeof dojoFixture>>) {
   await prisma.groupSchedule.createMany({
     data: [
-      { groupId: fx.adultBjj.id, dayOfWeek: "WEDNESDAY", startTime: "18:00", durationMinutes: 90 },
-      { groupId: fx.adultBjj.id, dayOfWeek: "FRIDAY", startTime: "18:00", durationMinutes: 90 },
+      { tenantId: TEST_TENANT_ID, groupId: fx.adultBjj.id, dayOfWeek: "WEDNESDAY", startTime: "18:00", durationMinutes: 90 },
+      { tenantId: TEST_TENANT_ID, groupId: fx.adultBjj.id, dayOfWeek: "FRIDAY", startTime: "18:00", durationMinutes: 90 },
     ],
   });
 
   const plan = await prisma.subscriptionPlan.create({
     data: {
+      tenantId: TEST_TENANT_ID,
       name: "BJJ 2/sem",
       price: 3500,
       sessionsPerWeek: 2,
@@ -356,9 +415,14 @@ async function enrollMemberForContextualPlan(
   remainingSessions = 8,
 ) {
   const sub = await createActiveSubscription(fx, { planId, remainingSessions, amount: 3500 });
-  await prisma.payment.create({ data: { memberSubscriptionId: sub.id, amount: sub.amount } });
+  await prisma.payment.create({ data: { tenantId: TEST_TENANT_ID, memberSubscriptionId: sub.id, amount: sub.amount } });
   await prisma.groupMember.create({
-    data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date() },
+    data: {
+      tenantId: TEST_TENANT_ID,
+      groupId: fx.adultBjj.id,
+      memberId: fx.adult.id,
+      startDate: new Date("2026-05-01T00:00:00.000Z"),
+    },
   });
   return sub;
 }
@@ -456,6 +520,93 @@ beforeEach(async () => {
 });
 
 describe("temporary data import", () => {
+  it("generates a member code when the import file has no code column", async () => {
+    const fx = await dojoFixture();
+    const rows = [
+      [
+        "Prénom",
+        "Nom",
+        "Type membre",
+        "Téléphone",
+        "Téléphone parent",
+        "Date inscription",
+        "Groupe",
+        "Formule",
+        "Début abonnement",
+        "Fin abonnement",
+        "Montant total",
+        "Déjà payé",
+        "Séances restantes",
+      ],
+      ["", "", "", "", "", "", "", "", "", "", "", "", ""],
+      [
+        "Amine",
+        "Client",
+        "Adulte",
+        "0612349999",
+        "",
+        "2026-06-01",
+        fx.adultBjj.name,
+        fx.bjjPlan.name,
+        "2026-06-01",
+        "2026-07-01",
+        "120",
+        "20",
+        "7",
+      ],
+    ];
+    const csv = rows.map((row) => row.join(";")).join("\n");
+
+    const result = await previewBulkDataImport(Buffer.from(csv, "utf8"), "reprise.csv", "2026-06-15");
+
+    expect(result.errorRows).toBe(0);
+    expect(result.rows[0].externalId).toBe("M001-amineclient-9999");
+  });
+
+  it("ignores legacy code columns and keeps the French import headers", async () => {
+    const fx = await dojoFixture();
+    const rows = [
+      [
+        "Code membre auto",
+        "Prénom",
+        "Nom",
+        "Type membre",
+        "Téléphone",
+        "Téléphone parent",
+        "Date inscription",
+        "Groupe",
+        "Formule",
+        "Début abonnement",
+        "Fin abonnement",
+        "Montant total",
+        "Déjà payé",
+        "Séances restantes",
+      ],
+      [
+        "CLIENT-OLD-42",
+        "Nour",
+        "Client",
+        "Enfant",
+        "",
+        "0612348888",
+        "2026-06-01",
+        fx.adultBjj.name,
+        fx.bjjPlan.name,
+        "2026-06-01",
+        "2026-07-01",
+        "120",
+        "20",
+        "7",
+      ],
+    ];
+    const csv = rows.map((row) => row.join(";")).join("\n");
+
+    const result = await previewBulkDataImport(Buffer.from(csv, "utf8"), "reprise.csv", "2026-06-15");
+
+    expect(result.errorRows).toBe(0);
+    expect(result.rows[0].externalId).toBe("M001-nourclient-8888");
+  });
+
   it("imports the member state atomically without consuming the paper attendance twice", async () => {
     const fx = await dojoFixture();
     const { start } = getWeekRangeUtc(new Date());
@@ -638,7 +789,7 @@ describe("enrollment quote edge cases", () => {
         },
       });
       await prisma.groupMember.create({
-        data: { groupId: fx.adultBjj.id, memberId: member.id, startDate: new Date() },
+        data: { groupId: fx.adultBjj.id, memberId: member.id, startDate: new Date("2026-05-01T00:00:00.000Z") },
       });
     }
 
@@ -653,7 +804,7 @@ describe("enrollment quote edge cases", () => {
   it("blocks schedule collisions against existing assignments", async () => {
     const fx = await dojoFixture();
     await prisma.groupMember.create({
-      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date() },
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date("2026-05-01T00:00:00.000Z") },
     });
 
     const quote = await buildEnrollmentQuote([
@@ -1192,7 +1343,7 @@ describe("api route scenarios", () => {
       jsonRequest("POST", {
         memberId: fx.adult.id,
         planId: fx.bjjPlan.id,
-        startDate: new Date().toISOString(),
+        startDate: new Date("2026-05-01T00:00:00.000Z").toISOString(),
       }),
     );
     const body = await responseJson(response);
@@ -1216,7 +1367,7 @@ describe("api route scenarios", () => {
       jsonRequest("POST", {
         memberId: fx.adult.id,
         planId: fx.bjjPlan.id,
-        startDate: new Date().toISOString(),
+        startDate: new Date("2026-05-01T00:00:00.000Z").toISOString(),
         carryOverRemainingSessions: true,
       }),
     );
@@ -1301,7 +1452,7 @@ describe("api route scenarios", () => {
     });
     const session = await createSessionForGroup(fx.adultBjj.id);
     await prisma.groupMember.create({
-      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date() },
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date("2026-05-01T00:00:00.000Z") },
     });
 
     const present = await createAttendance(
@@ -1337,6 +1488,37 @@ describe("api route scenarios", () => {
     expect(refreshed.remainingSessions).toBe(1);
   });
 
+  it("allows attendance when assignment and subscription start later on the session day", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const sessionDay = new Date("2026-06-24T00:00:00.000Z");
+    const laterSameDay = new Date("2026-06-24T12:00:00.000Z");
+    const sub = await createActiveSubscription(fx, {
+      remainingSessions: 3,
+      startDate: laterSameDay,
+      endDate: new Date("2026-07-24T00:00:00.000Z"),
+    });
+    await prisma.payment.create({ data: { memberSubscriptionId: sub.id, amount: sub.amount } });
+    await prisma.groupMember.create({
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: laterSameDay },
+    });
+    const session = await createSessionForGroup(fx.adultBjj.id, {
+      sessionDate: sessionDay,
+      startTime: "18:00",
+      endTime: "19:30",
+    });
+
+    const response = await createAttendance(
+      jsonRequest("POST", {
+        sessionId: session.id,
+        memberId: fx.adult.id,
+        status: "PRESENT",
+      }),
+    );
+
+    expect(response.status).toBe(201);
+  });
+
   it("does not decrement sessions for ABSENT when absentConsumesSession is disabled", async () => {
     await signIn();
     const fx = await dojoFixture();
@@ -1349,7 +1531,7 @@ describe("api route scenarios", () => {
       data: { memberSubscriptionId: sub.id, amount: sub.amount },
     });
     await prisma.groupMember.create({
-      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date() },
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date("2026-05-01T00:00:00.000Z") },
     });
     const session = await createSessionForGroup(fx.adultBjj.id);
 
@@ -1385,7 +1567,7 @@ describe("api route scenarios", () => {
     });
 
     await prisma.groupMember.create({
-      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date() },
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date("2026-05-01T00:00:00.000Z") },
     });
 
     const absent = await createAttendance(
@@ -1421,7 +1603,7 @@ describe("api route scenarios", () => {
     await createActiveSubscription(fx, { remainingSessions: 0 });
     const session = await createSessionForGroup(fx.adultBjj.id);
     await prisma.groupMember.create({
-      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date() },
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date("2026-05-01T00:00:00.000Z") },
     });
 
     const response = await createAttendance(
@@ -1449,7 +1631,7 @@ describe("api route scenarios", () => {
       data: { memberSubscriptionId: sub.id, amount: sub.amount },
     });
     await prisma.groupMember.create({
-      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date() },
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date("2026-05-01T00:00:00.000Z") },
     });
 
     const monday = await createSessionForGroup(fx.adultBjj.id, {
@@ -1487,7 +1669,7 @@ describe("api route scenarios", () => {
       data: { memberSubscriptionId: sub.id, amount: sub.amount },
     });
     await prisma.groupMember.create({
-      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date() },
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date("2026-05-01T00:00:00.000Z") },
     });
     const session = await createSessionForGroup(fx.adultBjj.id);
 
@@ -1651,15 +1833,18 @@ describe("admin permissions and password reset", () => {
   it("blocks staff without payments.manage from recording payments", async () => {
     const staff = await prisma.user.create({
       data: {
+        tenantId: TEST_TENANT_ID,
         name: "Members Only",
         email: "members-only@test.local",
         role: "STAFF",
         passwordHash: await hashPassword("password123"),
-        permissions: { create: [{ key: "members.manage" }] },
+        permissions: { create: [{ tenantId: TEST_TENANT_ID, key: "members.manage" }] },
       },
     });
     authState.token = await signAuthToken({
       userId: staff.id,
+      tenantId: TEST_TENANT_ID,
+      tenantSlug: TEST_TENANT_SLUG,
       email: staff.email,
       name: staff.name,
       role: "STAFF",
@@ -1694,7 +1879,7 @@ describe("attendance session balance corrections", () => {
     const sub = await createActiveSubscription(fx, { remainingSessions: 5 });
     await prisma.payment.create({ data: { memberSubscriptionId: sub.id, amount: sub.amount } });
     await prisma.groupMember.create({
-      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date() },
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date("2026-05-01T00:00:00.000Z") },
     });
     const session = await createSessionForGroup(fx.adultBjj.id);
     const created = await createAttendance(
@@ -1725,7 +1910,7 @@ describe("attendance session balance corrections", () => {
     const sub = await createActiveSubscription(fx, { remainingSessions: 4 });
     await prisma.payment.create({ data: { memberSubscriptionId: sub.id, amount: sub.amount } });
     await prisma.groupMember.create({
-      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date() },
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date("2026-05-01T00:00:00.000Z") },
     });
     const session = await createSessionForGroup(fx.adultBjj.id);
     const created = await createAttendance(
@@ -1751,7 +1936,7 @@ describe("attendance session balance corrections", () => {
     const sub = await createActiveSubscription(fx, { remainingSessions: 2 });
     await prisma.payment.create({ data: { memberSubscriptionId: sub.id, amount: sub.amount } });
     await prisma.groupMember.create({
-      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date() },
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date("2026-05-01T00:00:00.000Z") },
     });
     const session = await createSessionForGroup(fx.adultBjj.id);
     const created = await createAttendance(
@@ -1772,7 +1957,7 @@ describe("attendance session balance corrections", () => {
     const sub = await createActiveSubscription(fx);
     await prisma.payment.create({ data: { memberSubscriptionId: sub.id, amount: sub.amount } });
     await prisma.groupMember.create({
-      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date() },
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date("2026-05-01T00:00:00.000Z") },
     });
     const session = await createSessionForGroup(fx.adultBjj.id);
     await prisma.member.update({
@@ -1798,7 +1983,7 @@ describe("session postpone scenarios", () => {
     const sub = await createActiveSubscription(fx, { remainingSessions: 5 });
     await prisma.payment.create({ data: { memberSubscriptionId: sub.id, amount: sub.amount } });
     await prisma.groupMember.create({
-      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date() },
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date("2026-05-01T00:00:00.000Z") },
     });
     await createAttendance(
       jsonRequest("POST", { sessionId: session.id, memberId: fx.adult.id, status: "PRESENT" }),
@@ -1824,7 +2009,7 @@ describe("session postpone scenarios", () => {
     const sub = await createActiveSubscription(fx, { remainingSessions: 5 });
     await prisma.payment.create({ data: { memberSubscriptionId: sub.id, amount: sub.amount } });
     await prisma.groupMember.create({
-      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date() },
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date("2026-05-01T00:00:00.000Z") },
     });
     const attendanceRes = await createAttendance(
       jsonRequest("POST", { sessionId: session.id, memberId: fx.adult.id, status: "PRESENT" }),
@@ -2010,7 +2195,7 @@ describe("session edit guard scenarios", () => {
     const sub = await createActiveSubscription(fx, { remainingSessions: 5 });
     await prisma.payment.create({ data: { memberSubscriptionId: sub.id, amount: sub.amount } });
     await prisma.groupMember.create({
-      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date() },
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date("2026-05-01T00:00:00.000Z") },
     });
     await createAttendance(
       jsonRequest("POST", { sessionId: session.id, memberId: fx.adult.id, status: "PRESENT" }),
@@ -2035,7 +2220,7 @@ describe("session edit guard scenarios", () => {
     const sub = await createActiveSubscription(fx, { remainingSessions: 5 });
     await prisma.payment.create({ data: { memberSubscriptionId: sub.id, amount: sub.amount } });
     await prisma.groupMember.create({
-      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date() },
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date("2026-05-01T00:00:00.000Z") },
     });
     await createAttendance(
       jsonRequest("POST", { sessionId: session.id, memberId: fx.adult.id, status: "PRESENT" }),
@@ -2048,6 +2233,22 @@ describe("session edit guard scenarios", () => {
     expect(String(body.error)).toMatch(/pointages/i);
   });
 
+  it("cancels DELETE session instead of physically deleting it", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const session = await createSessionForGroup(fx.adultBjj.id, {
+      sessionDate: new Date("2026-05-18T18:00:00.000Z"),
+    });
+
+    const res = await routeWithSessionId(deleteSession, session.id, "DELETE", null);
+    const body = await responseJson(res);
+    const refreshed = await prisma.session.findUniqueOrThrow({ where: { id: session.id } });
+
+    expect(res.status).toBe(200);
+    expect((body.data as { status: string }).status).toBe("CANCELLED");
+    expect(refreshed.status).toBe("CANCELLED");
+  });
+
   it("allows PATCH session after attendances are deleted", async () => {
     await signIn();
     const fx = await dojoFixture();
@@ -2058,7 +2259,7 @@ describe("session edit guard scenarios", () => {
     const sub = await createActiveSubscription(fx, { remainingSessions: 5 });
     await prisma.payment.create({ data: { memberSubscriptionId: sub.id, amount: sub.amount } });
     await prisma.groupMember.create({
-      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date() },
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date("2026-05-01T00:00:00.000Z") },
     });
     const attendanceRes = await createAttendance(
       jsonRequest("POST", { sessionId: session.id, memberId: fx.adult.id, status: "PRESENT" }),
@@ -2221,10 +2422,12 @@ describe("payment corrections and member archive", () => {
     const patched = await patchPayment(
       jsonRequest("PATCH", {
         paymentId: payment.id,
-        payload: { amount: 3000 },
+        payload: { amount: 3000, correctionReason: "Erreur de saisie" },
       }),
     );
     expect(patched.status).toBe(200);
+    const originalAfterPatch = await prisma.payment.findUniqueOrThrow({ where: { id: payment.id } });
+    expect(originalAfterPatch.amount).toBe(4000);
 
     const afterPatch = await prisma.payment.aggregate({
       where: { memberSubscriptionId: sub.id },
@@ -2232,7 +2435,9 @@ describe("payment corrections and member archive", () => {
     });
     expect(afterPatch._sum.amount).toBe(3000);
 
-    const deleted = await deletePayment(jsonRequest("DELETE", { paymentId: payment.id }));
+    const deleted = await deletePayment(
+      jsonRequest("DELETE", { paymentId: payment.id, correctionReason: "Paiement saisi en double" }),
+    );
     expect(deleted.status).toBe(200);
 
     const afterDelete = await prisma.payment.aggregate({
@@ -2240,6 +2445,7 @@ describe("payment corrections and member archive", () => {
       _sum: { amount: true },
     });
     expect(afterDelete._sum.amount ?? 0).toBe(0);
+    expect(await prisma.payment.count({ where: { memberSubscriptionId: sub.id } })).toBe(3);
   });
 
   it("archives a member, cancels subscriptions and ends active group assignments", async () => {
@@ -2247,7 +2453,7 @@ describe("payment corrections and member archive", () => {
     const fx = await dojoFixture();
     const sub = await createActiveSubscription(fx);
     await prisma.groupMember.create({
-      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date(), status: "ACTIVE" },
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date("2026-05-01T00:00:00.000Z"), status: "ACTIVE" },
     });
 
     const res = await archiveMember(jsonRequest("DELETE", { memberId: fx.adult.id }));
@@ -2262,6 +2468,300 @@ describe("payment corrections and member archive", () => {
     expect(refreshedSub.status).toBe("CANCELLED");
     expect(assignment?.status).toBe("INACTIVE");
     expect(assignment?.endDate).not.toBeNull();
+  });
+
+  it("rejects disabled and demoted users from fresh database auth state", async () => {
+    const disabled = await prisma.user.create({
+      data: {
+        tenantId: TEST_TENANT_ID,
+        name: "Disabled Admin",
+        email: "disabled-admin@test.local",
+        role: "ADMIN",
+        isActive: false,
+        passwordHash: await hashPassword("password123"),
+      },
+    });
+    authState.token = await signAuthToken({
+      userId: disabled.id,
+      tenantId: TEST_TENANT_ID,
+      tenantSlug: TEST_TENANT_SLUG,
+      email: disabled.email,
+      name: disabled.name,
+      role: "ADMIN",
+    });
+
+    const disabledMe = await getAuthMe();
+    expect((await responseJson(disabledMe)).data).toBeNull();
+    const disabledApi = await createPayment(jsonRequest("POST", { memberSubscriptionId: "missing", amount: 100 }));
+    expect(disabledApi.status).toBe(401);
+
+    const demoted = await prisma.user.create({
+      data: {
+        tenantId: TEST_TENANT_ID,
+        name: "Demoted Admin",
+        email: "demoted-admin@test.local",
+        role: "STAFF",
+        isActive: true,
+        passwordHash: await hashPassword("password123"),
+        permissions: { create: [{ tenantId: TEST_TENANT_ID, key: "payments.manage" }] },
+      },
+    });
+    authState.token = await signAuthToken({
+      userId: demoted.id,
+      tenantId: TEST_TENANT_ID,
+      tenantSlug: TEST_TENANT_SLUG,
+      email: demoted.email,
+      name: demoted.name,
+      role: "ADMIN",
+    });
+
+    const demotedAdminRoute = await patchClubSettings(jsonRequest("PATCH", { maxStaffDiscountPercent: 10 }));
+    expect(demotedAdminRoute.status).toBe(403);
+  });
+
+  it("deactivates groups without deleting sessions or attendance", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const sub = await createActiveSubscription(fx);
+    await prisma.payment.create({ data: { memberSubscriptionId: sub.id, amount: sub.amount } });
+    await prisma.groupMember.create({
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date("2026-05-01T00:00:00.000Z") },
+    });
+    const session = await createSessionForGroup(fx.adultBjj.id);
+    const attendance = await createAttendance(
+      jsonRequest("POST", { sessionId: session.id, memberId: fx.adult.id, status: "PRESENT" }),
+    );
+    expect(attendance.status).toBe(201);
+
+    const response = await deactivateGroup(jsonRequest("DELETE", { groupId: fx.adultBjj.id }));
+    const group = await prisma.group.findUniqueOrThrow({ where: { id: fx.adultBjj.id } });
+
+    expect(response.status).toBe(200);
+    expect(group.isActive).toBe(false);
+    expect(await prisma.session.count({ where: { groupId: fx.adultBjj.id } })).toBe(1);
+    expect(await prisma.attendance.count({ where: { sessionId: session.id } })).toBe(1);
+  });
+
+  it("archives member detail deletes instead of hard-deleting the member", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const sub = await createActiveSubscription(fx);
+    await prisma.groupMember.create({
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date("2026-05-01T00:00:00.000Z"), status: "ACTIVE" },
+    });
+
+    const response = await routeWithSessionId(deleteMemberDetail, fx.adult.id, "DELETE", {});
+    const member = await prisma.member.findUnique({ where: { id: fx.adult.id } });
+    const subscription = await prisma.memberSubscription.findUniqueOrThrow({ where: { id: sub.id } });
+
+    expect(response.status).toBe(200);
+    expect(member?.status).toBe("ARCHIVED");
+    expect(subscription.status).toBe("CANCELLED");
+    expect(await prisma.member.count({ where: { id: fx.adult.id } })).toBe(1);
+  });
+
+  it("cancels subscription deletes and closes group-member deletes", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const sub = await createActiveSubscription(fx);
+    const assignment = await prisma.groupMember.create({
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date("2026-05-01T00:00:00.000Z"), status: "ACTIVE" },
+    });
+
+    const subscriptionResponse = await deleteMemberSubscription(jsonRequest("DELETE", { subscriptionId: sub.id }));
+    const assignmentResponse = await closeGroupMember(jsonRequest("DELETE", { groupMemberId: assignment.id }));
+    const refreshedSub = await prisma.memberSubscription.findUniqueOrThrow({ where: { id: sub.id } });
+    const refreshedAssignment = await prisma.groupMember.findUniqueOrThrow({ where: { id: assignment.id } });
+
+    expect(subscriptionResponse.status).toBe(200);
+    expect(assignmentResponse.status).toBe(200);
+    expect(refreshedSub.status).toBe("CANCELLED");
+    expect(refreshedAssignment.status).toBe("INACTIVE");
+    expect(refreshedAssignment.endDate).not.toBeNull();
+  });
+
+  it("bulk group-member delete closes assignments instead of deleting them", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    await prisma.groupMember.create({
+      data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date("2026-05-01T00:00:00.000Z"), status: "ACTIVE" },
+    });
+
+    const response = await bulkCloseGroupMembers(
+      jsonRequest("DELETE", { groupId: fx.adultBjj.id, memberIds: [fx.adult.id] }),
+    );
+    const body = await responseJson(response);
+    const assignment = await prisma.groupMember.findUniqueOrThrow({
+      where: { tenantId_groupId_memberId: { tenantId: TEST_TENANT_ID, groupId: fx.adultBjj.id, memberId: fx.adult.id } },
+    });
+
+    expect(response.status).toBe(200);
+    expect((body.data as { closedCount: number }).closedCount).toBe(1);
+    expect(assignment.status).toBe("INACTIVE");
+    expect(assignment.endDate).not.toBeNull();
+  });
+
+  it("records payment corrections and reversals as audit-backed ledger rows", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const sub = await createActiveSubscription(fx, { amount: 10000 });
+    const created = await createPayment(
+      jsonRequest("POST", { memberSubscriptionId: sub.id, amount: 7000 }),
+    );
+    const createdBody = await responseJson(created);
+    const paymentId = (createdBody.data as { id: string }).id;
+
+    const correction = await patchPayment(
+      jsonRequest("PATCH", {
+        paymentId,
+        payload: { amount: 6000, correctionReason: "Montant corrige apres controle caisse" },
+      }),
+    );
+    const reversal = await deletePayment(
+      jsonRequest("DELETE", { paymentId, correctionReason: "Annulation demandee par admin" }),
+    );
+    const rows = await prisma.payment.findMany({ where: { memberSubscriptionId: sub.id }, orderBy: { createdAt: "asc" } });
+    const audits = await prisma.auditLog.findMany({
+      where: { action: { in: ["PAYMENT_CORRECTED", "PAYMENT_REVERSED"] } },
+      orderBy: { createdAt: "asc" },
+    });
+
+    expect(correction.status).toBe(200);
+    expect(reversal.status).toBe(200);
+    expect(rows.map((row) => row.entryType)).toEqual(["PAYMENT", "CORRECTION", "REVERSAL"]);
+    expect(rows.map((row) => row.amount)).toEqual([7000, -1000, -6000]);
+    expect(audits).toHaveLength(2);
+    expect(audits.every((audit) => audit.userId === "admin-test-user")).toBe(true);
+    expect(audits.every((audit) => audit.details?.includes("reason"))).toBe(true);
+  });
+
+  it("rejects attendance PATCH loopholes with the same rules as creation", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    let index = 0;
+
+    async function makePatchCase(options: {
+      memberStatus?: "ACTIVE" | "ARCHIVED";
+      sessionStatus?: "PLANNED" | "CANCELLED";
+      assignmentStartDate?: Date;
+      paid?: boolean;
+      initialStatus?: "OVERRIDE" | "PRESENT";
+    } = {}) {
+      index += 1;
+      const member = await prisma.member.create({
+        data: {
+          firstName: `Case${index}`,
+          lastName: "Hardening",
+          phone: `hardening-${index}`,
+          memberType: "ADULT",
+          status: options.memberStatus ?? "ACTIVE",
+        },
+      });
+      const session = await createSessionForGroup(fx.adultBjjOverlap.id, {
+        sessionDate: new Date("2026-05-18T00:00:00.000Z"),
+        startTime: `${String(8 + index).padStart(2, "0")}:00`,
+        endTime: `${String(9 + index).padStart(2, "0")}:00`,
+      });
+      if (options.sessionStatus) {
+        await prisma.session.update({ where: { id: session.id }, data: { status: options.sessionStatus } });
+      }
+      const sub = await createActiveSubscription(fx, {
+        memberId: member.id,
+        remainingSessions: 5,
+        startDate: new Date("2026-05-01T00:00:00.000Z"),
+        endDate: new Date("2026-06-01T00:00:00.000Z"),
+      });
+      if (options.paid !== false) {
+        await prisma.payment.create({ data: { memberSubscriptionId: sub.id, amount: sub.amount } });
+      }
+      await prisma.groupMember.create({
+        data: {
+          groupId: fx.adultBjjOverlap.id,
+          memberId: member.id,
+          startDate: options.assignmentStartDate ?? new Date("2026-05-01T00:00:00.000Z"),
+          status: "ACTIVE",
+        },
+      });
+      const attendance = await prisma.attendance.create({
+        data: {
+          sessionId: session.id,
+          memberId: member.id,
+          memberSubscriptionId: options.initialStatus === "PRESENT" ? sub.id : null,
+          status: options.initialStatus ?? "OVERRIDE",
+          overrideReason: options.initialStatus === "PRESENT" ? null : "Initial override",
+        },
+      });
+      return attendance;
+    }
+
+    const cancelled = await makePatchCase({ sessionStatus: "CANCELLED" });
+    expect((await patchAttendance(jsonRequest("PATCH", { attendanceId: cancelled.id, payload: { status: "PRESENT" } }))).status).toBe(409);
+
+    const archived = await makePatchCase({ memberStatus: "ARCHIVED" });
+    expect((await patchAttendance(jsonRequest("PATCH", { attendanceId: archived.id, payload: { status: "PRESENT" } }))).status).toBe(403);
+
+    const futureAssignment = await makePatchCase({ assignmentStartDate: new Date("2026-05-19T00:00:00.000Z") });
+    const futureResponse = await patchAttendance(jsonRequest("PATCH", { attendanceId: futureAssignment.id, payload: { status: "PRESENT" } }));
+    expect(futureResponse.status).toBe(403);
+    expect((await responseJson(futureResponse)).code).toBe("NOT_ASSIGNED_TO_GROUP");
+
+    const unpaid = await makePatchCase({ paid: false });
+    const unpaidResponse = await patchAttendance(jsonRequest("PATCH", { attendanceId: unpaid.id, payload: { status: "PRESENT" } }));
+    expect(unpaidResponse.status).toBe(403);
+    expect((await responseJson(unpaidResponse)).code).toBe("SUBSCRIPTION_UNPAID");
+
+    const noReason = await makePatchCase({ initialStatus: "PRESENT" });
+    expect((await patchAttendance(jsonRequest("PATCH", { attendanceId: noReason.id, payload: { status: "OVERRIDE" } }))).status).toBe(400);
+  });
+
+  it("bulk assignment chooses the active subscription for the group sport", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const karateSub = await createActiveSubscription(fx, {
+      memberId: fx.adult.id,
+      planId: fx.karatePlan.id,
+      sportId: fx.karate.id,
+      amount: fx.karatePlan.price,
+      endDate: new Date(Date.now() + 10 * 86400000),
+    });
+    await prisma.payment.create({ data: { memberSubscriptionId: karateSub.id, amount: karateSub.amount } });
+    const bjjSub = await createActiveSubscription(fx, {
+      memberId: fx.adult.id,
+      planId: fx.bjjPlan.id,
+      sportId: fx.bjj.id,
+      amount: fx.bjjPlan.price,
+      endDate: new Date(Date.now() + 20 * 86400000),
+    });
+    await prisma.payment.create({ data: { memberSubscriptionId: bjjSub.id, amount: bjjSub.amount } });
+
+    const response = await bulkCreateGroupMembers(
+      jsonRequest("POST", {
+        groupId: fx.adultBjj.id,
+        memberIds: [fx.adult.id],
+        startDate: new Date("2026-05-01T00:00:00.000Z").toISOString(),
+      }),
+    );
+    const body = await responseJson(response);
+
+    expect(response.status).toBe(200);
+    expect((body.data as { createdCount: number; skippedSportMismatchCount: number }).createdCount).toBe(1);
+    expect((body.data as { createdCount: number; skippedSportMismatchCount: number }).skippedSportMismatchCount).toBe(0);
+  });
+
+  it("rejects subscription amounts below the paid ledger total", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const sub = await createActiveSubscription(fx, { amount: 10000 });
+    await prisma.payment.create({ data: { memberSubscriptionId: sub.id, amount: 5000 } });
+
+    const response = await patchMemberSubscription(
+      jsonRequest("PATCH", {
+        subscriptionId: sub.id,
+        payload: { amount: 4000, adjustmentReason: "Controle solde" },
+      }),
+    );
+
+    expect(response.status).toBe(409);
   });
 });
 
@@ -2468,7 +2968,7 @@ describe("contextual weekly consumption (plan below group standard)", () => {
     ).toBe(0);
     const refreshed = await prisma.memberSubscription.findUniqueOrThrow({ where: { id: sub.id } });
     expect(refreshed.remainingSessions).toBe(6);
-  });
+  }, 10000);
 
   it("scenario 5: absent, absent, absent", async () => {
     await signIn();
@@ -2667,6 +3167,163 @@ describe("group room rules", () => {
   });
 });
 
+describe("coach sport qualification policy", () => {
+  it("blocks staff from assigning a coach outside qualified sports", async () => {
+    await signIn("STAFF");
+    const fx = await dojoFixture();
+
+    const response = await createGroup(
+      jsonRequest("POST", {
+        name: "Karate Staff Blocked",
+        groupType: "ADULTS",
+        sportId: fx.karate.id,
+        coachId: fx.coach.id,
+        capacity: 8,
+      }),
+    );
+    const body = await responseJson(response);
+
+    expect(response.status).toBe(403);
+    expect(body.code).toBe("COACH_NOT_QUALIFIED");
+  });
+
+  it("requires an admin reason before overriding coach sport qualifications", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+
+    const blocked = await createGroup(
+      jsonRequest("POST", {
+        name: "Karate Needs Reason",
+        groupType: "ADULTS",
+        sportId: fx.karate.id,
+        coachId: fx.coach.id,
+        capacity: 8,
+      }),
+    );
+    expect(blocked.status).toBe(409);
+
+    const allowed = await createGroup(
+      jsonRequest("POST", {
+        name: "Karate Override",
+        groupType: "ADULTS",
+        sportId: fx.karate.id,
+        coachId: fx.coach.id,
+        capacity: 8,
+        coachSportOverrideReason: "Temporary certified replacement",
+      }),
+    );
+    const body = await responseJson(allowed);
+
+    expect(allowed.status).toBe(201);
+    const groupId = (body.data as { id: string }).id;
+    const audit = await prisma.auditLog.findFirst({
+      where: { action: "COACH_SPORT_OVERRIDE_USED", entityType: "Group", entityId: groupId },
+    });
+    expect(audit?.userId).toBe("admin-test-user");
+    expect(audit?.details).toContain("Temporary certified replacement");
+  });
+
+  it("allows qualified multi-sport coaches without override", async () => {
+    await signIn("STAFF");
+    const fx = await dojoFixture();
+    await prisma.coachSportQualification.create({
+      data: { coachId: fx.coach.id, sportId: fx.karate.id },
+    });
+
+    const response = await createGroup(
+      jsonRequest("POST", {
+        name: "Karate Qualified",
+        groupType: "ADULTS",
+        sportId: fx.karate.id,
+        coachId: fx.coach.id,
+        capacity: 8,
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(await prisma.auditLog.count({ where: { action: "COACH_SPORT_OVERRIDE_USED" } })).toBe(0);
+  });
+
+  it("checks the final coach and sport pair when editing a group", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const karateCoach = await prisma.coach.create({
+      data: {
+        firstName: "Karate",
+        lastName: "Coach",
+        phone: `karate-coach-${Date.now()}`,
+        sportId: fx.karate.id,
+      },
+    });
+
+    const blocked = await patchGroup(
+      jsonRequest("PATCH", {
+        groupId: fx.adultBjj.id,
+        payload: { coachId: karateCoach.id },
+      }),
+    );
+    expect(blocked.status).toBe(409);
+
+    const allowed = await patchGroup(
+      jsonRequest("PATCH", {
+        groupId: fx.adultBjj.id,
+        payload: {
+          coachId: karateCoach.id,
+          coachSportOverrideReason: "Cross-training clinic",
+        },
+      }),
+    );
+
+    expect(allowed.status).toBe(200);
+    expect(
+      await prisma.auditLog.findFirst({
+        where: { action: "COACH_SPORT_OVERRIDE_USED", entityType: "Group", entityId: fx.adultBjj.id },
+      }),
+    ).not.toBeNull();
+  });
+
+  it("applies the same qualification rule to manual session coach edits", async () => {
+    await signIn("STAFF");
+    const fx = await dojoFixture();
+    const session = await createSessionForGroup(fx.adultBjj.id);
+    const karateCoach = await prisma.coach.create({
+      data: {
+        firstName: "Session",
+        lastName: "Karate",
+        phone: `session-karate-${Date.now()}`,
+        sportId: fx.karate.id,
+      },
+    });
+
+    const blocked = await routeWithSessionId(
+      patchSession,
+      session.id,
+      "PATCH",
+      { editMode: "exception", coachId: karateCoach.id },
+    );
+    expect(blocked.status).toBe(403);
+
+    await signIn();
+    const allowed = await routeWithSessionId(
+      patchSession,
+      session.id,
+      "PATCH",
+      {
+        editMode: "exception",
+        coachId: karateCoach.id,
+        coachSportOverrideReason: "Guest seminar",
+      },
+    );
+
+    expect(allowed.status).toBe(200);
+    expect(
+      await prisma.auditLog.findFirst({
+        where: { action: "COACH_SPORT_OVERRIDE_USED", entityType: "Session", entityId: session.id },
+      }),
+    ).not.toBeNull();
+  });
+});
+
 describe("enrollment revert", () => {
   it("reverts a fresh enrollment with payment and group assignment", async () => {
     await signIn();
@@ -2701,7 +3358,7 @@ describe("enrollment revert", () => {
     expect(activeSubs).toHaveLength(0);
 
     const groupMember = await prisma.groupMember.findUnique({
-      where: { groupId_memberId: { groupId: fx.adultBjj.id, memberId: fx.adult.id } },
+      where: { tenantId_groupId_memberId: { tenantId: TEST_TENANT_ID, groupId: fx.adultBjj.id, memberId: fx.adult.id } },
     });
     expect(groupMember).toBeNull();
   });

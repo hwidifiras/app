@@ -1,14 +1,11 @@
 import { prisma } from "@/lib/prisma";
+import { formatMoney } from "@/lib/money";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { PaymentsTable } from "@/components/payments/payments-table";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-function formatCurrency(cents: number) {
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
-}
 
 type PaymentRow = {
   id: string;
@@ -21,7 +18,10 @@ type PaymentRow = {
   planName: string;
   amount: number;
   paymentDate: string;
+  createdAt: string;
   paymentMethod: string | null;
+  entryType: "PAYMENT" | "CORRECTION" | "REVERSAL";
+  correctionReason: string | null;
 };
 
 type PaymentGroup = {
@@ -38,7 +38,11 @@ type PaymentGroup = {
     id: string;
     amount: number;
     paymentDate: string;
+    createdAt: string;
     paymentMethod: string | null;
+    entryType: "PAYMENT" | "CORRECTION" | "REVERSAL";
+    correctionReason: string | null;
+    sequence: number;
     status: string;
   }>;
 };
@@ -49,7 +53,7 @@ export default async function PaymentsPage() {
 
   try {
     const rows = await prisma.payment.findMany({
-      orderBy: { paymentDate: "desc" },
+      orderBy: [{ paymentDate: "desc" }, { createdAt: "desc" }],
       include: {
         memberSubscription: {
           select: {
@@ -78,7 +82,10 @@ export default async function PaymentsPage() {
       planName: p.memberSubscription.plan?.name ?? "—",
       amount: p.amount,
       paymentDate: p.paymentDate.toISOString(),
+      createdAt: p.createdAt.toISOString(),
       paymentMethod: p.paymentMethod,
+      entryType: p.entryType,
+      correctionReason: p.correctionReason,
     }));
 
     // Regrouper par abonnement
@@ -93,7 +100,10 @@ export default async function PaymentsPage() {
     paymentGroups = Array.from(grouped.entries()).map(([subscriptionId, items]) => {
       // Trier par date croissante pour calculer les cumuls dans l'ordre chronologique
       const sorted = [...items].sort(
-        (a, b) => new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime()
+        (a, b) =>
+          new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime() ||
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() ||
+          a.id.localeCompare(b.id),
       );
 
       const totalDue = sorted[0].totalDue;
@@ -109,21 +119,29 @@ export default async function PaymentsPage() {
         const isSingle = sorted.length === 1;
 
         let status: string;
-        if (isSingle && remainingAfter === 0) {
+        if (p.entryType === "REVERSAL") {
+          status = `Annulation traçable — reste : ${formatMoney(remainingAfter)}`;
+        } else if (p.entryType === "CORRECTION") {
+          status = `Correction avec motif — reste : ${formatMoney(remainingAfter)}`;
+        } else if (isSingle && remainingAfter === 0) {
           status = "Paiement complet";
         } else if (isFirst) {
-          status = `Avance — reste : ${formatCurrency(remainingAfter)}`;
+          status = `Avance — reste : ${formatMoney(remainingAfter)}`;
         } else if (isLast && remainingAfter === 0) {
           status = "Paiement complet";
         } else {
-          status = `Versement — reste : ${formatCurrency(remainingAfter)}`;
+          status = `Versement — reste : ${formatMoney(remainingAfter)}`;
         }
 
         return {
           id: p.id,
           amount: p.amount,
           paymentDate: p.paymentDate,
+          createdAt: p.createdAt,
           paymentMethod: p.paymentMethod,
+          entryType: p.entryType,
+          correctionReason: p.correctionReason,
+          sequence: index + 1,
           status,
         };
       });
@@ -156,7 +174,8 @@ export default async function PaymentsPage() {
           <p className="text-xs uppercase tracking-[0.14em] text-[var(--muted-foreground)]">Mode dégradé</p>
           <h1 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">Paiements indisponibles</h1>
           <p className="mt-3 text-sm text-[var(--muted-foreground)]">
-            Données inaccessibles. Lancez `npm run prisma:generate` puis redémarrez le serveur.
+            Cette page ne peut pas charger ses données pour le moment. Revenez au tableau de bord puis contactez le
+            support si le problème continue.
           </p>
           <div className="mt-4">
             <Link href="/" className="btn btn-ghost">Retour au dashboard</Link>
@@ -172,12 +191,12 @@ export default async function PaymentsPage() {
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Abonnements & Finance"
+        overline="Finance"
         title="Paiements"
-        description={`${totalCount} versement(s) enregistré(s) — total ${formatCurrency(totalPayments)}.`}
+        description={`${totalCount} versement(s) enregistrés, total ${formatMoney(totalPayments)}.`}
         actions={
           <Link href="/payments/new" className="btn btn-primary btn-block-mobile">
-            + Nouveau paiement
+            + Encaisser
           </Link>
         }
       />

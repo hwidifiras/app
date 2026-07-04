@@ -9,6 +9,7 @@ export type SessionDto = {
   id: string;
   groupId: string;
   groupName: string;
+  groupSportId?: string;
   scheduleId: string | null;
   sessionDate: string;
   startTime: string;
@@ -24,6 +25,7 @@ export type SessionDto = {
   attendanceCount: number;
   operationalStatus?: SessionOperationalStatusDto;
   expectedMemberCount?: number;
+  checkedMemberCount?: number;
   unmarkedCount?: number;
   canFinalize?: boolean;
   createdAt: string;
