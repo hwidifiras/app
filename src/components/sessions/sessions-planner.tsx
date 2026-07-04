@@ -36,6 +36,7 @@ import {
   weekStartIsoForDate,
 } from "@/lib/dates";
 import { parseApiResponse } from "@/lib/parse-api-response";
+import { cn } from "@/lib/utils";
 
 type SessionsPlannerProps = {
   initialSessions: SessionDto[];
@@ -51,6 +52,8 @@ type SessionsPlannerProps = {
     qualifiedSports: Array<{ id: string; name: string; isPrimary: boolean }>;
   }>;
 };
+
+type PlanningViewMode = "week" | "day" | "coach" | "room";
 
 const sessionStatusLabels: Record<SessionStatusDto, string> = {
   PLANNED: "Planifiée",
@@ -158,6 +161,33 @@ function sessionRailClass(session: SessionDto, hasConflict: boolean) {
   if (session.status === "COMPLETED") return "bg-[var(--success)]";
   if (session.status === "CANCELLED") return "bg-[var(--muted-foreground)]";
   return "bg-[var(--primary)]";
+}
+
+const planningViewModes: Array<{ value: PlanningViewMode; label: string }> = [
+  { value: "week", label: "Semaine" },
+  { value: "day", label: "Jour" },
+  { value: "coach", label: "Coach" },
+  { value: "room", label: "Salle" },
+];
+
+function PlanningLegend() {
+  const items = [
+    { label: "Planifiee", className: "bg-[var(--primary)]" },
+    { label: "A finaliser", className: "bg-[var(--warning)]" },
+    { label: "Terminee", className: "bg-[var(--success)]" },
+    { label: "Conflit", className: "bg-[var(--danger)]" },
+  ];
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.7rem] font-medium text-[var(--muted-foreground)]">
+      {items.map((item) => (
+        <span key={item.label} className="inline-flex items-center gap-1.5">
+          <span className={cn("size-2 rounded-full", item.className)} aria-hidden="true" />
+          {item.label}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 function SessionTile({
@@ -310,6 +340,114 @@ function SessionTile({
   );
 }
 
+function SessionDetailPanel({
+  session,
+  conflictReasons,
+  onEdit,
+  onCancel,
+  className,
+}: {
+  session: SessionDto | null;
+  conflictReasons: string[];
+  onEdit: (session: SessionDto) => void;
+  onCancel: (session: SessionDto) => void;
+  className?: string;
+}) {
+  if (!session) return null;
+
+  const displayedStatus = displayedSessionStatus(session);
+  const checkedCount = session.checkedMemberCount ?? session.attendanceCount ?? 0;
+  const expectedCount = session.expectedMemberCount ?? 0;
+  const progress = expectedCount > 0 ? Math.min(100, Math.round((checkedCount / expectedCount) * 100)) : 0;
+  const actionLabel = primaryActionLabel(session);
+  const canCancel = canCancelSession(session);
+  const actionIsAttendanceLink =
+    session.operationalStatus === "NEEDS_FINALIZATION" ||
+    session.status === "COMPLETED" ||
+    (isTodaySession(session) && session.status !== "CANCELLED");
+
+  return (
+    <aside className={cn("rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]", className)}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[var(--primary)]">Séance sélectionnée</p>
+          <h2 className="mt-1 truncate text-lg font-bold text-[var(--foreground)]">{session.groupName}</h2>
+          <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+            {formatDateFr(session.sessionDate)} · {session.startTime} - {session.endTime}
+          </p>
+        </div>
+        <StatusBadge variant={conflictReasons.length ? "danger" : displayedStatus.variant}>
+          {conflictReasons.length ? "Conflit" : displayedStatus.label}
+        </StatusBadge>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+          <p className="text-[0.65rem] font-bold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">Coach</p>
+          <p className="mt-1 truncate font-semibold text-[var(--foreground)]">{session.coachName ?? "Sans coach"}</p>
+        </div>
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+          <p className="text-[0.65rem] font-bold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">Salle</p>
+          <p className="mt-1 truncate font-semibold text-[var(--foreground)]">{formatRoomLabel(session.room)}</p>
+        </div>
+      </div>
+
+      <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+        <div className="flex items-center justify-between gap-2 text-xs font-semibold text-[var(--muted-foreground)]">
+          <span>Pointage</span>
+          <span>{checkedCount}/{expectedCount} pointés</span>
+        </div>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--surface)]">
+          <div
+            className={cn("h-full rounded-full", conflictReasons.length ? "bg-[var(--danger)]" : "bg-[var(--primary)]")}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        {(session.unmarkedCount ?? 0) > 0 ? (
+          <p className="mt-2 text-xs font-medium text-[var(--warning)]">
+            {session.unmarkedCount} eleve{session.unmarkedCount && session.unmarkedCount > 1 ? "s" : ""} restant{session.unmarkedCount && session.unmarkedCount > 1 ? "s" : ""}
+          </p>
+        ) : null}
+      </div>
+
+      {conflictReasons.length > 0 ? (
+        <div className="mt-3 rounded-lg border border-[var(--danger)]/25 bg-[var(--danger)]/10 p-3">
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--danger)]">A corriger</p>
+          <ul className="mt-2 space-y-1 text-xs text-[var(--foreground)]">
+            {conflictReasons.map((reason) => (
+              <li key={reason}>{reason}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      <div className="mt-4 grid gap-2">
+        {actionIsAttendanceLink ? (
+          <Link
+            href={attendanceHref(session)}
+            prefetch={false}
+            className={cn("btn btn-sm w-full", actionLabel === "Finaliser" || actionLabel === "Pointer" ? "btn-primary" : "btn-ghost")}
+          >
+            {actionLabel === "Finaliser" ? <AlertTriangle className="size-4" /> : null}
+            {actionLabel}
+          </Link>
+        ) : null}
+        <button type="button" onClick={() => onEdit(session)} className="btn btn-ghost btn-sm w-full">
+          Modifier la séance
+        </button>
+        <button
+          type="button"
+          onClick={() => onCancel(session)}
+          disabled={!canCancel}
+          className="btn btn-ghost btn-sm w-full border-[var(--danger)]/30 text-[var(--danger)] disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          Annuler la séance
+        </button>
+      </div>
+    </aside>
+  );
+}
+
 export function SessionsPlanner({
   initialSessions,
   initialWeekStart,
@@ -325,6 +463,7 @@ export function SessionsPlanner({
   const [selectedMobileDay, setSelectedMobileDay] = useState(initialWeekStart);
   const [statusFilter, setStatusFilter] = useState<"ALL" | SessionStatusDto>("ALL");
   const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState<PlanningViewMode>("week");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -417,7 +556,7 @@ export function SessionsPlanner({
   }
 
   function openEdit(session: SessionDto) {
-    setExpandedSessionId(null);
+    setExpandedSessionId(session.id);
     setEditingSession(session);
     setEditForm({
       sessionDate: formatUtcDateOnlyIso(new Date(session.sessionDate)),
@@ -824,6 +963,66 @@ export function SessionsPlanner({
     return firstDayWithSessions?.key ?? visibleWeekDays[0]?.key ?? selectedMobileDay;
   }, [selectedMobileDay, sessionsByDate, visibleWeekDays]);
 
+  const firstConflictSession = useMemo(
+    () => filteredSessions.find((session) => conflictSessionIds.has(session.id)) ?? null,
+    [conflictSessionIds, filteredSessions],
+  );
+
+  const recommendedSession = useMemo(() => {
+    return firstConflictSession ??
+      filteredSessions.find((session) => session.operationalStatus === "NEEDS_FINALIZATION") ??
+      filteredSessions.find((session) => isTodaySession(session)) ??
+      filteredSessions[0] ??
+      null;
+  }, [filteredSessions, firstConflictSession]);
+
+  const selectedSession = useMemo(() => {
+    return filteredSessions.find((session) => session.id === expandedSessionId) ?? recommendedSession;
+  }, [expandedSessionId, filteredSessions, recommendedSession]);
+
+  const groupedPlanningSections = useMemo(() => {
+    if (viewMode === "week") return [];
+
+    if (viewMode === "day") {
+      return visibleWeekDays
+        .map((day) => {
+          const daySessions = sessionsByDate.get(day.key) ?? [];
+          const dayStats = dayStatsByDate.get(day.key);
+          return {
+            key: day.key,
+            label: formatDateFr(`${day.key}T00:00:00`),
+            meta: `${dayStats?.total ?? 0} cours · ${dayStats?.expected ?? 0} eleves attendus`,
+            sessions: daySessions,
+          };
+        })
+        .filter((section) => section.sessions.length > 0);
+    }
+
+    const grouped = new Map<string, { key: string; label: string; sessions: SessionDto[] }>();
+
+    for (const session of filteredSessions) {
+      const key = viewMode === "coach" ? (session.coachId ?? "NO_COACH") : formatRoomLabel(session.room);
+      const label = viewMode === "coach" ? (session.coachName ?? "Sans coach") : formatRoomLabel(session.room);
+      const current = grouped.get(key) ?? { key, label, sessions: [] };
+      current.sessions.push(session);
+      grouped.set(key, current);
+    }
+
+    return Array.from(grouped.values())
+      .sort((a, b) => a.label.localeCompare(b.label, "fr"))
+      .map((section) => {
+        const days = new Set(section.sessions.map(sessionDateKey)).size;
+        return {
+          ...section,
+          meta: `${section.sessions.length} cours · ${days} jour${days > 1 ? "s" : ""}`,
+          sessions: section.sessions.sort((a, b) => {
+            const dateSort = sessionDateKey(a).localeCompare(sessionDateKey(b));
+            return dateSort || a.startTime.localeCompare(b.startTime);
+          }),
+        };
+      });
+  }, [dayStatsByDate, filteredSessions, sessionsByDate, viewMode, visibleWeekDays]);
+
   const sessionsByDay = useMemo(() => {
     const map = new Map<string, SessionDto[]>();
 
@@ -845,6 +1044,26 @@ export function SessionsPlanner({
     dayFilter !== "ALL",
     statusFilter !== "ALL",
   ].filter(Boolean).length;
+
+  const renderSessionTile = (item: SessionDto) => (
+    <SessionTile
+      key={item.id}
+      item={item}
+      onEdit={openEdit}
+      onCancel={setPendingDeleteSession}
+      onToggle={toggleExpandedSession}
+      expanded={expandedSessionId === item.id}
+      conflictReasons={conflictDetailsBySessionId.get(item.id) ?? []}
+      hasConflict={conflictSessionIds.has(item.id)}
+    />
+  );
+
+  function focusFirstConflict() {
+    if (!firstConflictSession) return;
+    setExpandedSessionId(firstConflictSession.id);
+    setSelectedMobileDay(sessionDateKey(firstConflictSession));
+    setViewMode("week");
+  }
 
   async function resetFilters() {
     setDayFilter("ALL");
@@ -924,6 +1143,41 @@ export function SessionsPlanner({
           </div>
         ) : null}
 
+        {weekSummary.conflicts > 0 ? (
+          <div className="mt-3 flex flex-col gap-3 rounded-lg border border-[var(--danger)]/25 bg-[var(--danger)]/10 px-3 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="font-bold text-[var(--danger)]">{weekSummary.conflicts} conflit{weekSummary.conflicts > 1 ? "s" : ""} à corriger</p>
+              <p className="mt-0.5 text-xs text-[var(--foreground)]">
+                Un coach ou une salle est utilisé sur deux cours qui se chevauchent.
+              </p>
+            </div>
+            <button type="button" onClick={focusFirstConflict} className="btn btn-ghost btn-sm shrink-0 border-[var(--danger)]/30 text-[var(--danger)]">
+              Voir le premier conflit
+            </button>
+          </div>
+        ) : null}
+
+        <div className="mt-3 flex flex-col gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-2 md:flex-row md:items-center md:justify-between">
+          <div className="grid grid-cols-2 gap-1 sm:flex sm:flex-wrap">
+            {planningViewModes.map((mode) => (
+              <button
+                key={mode.value}
+                type="button"
+                onClick={() => setViewMode(mode.value)}
+                className={cn(
+                  "rounded-md px-3 py-2 text-xs font-bold transition",
+                  viewMode === mode.value
+                    ? "bg-[var(--primary)] text-white shadow-sm"
+                    : "text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]",
+                )}
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
+          <PlanningLegend />
+        </div>
+
         <div className="list-toolbar sticky top-[57px] z-20 -mx-2 mt-3 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[3.5rem]">
           <div className="flex flex-col gap-2 md:flex-row md:items-end">
             <div className="min-w-0 flex-1">
@@ -981,7 +1235,174 @@ export function SessionsPlanner({
           </div>
         ) : null}
 
-        <div className="mt-5">
+        <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start">
+          <div className="min-w-0">
+            {filteredSessions.length > 0 ? (
+              viewMode === "week" ? (
+                <>
+                  <div className="hidden items-start gap-2 lg:grid lg:grid-cols-7">
+                    {visibleWeekDays.map((day) => {
+                      const daySessions = sessionsByDate.get(day.key) ?? [];
+                      const dayStats = dayStatsByDate.get(day.key);
+
+                      return (
+                        <section key={day.key} className="min-w-0 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] p-2 shadow-[var(--shadow-panel)]">
+                          <div className="rounded-md bg-[var(--surface-soft)] px-2 py-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <p className="text-xs font-bold capitalize text-[var(--foreground)]">{day.label}</p>
+                                <p className="text-[0.7rem] text-[var(--muted-foreground)]">{day.dateLabel}</p>
+                              </div>
+                              <span className="rounded-full bg-[var(--surface)] px-2 py-0.5 text-[0.65rem] font-semibold text-[var(--muted-foreground)]">
+                                {dayStats?.total ?? 0}
+                              </span>
+                            </div>
+                            {daySessions.length > 0 ? (
+                              <div className="mt-2 flex flex-wrap gap-1">
+                                <span className="rounded-full bg-[var(--primary)]/10 px-2 py-0.5 text-[0.62rem] font-semibold text-[var(--primary)]">
+                                  {dayStats?.expected ?? 0} eleves
+                                </span>
+                                {(dayStats?.finalization ?? 0) > 0 ? (
+                                  <span className="rounded-full bg-[var(--warning)]/10 px-2 py-0.5 text-[0.62rem] font-semibold text-[var(--warning)]">
+                                    {dayStats?.finalization} a finaliser
+                                  </span>
+                                ) : null}
+                                {(dayStats?.conflicts ?? 0) > 0 ? (
+                                  <span className="rounded-full bg-[var(--danger)]/10 px-2 py-0.5 text-[0.62rem] font-semibold text-[var(--danger)]">
+                                    {dayStats?.conflicts} conflit
+                                  </span>
+                                ) : null}
+                              </div>
+                            ) : null}
+                          </div>
+
+                          {daySessions.length > 0 ? (
+                            <ul className="mt-2 space-y-2">
+                              {daySessions.map(renderSessionTile)}
+                            </ul>
+                          ) : (
+                            <div className="mt-2 rounded-lg border border-dashed border-[var(--border)] px-2 py-4 text-center text-xs text-[var(--muted-foreground)]">
+                              Aucun cours
+                            </div>
+                          )}
+                        </section>
+                      );
+                    })}
+                  </div>
+
+                  <div className="min-w-0 space-y-3 overflow-hidden lg:hidden">
+                    <div className="flex max-w-full min-w-0 gap-2 overflow-x-auto pb-1">
+                      {visibleWeekDays.map((day) => {
+                        const dayStats = dayStatsByDate.get(day.key);
+                        const active = activeMobileDay === day.key;
+                        return (
+                          <button
+                            key={day.key}
+                            type="button"
+                            onClick={() => setSelectedMobileDay(day.key)}
+                            className={cn(
+                              "min-w-20 rounded-lg border px-3 py-2 text-left transition",
+                              active
+                                ? "border-[var(--primary)] bg-[var(--primary)] text-white"
+                                : "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)]",
+                            )}
+                          >
+                            <span className="block text-xs font-bold capitalize">{day.label}</span>
+                            <span className={cn("block text-[0.68rem]", active ? "text-white/80" : "text-[var(--muted-foreground)]")}>
+                              {dayStats?.total ?? 0} cours
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {visibleWeekDays.filter((day) => day.key === activeMobileDay).map((day) => {
+                      const daySessions = sessionsByDate.get(day.key) ?? [];
+                      const dayStats = dayStatsByDate.get(day.key);
+                      return (
+                        <section key={day.key} className="rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] p-3.5 shadow-[var(--shadow-panel)] sm:p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <h3 className="text-sm font-semibold capitalize text-[var(--foreground)]">{formatDateFr(`${day.key}T00:00:00`)}</h3>
+                              <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
+                                {dayStats?.expected ?? 0} eleves attendus · {dayStats?.finalization ?? 0} a finaliser
+                              </p>
+                            </div>
+                            {(dayStats?.conflicts ?? 0) > 0 ? (
+                              <StatusBadge variant="danger">{dayStats?.conflicts} conflit</StatusBadge>
+                            ) : null}
+                          </div>
+
+                          {daySessions.length > 0 ? (
+                            <ul className="mt-3 grid gap-2">
+                              {daySessions.map(renderSessionTile)}
+                            </ul>
+                          ) : (
+                            <div className="mt-3 rounded-lg border border-dashed border-[var(--border)] px-3 py-5 text-center text-xs text-[var(--muted-foreground)]">
+                              Aucun cours
+                            </div>
+                          )}
+                        </section>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <div className="grid gap-3">
+                  {groupedPlanningSections.map((section) => (
+                    <section key={section.key} className="rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] p-3 shadow-[var(--shadow-panel)]">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <h3 className="truncate text-sm font-bold text-[var(--foreground)]">{section.label}</h3>
+                          <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">{section.meta}</p>
+                        </div>
+                        <StatusBadge variant={section.sessions.some((session) => conflictSessionIds.has(session.id)) ? "danger" : "muted"}>
+                          {section.sessions.length} cours
+                        </StatusBadge>
+                      </div>
+                      <ul className="mt-3 grid gap-2 md:grid-cols-2 2xl:grid-cols-3">
+                        {section.sessions.map(renderSessionTile)}
+                      </ul>
+                    </section>
+                  ))}
+                </div>
+              )
+            ) : (
+              <EmptyState
+                icon={<CalendarDays className="size-8 opacity-45" />}
+                title="Aucune séance trouvée"
+                message="Changez de semaine ou réinitialisez les filtres."
+                action={
+                  <button type="button" onClick={() => { setSearchTerm(""); void resetFilters(); }} className="btn btn-ghost">
+                    Réinitialiser
+                  </button>
+                }
+              />
+            )}
+          </div>
+
+          {filteredSessions.length > 0 ? (
+            <SessionDetailPanel
+              session={selectedSession}
+              conflictReasons={selectedSession ? conflictDetailsBySessionId.get(selectedSession.id) ?? [] : []}
+              onEdit={openEdit}
+              onCancel={setPendingDeleteSession}
+              className="hidden xl:sticky xl:top-28 xl:block"
+            />
+          ) : null}
+        </div>
+
+        {filteredSessions.length > 0 ? (
+          <SessionDetailPanel
+            session={selectedSession}
+            conflictReasons={selectedSession ? conflictDetailsBySessionId.get(selectedSession.id) ?? [] : []}
+            onEdit={openEdit}
+            onCancel={setPendingDeleteSession}
+            className="mt-4 xl:hidden"
+          />
+        ) : null}
+
+        <div className="hidden" aria-hidden="true">
           {filteredSessions.length > 0 ? (
             <div className="hidden items-start gap-2 lg:grid lg:grid-cols-7">
               {visibleWeekDays.map((day) => {
