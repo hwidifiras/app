@@ -36,6 +36,7 @@ import {
   weekStartIsoForDate,
 } from "@/lib/dates";
 import { parseApiResponse } from "@/lib/parse-api-response";
+import { buildPlanningConflictDetails } from "@/lib/planning-conflicts";
 import { cn } from "@/lib/utils";
 
 type SessionsPlannerProps = {
@@ -125,16 +126,6 @@ function getWeekDays(weekStartIso: string) {
       dateLabel: date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }),
     };
   });
-}
-
-function minutesFromTime(time: string) {
-  const [hours = 0, minutes = 0] = time.split(":").map(Number);
-  return hours * 60 + minutes;
-}
-
-function sessionsOverlap(a: SessionDto, b: SessionDto) {
-  return minutesFromTime(a.startTime) < minutesFromTime(b.endTime) &&
-    minutesFromTime(b.startTime) < minutesFromTime(a.endTime);
 }
 
 function sessionDateKey(session: SessionDto) {
@@ -872,67 +863,13 @@ export function SessionsPlanner({
     return map;
   }, [filteredSessions, visibleWeekDays]);
 
-  const coachesById = useMemo(() => {
-    return new Map(coachesOptions.map((coach) => [coach.id, coach]));
-  }, [coachesOptions]);
-
   const conflictDetailsBySessionId = useMemo(() => {
-    const details = new Map<string, string[]>();
-
-    function addDetail(sessionId: string, reason: string) {
-      const current = details.get(sessionId) ?? [];
-      if (!current.includes(reason)) {
-        details.set(sessionId, [...current, reason]);
-      }
-    }
-
-    for (const daySessions of sessionsByDate.values()) {
-      for (let i = 0; i < daySessions.length; i += 1) {
-        for (let j = i + 1; j < daySessions.length; j += 1) {
-          const a = daySessions[i];
-          const b = daySessions[j];
-          if (a.status === "CANCELLED" || b.status === "CANCELLED" || !sessionsOverlap(a, b)) {
-            continue;
-          }
-          const sameCoach = a.coachId && b.coachId && a.coachId === b.coachId;
-          const sameRoom = formatRoomLabel(a.room) === formatRoomLabel(b.room);
-          const coachCanShareSameRoom =
-            Boolean(sameCoach) &&
-            planningPreferences.allowCoachConcurrentSameRoomQualified &&
-            sameRoom &&
-            coachIsQualifiedForSport(coachesById.get(a.coachId!), a.groupSportId) &&
-            coachIsQualifiedForSport(coachesById.get(a.coachId!), b.groupSportId);
-
-          if (sameCoach && !coachCanShareSameRoom) {
-            const coachName = a.coachName ?? b.coachName ?? "Coach";
-            addDetail(
-              a.id,
-              `${coachName} est déjà affecté à ${b.groupName} (${b.startTime}-${b.endTime}).`,
-            );
-            addDetail(
-              b.id,
-              `${coachName} est déjà affecté à ${a.groupName} (${a.startTime}-${a.endTime}).`,
-            );
-          }
-          const roomCanShare = planningPreferences.allowSameRoomConcurrentGroups || coachCanShareSameRoom;
-
-          if (sameRoom && !roomCanShare) {
-            const roomLabel = formatRoomLabel(a.room);
-            addDetail(
-              a.id,
-              `${roomLabel} est déjà réservée par ${b.groupName} (${b.startTime}-${b.endTime}).`,
-            );
-            addDetail(
-              b.id,
-              `${roomLabel} est déjà réservée par ${a.groupName} (${a.startTime}-${a.endTime}).`,
-            );
-          }
-        }
-      }
-    }
-
-    return details;
-  }, [coachesById, planningPreferences, sessionsByDate]);
+    return buildPlanningConflictDetails({
+      sessions: filteredSessions,
+      coaches: coachesOptions,
+      preferences: planningPreferences,
+    });
+  }, [coachesOptions, filteredSessions, planningPreferences]);
 
   const conflictSessionIds = useMemo(
     () => new Set(conflictDetailsBySessionId.keys()),

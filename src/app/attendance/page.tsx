@@ -71,7 +71,7 @@ export default async function AttendancePage() {
     <main className="app-shell py-4 md:py-8">
       <PageHeader
         overline="Élèves"
-        title="Présences"
+        title="Historique présences"
         description={`${rows.length} pointage(s) enregistrés pour le suivi réception.`}
         actions={
           <>

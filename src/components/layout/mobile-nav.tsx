@@ -24,7 +24,7 @@ export function MobileNav() {
   const [open, setOpen] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
   const pathname = usePathname();
-  const { account } = useAppShellData();
+  const { account, navBadges } = useAppShellData();
   const role = account?.role ?? null;
   const configurationSections = getConfigurationSections(role);
   const inClubConfig = configurationSections.some((section) =>
@@ -102,7 +102,7 @@ export function MobileNav() {
                 {section.title}
               </p>
               {section.items.map((item) => (
-                <NavLink key={item.href} item={item} pathname={pathname} onClick={close} />
+                <NavLink key={item.href} item={item} pathname={pathname} onClick={close} badge={navBadges[item.href]} />
               ))}
             </div>
           ))}
@@ -132,7 +132,7 @@ export function MobileNav() {
                       </p>
                     ) : null}
                     {section.items.map((item) => (
-                      <NavLink key={item.href} item={item} pathname={pathname} onClick={close} />
+                      <NavLink key={item.href} item={item} pathname={pathname} onClick={close} badge={navBadges[item.href]} />
                     ))}
                   </div>
                 ))}
@@ -145,9 +145,9 @@ export function MobileNav() {
       <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-8px_20px_rgba(15,23,42,0.1)] backdrop-blur lg:hidden dark:shadow-[0_-10px_28px_rgba(0,0,0,0.45)]">
         <nav className="mobile-quick-nav grid grid-cols-5 gap-1">
           <QuickMobileLink href="/" label="Accueil" icon={Home} pathname={pathname} />
-          <QuickMobileLink href="/attendance/today" label="Pointage" icon={Clock} pathname={pathname} />
+          <QuickMobileLink href="/attendance/today" label="Pointage" icon={Clock} pathname={pathname} badge={navBadges["/attendance/today"]} />
           <QuickMobileLink href="/enrollment" label="Inscrire" icon={PlusCircle} pathname={pathname} featured />
-          <QuickMobileLink href="/payments/new" label="Caisse" icon={Banknote} pathname={pathname} />
+          <QuickMobileLink href="/payments/new" label="Caisse" icon={Banknote} pathname={pathname} badge={navBadges["/payments/new"]} />
           <QuickMobileLink href="/members" label="Membres" icon={Search} pathname={pathname} />
         </nav>
       </div>
@@ -163,12 +163,14 @@ function QuickMobileLink({
   icon: Icon,
   pathname,
   featured,
+  badge,
 }: {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   pathname: string;
   featured?: boolean;
+  badge?: { label: string; tone: "blue" | "amber" | "red" } | null;
 }) {
   const active = href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
   const activeFg = "text-[var(--primary-foreground)]";
@@ -178,7 +180,7 @@ function QuickMobileLink({
       href={href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-md px-1 py-1.5 text-[0.62rem] font-bold transition",
+        "relative flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-md px-1 py-1.5 text-[0.62rem] font-bold transition",
         active
           ? cn("bg-[var(--primary)] shadow-[var(--shadow-panel)]", activeFg, "[&_svg]:text-[var(--primary-foreground)]")
           : featured
@@ -188,6 +190,18 @@ function QuickMobileLink({
     >
       <Icon className={cn("size-4 shrink-0", active && activeFg)} />
       <span className={cn("max-w-full truncate", active && activeFg)}>{label}</span>
+      {badge ? (
+        <span
+          className={cn(
+            "absolute right-1 top-1 inline-flex min-w-4 items-center justify-center rounded-full px-1 text-[0.55rem] font-black leading-4 ring-2 ring-[var(--surface)]",
+            badge.tone === "red" && "bg-[var(--danger)] text-white",
+            badge.tone === "amber" && "bg-[var(--warning)] text-white",
+            badge.tone === "blue" && "bg-[var(--primary)] text-white",
+          )}
+        >
+          {badge.label}
+        </span>
+      ) : null}
     </Link>
   );
 }

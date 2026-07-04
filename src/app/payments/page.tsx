@@ -192,7 +192,7 @@ export default async function PaymentsPage() {
     <main className="app-shell py-4 md:py-8">
       <PageHeader
         overline="Ventes"
-        title="Paiements"
+        title="Historique caisse"
         description={`${totalCount} versement(s) enregistrés, total ${formatMoney(totalPayments)}.`}
         actions={
           <Link href="/payments/new" className="btn btn-primary btn-block-mobile">

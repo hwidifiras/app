@@ -19,6 +19,15 @@ type NotificationData = {
   unreadCount: number;
 };
 
+export type NavigationBadge = {
+  label: string;
+  tone: "blue" | "amber" | "red";
+};
+
+type NavigationBadgeData = {
+  badges: Record<string, NavigationBadge | null>;
+};
+
 type ApiEnvelope<T> = {
   data?: T;
 };
@@ -36,11 +45,18 @@ type AppShellDataContextValue = {
   setupGuide: SetupGuideProgress | null;
   setupGuideLoading: boolean;
   refreshSetupGuide: () => Promise<void>;
+  navBadges: Record<string, NavigationBadge | null>;
+  navBadgesLoading: boolean;
+  refreshNavBadges: () => Promise<void>;
 };
 
 const emptyNotifications: NotificationData = {
   notifications: [],
   unreadCount: 0,
+};
+
+const emptyNavigationBadges: NavigationBadgeData = {
+  badges: {},
 };
 
 const AppShellDataContext = createContext<AppShellDataContextValue | null>(null);
@@ -60,9 +76,15 @@ export function AppShellDataProvider({ children }: { children: React.ReactNode }
   const [notificationsLoading, setNotificationsLoading] = useState(true);
   const [setupGuide, setSetupGuide] = useState<SetupGuideProgress | null>(null);
   const [setupGuideLoading, setSetupGuideLoading] = useState(false);
+  const [navBadgeData, setNavBadgeData] = useState<NavigationBadgeData>(emptyNavigationBadges);
+  const [navBadgesLoading, setNavBadgesLoading] = useState(true);
   const notificationsLoadedRef = useRef(false);
   const notificationsInFlightRef = useRef<Promise<void> | null>(null);
   const lastNotificationsFetchRef = useRef(0);
+  const navBadgesLoadedRef = useRef(false);
+  const navBadgesInFlightRef = useRef<Promise<void> | null>(null);
+  const lastNavBadgesFetchRef = useRef(0);
+  const accountId = account?.id;
 
   const refreshAccount = useCallback(async () => {
     setAccountLoading(true);
@@ -135,6 +157,45 @@ export function AppShellDataProvider({ children }: { children: React.ReactNode }
     }
   }, [account?.role]);
 
+  const refreshNavBadges = useCallback(async () => {
+    const now = Date.now();
+    if (navBadgesLoadedRef.current && now - lastNavBadgesFetchRef.current < 15_000) {
+      return;
+    }
+    if (navBadgesInFlightRef.current) {
+      await navBadgesInFlightRef.current;
+      return;
+    }
+
+    const request = (async () => {
+      if (!navBadgesLoadedRef.current) {
+        setNavBadgesLoading(true);
+      }
+      try {
+        const response = await fetch("/api/navigation-badges", { cache: "no-store" });
+        const json = (await response.json()) as ApiEnvelope<NavigationBadgeData>;
+        if (response.ok && json.data) {
+          setNavBadgeData(json.data);
+        }
+      } catch {
+        // Navigation remains usable if operational badges are unavailable.
+      } finally {
+        navBadgesLoadedRef.current = true;
+        lastNavBadgesFetchRef.current = Date.now();
+        setNavBadgesLoading(false);
+      }
+    })();
+
+    navBadgesInFlightRef.current = request;
+    try {
+      await request;
+    } finally {
+      if (navBadgesInFlightRef.current === request) {
+        navBadgesInFlightRef.current = null;
+      }
+    }
+  }, []);
+
   useEffect(() => {
     const timer = window.setTimeout(() => void refreshAccount(), 0);
     return () => window.clearTimeout(timer);
@@ -154,6 +215,16 @@ export function AppShellDataProvider({ children }: { children: React.ReactNode }
     const timer = window.setTimeout(() => void refreshSetupGuide(), 0);
     return () => window.clearTimeout(timer);
   }, [accountLoading, refreshSetupGuide]);
+
+  useEffect(() => {
+    if (accountLoading || !accountId) return;
+    const timer = window.setTimeout(() => void refreshNavBadges(), 0);
+    const interval = window.setInterval(() => void refreshNavBadges(), 60_000);
+    return () => {
+      window.clearTimeout(timer);
+      window.clearInterval(interval);
+    };
+  }, [accountId, accountLoading, refreshNavBadges]);
 
   const markNotificationRead = useCallback(async (key: string) => {
     setNotificationData((current) => ({
@@ -205,6 +276,9 @@ export function AppShellDataProvider({ children }: { children: React.ReactNode }
       setupGuide,
       setupGuideLoading,
       refreshSetupGuide,
+      navBadges: navBadgeData.badges,
+      navBadgesLoading,
+      refreshNavBadges,
     }),
     [
       account,
@@ -219,6 +293,9 @@ export function AppShellDataProvider({ children }: { children: React.ReactNode }
       setupGuide,
       setupGuideLoading,
       refreshSetupGuide,
+      navBadgeData.badges,
+      navBadgesLoading,
+      refreshNavBadges,
     ],
   );
 

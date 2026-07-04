@@ -173,7 +173,7 @@ export default async function AttendanceByGroupPage({
 
       <PageHeader
         overline="Élèves"
-        title="Rapports groupes"
+        title="Suivi groupes"
         description="Lire les présences par cours, séance et élève sans quitter le planning."
       />
 

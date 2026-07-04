@@ -25,7 +25,7 @@ import {
   Wallet,
 } from "lucide-react";
 
-import { useAppShellData } from "@/components/layout/app-shell-data-provider";
+import { useAppShellData, type NavigationBadge } from "@/components/layout/app-shell-data-provider";
 import { ClubBrandMark } from "@/components/layout/club-brand-mark";
 import { cn } from "@/lib/utils";
 
@@ -56,7 +56,7 @@ export const salesSection: NavSection = {
     { href: "/enrollment", label: "Inscrire", icon: UserPlus },
     { href: "/payments/new", label: "Encaisser", icon: Banknote },
     { href: "/subscriptions", label: "Abonnements", icon: CreditCard },
-    { href: "/payments", label: "Paiements", icon: Wallet },
+    { href: "/payments", label: "Historique caisse", icon: Wallet },
   ],
 };
 
@@ -64,15 +64,15 @@ export const studentsSection: NavSection = {
   title: "Élèves",
   items: [
     { href: "/members", label: "Membres", icon: Users },
-    { href: "/attendance", label: "Présences", icon: Activity },
-    { href: "/attendance/groups", label: "Rapports groupes", icon: ClipboardCheck },
+    { href: "/attendance", label: "Historique présences", icon: Activity },
+    { href: "/attendance/groups", label: "Suivi groupes", icon: ClipboardCheck },
   ],
 };
 
 export const clubSection: NavSection = {
   title: "Club",
   items: [
-    { href: "/groups", label: "Cours / groupes", icon: CalendarDays },
+    { href: "/groups", label: "Groupes & horaires", icon: CalendarDays },
     { href: "/coaches", label: "Coachs", icon: User },
     { href: "/sports", label: "Disciplines", icon: Dumbbell },
   ],
@@ -134,11 +134,13 @@ export function NavLink({
   pathname,
   onClick,
   collapsed = false,
+  badge,
 }: {
   item: NavItem;
   pathname: string;
   onClick?: () => void;
   collapsed?: boolean;
+  badge?: NavigationBadge | null;
 }) {
   const Icon = item.icon;
   const active = isLinkActive(pathname, item.href);
@@ -151,7 +153,7 @@ export function NavLink({
       aria-label={collapsed ? item.label : undefined}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex items-center rounded-lg py-2 text-[0.82rem] font-medium transition-all",
+        "relative flex items-center rounded-lg py-2 text-[0.82rem] font-medium transition-all",
         collapsed ? "justify-center px-2" : "gap-2.5 px-3",
         active
           ? "bg-[var(--primary)]/10 text-[var(--primary)] shadow-[var(--shadow-panel)] ring-1 ring-[var(--primary)]/20"
@@ -159,8 +161,25 @@ export function NavLink({
       )}
     >
       <Icon className={cn("size-[1.1rem] shrink-0", active ? "text-[var(--primary)]" : "opacity-60")} />
-      {!collapsed ? <span className="truncate">{item.label}</span> : null}
+      {!collapsed ? <span className="min-w-0 flex-1 truncate">{item.label}</span> : null}
+      {badge ? <NavBadge badge={badge} collapsed={collapsed} /> : null}
     </Link>
+  );
+}
+
+function NavBadge({ badge, collapsed = false }: { badge: NavigationBadge; collapsed?: boolean }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-[0.62rem] font-black leading-5 tabular-nums",
+        collapsed && "absolute right-0 top-0 min-w-4 px-1 text-[0.55rem] leading-4 ring-2 ring-[var(--surface)]",
+        badge.tone === "red" && "bg-[var(--danger)]/12 text-[var(--danger)]",
+        badge.tone === "amber" && "bg-[var(--warning)]/14 text-[var(--warning)]",
+        badge.tone === "blue" && "bg-[var(--primary)]/12 text-[var(--primary)]",
+      )}
+    >
+      {badge.label}
+    </span>
   );
 }
 
@@ -173,7 +192,7 @@ export function AppSidebar({
 }) {
   const pathname = usePathname();
   const [configOpen, setConfigOpen] = useState(false);
-  const { account } = useAppShellData();
+  const { account, navBadges } = useAppShellData();
   const role = account?.role ?? null;
   const configurationSections = getConfigurationSections(role);
 
@@ -219,7 +238,13 @@ export function AppSidebar({
               </p>
             ) : null}
             {section.items.map((item) => (
-              <NavLink key={item.href} item={item} pathname={pathname} collapsed={collapsed} />
+              <NavLink
+                key={item.href}
+                item={item}
+                pathname={pathname}
+                collapsed={collapsed}
+                badge={navBadges[item.href]}
+              />
             ))}
           </div>
         ))}
@@ -266,7 +291,13 @@ export function AppSidebar({
                     </p>
                   ) : null}
                   {section.items.map((item) => (
-                    <NavLink key={item.href} item={item} pathname={pathname} collapsed={collapsed} />
+                    <NavLink
+                      key={item.href}
+                      item={item}
+                      pathname={pathname}
+                      collapsed={collapsed}
+                      badge={navBadges[item.href]}
+                    />
                   ))}
                 </div>
               ))}
