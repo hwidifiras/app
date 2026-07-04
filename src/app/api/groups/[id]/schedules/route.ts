@@ -88,7 +88,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     : [bodyObj];
 
   if (rawSchedules.length === 0) {
-    return NextResponse.json({ error: "Aucun créneau fourni" }, { status: 400 });
+    return NextResponse.json({ error: "Aucun horaire fourni" }, { status: 400 });
   }
 
   const parsedList = rawSchedules.map((item) => createGroupScheduleSchema.safeParse(item));
@@ -315,7 +315,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   });
 
   if (!existing) {
-    return NextResponse.json({ error: "Créneau introuvable" }, { status: 404 });
+    return NextResponse.json({ error: "Horaire introuvable" }, { status: 404 });
   }
 
   const updated = await prisma.groupSchedule.update({
@@ -375,7 +375,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   });
 
   if (!existing) {
-    return NextResponse.json({ error: "Créneau introuvable" }, { status: 404 });
+    return NextResponse.json({ error: "Horaire introuvable" }, { status: 404 });
   }
 
   await prisma.groupSchedule.delete({
