@@ -119,7 +119,7 @@ export async function inspectDataImport(payload: DataImportPayload): Promise<Imp
   }
 
   if (plan.sessionsPerWeek && payload.attendances.length > 0) {
-    const groupWeeklySessions = await getGroupWeeklyScheduleCount(group.id);
+    const groupWeeklySessions = await getGroupWeeklyScheduleCount(group.id, cutoverDate);
     const sessionsInWeek = await loadGroupWeekSessions(group.id, cutoverDate);
     const statuses = new Map<string, AttendanceStatus>(
       payload.attendances.map((row) => [row.sessionId, row.status]),

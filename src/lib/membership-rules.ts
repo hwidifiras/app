@@ -2,7 +2,7 @@ import type { Offer, OfferKind, Prisma, SubscriptionPlan } from "@prisma/client"
 
 import { getAppTimeZone } from "@/lib/dates";
 import { getClubSettings } from "@/lib/club-settings";
-import { businessDayWindow } from "@/lib/assignment-policy";
+import { businessDayWindow, schedulesForGroupWindow } from "@/lib/assignment-policy";
 import { resolveOfferRules } from "@/lib/offer-rules";
 import type { EnrollmentLineInput } from "@/lib/schemas/enrollment";
 import { prisma } from "@/lib/prisma";
@@ -55,17 +55,15 @@ export function isMemberAllowedInGroup(
   return memberType === "ADULT" || memberType === "NOT_SPECIFIED";
 }
 
-async function schedulesForGroup(groupId: string) {
-  return prisma.groupSchedule.findMany({
-    where: { groupId },
-    select: { dayOfWeek: true, startTime: true, durationMinutes: true },
-  });
-}
-
-async function groupsOverlap(groupIdA: string, groupIdB: string): Promise<boolean> {
+async function groupsOverlap(
+  groupIdA: string,
+  groupIdB: string,
+  startDate: Date,
+  endDate?: Date | null,
+): Promise<boolean> {
   const [aSchedules, bSchedules] = await Promise.all([
-    schedulesForGroup(groupIdA),
-    schedulesForGroup(groupIdB),
+    schedulesForGroupWindow(groupIdA, startDate, endDate),
+    schedulesForGroupWindow(groupIdB, startDate, endDate),
   ]);
 
   for (const a of aSchedules) {
@@ -82,23 +80,36 @@ async function groupsOverlap(groupIdA: string, groupIdB: string): Promise<boolea
   return false;
 }
 
-export async function checkScheduleConflictForMember(memberId: string, groupId: string) {
-  const newGroupSchedules = await schedulesForGroup(groupId);
+export async function checkScheduleConflictForMember(
+  memberId: string,
+  groupId: string,
+  startDate: Date = new Date(),
+  endDate?: Date | null,
+) {
+  const newGroupSchedules = await schedulesForGroupWindow(groupId, startDate, endDate);
   if (newGroupSchedules.length === 0) return { ok: true as const };
 
-  const now = new Date();
   const existingAssignments = await prisma.groupMember.findMany({
     where: {
       memberId,
       status: "ACTIVE",
-      OR: [{ endDate: null }, { endDate: { gte: now } }],
+      ...(endDate ? { startDate: { lt: endDate } } : {}),
+      OR: [{ endDate: null }, { endDate: { gte: startDate } }],
       NOT: { groupId },
     },
-    select: { groupId: true, group: { select: { name: true } } },
+    select: { groupId: true, startDate: true, endDate: true, group: { select: { name: true } } },
   });
 
   for (const assignment of existingAssignments) {
-    if (await groupsOverlap(groupId, assignment.groupId)) {
+    const overlapStart = assignment.startDate > startDate ? assignment.startDate : startDate;
+    const overlapEnd =
+      endDate && assignment.endDate
+        ? endDate < assignment.endDate
+          ? endDate
+          : assignment.endDate
+        : (endDate ?? assignment.endDate);
+
+    if (await groupsOverlap(groupId, assignment.groupId, overlapStart, overlapEnd)) {
       return {
         ok: false as const,
         error: `Conflit d'horaire avec le cours "${assignment.group.name}"`,
@@ -112,7 +123,10 @@ export async function checkScheduleConflictForMember(memberId: string, groupId: 
 async function quoteLinesOverlapForSameMember(a: ResolvedLine, b: ResolvedLine): Promise<boolean> {
   if (!a.memberId || a.memberId !== b.memberId) return false;
   if (a.group.id === b.group.id) return true;
-  return groupsOverlap(a.group.id, b.group.id);
+  const overlapStart = a.startDate > b.startDate ? a.startDate : b.startDate;
+  const overlapEnd = a.endDate < b.endDate ? a.endDate : b.endDate;
+  if (overlapEnd < overlapStart) return false;
+  return groupsOverlap(a.group.id, b.group.id, overlapStart, overlapEnd);
 }
 
 export function computeEndDate(startDate: Date, validityDays: number): Date {
@@ -531,7 +545,7 @@ export async function buildEnrollmentQuote(
     }
 
     if (r.memberId) {
-      const scheduleConflict = await checkScheduleConflictForMember(r.memberId, r.group.id);
+      const scheduleConflict = await checkScheduleConflictForMember(r.memberId, r.group.id, r.startDate, r.endDate);
       if (!scheduleConflict.ok) {
         lineWarnings.push(scheduleConflict.error);
         lineBlocked = true;

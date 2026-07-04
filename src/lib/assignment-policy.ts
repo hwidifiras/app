@@ -7,6 +7,14 @@ type AssignmentWindow = {
   OR: Array<{ endDate: null } | { endDate: { gte: Date } }>;
 };
 
+export type ScheduleSlot = {
+  dayOfWeek: string;
+  startTime: string;
+  durationMinutes: number;
+  effectiveFrom?: Date;
+  effectiveTo?: Date | null;
+};
+
 function timeToMinutes(time: string): number {
   const [h, m] = time.split(":").map(Number);
   return h * 60 + m;
@@ -38,6 +46,54 @@ export function activeAssignmentBusinessDayWindow(date: Date): AssignmentWindow 
     startDate: { lt: nextDayStart },
     OR: [{ endDate: null }, { endDate: { gte: dayStart } }],
   };
+}
+
+export function activeAssignmentOverlapWindow(startDate: Date, endDate?: Date | null) {
+  const { dayStart } = businessDayWindow(startDate);
+  const endWindow = endDate ? businessDayWindow(endDate).nextDayStart : null;
+
+  return {
+    status: "ACTIVE" as const,
+    ...(endWindow ? { startDate: { lt: endWindow } } : {}),
+    OR: [{ endDate: null }, { endDate: { gte: dayStart } }],
+  };
+}
+
+export function scheduleWindowWhere(startDate: Date, endDate?: Date | null) {
+  const { dayStart } = businessDayWindow(startDate);
+  const endWindow = endDate ? businessDayWindow(endDate).nextDayStart : null;
+
+  return {
+    ...(endWindow ? { effectiveFrom: { lt: endWindow } } : {}),
+    OR: [{ effectiveTo: null }, { effectiveTo: { gte: dayStart } }],
+  };
+}
+
+export function isScheduleActiveOnDate(
+  schedule: { effectiveFrom?: Date; effectiveTo?: Date | null },
+  date: Date,
+) {
+  const { dayStart, nextDayStart } = businessDayWindow(date);
+  return (
+    (!schedule.effectiveFrom || schedule.effectiveFrom < nextDayStart) &&
+    (!schedule.effectiveTo || schedule.effectiveTo >= dayStart)
+  );
+}
+
+export async function schedulesForGroupWindow(groupId: string, startDate: Date, endDate?: Date | null) {
+  return prisma.groupSchedule.findMany({
+    where: {
+      groupId,
+      ...scheduleWindowWhere(startDate, endDate),
+    },
+    select: {
+      dayOfWeek: true,
+      startTime: true,
+      durationMinutes: true,
+      effectiveFrom: true,
+      effectiveTo: true,
+    },
+  });
 }
 
 export function isDateWithinBusinessDayWindow(
@@ -89,44 +145,58 @@ export async function ensureGroupCapacityOnDate(
   return { ok: true as const };
 }
 
+function schedulesOverlap(a: ScheduleSlot, b: ScheduleSlot) {
+  if (a.dayOfWeek !== b.dayOfWeek) return false;
+
+  const aStart = timeToMinutes(a.startTime);
+  const bStart = timeToMinutes(b.startTime);
+  return intervalsOverlap(aStart, aStart + a.durationMinutes, bStart, bStart + b.durationMinutes);
+}
+
 export async function checkScheduleConflictOnDate(
   groupId: string,
   memberId: string,
   date: Date,
   ignoredAssignmentId?: string,
 ) {
-  const newGroupSchedules = await prisma.groupSchedule.findMany({
-    where: { groupId },
-    select: { dayOfWeek: true, startTime: true, durationMinutes: true },
-  });
+  return checkScheduleConflictForAssignmentWindow(groupId, memberId, date, null, ignoredAssignmentId);
+}
 
+export async function checkScheduleConflictForAssignmentWindow(
+  groupId: string,
+  memberId: string,
+  startDate: Date,
+  endDate?: Date | null,
+  ignoredAssignmentId?: string,
+) {
+  const newGroupSchedules = await schedulesForGroupWindow(groupId, startDate, endDate);
   if (newGroupSchedules.length === 0) return { ok: true as const };
 
   const existingAssignments = await prisma.groupMember.findMany({
     where: {
       memberId,
-      ...activeAssignmentWindow(date),
+      ...activeAssignmentOverlapWindow(startDate, endDate),
       NOT: ignoredAssignmentId ? { id: ignoredAssignmentId } : { groupId },
     },
-    select: { groupId: true, group: { select: { name: true } } },
+    select: { groupId: true, startDate: true, endDate: true, group: { select: { name: true } } },
   });
 
   for (const assignment of existingAssignments) {
-    const existingSchedules = await prisma.groupSchedule.findMany({
-      where: { groupId: assignment.groupId },
-      select: { dayOfWeek: true, startTime: true, durationMinutes: true },
-    });
+    const overlapStart = assignment.startDate > startDate ? assignment.startDate : startDate;
+    const candidateEnd = endDate ?? null;
+    const existingEnd = assignment.endDate ?? null;
+    const overlapEnd =
+      candidateEnd && existingEnd
+        ? candidateEnd < existingEnd
+          ? candidateEnd
+          : existingEnd
+        : (candidateEnd ?? existingEnd);
+
+    const existingSchedules = await schedulesForGroupWindow(assignment.groupId, overlapStart, overlapEnd);
 
     for (const newSchedule of newGroupSchedules) {
       for (const existingSchedule of existingSchedules) {
-        if (newSchedule.dayOfWeek !== existingSchedule.dayOfWeek) continue;
-
-        const newStart = timeToMinutes(newSchedule.startTime);
-        const newEnd = newStart + newSchedule.durationMinutes;
-        const existingStart = timeToMinutes(existingSchedule.startTime);
-        const existingEnd = existingStart + existingSchedule.durationMinutes;
-
-        if (intervalsOverlap(newStart, newEnd, existingStart, existingEnd)) {
+        if (schedulesOverlap(newSchedule, existingSchedule)) {
           return {
             ok: false as const,
             error: `Conflit d'horaire : ce membre est deja affecte au groupe "${assignment.group.name}" qui se chevauche avec ce groupe.`,

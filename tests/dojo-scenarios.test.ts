@@ -185,6 +185,7 @@ async function dojoFixture() {
       dayOfWeek: "MONDAY",
       startTime: "18:00",
       durationMinutes: 90,
+      effectiveFrom: new Date("2026-01-01T00:00:00.000Z"),
     },
   });
   await prisma.groupSchedule.create({
@@ -193,6 +194,7 @@ async function dojoFixture() {
       dayOfWeek: "MONDAY",
       startTime: "18:30",
       durationMinutes: 60,
+      effectiveFrom: new Date("2026-01-01T00:00:00.000Z"),
     },
   });
   await prisma.groupSchedule.create({
@@ -201,6 +203,7 @@ async function dojoFixture() {
       dayOfWeek: "TUESDAY",
       startTime: "18:00",
       durationMinutes: 60,
+      effectiveFrom: new Date("2026-01-01T00:00:00.000Z"),
     },
   });
 
@@ -377,8 +380,8 @@ async function createSessionForGroup(
 async function setupTwoPerWeekPlanWithThreeSessions(fx: Awaited<ReturnType<typeof dojoFixture>>) {
   await prisma.groupSchedule.createMany({
     data: [
-      { tenantId: TEST_TENANT_ID, groupId: fx.adultBjj.id, dayOfWeek: "WEDNESDAY", startTime: "18:00", durationMinutes: 90 },
-      { tenantId: TEST_TENANT_ID, groupId: fx.adultBjj.id, dayOfWeek: "FRIDAY", startTime: "18:00", durationMinutes: 90 },
+      { tenantId: TEST_TENANT_ID, groupId: fx.adultBjj.id, dayOfWeek: "WEDNESDAY", startTime: "18:00", durationMinutes: 90, effectiveFrom: new Date("2026-01-01T00:00:00.000Z") },
+      { tenantId: TEST_TENANT_ID, groupId: fx.adultBjj.id, dayOfWeek: "FRIDAY", startTime: "18:00", durationMinutes: 90, effectiveFrom: new Date("2026-01-01T00:00:00.000Z") },
     ],
   });
 
@@ -452,7 +455,7 @@ async function weeklyAllowanceAfterWeek(
   groupId: string,
   planSessionsPerWeek: number,
 ) {
-  const groupWeeklySessions = await getGroupWeeklyScheduleCount(groupId);
+  const groupWeeklySessions = await getGroupWeeklyScheduleCount(groupId, sessionDate);
   const planAllowance = planSessionsPerWeek ?? groupWeeklySessions;
   const mode = getWeeklyConsumptionMode(planSessionsPerWeek, groupWeeklySessions);
   const sessionsInWeek = await loadGroupWeekSessions(groupId, sessionDate);
@@ -1159,6 +1162,124 @@ describe("additional enrollment and offer boundaries", () => {
 
     expect(touchingQuote.blocked).toBe(false);
     expect(overlappingQuote.blocked).toBe(true);
+  });
+
+  it("ignores past seasonal horaires when checking enrollment conflicts", async () => {
+    const fx = await dojoFixture();
+    const oldSeasonGroup = await prisma.group.create({
+      data: {
+        name: "Old Ramadan BJJ",
+        groupType: "ADULTS",
+        sportId: fx.bjj.id,
+        coachId: fx.coach.id,
+        capacity: 10,
+        room: "Dojo Old",
+      },
+    });
+    await prisma.groupSchedule.create({
+      data: {
+        groupId: oldSeasonGroup.id,
+        dayOfWeek: "MONDAY",
+        startTime: "18:30",
+        durationMinutes: 60,
+        effectiveFrom: new Date("2026-01-01T00:00:00.000Z"),
+        effectiveTo: new Date("2026-01-31T00:00:00.000Z"),
+      },
+    });
+    await prisma.groupMember.create({
+      data: {
+        groupId: oldSeasonGroup.id,
+        memberId: fx.adult.id,
+        startDate: new Date("2026-01-01T00:00:00.000Z"),
+      },
+    });
+
+    const quote = await buildEnrollmentQuote(
+      [{ memberId: fx.adult.id, groupId: fx.adultBjj.id, planId: fx.bjjPlan.id }],
+      undefined,
+      "2026-07-10T00:00:00.000Z",
+    );
+
+    expect(quote.blocked).toBe(false);
+  });
+
+  it("blocks future seasonal horaires inside the enrollment window", async () => {
+    const fx = await dojoFixture();
+    const futureSeasonGroup = await prisma.group.create({
+      data: {
+        name: "Future Summer BJJ",
+        groupType: "ADULTS",
+        sportId: fx.bjj.id,
+        coachId: fx.coach.id,
+        capacity: 10,
+        room: "Dojo Future",
+      },
+    });
+    await prisma.groupSchedule.create({
+      data: {
+        groupId: futureSeasonGroup.id,
+        dayOfWeek: "MONDAY",
+        startTime: "18:30",
+        durationMinutes: 60,
+        effectiveFrom: new Date("2026-08-01T00:00:00.000Z"),
+        effectiveTo: new Date("2026-08-31T00:00:00.000Z"),
+      },
+    });
+    await prisma.groupMember.create({
+      data: {
+        groupId: futureSeasonGroup.id,
+        memberId: fx.adult.id,
+        startDate: new Date("2026-07-01T00:00:00.000Z"),
+      },
+    });
+
+    const quote = await buildEnrollmentQuote(
+      [{ memberId: fx.adult.id, groupId: fx.adultBjj.id, planId: fx.bjjPlan.id }],
+      undefined,
+      "2026-07-15T00:00:00.000Z",
+    );
+
+    expect(quote.blocked).toBe(true);
+    expect(quote.lines[0].warnings.join(" ")).toContain("Conflit d'horaire");
+  });
+
+  it("ignores future seasonal horaires outside the enrollment window", async () => {
+    const fx = await dojoFixture();
+    const distantSeasonGroup = await prisma.group.create({
+      data: {
+        name: "Distant September BJJ",
+        groupType: "ADULTS",
+        sportId: fx.bjj.id,
+        coachId: fx.coach.id,
+        capacity: 10,
+        room: "Dojo Later",
+      },
+    });
+    await prisma.groupSchedule.create({
+      data: {
+        groupId: distantSeasonGroup.id,
+        dayOfWeek: "MONDAY",
+        startTime: "18:30",
+        durationMinutes: 60,
+        effectiveFrom: new Date("2026-09-01T00:00:00.000Z"),
+        effectiveTo: new Date("2026-09-30T00:00:00.000Z"),
+      },
+    });
+    await prisma.groupMember.create({
+      data: {
+        groupId: distantSeasonGroup.id,
+        memberId: fx.adult.id,
+        startDate: new Date("2026-07-01T00:00:00.000Z"),
+      },
+    });
+
+    const quote = await buildEnrollmentQuote(
+      [{ memberId: fx.adult.id, groupId: fx.adultBjj.id, planId: fx.bjjPlan.id }],
+      undefined,
+      "2026-07-15T00:00:00.000Z",
+    );
+
+    expect(quote.blocked).toBe(false);
   });
 
   it("ignores inactive offers", async () => {

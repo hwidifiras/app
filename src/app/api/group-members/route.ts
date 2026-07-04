@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { createGroupMemberSchema, updateGroupMemberSchema } from "@/lib/schemas/group-member";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { resolveActiveSubscription } from "@/lib/membership-rules";
-import { checkScheduleConflictOnDate, ensureGroupCapacityOnDate } from "@/lib/assignment-policy";
+import { checkScheduleConflictForAssignmentWindow, ensureGroupCapacityOnDate } from "@/lib/assignment-policy";
 
 export const runtime = "nodejs";
 
@@ -40,93 +40,6 @@ function toGroupMemberDto(item: {
     createdAt: item.createdAt.toISOString(),
     updatedAt: item.updatedAt.toISOString(),
   };
-}
-
-function timeToMinutes(time: string): number {
-  const [h, m] = time.split(":").map(Number);
-  return h * 60 + m;
-}
-
-function intervalsOverlap(start1: number, end1: number, start2: number, end2: number): boolean {
-  return start1 < end2 && start2 < end1;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function checkScheduleConflict(groupId: string, memberId: string) {
-  const newGroupSchedules = await prisma.groupSchedule.findMany({
-    where: { groupId },
-    select: { dayOfWeek: true, startTime: true, durationMinutes: true },
-  });
-
-  if (newGroupSchedules.length === 0) return { ok: true as const };
-
-  const now = new Date();
-  const existingAssignments = await prisma.groupMember.findMany({
-    where: {
-      memberId,
-      status: "ACTIVE",
-      OR: [{ endDate: null }, { endDate: { gte: now } }],
-      NOT: { groupId },
-    },
-    select: { groupId: true, group: { select: { name: true } } },
-  });
-
-  for (const assignment of existingAssignments) {
-    const existingSchedules = await prisma.groupSchedule.findMany({
-      where: { groupId: assignment.groupId },
-      select: { dayOfWeek: true, startTime: true, durationMinutes: true },
-    });
-
-    for (const newSch of newGroupSchedules) {
-      for (const exSch of existingSchedules) {
-        if (newSch.dayOfWeek !== exSch.dayOfWeek) continue;
-
-        const newStart = timeToMinutes(newSch.startTime);
-        const newEnd = newStart + newSch.durationMinutes;
-        const exStart = timeToMinutes(exSch.startTime);
-        const exEnd = exStart + exSch.durationMinutes;
-
-        if (intervalsOverlap(newStart, newEnd, exStart, exEnd)) {
-          return {
-            ok: false as const,
-            error: `Conflit d'horaire : ce membre est déjà affecté au groupe "${assignment.group.name}" qui a une séance le ${exSch.dayOfWeek} à ${exSch.startTime} qui se chevauche avec ce groupe.`,
-          };
-        }
-      }
-    }
-  }
-
-  return { ok: true as const };
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function ensureCapacity(groupId: string, ignoredAssignmentId?: string) {
-  const group = await prisma.group.findUnique({
-    where: { id: groupId },
-    select: {
-      capacity: true,
-      _count: {
-        select: {
-          members: {
-            where: {
-              status: "ACTIVE",
-              ...(ignoredAssignmentId ? { NOT: { id: ignoredAssignmentId } } : {}),
-            },
-          },
-        },
-      },
-    },
-  });
-
-  if (!group) {
-    return { ok: false as const, status: 404, error: "Groupe introuvable" };
-  }
-
-  if (group._count.members >= group.capacity) {
-    return { ok: false as const, status: 409, error: "Capacité du groupe atteinte" };
-  }
-
-  return { ok: true as const };
 }
 
 export async function GET(request: Request) {
@@ -234,15 +147,17 @@ export async function POST(request: Request) {
   }
 
   const assignmentStartDate = new Date(parsed.data.startDate);
+  const assignmentEndDate = parsed.data.endDate ? new Date(parsed.data.endDate) : null;
   const capacityCheck = await ensureGroupCapacityOnDate(parsed.data.groupId, assignmentStartDate);
   if (!capacityCheck.ok) {
     return NextResponse.json({ error: capacityCheck.error }, { status: capacityCheck.status });
   }
 
-  const scheduleCheck = await checkScheduleConflictOnDate(
+  const scheduleCheck = await checkScheduleConflictForAssignmentWindow(
     parsed.data.groupId,
     parsed.data.memberId,
     assignmentStartDate,
+    assignmentEndDate,
   );
   if (!scheduleCheck.ok) {
     return NextResponse.json({ error: scheduleCheck.error }, { status: 409 });
@@ -402,13 +317,15 @@ export async function PATCH(request: Request) {
   try {
     const existing = await prisma.groupMember.findUnique({ 
       where: { id: groupMemberId }, 
-      select: { id: true, groupId: true, memberId: true, startDate: true, group: { select: { sportId: true } } }
+      select: { id: true, groupId: true, memberId: true, startDate: true, endDate: true, group: { select: { sportId: true } } }
     });
     if (!existing) {
       return NextResponse.json({ error: "Affectation introuvable" }, { status: 404 });
     }
 
     const targetStartDate = payload.startDate ? new Date(payload.startDate) : existing.startDate;
+    const targetEndDate =
+      payload.endDate === undefined ? existing.endDate : payload.endDate === null ? null : new Date(payload.endDate);
 
     if (payload.status === "ACTIVE") {
       const capacityCheck = await ensureGroupCapacityOnDate(existing.groupId, targetStartDate, groupMemberId);
@@ -431,10 +348,11 @@ export async function PATCH(request: Request) {
         return NextResponse.json({ error: "Le membre doit solder son abonnement avant d'être réaffecté à un cours" }, { status: 403 });
       }
 
-      const scheduleCheck = await checkScheduleConflictOnDate(
+      const scheduleCheck = await checkScheduleConflictForAssignmentWindow(
         existing.groupId,
         existing.memberId,
         targetStartDate,
+        targetEndDate,
         groupMemberId,
       );
       if (!scheduleCheck.ok) {
@@ -443,8 +361,7 @@ export async function PATCH(request: Request) {
     }
 
     const startDate = payload.startDate ? targetStartDate : undefined;
-    const endDate =
-      payload.endDate === undefined ? undefined : payload.endDate === null ? null : new Date(payload.endDate);
+    const endDate = payload.endDate === undefined ? undefined : targetEndDate;
 
     if (startDate && endDate && endDate.getTime() < startDate.getTime()) {
       return NextResponse.json({ error: "La date de fin doit être >= date de début" }, { status: 400 });

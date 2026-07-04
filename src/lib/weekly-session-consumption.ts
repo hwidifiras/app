@@ -1,8 +1,8 @@
 import type { AttendanceStatus } from "@prisma/client";
 
+import { isScheduleActiveOnDate, scheduleWindowWhere } from "@/lib/assignment-policy";
 import { getWeekRangeUtc } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
-import { getGroupWeeklyScheduleCount } from "@/lib/sport-weekly-standard";
 
 export type WeeklyConsumptionMode = "CONTEXTUAL" | "STANDARD";
 
@@ -174,8 +174,8 @@ export async function loadGroupWeekSessions(
       orderBy: [{ sessionDate: "asc" }, { startTime: "asc" }],
     }),
     prisma.groupSchedule.findMany({
-      where: { groupId },
-      select: { id: true, dayOfWeek: true, startTime: true },
+      where: { groupId, ...scheduleWindowWhere(start, end) },
+      select: { id: true, dayOfWeek: true, startTime: true, effectiveFrom: true, effectiveTo: true },
     }),
   ]);
 
@@ -194,6 +194,9 @@ export async function loadGroupWeekSessions(
   for (const schedule of schedules) {
     const expectedDate = new Date(start);
     expectedDate.setUTCDate(expectedDate.getUTCDate() + weekdayOffsets[schedule.dayOfWeek]);
+    if (!isScheduleActiveOnDate(schedule, expectedDate)) {
+      continue;
+    }
 
     const matchingSession = sessions.find(
       (session) =>
@@ -273,11 +276,10 @@ export async function resolveCheckInConsumption(params: {
   mode: WeeklyConsumptionMode;
   blockPresent: boolean;
 }> {
-  const groupWeeklySessions = await getGroupWeeklyScheduleCount(params.groupId);
+  const sessionsInWeek = await loadGroupWeekSessions(params.groupId, params.sessionDate);
+  const groupWeeklySessions = sessionsInWeek.length;
   const planAllowance = params.planSessionsPerWeek ?? groupWeeklySessions;
   const mode = getWeeklyConsumptionMode(params.planSessionsPerWeek, groupWeeklySessions);
-
-  const sessionsInWeek = await loadGroupWeekSessions(params.groupId, params.sessionDate);
   const attendancesBySessionId = await loadWeekAttendanceStatuses({
     memberId: params.memberId,
     memberSubscriptionId: params.memberSubscriptionId,
@@ -321,11 +323,10 @@ export async function computeWeeklyAllowanceRemainingForMember(params: {
   absentConsumesSession: boolean;
   omitSessionId?: string;
 }): Promise<number> {
-  const groupWeeklySessions = await getGroupWeeklyScheduleCount(params.groupId);
+  const sessionsInWeek = await loadGroupWeekSessions(params.groupId, params.sessionDate);
+  const groupWeeklySessions = sessionsInWeek.length;
   const planAllowance = params.planSessionsPerWeek ?? groupWeeklySessions;
   const mode = getWeeklyConsumptionMode(params.planSessionsPerWeek, groupWeeklySessions);
-
-  const sessionsInWeek = await loadGroupWeekSessions(params.groupId, params.sessionDate);
   const attendancesBySessionId = await loadWeekAttendanceStatuses({
     memberId: params.memberId,
     memberSubscriptionId: params.memberSubscriptionId,
@@ -371,10 +372,10 @@ export async function resolveAttendanceConsumptionChange(params: {
     };
   }
 
-  const groupWeeklySessions = await getGroupWeeklyScheduleCount(params.groupId);
+  const sessionsInWeek = await loadGroupWeekSessions(params.groupId, params.sessionDate);
+  const groupWeeklySessions = sessionsInWeek.length;
   const planAllowance = params.planSessionsPerWeek ?? groupWeeklySessions;
   const mode = getWeeklyConsumptionMode(params.planSessionsPerWeek, groupWeeklySessions);
-  const sessionsInWeek = await loadGroupWeekSessions(params.groupId, params.sessionDate);
   const attendancesWithoutCurrent = await loadWeekAttendanceStatuses({
     memberId: params.memberId,
     memberSubscriptionId: params.memberSubscriptionId,
@@ -427,11 +428,10 @@ export async function computeAttendanceConsumptionUnits(params: {
     return 0;
   }
 
-  const groupWeeklySessions = await getGroupWeeklyScheduleCount(params.groupId);
+  const sessionsInWeek = await loadGroupWeekSessions(params.groupId, params.sessionDate);
+  const groupWeeklySessions = sessionsInWeek.length;
   const planAllowance = params.planSessionsPerWeek ?? groupWeeklySessions;
   const mode = getWeeklyConsumptionMode(params.planSessionsPerWeek, groupWeeklySessions);
-
-  const sessionsInWeek = await loadGroupWeekSessions(params.groupId, params.sessionDate);
   const attendancesBySessionId = await loadWeekAttendanceStatuses({
     memberId: params.memberId,
     memberSubscriptionId: params.memberSubscriptionId,
