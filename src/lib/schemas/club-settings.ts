@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { CLUB_DAY_VALUES } from "@/lib/club-working-days";
+
 const clubLogoUrlSchema = z
   .string()
   .trim()
@@ -18,6 +20,7 @@ export const updateClubSettingsSchema = z.object({
   absentConsumesSession: z.boolean().optional(),
   allowSameRoomConcurrentGroups: z.boolean().optional(),
   allowCoachConcurrentSameRoomQualified: z.boolean().optional(),
+  workingDays: z.array(z.enum(CLUB_DAY_VALUES)).min(1).optional(),
   maxStaffDiscountPercent: z.number().int().min(0).max(100).optional(),
   debtAlertThresholdCents: z.number().int().min(0).max(100_000_000).optional(),
 });

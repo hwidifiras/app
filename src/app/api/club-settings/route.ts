@@ -18,6 +18,7 @@ function serializeSettings(settings: Awaited<ReturnType<typeof getClubSettings>>
     absentConsumesSession: settings.absentConsumesSession,
     allowSameRoomConcurrentGroups: settings.allowSameRoomConcurrentGroups,
     allowCoachConcurrentSameRoomQualified: settings.allowCoachConcurrentSameRoomQualified,
+    workingDays: settings.workingDays,
     maxStaffDiscountPercent: settings.maxStaffDiscountPercent,
     debtAlertThresholdCents: settings.debtAlertThresholdCents,
     updatedAt: settings.updatedAt.toISOString(),
@@ -93,6 +94,7 @@ export async function PATCH(request: Request) {
       ...(data.allowCoachConcurrentSameRoomQualified !== undefined
         ? { allowCoachConcurrentSameRoomQualified: data.allowCoachConcurrentSameRoomQualified }
         : {}),
+      ...(data.workingDays !== undefined ? { workingDays: data.workingDays } : {}),
       ...(data.maxStaffDiscountPercent !== undefined
         ? { maxStaffDiscountPercent: data.maxStaffDiscountPercent }
         : {}),

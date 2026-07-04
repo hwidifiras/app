@@ -37,6 +37,11 @@ import {
 } from "@/lib/dates";
 import { parseApiResponse } from "@/lib/parse-api-response";
 import { buildPlanningConflictDetails } from "@/lib/planning-conflicts";
+import {
+  DAY_INDEX_TO_CLUB_DAY,
+  DEFAULT_WORKING_DAYS,
+  type ClubDay,
+} from "@/lib/club-working-days";
 import { cn } from "@/lib/utils";
 
 type SessionsPlannerProps = {
@@ -55,6 +60,7 @@ type SessionsPlannerProps = {
   planningPreferences: {
     allowSameRoomConcurrentGroups: boolean;
     allowCoachConcurrentSameRoomQualified: boolean;
+    workingDays: ClubDay[];
   };
 };
 
@@ -122,6 +128,7 @@ function getWeekDays(weekStartIso: string) {
     return {
       key: formatUtcDateOnlyIso(date),
       dayIndex: date.getUTCDay(),
+      dayOfWeek: DAY_INDEX_TO_CLUB_DAY[date.getUTCDay()],
       label: date.toLocaleDateString("fr-FR", { weekday: "short" }),
       dateLabel: date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }),
     };
@@ -838,9 +845,24 @@ export function SessionsPlanner({
   }, [dayFilter, searchTerm, sessions, statusFilter]);
 
   const weekDays = useMemo(() => getWeekDays(weekStart), [weekStart]);
+  const workingDaySet = useMemo(() => {
+    const selected = planningPreferences.workingDays.length > 0
+      ? planningPreferences.workingDays
+      : [...DEFAULT_WORKING_DAYS];
+    return new Set<ClubDay>(selected);
+  }, [planningPreferences.workingDays]);
+  const filteredSessionDateKeys = useMemo(
+    () => new Set(filteredSessions.map((session) => sessionDateKey(session))),
+    [filteredSessions],
+  );
   const visibleWeekDays = useMemo(
-    () => weekDays.filter((day) => dayFilter === "ALL" || String(day.dayIndex) === dayFilter),
-    [dayFilter, weekDays],
+    () => weekDays.filter((day) => {
+      const matchesDayFilter = dayFilter === "ALL" || String(day.dayIndex) === dayFilter;
+      if (!matchesDayFilter) return false;
+      if (dayFilter !== "ALL") return true;
+      return workingDaySet.has(day.dayOfWeek) || filteredSessionDateKeys.has(day.key);
+    }),
+    [dayFilter, filteredSessionDateKeys, weekDays, workingDaySet],
   );
   const sessionsByDate = useMemo(() => {
     const map = new Map<string, SessionDto[]>();
@@ -1190,12 +1212,15 @@ export function SessionsPlanner({
           </div>
         ) : null}
 
-        <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start">
+        <div className="mt-5 grid gap-4 2xl:grid-cols-[minmax(0,1fr)_22rem] 2xl:items-start">
           <div className="min-w-0">
             {filteredSessions.length > 0 ? (
               viewMode === "week" ? (
                 <>
-                  <div className="hidden items-start gap-2 lg:grid lg:grid-cols-7">
+                  <div
+                    className="hidden items-start gap-2 lg:grid"
+                    style={{ gridTemplateColumns: `repeat(${Math.max(visibleWeekDays.length, 1)}, minmax(0, 1fr))` }}
+                  >
                     {visibleWeekDays.map((day) => {
                       const daySessions = sessionsByDate.get(day.key) ?? [];
                       const dayStats = dayStatsByDate.get(day.key);
@@ -1246,7 +1271,7 @@ export function SessionsPlanner({
                   </div>
 
                   <div className="min-w-0 space-y-3 overflow-hidden lg:hidden">
-                    <div className="grid max-w-full min-w-0 grid-cols-7 gap-1 pb-1">
+                    <div className="-mx-1 flex max-w-full min-w-0 gap-2 overflow-x-auto px-1 pb-1">
                       {visibleWeekDays.map((day) => {
                         const dayStats = dayStatsByDate.get(day.key);
                         const active = activeMobileDay === day.key;
@@ -1256,7 +1281,7 @@ export function SessionsPlanner({
                             type="button"
                             onClick={() => setSelectedMobileDay(day.key)}
                             className={cn(
-                              "min-w-0 rounded-lg border px-1 py-2 text-center transition",
+                              "min-w-[4.75rem] rounded-lg border px-2 py-2 text-center transition",
                               active
                                 ? "border-[var(--primary)] bg-[var(--primary)] text-white"
                                 : "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)]",
@@ -1342,7 +1367,7 @@ export function SessionsPlanner({
               conflictReasons={selectedSession ? conflictDetailsBySessionId.get(selectedSession.id) ?? [] : []}
               onEdit={openEdit}
               onCancel={setPendingDeleteSession}
-              className="hidden xl:sticky xl:top-28 xl:block"
+              className="hidden 2xl:sticky 2xl:top-28 2xl:block"
             />
           ) : null}
         </div>
@@ -1353,7 +1378,7 @@ export function SessionsPlanner({
             conflictReasons={selectedSession ? conflictDetailsBySessionId.get(selectedSession.id) ?? [] : []}
             onEdit={openEdit}
             onCancel={setPendingDeleteSession}
-            className="mt-4 xl:hidden"
+            className="mt-4 2xl:hidden"
           />
         ) : null}
 

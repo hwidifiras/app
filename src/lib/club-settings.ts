@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { DEFAULT_WORKING_DAYS, normalizeWorkingDays, type ClubDay } from "@/lib/club-working-days";
 
 export type ClubSettingsData = {
   id: string;
@@ -12,6 +13,7 @@ export type ClubSettingsData = {
   allowSameRoomConcurrentGroups: boolean;
   allowCoachConcurrentSameRoomQualified: boolean;
   allowPublicRegister: boolean;
+  workingDays: ClubDay[];
   maxStaffDiscountPercent: number;
   debtAlertThresholdCents: number;
   updatedAt: Date;
@@ -29,6 +31,7 @@ const DEFAULTS = {
   allowSameRoomConcurrentGroups: false,
   allowCoachConcurrentSameRoomQualified: false,
   allowPublicRegister: false,
+  workingDays: [...DEFAULT_WORKING_DAYS],
   maxStaffDiscountPercent: 30,
   debtAlertThresholdCents: 0,
 } as const;
@@ -62,6 +65,7 @@ function normalizeClubSettings(row: Record<string, unknown>): ClubSettingsData {
         : DEFAULTS.allowCoachConcurrentSameRoomQualified,
     allowPublicRegister:
       typeof row.allowPublicRegister === "boolean" ? row.allowPublicRegister : DEFAULTS.allowPublicRegister,
+    workingDays: normalizeWorkingDays(row.workingDays),
     maxStaffDiscountPercent:
       typeof row.maxStaffDiscountPercent === "number"
         ? row.maxStaffDiscountPercent

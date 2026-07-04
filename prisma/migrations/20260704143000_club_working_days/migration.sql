@@ -1,0 +1,3 @@
+ALTER TABLE "ClubSettings"
+ADD COLUMN "workingDays" "DayOfWeek"[] NOT NULL
+DEFAULT ARRAY['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY']::"DayOfWeek"[];

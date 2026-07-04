@@ -203,6 +203,7 @@ model ClubSettings {
   allowSameRoomConcurrentGroups         Boolean  @default(false)
   allowCoachConcurrentSameRoomQualified Boolean  @default(false)
   allowPublicRegister                   Boolean  @default(false)
+  workingDays                           DayOfWeek[] @default([MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY])
   maxStaffDiscountPercent               Int      @default(30)
   debtAlertThresholdCents               Int      @default(0)
   updatedAt                             DateTime @updatedAt

@@ -64,6 +64,7 @@ export default async function SessionsPage({
   let planningPreferences = {
     allowSameRoomConcurrentGroups: false,
     allowCoachConcurrentSameRoomQualified: false,
+    workingDays: [] as Awaited<ReturnType<typeof getClubSettings>>["workingDays"],
   };
 
   try {
@@ -180,6 +181,7 @@ export default async function SessionsPage({
     planningPreferences = {
       allowSameRoomConcurrentGroups: settings.allowSameRoomConcurrentGroups,
       allowCoachConcurrentSameRoomQualified: settings.allowCoachConcurrentSameRoomQualified,
+      workingDays: settings.workingDays,
     };
   } catch (error) {
     hasSessionsDataError = true;

@@ -53,6 +53,7 @@ export default async function SettingsClubPage() {
             absentConsumesSession: settings.absentConsumesSession,
             allowSameRoomConcurrentGroups: settings.allowSameRoomConcurrentGroups,
             allowCoachConcurrentSameRoomQualified: settings.allowCoachConcurrentSameRoomQualified,
+            workingDays: settings.workingDays,
             maxStaffDiscountPercent: settings.maxStaffDiscountPercent,
             debtAlertThresholdCents: settings.debtAlertThresholdCents,
           }}
