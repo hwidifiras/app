@@ -237,8 +237,8 @@ function SessionTile({
               {item.startTime} - {item.endTime}
             </p>
             <span className="flex shrink-0 items-center gap-1">
-              <StatusBadge variant={hasConflict ? "danger" : displayedStatus.variant} className="max-w-24 truncate">
-                {hasConflict ? "Conflit" : displayedStatus.label}
+              <StatusBadge variant={hasConflict && expanded ? "danger" : displayedStatus.variant} className="max-w-24 truncate">
+                {hasConflict && expanded ? "Conflit" : displayedStatus.label}
               </StatusBadge>
               <ChevronDown
                 className={`size-3.5 text-[var(--muted-foreground)] transition-transform ${expanded ? "rotate-180" : ""}`}
@@ -259,7 +259,7 @@ function SessionTile({
               </span>
             ) : null}
           </div>
-          {hasConflict && conflictReasons[0] ? (
+          {hasConflict && expanded && conflictReasons[0] ? (
             <p className="mt-1 truncate text-[0.68rem] font-medium text-[var(--danger)]">{conflictReasons[0]}</p>
           ) : expanded && item.exceptionReason ? (
             <p className="mt-1 text-xs text-[var(--danger)]">Motif: {item.exceptionReason}</p>
@@ -1291,7 +1291,7 @@ export function SessionsPlanner({
                   </div>
 
                   <div className="min-w-0 space-y-3 overflow-hidden lg:hidden">
-                    <div className="flex max-w-full min-w-0 gap-2 overflow-x-auto pb-1">
+                    <div className="grid max-w-full min-w-0 grid-cols-7 gap-1 pb-1">
                       {visibleWeekDays.map((day) => {
                         const dayStats = dayStatsByDate.get(day.key);
                         const active = activeMobileDay === day.key;
@@ -1301,13 +1301,13 @@ export function SessionsPlanner({
                             type="button"
                             onClick={() => setSelectedMobileDay(day.key)}
                             className={cn(
-                              "min-w-20 rounded-lg border px-3 py-2 text-left transition",
+                              "min-w-0 rounded-lg border px-1 py-2 text-center transition",
                               active
                                 ? "border-[var(--primary)] bg-[var(--primary)] text-white"
                                 : "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)]",
                             )}
                           >
-                            <span className="block text-xs font-bold capitalize">{day.label}</span>
+                            <span className="block truncate text-[0.68rem] font-bold capitalize">{day.label}</span>
                             <span className={cn("block text-[0.68rem]", active ? "text-white/80" : "text-[var(--muted-foreground)]")}>
                               {dayStats?.total ?? 0} cours
                             </span>
