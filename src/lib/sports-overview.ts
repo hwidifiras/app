@@ -56,7 +56,6 @@ export async function listSportOverviews({
     activeSubscriptionRows,
     activeOfferRows,
     defaultCoaches,
-    qualifiedCoaches,
   ] = await Promise.all([
     prisma.group.groupBy({
       by: ["sportId"],
@@ -82,10 +81,6 @@ export async function listSportOverviews({
       where: { sportId: { in: sportIds }, isActive: true },
       select: { id: true, sportId: true },
     }),
-    prisma.coachSportQualification.findMany({
-      where: { sportId: { in: sportIds }, coach: { isActive: true } },
-      select: { coachId: true, sportId: true },
-    }),
   ]);
 
   const activeGroupsBySport = mapCountRows(activeGroupRows);
@@ -102,10 +97,6 @@ export async function listSportOverviews({
     if (coach.sportId) {
       coachIdsBySport.get(coach.sportId)?.add(coach.id);
     }
-  }
-
-  for (const qualification of qualifiedCoaches) {
-    coachIdsBySport.get(qualification.sportId)?.add(qualification.coachId);
   }
 
   return sports.map((sport) => ({
