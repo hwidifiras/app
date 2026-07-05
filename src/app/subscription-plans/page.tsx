@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, Plus } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { getAuthUser } from "@/lib/request-user";
 import { PageHeader } from "@/components/ui/page-header";
 import { SubscriptionPlansTable } from "@/components/subscription-plans/subscription-plans-table";
 
@@ -8,6 +9,23 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function SubscriptionPlansPage() {
+  const authUser = await getAuthUser();
+
+  if (!authUser) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Réglages"
+          title="Formules"
+          description="Connectez-vous pour gérer les formules du club."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
+
   let plans = [] as Array<{
     id: string;
     name: string;
@@ -25,6 +43,7 @@ export default async function SubscriptionPlansPage() {
 
   try {
     plans = await prisma.subscriptionPlan.findMany({
+      where: { tenantId: authUser.tenantId },
       orderBy: { createdAt: "desc" },
       include: {
         _count: { select: { subscriptions: true } },

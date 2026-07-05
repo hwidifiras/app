@@ -3,20 +3,39 @@ import { prisma } from "@/lib/prisma";
 import { GroupListClient } from "@/components/groups/group-list-client";
 import { GroupDto } from "@/types/group";
 import { PageHeader } from "@/components/ui/page-header";
+import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function GroupsPage() {
+  const authUser = await getAuthUser();
+
+  if (!authUser) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Club"
+          title="Groupes & horaires"
+          description="Connectez-vous pour organiser les groupes du club."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
+
   let hasGroupDataError = false;
   let initialGroups: GroupDto[] = [];
 
   try {
     const groups = await prisma.group.findMany({
+      where: { tenantId: authUser.tenantId },
       include: {
         sport: { select: { name: true } },
         coach: { select: { firstName: true, lastName: true } },
-        schedules: { orderBy: { createdAt: "asc" } },
+        schedules: { where: { tenantId: authUser.tenantId }, orderBy: { createdAt: "asc" } },
       },
       orderBy: { createdAt: "desc" },
     });

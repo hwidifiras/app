@@ -19,13 +19,17 @@ function mapCountRows(rows: CountRow[]) {
 export async function listSportOverviews({
   active,
   query,
+  tenantId,
 }: {
   active?: boolean;
   query?: string;
+  tenantId?: string;
 } = {}): Promise<SportDto[]> {
   const trimmedQuery = query?.trim();
+  const tenantWhere = tenantId ? { tenantId } : {};
   const sports = await prisma.sport.findMany({
     where: {
+      ...tenantWhere,
       ...(active ? { isActive: true } : {}),
       ...(trimmedQuery
         ? {
@@ -59,26 +63,26 @@ export async function listSportOverviews({
   ] = await Promise.all([
     prisma.group.groupBy({
       by: ["sportId"],
-      where: { sportId: { in: sportIds }, isActive: true },
+      where: { ...tenantWhere, sportId: { in: sportIds }, isActive: true },
       _count: { _all: true },
     }),
     prisma.subscriptionPlan.groupBy({
       by: ["sportId"],
-      where: { sportId: { in: sportIds }, isActive: true },
+      where: { ...tenantWhere, sportId: { in: sportIds }, isActive: true },
       _count: { _all: true },
     }),
     prisma.memberSubscription.groupBy({
       by: ["sportId"],
-      where: { sportId: { in: sportIds }, status: "ACTIVE" },
+      where: { ...tenantWhere, sportId: { in: sportIds }, status: "ACTIVE" },
       _count: { _all: true },
     }),
     prisma.offer.groupBy({
       by: ["sportId"],
-      where: { sportId: { in: sportIds }, isActive: true },
+      where: { ...tenantWhere, sportId: { in: sportIds }, isActive: true },
       _count: { _all: true },
     }),
     prisma.coach.findMany({
-      where: { sportId: { in: sportIds }, isActive: true },
+      where: { ...tenantWhere, sportId: { in: sportIds }, isActive: true },
       select: { id: true, sportId: true },
     }),
   ]);

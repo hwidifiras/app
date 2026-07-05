@@ -25,8 +25,9 @@ function sportAuditSnapshot(sport: SportAuditSnapshot) {
 }
 
 export async function GET(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -38,6 +39,7 @@ export async function GET(request: Request) {
   const sports = await listSportOverviews({
     active: active === "true",
     query,
+    tenantId: actor.tenantId,
   });
 
   return NextResponse.json({ data: sports });

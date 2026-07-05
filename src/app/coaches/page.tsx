@@ -5,11 +5,29 @@ import { CoachManager } from "@/components/coaches/coach-manager";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { buildCoachDto } from "@/lib/coach-view-model";
+import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function CoachesPage() {
+  const authUser = await getAuthUser();
+
+  if (!authUser) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Club"
+          title="Coachs"
+          description="Connectez-vous pour gérer les coachs du club."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
+
   let hasCoachDataError = false;
   let initialCoaches: Array<{
     id: string;
@@ -40,14 +58,16 @@ export default async function CoachesPage() {
   try {
     const [coaches, sports] = await Promise.all([
       prisma.coach.findMany({
+        where: { tenantId: authUser.tenantId },
         include: {
           sport: { select: { id: true, name: true } },
           qualifications: {
+            where: { tenantId: authUser.tenantId },
             include: { sport: { select: { id: true, name: true } } },
             orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
           },
           groups: {
-            where: { isActive: true },
+            where: { tenantId: authUser.tenantId, isActive: true },
             select: {
               id: true,
               name: true,
@@ -63,7 +83,10 @@ export default async function CoachesPage() {
         },
         orderBy: { createdAt: "desc" },
       }),
-      prisma.sport.findMany({ orderBy: { name: "asc" }, where: { isActive: true } }),
+      prisma.sport.findMany({
+        orderBy: { name: "asc" },
+        where: { tenantId: authUser.tenantId, isActive: true },
+      }),
     ]);
 
     initialCoaches = coaches.map(buildCoachDto);
