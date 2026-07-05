@@ -25,6 +25,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "JSON invalide" }, { status: 400 });
   }
 
+  const reason =
+    typeof body === "object" && body !== null && "reason" in body
+      ? String((body as { reason?: unknown }).reason ?? "").trim()
+      : "";
+
+  if (reason.length < 3) {
+    return NextResponse.json({ error: "Motif obligatoire pour annuler une inscription" }, { status: 400 });
+  }
+
   const parsed = enrollmentUndoSnapshotSchema.safeParse(
     typeof body === "object" && body !== null && "undoSnapshot" in body
       ? (body as { undoSnapshot: unknown }).undoSnapshot
@@ -40,10 +49,10 @@ export async function POST(request: Request) {
 
   try {
     await prisma.$transaction(async (tx) => {
-      await revertEnrollmentUndoSnapshot(tx, parsed.data, actor.id);
+      await revertEnrollmentUndoSnapshot(tx, parsed.data, actor.id, reason);
     });
 
-    return NextResponse.json({ data: { reverted: true } });
+    return NextResponse.json({ data: { voided: true } });
   } catch (error) {
     if (error instanceof EnrollmentRevertBlockedError) {
       return NextResponse.json({ error: error.message }, { status: 409 });

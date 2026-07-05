@@ -1,6 +1,9 @@
 import type { GroupMemberStatus, Prisma } from "@prisma/client";
 import { z } from "zod";
 
+import { getEffectivePaymentAmount } from "@/lib/payment-ledger";
+import { voidReceiptForPayment } from "@/lib/receipts";
+
 export class EnrollmentRevertBlockedError extends Error {
   constructor(message: string) {
     super(message);
@@ -39,18 +42,17 @@ export function emptyEnrollmentUndoSnapshot(): EnrollmentUndoSnapshot {
   };
 }
 
-export async function revertEnrollmentUndoSnapshot(
+async function ensureNoAttendanceForSnapshot(
   tx: Prisma.TransactionClient,
   snapshot: EnrollmentUndoSnapshot,
-  actorId: string,
-): Promise<void> {
+) {
   if (snapshot.createdSubscriptionIds.length > 0) {
     const attendanceCount = await tx.attendance.count({
       where: { memberSubscriptionId: { in: snapshot.createdSubscriptionIds } },
     });
     if (attendanceCount > 0) {
       throw new EnrollmentRevertBlockedError(
-        "Annulation impossible : des pointages existent sur les abonnements créés.",
+        "Annulation impossible: des pointages existent sur les abonnements crees.",
       );
     }
   }
@@ -61,25 +63,108 @@ export async function revertEnrollmentUndoSnapshot(
     });
     if (attendanceCount > 0) {
       throw new EnrollmentRevertBlockedError(
-        "Annulation impossible : des pointages existent pour les membres inscrits.",
+        "Annulation impossible: des pointages existent pour les membres inscrits.",
       );
     }
   }
+}
+
+async function reverseCreatedPayments(
+  tx: Prisma.TransactionClient,
+  snapshot: EnrollmentUndoSnapshot,
+  actorId: string,
+  now: Date,
+  reason: string,
+) {
+  if (snapshot.createdPaymentIds.length === 0) return;
+
+  const payments = await tx.payment.findMany({
+    where: { id: { in: snapshot.createdPaymentIds } },
+    select: {
+      id: true,
+      memberSubscriptionId: true,
+      paymentMethod: true,
+      notes: true,
+      entryType: true,
+    },
+  });
+
+  for (const payment of payments) {
+    if (payment.entryType !== "PAYMENT") continue;
+    const effectiveAmount = await getEffectivePaymentAmount(tx, payment.id);
+    if (effectiveAmount <= 0) continue;
+
+    const reversal = await tx.payment.create({
+      data: {
+        memberSubscriptionId: payment.memberSubscriptionId,
+        amount: -effectiveAmount,
+        entryType: "REVERSAL",
+        correctsPaymentId: payment.id,
+        correctionReason: reason,
+        createdById: actorId,
+        paymentDate: now,
+        paymentMethod: payment.paymentMethod,
+        notes: payment.notes,
+      },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        action: "PAYMENT_REVERSED",
+        entityType: "Payment",
+        entityId: reversal.id,
+        userId: actorId,
+        details: JSON.stringify({
+          originalPaymentId: payment.id,
+          reason,
+          reversedAmount: effectiveAmount,
+          source: "enrollment-void",
+        }),
+      },
+    });
+
+    const voidedReceipt = await voidReceiptForPayment(tx, payment.id, reason);
+    if (voidedReceipt) {
+      await tx.auditLog.create({
+        data: {
+          action: "RECEIPT_VOIDED",
+          entityType: "Receipt",
+          entityId: voidedReceipt.id,
+          userId: actorId,
+          details: JSON.stringify({
+            paymentId: payment.id,
+            reason,
+            source: "enrollment-void",
+          }),
+        },
+      });
+    }
+  }
+}
+
+export async function revertEnrollmentUndoSnapshot(
+  tx: Prisma.TransactionClient,
+  snapshot: EnrollmentUndoSnapshot,
+  actorId: string,
+  reason = "Annulation inscription",
+): Promise<void> {
+  const now = new Date();
+
+  await ensureNoAttendanceForSnapshot(tx, snapshot);
+  await reverseCreatedPayments(tx, snapshot, actorId, now, reason);
 
   if (snapshot.offerApplicationId) {
     await tx.memberSubscription.updateMany({
       where: { offerApplicationId: snapshot.offerApplicationId },
       data: { offerApplicationId: null },
     });
-    await tx.offerApplication.delete({ where: { id: snapshot.offerApplicationId } });
-  }
-
-  if (snapshot.createdPaymentIds.length > 0) {
-    await tx.payment.deleteMany({ where: { id: { in: snapshot.createdPaymentIds } } });
   }
 
   if (snapshot.createdSubscriptionIds.length > 0) {
-    await tx.memberSubscription.deleteMany({ where: { id: { in: snapshot.createdSubscriptionIds } } });
+    await tx.memberSubscription.updateMany({
+      where: { id: { in: snapshot.createdSubscriptionIds } },
+      data: { status: "CANCELLED" },
+    });
   }
 
   if (snapshot.expiredSubscriptionIds.length > 0) {
@@ -90,7 +175,10 @@ export async function revertEnrollmentUndoSnapshot(
   }
 
   if (snapshot.createdGroupMemberIds.length > 0) {
-    await tx.groupMember.deleteMany({ where: { id: { in: snapshot.createdGroupMemberIds } } });
+    await tx.groupMember.updateMany({
+      where: { id: { in: snapshot.createdGroupMemberIds } },
+      data: { status: "INACTIVE", endDate: now },
+    });
   }
 
   for (const item of snapshot.reactivatedGroupMembers) {
@@ -105,26 +193,24 @@ export async function revertEnrollmentUndoSnapshot(
   }
 
   if (snapshot.createdMemberIds.length > 0) {
-    for (const memberId of snapshot.createdMemberIds) {
-      const subCount = await tx.memberSubscription.count({ where: { memberId } });
-      const groupCount = await tx.groupMember.count({ where: { memberId } });
-      if (subCount > 0 || groupCount > 0) {
-        throw new EnrollmentRevertBlockedError(
-          "Annulation impossible : un membre créé est encore lié à l'inscription.",
-        );
-      }
-    }
-
-    await tx.member.deleteMany({ where: { id: { in: snapshot.createdMemberIds } } });
+    await tx.member.updateMany({
+      where: { id: { in: snapshot.createdMemberIds } },
+      data: { status: "ARCHIVED", archivedAt: now },
+    });
   }
 
   await tx.auditLog.create({
     data: {
-      action: "ENROLLMENT_REVERTED",
+      action: "ENROLLMENT_VOIDED",
       entityType: "Enrollment",
       entityId: snapshot.offerApplicationId ?? snapshot.createdMemberIds[0] ?? "batch",
       userId: actorId,
-      details: JSON.stringify(snapshot),
+      details: JSON.stringify({
+        ...snapshot,
+        reason,
+        voidedAt: now.toISOString(),
+        mode: "traceable-void",
+      }),
     },
   });
 }
