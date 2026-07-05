@@ -96,8 +96,10 @@ export function parseReceiptSnapshot(receipt: Pick<Receipt, "snapshotJson">): Re
 
 async function nextReceiptSettings(
   tx: Prisma.TransactionClient,
+  tenantId?: string | null,
 ): Promise<{ settings: ReceiptSettingsRow; sequence: number }> {
   const existing = await tx.clubSettings.findFirst({
+    where: tenantId ? { tenantId } : undefined,
     select: {
       id: true,
       clubName: true,
@@ -114,7 +116,7 @@ async function nextReceiptSettings(
 
   if (!existing) {
     const created = await tx.clubSettings.create({
-      data: { nextReceiptSequence: 2 },
+      data: { tenantId: tenantId ?? undefined, nextReceiptSequence: 2 },
       select: {
         id: true,
         clubName: true,
@@ -155,14 +157,15 @@ export async function issueReceiptForPayment(
   tx: Prisma.TransactionClient,
   paymentId: string,
   issuedById: string | null,
+  tenantId?: string | null,
 ): Promise<Receipt> {
-  const existingReceipt = await tx.receipt.findUnique({
-    where: { paymentId },
+  const existingReceipt = await tx.receipt.findFirst({
+    where: { paymentId, ...(tenantId ? { tenantId } : {}) },
   });
   if (existingReceipt) return existingReceipt;
 
-  const payment = await tx.payment.findUnique({
-    where: { id: paymentId },
+  const payment = await tx.payment.findFirst({
+    where: { id: paymentId, ...(tenantId ? { tenantId } : {}) },
     include: {
       memberSubscription: {
         include: {
@@ -178,7 +181,7 @@ export async function issueReceiptForPayment(
   if (payment.entryType !== "PAYMENT") throw new Error("RECEIPT_PAYMENT_ONLY");
 
   const issuedAt = new Date();
-  const { settings, sequence } = await nextReceiptSettings(tx);
+  const { settings, sequence } = await nextReceiptSettings(tx, tenantId);
   const receiptNumber = formatReceiptNumber(settings.receiptPrefix, issuedAt, sequence);
   const verificationCode = generateReceiptVerificationCode();
   const totalPaidAfter = await getSubscriptionLedgerTotal(tx, payment.memberSubscriptionId);
@@ -235,6 +238,7 @@ export async function issueReceiptForPayment(
 
   const created = await tx.receipt.create({
     data: {
+      tenantId: tenantId ?? undefined,
       paymentId: payment.id,
       receiptNumber,
       verificationCode,
@@ -264,9 +268,10 @@ export async function voidReceiptForPayment(
   tx: Prisma.TransactionClient,
   paymentId: string,
   reason: string,
+  tenantId?: string | null,
 ): Promise<Receipt | null> {
-  const receipt = await tx.receipt.findUnique({
-    where: { paymentId },
+  const receipt = await tx.receipt.findFirst({
+    where: { paymentId, ...(tenantId ? { tenantId } : {}) },
   });
 
   if (!receipt || receipt.status === "VOIDED") return null;

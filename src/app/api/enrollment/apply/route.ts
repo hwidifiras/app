@@ -230,14 +230,16 @@ export async function POST(request: Request) {
                     }),
                   },
                 });
-                const receipt = await issueReceiptForPayment(tx, payment.id, actor.id);
+                const receipt = await issueReceiptForPayment(tx, payment.id, actor.id, actor.tenantId);
                 await tx.auditLog.create({
                   data: {
+                    tenantId: actor.tenantId,
                     action: "RECEIPT_ISSUED",
                     entityType: "Receipt",
                     entityId: receipt.id,
                     userId: actor.id,
                     details: JSON.stringify({
+                      tenantId: actor.tenantId,
                       paymentId: payment.id,
                       receiptNumber: receipt.receiptNumber,
                       source: "enrollment",
@@ -292,14 +294,16 @@ export async function POST(request: Request) {
                     }),
                   },
                 });
-                const receipt = await issueReceiptForPayment(tx, payment.id, actor.id);
+                const receipt = await issueReceiptForPayment(tx, payment.id, actor.id, actor.tenantId);
                 await tx.auditLog.create({
                   data: {
+                    tenantId: actor.tenantId,
                     action: "RECEIPT_ISSUED",
                     entityType: "Receipt",
                     entityId: receipt.id,
                     userId: actor.id,
                     details: JSON.stringify({
+                      tenantId: actor.tenantId,
                       paymentId: payment.id,
                       receiptNumber: receipt.receiptNumber,
                       source: "enrollment-existing-subscription",

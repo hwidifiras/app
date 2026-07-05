@@ -140,7 +140,7 @@ async function reverseCreatedPayments(
       },
     });
 
-    const voidedReceipt = await voidReceiptForPayment(tx, payment.id, reason);
+    const voidedReceipt = await voidReceiptForPayment(tx, payment.id, reason, tenantId);
     if (voidedReceipt) {
       await tx.auditLog.create({
         data: {

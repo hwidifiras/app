@@ -347,6 +347,7 @@ export async function POST(request: Request) {
       if (paymentCents > 0) {
         const payment = await tx.payment.create({
           data: {
+            tenantId: actor.tenantId,
             memberSubscriptionId: subscription.id,
             amount: paymentCents,
             createdById: actor.id,
@@ -358,22 +359,25 @@ export async function POST(request: Request) {
 
         await tx.auditLog.create({
           data: {
+            tenantId: actor.tenantId,
             action: "PAYMENT_CREATED",
             entityType: "Payment",
             entityId: payment.id,
             userId: actor.id,
-            details: JSON.stringify({ amount: paymentCents, memberId: created.id }),
+            details: JSON.stringify({ tenantId: actor.tenantId, amount: paymentCents, memberId: created.id }),
           },
         });
 
-        const receipt = await issueReceiptForPayment(tx, payment.id, actor.id);
+        const receipt = await issueReceiptForPayment(tx, payment.id, actor.id, actor.tenantId);
         await tx.auditLog.create({
           data: {
+            tenantId: actor.tenantId,
             action: "RECEIPT_ISSUED",
             entityType: "Receipt",
             entityId: receipt.id,
             userId: actor.id,
             details: JSON.stringify({
+              tenantId: actor.tenantId,
               paymentId: payment.id,
               receiptNumber: receipt.receiptNumber,
               source: "member-inscription",

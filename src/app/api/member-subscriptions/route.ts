@@ -214,7 +214,7 @@ export async function POST(request: Request) {
           },
         });
 
-        const receipt = await issueReceiptForPayment(tx, payment.id, actor.id);
+        const receipt = await issueReceiptForPayment(tx, payment.id, actor.id, actor.tenantId);
         await tx.auditLog.create({
           data: {
             tenantId: actor.tenantId,

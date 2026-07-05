@@ -150,7 +150,7 @@ export async function POST(request: Request) {
         },
       });
 
-      const receipt = await issueReceiptForPayment(tx, created.id, actor.id);
+      const receipt = await issueReceiptForPayment(tx, created.id, actor.id, actor.tenantId);
 
       await tx.auditLog.create({
         data: {
@@ -323,7 +323,12 @@ export async function PATCH(request: Request) {
         },
       });
 
-      const voidedReceipt = await voidReceiptForPayment(tx, existing.id, payload.correctionReason.trim());
+      const voidedReceipt = await voidReceiptForPayment(
+        tx,
+        existing.id,
+        payload.correctionReason.trim(),
+        actor.tenantId,
+      );
       if (voidedReceipt) {
         await tx.auditLog.create({
           data: {
@@ -476,7 +481,7 @@ export async function DELETE(request: Request) {
         },
       });
 
-      const voidedReceipt = await voidReceiptForPayment(tx, existing.id, correctionReason.trim());
+      const voidedReceipt = await voidReceiptForPayment(tx, existing.id, correctionReason.trim(), actor.tenantId);
       if (voidedReceipt) {
         await tx.auditLog.create({
           data: {
