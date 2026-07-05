@@ -510,9 +510,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 }
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  let actor;
   try {
-    await requirePermission(_request, "catalog.manage");
+    actor = await requirePermission(request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -544,16 +545,34 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     throw error;
   }
 
-  const cancelled = await prisma.session.update({
-    where: { id },
-    data: {
-      status: "CANCELLED",
-      exceptionReason: "Annulation depuis le planning",
-      postponedTo: null,
-      postponementReason: null,
-      postponementDetails: null,
-    },
-    select: { id: true, status: true, exceptionReason: true, updatedAt: true },
+  const cancelled = await prisma.$transaction(async (tx) => {
+    const updated = await tx.session.update({
+      where: { id },
+      data: {
+        status: "CANCELLED",
+        exceptionReason: "Annulation depuis le planning",
+        postponedTo: null,
+        postponementReason: null,
+        postponementDetails: null,
+      },
+      select: { id: true, status: true, exceptionReason: true, updatedAt: true },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        action: "SESSION_CANCELLED",
+        entityType: "Session",
+        entityId: id,
+        userId: actor.id,
+        details: JSON.stringify({
+          previous: existing,
+          next: updated,
+          reason: "Annulation depuis le planning",
+        }),
+      },
+    });
+
+    return updated;
   });
 
   return NextResponse.json({ data: cancelled });

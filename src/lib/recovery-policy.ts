@@ -65,6 +65,14 @@ export const RECOVERY_POLICIES: RecoveryPolicy[] = [
     preservesHistory: true,
   },
   {
+    area: "sessions",
+    action: "session-cancelled",
+    normalUserCopy: "Seance annulee",
+    behavior: "void",
+    reasonRequired: false,
+    preservesHistory: true,
+  },
+  {
     area: "attendance",
     action: "attendance-corrected",
     normalUserCopy: "Pointage corrige",
