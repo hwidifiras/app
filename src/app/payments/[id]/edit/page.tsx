@@ -12,9 +12,13 @@ export default async function EditPaymentPage({ params }: { params: Promise<{ id
 
   let hasError = false;
   let payment: Awaited<ReturnType<typeof getPayment>> = null;
+  let receiptDeliveryLogs: Awaited<ReturnType<typeof getReceiptDeliveryLogs>> = [];
 
   try {
     payment = await getPayment(id);
+    if (payment?.receipt) {
+      receiptDeliveryLogs = await getReceiptDeliveryLogs(payment.receipt.id);
+    }
   } catch {
     hasError = true;
   }
@@ -56,6 +60,7 @@ export default async function EditPaymentPage({ params }: { params: Promise<{ id
           ...payment,
           paymentDate: payment.paymentDate.toISOString(),
         }}
+        receiptDeliveryLogs={receiptDeliveryLogs}
       />
     </main>
   );
@@ -69,11 +74,71 @@ async function getPayment(id: string) {
         select: {
           id: true,
           amount: true,
-          member: { select: { firstName: true, lastName: true } },
+          member: { select: { firstName: true, lastName: true, email: true } },
           plan: { select: { name: true } },
           payments: { select: { id: true, amount: true, correctsPaymentId: true } },
         },
       },
+      receipt: {
+        select: {
+          id: true,
+          receiptNumber: true,
+          verificationCode: true,
+          status: true,
+        },
+      },
     },
+  });
+}
+
+function parseReceiptDeliveryDetails(details: string | null) {
+  if (!details) return { email: null, delivered: null, reason: null };
+  try {
+    const parsed = JSON.parse(details) as {
+      email?: unknown;
+      delivered?: unknown;
+      reason?: unknown;
+    };
+    return {
+      email: typeof parsed.email === "string" ? parsed.email : null,
+      delivered: typeof parsed.delivered === "boolean" ? parsed.delivered : null,
+      reason: typeof parsed.reason === "string" ? parsed.reason : null,
+    };
+  } catch {
+    return { email: null, delivered: null, reason: null };
+  }
+}
+
+async function getReceiptDeliveryLogs(receiptId: string) {
+  const logs = await prisma.auditLog.findMany({
+    where: {
+      entityType: "Receipt",
+      entityId: receiptId,
+      action: { in: ["RECEIPT_EMAIL_SENT", "RECEIPT_EMAIL_FAILED"] },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 8,
+  });
+  const userIds = [...new Set(logs.map((log) => log.userId).filter((userId): userId is string => Boolean(userId)))];
+  const users = userIds.length
+    ? await prisma.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, name: true, email: true },
+      })
+    : [];
+  const usersById = new Map(users.map((user) => [user.id, user]));
+
+  return logs.map((log) => {
+    const details = parseReceiptDeliveryDetails(log.details);
+    const actor = log.userId ? usersById.get(log.userId) : null;
+    return {
+      id: log.id,
+      action: log.action,
+      createdAt: log.createdAt.toISOString(),
+      email: details.email,
+      delivered: details.delivered ?? log.action === "RECEIPT_EMAIL_SENT",
+      reason: details.reason,
+      actorName: actor?.name || actor?.email || null,
+    };
   });
 }

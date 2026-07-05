@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, MailCheck, MailX, ReceiptText, Trash2 } from "lucide-react";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FieldControl } from "@/components/ui/field-control";
 import { FormActions, FormField, FormGrid, FormSection, FormSectionNav } from "@/components/ui/form-layout";
+import { PaymentReceiptActions } from "@/components/payments/payment-receipt-actions";
 import { formatMoney, MONEY_INPUT_SUFFIX } from "@/lib/money";
 
 const METHODS = [
@@ -28,14 +29,29 @@ type PaymentEditFormProps = {
     memberSubscription: {
       id: string;
       amount: number;
-      member: { firstName: string; lastName: string };
+      member: { firstName: string; lastName: string; email: string | null };
       plan: { name: string } | null;
       payments: Array<{ id: string; amount: number; correctsPaymentId: string | null }>;
     };
+    receipt: {
+      id: string;
+      receiptNumber: string;
+      verificationCode: string;
+      status: "ISSUED" | "VOIDED";
+    } | null;
   };
+  receiptDeliveryLogs: Array<{
+    id: string;
+    action: string;
+    createdAt: string;
+    email: string | null;
+    delivered: boolean;
+    reason: string | null;
+    actorName: string | null;
+  }>;
 };
 
-export function PaymentEditForm({ payment }: PaymentEditFormProps) {
+export function PaymentEditForm({ payment, receiptDeliveryLogs }: PaymentEditFormProps) {
   const router = useRouter();
   const [amount, setAmount] = useState((payment.amount / 100).toFixed(2).replace(".", ","));
   const [paymentDate, setPaymentDate] = useState(() => new Date(payment.paymentDate).toISOString().split("T")[0]);
@@ -141,6 +157,7 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
           { href: "#payment-original", label: "Original" },
           { href: "#payment-correction", label: "Correction avec motif" },
           { href: "#payment-impact", label: "Impact" },
+          { href: "#payment-receipt", label: "Reçu" },
           { href: "#payment-reversal", label: "Annulation traçable" },
         ]}
       />
@@ -253,7 +270,7 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
           </FormSection>
         </div>
 
-        <aside id="payment-impact" className="form-section-anchor lg:sticky lg:top-20 lg:col-span-4">
+        <aside id="payment-impact" className="form-section-anchor space-y-4 lg:sticky lg:top-20 lg:col-span-4">
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
             <p className="text-sm font-semibold">Impact sur le solde</p>
             <p className="text-xs text-[var(--muted-foreground)]">Paiement original conservé</p>
@@ -282,6 +299,84 @@ export function PaymentEditForm({ payment }: PaymentEditFormProps) {
             <p className="mt-3 rounded-lg bg-[var(--surface-soft)] px-3 py-2 text-xs leading-relaxed text-[var(--muted-foreground)]">
               Le système ajoute une correction avec motif. Le paiement initial n&apos;est jamais supprimé.
             </p>
+          </div>
+
+          <div id="payment-receipt" className="form-section-anchor rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
+            <div className="flex items-start gap-2">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-[var(--primary)]">
+                <ReceiptText className="size-4" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">Reçu et envois</p>
+                <p className="text-xs text-[var(--muted-foreground)]">Trace impression, email et vérification.</p>
+              </div>
+            </div>
+
+            {payment.receipt ? (
+              <div className="mt-4 space-y-4">
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
+                        Reçu officiel
+                      </p>
+                      <p className="mt-1 text-sm font-bold">{payment.receipt.receiptNumber}</p>
+                    </div>
+                    <span
+                      className={`inline-flex rounded-full px-2 py-0.5 text-[0.68rem] font-semibold ${
+                        payment.receipt.status === "VOIDED"
+                          ? "bg-red-50 text-red-700"
+                          : "bg-emerald-50 text-emerald-700"
+                      }`}
+                    >
+                      {payment.receipt.status === "VOIDED" ? "Annulé" : "Émis"}
+                    </span>
+                  </div>
+                  <PaymentReceiptActions receipt={payment.receipt} defaultEmail={subscription.member.email} />
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
+                    Derniers envois email
+                  </p>
+                  {receiptDeliveryLogs.length > 0 ? (
+                    <ul className="mt-2 space-y-2">
+                      {receiptDeliveryLogs.map((log) => (
+                        <li key={log.id} className="rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-xs">
+                          <div className="flex items-start justify-between gap-2">
+                            <span className={`inline-flex items-center gap-1 font-semibold ${log.delivered ? "text-emerald-700" : "text-red-700"}`}>
+                              {log.delivered ? <MailCheck className="size-3.5" /> : <MailX className="size-3.5" />}
+                              {log.delivered ? "Envoyé" : "Échec"}
+                            </span>
+                            <time className="shrink-0 text-[var(--muted-foreground)]">
+                              {new Intl.DateTimeFormat("fr-FR", {
+                                dateStyle: "short",
+                                timeStyle: "short",
+                              }).format(new Date(log.createdAt))}
+                            </time>
+                          </div>
+                          <p className="mt-1 truncate font-medium">{log.email ?? "Email non renseigné"}</p>
+                          {log.actorName ? (
+                            <p className="mt-0.5 text-[var(--muted-foreground)]">Par {log.actorName}</p>
+                          ) : null}
+                          {!log.delivered && log.reason ? (
+                            <p className="mt-1 rounded-md bg-red-50 px-2 py-1 text-red-700">{log.reason}</p>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-xs text-[var(--muted-foreground)]">
+                      Aucun envoi email enregistré pour ce reçu.
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="mt-4 rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-xs text-[var(--muted-foreground)]">
+                Aucun reçu lié à cette ligne. Les corrections et annulations ne génèrent pas de nouveau reçu.
+              </p>
+            )}
           </div>
         </aside>
       </div>
