@@ -1,16 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { UserMinus, UserPlus, UsersRound } from "lucide-react";
 
 import { GroupMemberDto } from "@/types/group-member";
 import { GroupDto } from "@/types/group";
 import { MemberDto } from "@/types/member";
-import { StatusBadge } from "@/components/ui/status-badge";
+import { GroupMemberAssignedPanel } from "@/components/groups/group-member-assigned-panel";
+import { GroupMemberAvailablePanel } from "@/components/groups/group-member-available-panel";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { EmptyState } from "@/components/ui/empty-state";
-import { ListSearch } from "@/components/ui/list-controls";
 import { FormField } from "@/components/ui/form-layout";
 import { isMemberAllowedInGroupPolicy } from "@/lib/demographics";
 
@@ -329,159 +327,40 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
       <FeedbackMessage message={message} className="mt-3" />
 
       <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
-        <section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-panel)] sm:p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h3 className="text-sm font-semibold text-[var(--foreground)]">Membres disponibles</h3>
-              <p className="text-xs text-[var(--muted-foreground)]">{availableMembers.length} résultat(s)</p>
-            </div>
-            <button type="button" onClick={toggleSelectAllAvailable} className="btn btn-ghost text-xs">
-              {availableMembers.length > 0 && availableMembers.every((m) => selectedMemberIds.includes(m.id))
-                ? "Tout désélectionner"
-                : "Tout sélectionner"}
-            </button>
-          </div>
+        <GroupMemberAvailablePanel
+          members={availableMembers}
+          selectedMemberIds={selectedMemberIds}
+          search={membersSearch}
+          assigning={bulkAction === "assign"}
+          groupSelected={Boolean(groupId)}
+          onSearchChange={setMembersSearch}
+          onToggleMember={toggleMemberSelection}
+          onToggleAll={toggleSelectAllAvailable}
+          onClearSearch={() => setMembersSearch("")}
+          onAssign={() => {
+            void assignSelectedMembers();
+          }}
+        />
 
-          <ListSearch
-            value={membersSearch}
-            onChange={setMembersSearch}
-            placeholder="Nom ou téléphone..."
-            className="mt-3"
-          />
-
-          <ul className="mt-3 max-h-[min(45dvh,24rem)] space-y-2 overflow-auto pr-1">
-            {availableMembers.map((member) => (
-              <li key={member.id} className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-2 py-1.5 text-xs">
-                <input
-                  type="checkbox"
-                  checked={selectedMemberIds.includes(member.id)}
-                  onChange={() => toggleMemberSelection(member.id)}
-                />
-                <span className="font-medium text-[var(--foreground)]">
-                  {member.firstName} {member.lastName}
-                </span>
-                <span className="text-[var(--muted-foreground)]">• {member.phone}</span>
-              </li>
-            ))}
-            {availableMembers.length === 0 ? (
-              <li>
-                <EmptyState
-                  icon={<UserPlus className="size-7 opacity-45" />}
-                  title="Aucun membre disponible"
-                  message={membersSearch ? "Aucun membre ne correspond à cette recherche." : "Tous les membres compatibles sont déjà affectés."}
-                  action={membersSearch ? <button type="button" onClick={() => setMembersSearch("")} className="btn btn-ghost btn-sm">Effacer</button> : undefined}
-                  className="px-3 py-7"
-                />
-              </li>
-            ) : null}
-          </ul>
-
-          <button
-            type="button"
-            onClick={() => {
-              void assignSelectedMembers();
-            }}
-            disabled={bulkAction !== null || !groupId || selectedMemberIds.length === 0}
-            className="btn btn-primary mt-3 w-full"
-          >
-            {bulkAction === "assign" ? "Affectation…" : `Ajouter au groupe (${selectedMemberIds.length})`}
-          </button>
-        </section>
-
-        <section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-panel)] sm:p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h3 className="text-sm font-semibold text-[var(--foreground)]">Membres affectés</h3>
-              <p className="text-xs text-[var(--muted-foreground)]">{displayedAssignments.length} résultat(s)</p>
-            </div>
-            <button type="button" onClick={toggleSelectAllAssigned} className="btn btn-ghost text-xs">
-              {displayedAssignments.length > 0 &&
-              displayedAssignments.every((a) => selectedAssignedMemberIds.includes(a.memberId))
-                ? "Tout désélectionner"
-                : "Tout sélectionner"}
-            </button>
-          </div>
-
-          <ListSearch
-            value={assignedSearch}
-            onChange={setAssignedSearch}
-            placeholder="Nom ou téléphone..."
-            className="mt-3"
-          />
-
-          <ul className="mt-3 max-h-[min(45dvh,24rem)] space-y-2 overflow-auto pr-1">
-            {assignmentsLoading ? (
-              <li className="flex min-h-28 items-center justify-center text-sm text-[var(--muted-foreground)]">
-                Chargement des affectations…
-              </li>
-            ) : null}
-            {!assignmentsLoading ? displayedAssignments.map((item) => (
-              <li key={item.id} className="rounded-lg border border-[var(--border)] p-2">
-                <div className="flex items-start justify-between gap-2">
-                  <label className="flex items-start gap-2 text-xs">
-                    <input
-                      type="checkbox"
-                      checked={selectedAssignedMemberIds.includes(item.memberId)}
-                      onChange={() => toggleAssignedSelection(item.memberId)}
-                    />
-                    <span>
-                      <span className="block font-medium text-[var(--foreground)]">{item.memberName}</span>
-                      <span className="block text-[var(--muted-foreground)]">{item.memberPhone}</span>
-                      <span className="block text-[var(--muted-foreground)]">
-                        Du {new Date(item.startDate).toLocaleDateString("fr-FR")}
-                        {item.endDate ? ` au ${new Date(item.endDate).toLocaleDateString("fr-FR")}` : ""}
-                      </span>
-                    </span>
-                  </label>
-                  <StatusBadge variant={item.status === "ACTIVE" ? "success" : "muted"}>
-                    {item.status === "ACTIVE" ? "Actif" : "Inactif"}
-                  </StatusBadge>
-                </div>
-                <div className="mt-2 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void toggleStatus(item);
-                    }}
-                    disabled={actionLoadingId === item.id}
-                    className="btn btn-ghost text-xs"
-                  >
-                    {item.status === "ACTIVE" ? "Désactiver" : "Réactiver"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPendingRemoval(item)}
-                    disabled={actionLoadingId === item.id}
-                    className="btn btn-danger text-xs"
-                  >
-                    Retirer
-                  </button>
-                </div>
-              </li>
-            )) : null}
-            {!assignmentsLoading && displayedAssignments.length === 0 ? (
-              <li>
-                <EmptyState
-                  icon={<UsersRound className="size-7 opacity-45" />}
-                  title={assignments.length === 0 ? "Groupe encore vide" : "Aucun résultat"}
-                  message={assignments.length === 0 ? "Ajoutez des membres depuis la liste disponible." : "Aucune affectation ne correspond à cette recherche."}
-                  action={assignedSearch ? <button type="button" onClick={() => setAssignedSearch("")} className="btn btn-ghost btn-sm">Effacer</button> : undefined}
-                  className="px-3 py-7"
-                />
-              </li>
-            ) : null}
-          </ul>
-
-          <button
-            type="button"
-            onClick={() => setPendingRemoval("bulk")}
-            disabled={bulkAction !== null || !groupId || selectedAssignedMemberIds.length === 0}
-            className="btn btn-danger mt-3 w-full"
-          >
-            <UserMinus className="size-4" />
-            {bulkAction === "remove" ? "Retrait…" : `Retirer du groupe (${selectedAssignedMemberIds.length})`}
-          </button>
-        </section>
+        <GroupMemberAssignedPanel
+          assignments={displayedAssignments}
+          totalAssignments={assignments.length}
+          selectedMemberIds={selectedAssignedMemberIds}
+          search={assignedSearch}
+          loading={assignmentsLoading}
+          removing={bulkAction === "remove"}
+          actionLoadingId={actionLoadingId}
+          groupSelected={Boolean(groupId)}
+          onSearchChange={setAssignedSearch}
+          onToggleMember={toggleAssignedSelection}
+          onToggleAll={toggleSelectAllAssigned}
+          onClearSearch={() => setAssignedSearch("")}
+          onToggleStatus={(item) => {
+            void toggleStatus(item);
+          }}
+          onQueueRemoval={setPendingRemoval}
+          onQueueBulkRemoval={() => setPendingRemoval("bulk")}
+        />
       </div>
 
       <ConfirmDialog
