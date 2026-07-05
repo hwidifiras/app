@@ -19,6 +19,7 @@ import {
   Th,
   Td,
 } from "@/components/ui/responsive-table";
+import { SettingsMetric } from "@/components/settings/settings-hub";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -136,6 +137,10 @@ export default async function LogsPage({
     : [];
 
   const userMap = new Map(users.map((user) => [user.id, user]));
+  const businessCount = presented.filter((item) => !item.isSystem).length;
+  const paymentCount = presented.filter((item) => item.category === "PAYMENTS").length;
+  const attendanceCount = presented.filter((item) => item.category === "ATTENDANCE").length;
+  const systemCount = presented.filter((item) => item.category === "SYSTEM").length;
 
   return (
     <main className="app-shell py-4 md:py-8">
@@ -151,6 +156,13 @@ export default async function LogsPage({
         title="Journal actions"
         description="Voir qui a fait quoi dans l'application."
       />
+
+      <section className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <SettingsMetric label="Actions utiles" value={businessCount} detail="Hors système" />
+        <SettingsMetric label="Paiements" value={paymentCount} detail="Corrections et encaissements" />
+        <SettingsMetric label="Présences" value={attendanceCount} detail="Pointage et séances" />
+        <SettingsMetric label="Système" value={systemCount} detail="Bruit masqué par défaut" />
+      </section>
 
       <section className="panel p-4 sm:p-5">
         <form className="page-actions mb-4">
