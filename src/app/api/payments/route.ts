@@ -15,8 +15,9 @@ import { sendReceiptEmailForReceipt, type ReceiptEmailDeliveryResult } from "@/l
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "payments.manage");
+    actor = await requirePermission(request, "payments.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -25,12 +26,13 @@ export async function GET(request: Request) {
   const memberSubscriptionId = searchParams.get("memberSubscriptionId")?.trim();
   const memberId = searchParams.get("memberId")?.trim();
 
-  let whereClause: Record<string, unknown> = {};
+  let whereClause: Record<string, unknown> = { tenantId: actor.tenantId };
 
   if (memberSubscriptionId) {
-    whereClause = { memberSubscriptionId };
+    whereClause = { tenantId: actor.tenantId, memberSubscriptionId };
   } else if (memberId) {
     whereClause = {
+      tenantId: actor.tenantId,
       memberSubscription: { memberId },
     };
   }
@@ -92,8 +94,8 @@ export async function POST(request: Request) {
 
   try {
     const payment = await prisma.$transaction(async (tx) => {
-      const subscription = await tx.memberSubscription.findUnique({
-        where: { id: memberSubscriptionId },
+      const subscription = await tx.memberSubscription.findFirst({
+        where: { id: memberSubscriptionId, tenantId: actor.tenantId },
         select: { id: true, amount: true },
       });
 
@@ -111,6 +113,7 @@ export async function POST(request: Request) {
 
       const created = await tx.payment.create({
         data: {
+          tenantId: actor.tenantId,
           memberSubscriptionId,
           amount,
           entryType: "PAYMENT",
@@ -132,11 +135,13 @@ export async function POST(request: Request) {
 
       await tx.auditLog.create({
         data: {
+          tenantId: actor.tenantId,
           action: "PAYMENT_CREATED",
           entityType: "Payment",
           entityId: created.id,
           userId: actor.id,
           details: JSON.stringify({
+            tenantId: actor.tenantId,
             amount,
             memberSubscriptionId,
             totalBefore: totalPaid,
@@ -149,11 +154,13 @@ export async function POST(request: Request) {
 
       await tx.auditLog.create({
         data: {
+          tenantId: actor.tenantId,
           action: "RECEIPT_ISSUED",
           entityType: "Receipt",
           entityId: receipt.id,
           userId: actor.id,
           details: JSON.stringify({
+            tenantId: actor.tenantId,
             paymentId: created.id,
             receiptNumber: receipt.receiptNumber,
           }),
@@ -242,8 +249,8 @@ export async function PATCH(request: Request) {
 
   try {
     const correction = await prisma.$transaction(async (tx) => {
-      const existing = await tx.payment.findUnique({
-        where: { id: paymentId },
+      const existing = await tx.payment.findFirst({
+        where: { id: paymentId, tenantId: actor.tenantId },
         include: {
           memberSubscription: {
             select: {
@@ -272,6 +279,7 @@ export async function PATCH(request: Request) {
 
       const created = await tx.payment.create({
         data: {
+          tenantId: actor.tenantId,
           memberSubscriptionId: existing.memberSubscriptionId,
           amount: delta,
           entryType: "CORRECTION",
@@ -296,11 +304,13 @@ export async function PATCH(request: Request) {
 
       await tx.auditLog.create({
         data: {
+          tenantId: actor.tenantId,
           action: "PAYMENT_CORRECTED",
           entityType: "Payment",
           entityId: created.id,
           userId: actor.id,
           details: JSON.stringify({
+            tenantId: actor.tenantId,
             originalPaymentId: paymentId,
             reason: payload.correctionReason.trim(),
             amountBefore: effectiveBefore,
@@ -317,11 +327,13 @@ export async function PATCH(request: Request) {
       if (voidedReceipt) {
         await tx.auditLog.create({
           data: {
+            tenantId: actor.tenantId,
             action: "RECEIPT_VOIDED",
             entityType: "Receipt",
             entityId: voidedReceipt.id,
             userId: actor.id,
             details: JSON.stringify({
+              tenantId: actor.tenantId,
               paymentId: existing.id,
               reason: payload.correctionReason.trim(),
               source: "payment-correction",
@@ -392,8 +404,8 @@ export async function DELETE(request: Request) {
 
   try {
     const reversal = await prisma.$transaction(async (tx) => {
-      const existing = await tx.payment.findUnique({
-        where: { id: paymentId },
+      const existing = await tx.payment.findFirst({
+        where: { id: paymentId, tenantId: actor.tenantId },
         include: {
           memberSubscription: {
             select: {
@@ -424,6 +436,7 @@ export async function DELETE(request: Request) {
 
       const created = await tx.payment.create({
         data: {
+          tenantId: actor.tenantId,
           memberSubscriptionId: existing.memberSubscriptionId,
           amount: -effectiveAmount,
           entryType: "REVERSAL",
@@ -447,11 +460,13 @@ export async function DELETE(request: Request) {
 
       await tx.auditLog.create({
         data: {
+          tenantId: actor.tenantId,
           action: "PAYMENT_REVERSED",
           entityType: "Payment",
           entityId: created.id,
           userId: actor.id,
           details: JSON.stringify({
+            tenantId: actor.tenantId,
             originalPaymentId: paymentId,
             reason: correctionReason.trim(),
             reversedAmount: effectiveAmount,
@@ -465,11 +480,13 @@ export async function DELETE(request: Request) {
       if (voidedReceipt) {
         await tx.auditLog.create({
           data: {
+            tenantId: actor.tenantId,
             action: "RECEIPT_VOIDED",
             entityType: "Receipt",
             entityId: voidedReceipt.id,
             userId: actor.id,
             details: JSON.stringify({
+              tenantId: actor.tenantId,
               paymentId: existing.id,
               reason: correctionReason.trim(),
               source: "payment-reversal",
