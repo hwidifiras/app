@@ -160,6 +160,15 @@ export const RECOVERY_POLICIES: RecoveryPolicy[] = [
   },
   {
     area: "group-schedules",
+    action: "group-schedule-created",
+    auditActions: ["GROUP_SCHEDULE_CREATED"],
+    normalUserCopy: "Horaire ajoute",
+    behavior: "close",
+    reasonRequired: false,
+    preservesHistory: true,
+  },
+  {
+    area: "group-schedules",
     action: "group-schedule-closed",
     auditActions: ["GROUP_SCHEDULE_CLOSED"],
     normalUserCopy: "Horaire retire",

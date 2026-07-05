@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createGroupScheduleSchema, updateGroupScheduleSchema } from "@/lib/schemas/group";
 import { utcDateOnlyForTimeZone } from "@/lib/dates";
-import { SessionStatus } from "@prisma/client";
+import { GroupSchedule, SessionStatus } from "@prisma/client";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { sessionRoomFromGroup } from "@/lib/group-room";
 
@@ -60,8 +60,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  let actor;
   try {
-    await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -115,9 +116,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Groupe introuvable" }, { status: 404 });
   }
 
-  const created = await prisma.$transaction(
-    parsedData.map((data) =>
-      prisma.groupSchedule.create({
+  const created = await prisma.$transaction(async (tx) => {
+    const schedules: GroupSchedule[] = [];
+
+    for (const data of parsedData) {
+      const schedule = await tx.groupSchedule.create({
         data: {
           groupId: id,
           dayOfWeek: data.dayOfWeek,
@@ -126,9 +129,27 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           effectiveFrom: data.effectiveFrom ? new Date(data.effectiveFrom) : new Date(),
           effectiveTo: data.effectiveTo ? new Date(data.effectiveTo) : null,
         },
-      })
-    )
-  );
+      });
+
+      schedules.push(schedule);
+    }
+
+    await tx.auditLog.create({
+      data: {
+        action: "GROUP_SCHEDULE_CREATED",
+        entityType: "Group",
+        entityId: id,
+        userId: actor.id,
+        details: JSON.stringify({
+          groupId: id,
+          count: schedules.length,
+          schedules: schedules.map(toScheduleDto),
+        }),
+      },
+    });
+
+    return schedules;
+  });
 
   // Auto-generate sessions if requested
   let sessionResult: { createdCount: number; candidatesCount: number; skippedCount: number } | null = null;
@@ -137,7 +158,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       ? bodyObj.horizonDays
       : 90;
 
-    sessionResult = await generateSessionsForGroup(id, created, horizonDays);
+    sessionResult = await generateSessionsForGroup(id, created, horizonDays, actor.id);
   }
 
   return NextResponse.json(
@@ -152,7 +173,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 async function generateSessionsForGroup(
   groupId: string,
   schedules: { id: string; dayOfWeek: string; startTime: string; durationMinutes: number; effectiveFrom: Date; effectiveTo: Date | null }[],
-  horizonDays: number
+  horizonDays: number,
+  actorId: string
 ) {
   const today = utcDateOnlyForTimeZone(new Date());
   const endDate = new Date(today);
@@ -245,7 +267,7 @@ async function generateSessionsForGroup(
   );
 
   if (toCreate.length > 0) {
-    await prisma.session.createMany({
+    const result = await prisma.session.createMany({
       data: toCreate.map((c) => ({
         groupId: c.groupId,
         scheduleId: c.scheduleId,
@@ -256,6 +278,24 @@ async function generateSessionsForGroup(
         coachId: c.coachId ?? undefined,
         status: c.status,
       })),
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        action: "SESSIONS_GENERATED",
+        entityType: "Group",
+        entityId: groupId,
+        userId: actorId,
+        details: JSON.stringify({
+          source: "group_schedule_create_auto_generate",
+          horizonDays,
+          groupId,
+          scheduleIds: schedules.map((schedule) => schedule.id),
+          candidatesCount: candidates.length,
+          createdCount: result.count,
+          skippedCount: candidates.length - result.count,
+        }),
+      },
     });
   }
 

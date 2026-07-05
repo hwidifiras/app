@@ -21,7 +21,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Catalog records for disciplines, coaches, and formulas are deactivated instead of physically deleted in normal flows.
 - Group creation and group setup edits now write actor-linked audit entries with before/after snapshots for public policy, discipline, coach, room, capacity, and active state.
 - Receipts are created for original payment entries and voided when the original payment is corrected or reversed.
-- Group schedules are closed with an end date and audit trail instead of being physically deleted.
+- Group schedules are created, updated, and closed with audit trail; closing uses an end date instead of physical deletion.
 - Session cancellation keeps the session row and now writes an actor-linked audit entry.
 - Session edits now write actor-linked audit entries: exception edits include before/after snapshots, and permanent edits include affected future session IDs plus requested values.
 - Subscription edits now require admin + reason for formula/status/value changes, block amount below paid total, and write before/after audit snapshots.
@@ -280,6 +280,7 @@ Latest UI settings checkpoint:
 - Household audit pass now logs foyer creation and member additions to foyers with readable audit labels; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Member list edit audit pass now logs before/after profile snapshots for `MEMBER_UPDATED`; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Group create/update audit pass now logs `GROUP_CREATED` and `GROUP_UPDATED` with before/after course setup snapshots and readable log labels; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
+- Group schedule creation audit pass now logs `GROUP_SCHEDULE_CREATED` and optional auto-generated sessions with actor-linked details; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
 
 Start a disposable local PostgreSQL test database, or set `TEST_DATABASE_URL`, before relying on `npm.cmd test`.

@@ -48,6 +48,7 @@ const ACTION_LABELS: Record<string, string> = {
   GROUP_UPDATED: "Groupe modifie",
   HOUSEHOLD_CREATED: "Foyer cree",
   HOUSEHOLD_MEMBER_ADDED: "Membre ajoute au foyer",
+  GROUP_SCHEDULE_CREATED: "Horaire de groupe cree",
   GROUP_SCHEDULE_UPDATED: "Horaire de groupe modifie",
   GROUP_SCHEDULE_CLOSED: "Horaire de groupe ferme",
   GROUP_DEACTIVATED: "Groupe desactive",
