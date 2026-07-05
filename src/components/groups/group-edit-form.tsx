@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import { GroupMemberSelector } from "@/components/groups/group-member-selector";
+import { GroupPolicyPicker } from "@/components/groups/group-policy-picker";
 import { isMemberAllowedInGroupPolicy, type GroupGenderPolicyValue, type GroupTypeValue } from "@/lib/demographics";
 import { CoachDto } from "@/types/coach";
 import { MemberDto } from "@/types/member";
@@ -79,6 +80,26 @@ export function GroupEditForm({
   const coachChanged = coachId !== initialData.coachId;
   const coachSportPairChanged = sportId !== initialData.sportId || coachId !== initialData.coachId;
   const needsCoachSportOverride = coachSportPairChanged && !coachIsQualifiedForSport(selectedCoach, sportId);
+
+  function applyGroupType(nextType: GroupTypeValue) {
+    setGroupType(nextType);
+    const allowedIds = new Set(
+      membersOptions
+        .filter((member) => isMemberAllowed(member, nextType, genderPolicy))
+        .map((member) => member.id),
+    );
+    setSelectedMemberIds((current) => current.filter((id) => allowedIds.has(id)));
+  }
+
+  function applyGenderPolicy(nextPolicy: GroupGenderPolicyValue) {
+    setGenderPolicy(nextPolicy);
+    const allowedIds = new Set(
+      membersOptions
+        .filter((member) => isMemberAllowed(member, groupType, nextPolicy))
+        .map((member) => member.id),
+    );
+    setSelectedMemberIds((current) => current.filter((id) => allowedIds.has(id)));
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -179,49 +200,13 @@ export function GroupEditForm({
               ))}
             </select>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Type de groupe</label>
-            <select
-              value={groupType}
-              onChange={(e) => {
-                const nextType = e.target.value as GroupTypeValue;
-                setGroupType(nextType);
-                const allowedIds = new Set(
-                  membersOptions
-                    .filter((member) => isMemberAllowed(member, nextType, genderPolicy))
-                    .map((member) => member.id)
-                );
-                setSelectedMemberIds((current) => current.filter((id) => allowedIds.has(id)));
-              }}
-              className="field text-sm"
-              required
-            >
-              <option value="ADULTS">Adultes</option>
-              <option value="KIDS">Enfants</option>
-              <option value="MIXED">Mixte age</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Genre du groupe</label>
-            <select
-              value={genderPolicy}
-              onChange={(e) => {
-                const nextPolicy = e.target.value as GroupGenderPolicyValue;
-                setGenderPolicy(nextPolicy);
-                const allowedIds = new Set(
-                  membersOptions
-                    .filter((member) => isMemberAllowed(member, groupType, nextPolicy))
-                    .map((member) => member.id),
-                );
-                setSelectedMemberIds((current) => current.filter((id) => allowedIds.has(id)));
-              }}
-              className="field text-sm"
-              required
-            >
-              <option value="MIXED">Mixte</option>
-              <option value="MALE_ONLY">Garcons / hommes</option>
-              <option value="FEMALE_ONLY">Filles / femmes</option>
-            </select>
+          <div className="sm:col-span-2 lg:col-span-3">
+            <GroupPolicyPicker
+              groupType={groupType}
+              genderPolicy={genderPolicy}
+              onGroupTypeChange={applyGroupType}
+              onGenderPolicyChange={applyGenderPolicy}
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Coach par défaut</label>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import { GroupMemberSelector } from "@/components/groups/group-member-selector";
+import { GroupPolicyPicker } from "@/components/groups/group-policy-picker";
 import { isMemberAllowedInGroupPolicy, type GroupGenderPolicyValue, type GroupTypeValue } from "@/lib/demographics";
 import { CoachDto } from "@/types/coach";
 import { MemberDto } from "@/types/member";
@@ -158,37 +159,19 @@ export function GroupAddForm({
               </p>
             ) : null}
           </div>
-          <div>
-            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Type de groupe</label>
-            <select
-              value={groupType}
-              onChange={(e) => {
-                setGroupType(e.target.value as GroupTypeValue);
+          <div className="sm:col-span-2 lg:col-span-3">
+            <GroupPolicyPicker
+              groupType={groupType}
+              genderPolicy={genderPolicy}
+              onGroupTypeChange={(value) => {
+                setGroupType(value);
                 setSelectedMemberIds([]);
               }}
-              className="field text-sm"
-              required
-            >
-              <option value="ADULTS">Adultes</option>
-              <option value="KIDS">Enfants</option>
-              <option value="MIXED">Mixte age</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Genre du groupe</label>
-            <select
-              value={genderPolicy}
-              onChange={(e) => {
-                setGenderPolicy(e.target.value as GroupGenderPolicyValue);
+              onGenderPolicyChange={(value) => {
+                setGenderPolicy(value);
                 setSelectedMemberIds([]);
               }}
-              className="field text-sm"
-              required
-            >
-              <option value="MIXED">Mixte</option>
-              <option value="MALE_ONLY">Garcons / hommes</option>
-              <option value="FEMALE_ONLY">Filles / femmes</option>
-            </select>
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Coach par défaut</label>

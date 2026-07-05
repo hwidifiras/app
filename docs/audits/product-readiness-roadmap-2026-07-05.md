@@ -220,6 +220,11 @@ The group form should express real club language:
 
 This avoids names like `Self Def Kids` carrying hidden business rules.
 
+Implemented in this pass:
+
+- group create/edit now has a guided `Public du cours` picker for age and gender policy;
+- member selections are still cleared/filtered when a policy change makes selected members incompatible.
+
 ### Enrollment
 
 Current target:

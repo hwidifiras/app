@@ -40,6 +40,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Discipline creation includes common martial-arts suggestions.
 - Members now have gender.
 - Groups now support kids, adults, mixed age, male-only, female-only, and mixed gender policies.
+- Group create/edit now uses a guided `Public du cours` picker instead of raw age/gender selects.
 - Enrollment and group assignment enforce group/member compatibility.
 - Parent phone is required for kids during new enrollment.
 
@@ -186,6 +187,7 @@ Latest UI settings checkpoint:
 - `data-import-wizard.tsx` status/rollback UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Attendance undo audit enrichment passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Receipt QR/copy-link pass passed `npm.cmd run lint`, `npm.cmd run build`, `npx.cmd prisma validate`, and `npm.cmd audit --omit=dev`.
+- Group policy picker pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
 
 Start a disposable local PostgreSQL test database, or set `TEST_DATABASE_URL`, before relying on `npm.cmd test`.
