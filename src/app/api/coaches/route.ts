@@ -327,8 +327,9 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -368,11 +369,24 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    await prisma.coach.delete({
+    const deactivated = await prisma.coach.update({
       where: { id: coachId },
+      data: { isActive: false },
     });
 
-    return NextResponse.json({ data: { id: coachId } });
+    await prisma.auditLog.create({
+      data: {
+        action: "COACH_DEACTIVATED",
+        entityType: "Coach",
+        entityId: coachId,
+        userId: actor.id,
+        details: JSON.stringify({
+          name: `${deactivated.firstName} ${deactivated.lastName}`.trim(),
+        }),
+      },
+    });
+
+    return NextResponse.json({ data: deactivated });
   } catch (error) {
     const isNotFound =
       typeof error === "object" &&
@@ -384,6 +398,6 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Coach introuvable" }, { status: 404 });
     }
 
-    return NextResponse.json({ error: "Erreur serveur lors de la suppression" }, { status: 500 });
+    return NextResponse.json({ error: "Erreur serveur lors de la desactivation" }, { status: 500 });
   }
 }

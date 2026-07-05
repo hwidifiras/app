@@ -209,12 +209,12 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
         setPendingDeleteCoach(null);
         setBlockedCoach({ name: coachLabel.trim(), groups: result.details.groups });
       }
-      setMessage(result.error ?? "Erreur lors de la suppression du coach");
+      setMessage(result.error ?? "Erreur lors de la desactivation du coach");
       setActionLoadingId(null);
       return;
     }
 
-    setMessage("Coach supprimé avec succès");
+    setMessage("Coach desactive avec succes");
     setPendingDeleteCoach(null);
     if (editingId === coachId) {
       cancelEdit();
@@ -477,11 +477,11 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                         onClick={() => setPendingDeleteCoach(coach)}
                         disabled={actionLoadingId === coach.id}
                         className="btn btn-danger btn-sm inline-flex items-center justify-center md:size-9 md:p-0"
-                        title="Supprimer"
-                        aria-label="Supprimer"
+                        title="Desactiver"
+                        aria-label="Desactiver"
                       >
                         <Trash2 className="size-4" />
-                        <span className="md:hidden">Supprimer</span>
+                        <span className="md:hidden">Desactiver</span>
                       </button>
                     </div>
                   </div>
@@ -547,9 +547,9 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
 
       <ConfirmDialog
         open={pendingDeleteCoach !== null}
-        title="Supprimer ce coach ?"
-        description={`${pendingDeleteCoach?.firstName ?? ""} ${pendingDeleteCoach?.lastName ?? ""} sera supprimé si aucun groupe ne lui est encore affecté.`}
-        confirmLabel="Supprimer le coach"
+        title="Desactiver ce coach ?"
+        description={`${pendingDeleteCoach?.firstName ?? ""} ${pendingDeleteCoach?.lastName ?? ""} sera retire des nouvelles configurations sans effacer l'historique.`}
+        confirmLabel="Desactiver le coach"
         loading={actionLoadingId === pendingDeleteCoach?.id}
         onCancel={() => setPendingDeleteCoach(null)}
         onConfirm={() => pendingDeleteCoach ? deleteCoach(pendingDeleteCoach.id) : undefined}

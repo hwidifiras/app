@@ -305,12 +305,12 @@ export function SportManager({ initialSports }: SportManagerProps) {
           subscriptions: details.subscriptions ?? [],
         });
       }
-      setMessage(result.error ?? "Erreur lors de la suppression de la discipline");
+      setMessage(result.error ?? "Erreur lors de la desactivation de la discipline");
       setActionLoadingId(null);
       return;
     }
 
-    setMessage("Discipline supprimée avec succès");
+    setMessage("Discipline desactivee avec succes");
     setPendingDeleteSport(null);
     if (editingId === sportId) {
       cancelEdit();
@@ -454,7 +454,7 @@ export function SportManager({ initialSports }: SportManagerProps) {
                           disabled={actionBusy}
                           className="w-full rounded-md px-2.5 py-2 text-left text-xs font-semibold text-[var(--danger)] hover:bg-[var(--danger)]/10 disabled:opacity-50"
                         >
-                          Supprimer...
+                          Desactiver...
                         </button>
                       </div>
                     ) : null}
@@ -622,9 +622,9 @@ export function SportManager({ initialSports }: SportManagerProps) {
 
       <ConfirmDialog
         open={pendingDeleteSport !== null}
-        title="Supprimer cette discipline ?"
-        description={`La discipline « ${pendingDeleteSport?.name ?? ""} » sera supprimée uniquement si elle n'est liée à aucun cours, formule ou abonnement. Sinon, utilisez plutôt Désactiver.`}
-        confirmLabel="Supprimer la discipline"
+        title="Desactiver cette discipline ?"
+        description={`La discipline « ${pendingDeleteSport?.name ?? ""} » sera retiree des nouvelles configurations sans effacer l'historique.`}
+        confirmLabel="Desactiver la discipline"
         loading={actionLoadingId === pendingDeleteSport?.id}
         onCancel={() => setPendingDeleteSport(null)}
         onConfirm={() => (pendingDeleteSport ? deleteSport(pendingDeleteSport.id) : undefined)}

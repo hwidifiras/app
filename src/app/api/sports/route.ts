@@ -161,8 +161,9 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -231,11 +232,22 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    await prisma.sport.delete({
+    const deactivated = await prisma.sport.update({
       where: { id: sportId },
+      data: { isActive: false },
     });
 
-    return NextResponse.json({ data: { id: sportId } });
+    await prisma.auditLog.create({
+      data: {
+        action: "SPORT_DEACTIVATED",
+        entityType: "Sport",
+        entityId: sportId,
+        userId: actor.id,
+        details: JSON.stringify({ name: deactivated.name }),
+      },
+    });
+
+    return NextResponse.json({ data: deactivated });
   } catch (error) {
     const code =
       typeof error === "object" && error !== null && "code" in error
@@ -257,6 +269,6 @@ export async function DELETE(request: Request) {
     }
 
     console.error("[DELETE /api/sports]", error);
-    return NextResponse.json({ error: "Erreur serveur lors de la suppression" }, { status: 500 });
+    return NextResponse.json({ error: "Erreur serveur lors de la desactivation" }, { status: 500 });
   }
 }

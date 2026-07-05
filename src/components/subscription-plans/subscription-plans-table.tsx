@@ -79,12 +79,12 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
     const result = await response.json();
 
     if (!response.ok) {
-      setMessage(result.error ?? "Erreur lors de la suppression");
+      setMessage(result.error ?? "Erreur lors de la desactivation");
       setLoadingId(null);
       return;
     }
 
-    setMessage("Plan supprimé avec succès");
+    setMessage("Formule desactivee avec succes");
     setPendingDeletePlan(null);
     setLoadingId(null);
     router.refresh();
@@ -188,7 +188,7 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
                       disabled={loadingId === plan.id}
                       className="btn btn-ghost border-[var(--danger)]/30 text-[var(--danger)] md:min-h-0 md:px-2 md:py-1 md:text-xs"
                     >
-                      {loadingId === plan.id ? "..." : "Supprimer"}
+                      {loadingId === plan.id ? "..." : "Desactiver"}
                     </button>
                   </div>
                   <button
@@ -235,9 +235,9 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
 
       <ConfirmDialog
         open={pendingDeletePlan !== null}
-        title="Supprimer ce plan ?"
-        description={`Le plan « ${pendingDeletePlan?.name ?? ""} » sera supprimé. Vérifiez qu'il n'est plus nécessaire avant de continuer.`}
-        confirmLabel="Supprimer le plan"
+        title="Desactiver cette formule ?"
+        description={`La formule « ${pendingDeletePlan?.name ?? ""} » sera retiree des nouvelles ventes sans effacer l'historique.`}
+        confirmLabel="Desactiver la formule"
         loading={loadingId === pendingDeletePlan?.id}
         onCancel={() => setPendingDeletePlan(null)}
         onConfirm={() => pendingDeletePlan ? deletePlan(pendingDeletePlan.id) : undefined}
