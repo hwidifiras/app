@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { SubscriptionPlanForm } from "@/components/subscription-plans/subscription-plan-form";
+import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -14,9 +15,25 @@ export default async function EditSubscriptionPlanPage({
   params: Promise<{ id: string }> 
 }) {
   const { id } = await params;
+  const authUser = await getAuthUser();
 
-  const plan = await prisma.subscriptionPlan.findUnique({
-    where: { id },
+  if (!authUser) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Réglages"
+          title="Modifier la formule"
+          description="Connectez-vous pour modifier une formule."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
+
+  const plan = await prisma.subscriptionPlan.findFirst({
+    where: { id, tenantId: authUser.tenantId },
     select: {
       id: true,
       name: true,

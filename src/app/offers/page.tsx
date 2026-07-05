@@ -5,12 +5,30 @@ import { Plus } from "lucide-react";
 import { OffersManager } from "@/components/offers/offers-manager";
 import { PageHeader } from "@/components/ui/page-header";
 import { prisma } from "@/lib/prisma";
+import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
 
 export default async function OffersPage() {
+  const authUser = await getAuthUser();
+
+  if (!authUser) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Réglages"
+          title="Offres"
+          description="Connectez-vous pour gérer les offres."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
+
   const sports = await prisma.sport.findMany({
-    where: { isActive: true },
+    where: { tenantId: authUser.tenantId, isActive: true },
     select: { id: true, name: true },
     orderBy: { name: "asc" },
   });
