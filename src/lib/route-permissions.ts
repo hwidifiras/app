@@ -3,7 +3,7 @@ import type { PermissionKey } from "@/lib/permission-definitions";
 export const ROUTE_PERMISSION_RULES: Array<{ paths: string[]; permission: PermissionKey }> = [
   { paths: ["/enrollment", "/api/enrollment", "/api/group-members"], permission: "enrollment.manage" },
   { paths: ["/attendance", "/api/attendances"], permission: "attendance.manage" },
-  { paths: ["/payments", "/api/payments"], permission: "payments.manage" },
+  { paths: ["/payments", "/receipts", "/api/payments", "/api/receipts"], permission: "payments.manage" },
   { paths: ["/offers", "/api/offers"], permission: "offers.manage" },
   {
     paths: [

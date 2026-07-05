@@ -8,6 +8,7 @@ import {
   getSubscriptionLedgerTotal,
   validateLedgerTotal,
 } from "@/lib/payment-ledger";
+import { issueReceiptForPayment, voidReceiptForPayment } from "@/lib/receipts";
 
 export const runtime = "nodejs";
 
@@ -40,6 +41,13 @@ export async function GET(request: Request) {
           id: true,
           member: { select: { id: true, firstName: true, lastName: true } },
           plan: { select: { id: true, name: true } },
+        },
+      },
+      receipt: {
+        select: {
+          id: true,
+          receiptNumber: true,
+          status: true,
         },
       },
     },
@@ -135,7 +143,22 @@ export async function POST(request: Request) {
         },
       });
 
-      return created;
+      const receipt = await issueReceiptForPayment(tx, created.id, actor.id);
+
+      await tx.auditLog.create({
+        data: {
+          action: "RECEIPT_ISSUED",
+          entityType: "Receipt",
+          entityId: receipt.id,
+          userId: actor.id,
+          details: JSON.stringify({
+            paymentId: created.id,
+            receiptNumber: receipt.receiptNumber,
+          }),
+        },
+      });
+
+      return { ...created, receipt };
     });
 
     return NextResponse.json({ data: payment }, { status: 201 });
@@ -267,6 +290,23 @@ export async function PATCH(request: Request) {
         },
       });
 
+      const voidedReceipt = await voidReceiptForPayment(tx, existing.id, payload.correctionReason.trim());
+      if (voidedReceipt) {
+        await tx.auditLog.create({
+          data: {
+            action: "RECEIPT_VOIDED",
+            entityType: "Receipt",
+            entityId: voidedReceipt.id,
+            userId: actor.id,
+            details: JSON.stringify({
+              paymentId: existing.id,
+              reason: payload.correctionReason.trim(),
+              source: "payment-correction",
+            }),
+          },
+        });
+      }
+
       return created;
     });
 
@@ -397,6 +437,23 @@ export async function DELETE(request: Request) {
           }),
         },
       });
+
+      const voidedReceipt = await voidReceiptForPayment(tx, existing.id, correctionReason.trim());
+      if (voidedReceipt) {
+        await tx.auditLog.create({
+          data: {
+            action: "RECEIPT_VOIDED",
+            entityType: "Receipt",
+            entityId: voidedReceipt.id,
+            userId: actor.id,
+            details: JSON.stringify({
+              paymentId: existing.id,
+              reason: correctionReason.trim(),
+              source: "payment-reversal",
+            }),
+          },
+        });
+      }
 
       return created;
     });

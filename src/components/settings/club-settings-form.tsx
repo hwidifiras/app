@@ -29,6 +29,11 @@ export type ClubSettingsFormData = {
   workingDays: ClubDay[];
   maxStaffDiscountPercent: number;
   debtAlertThresholdCents: number;
+  receiptPrefix: string;
+  nextReceiptSequence: number;
+  receiptFooter: string;
+  receiptEmailDefault: boolean;
+  receiptPrintDefault: boolean;
 };
 
 type ClubSettingsFormProps = {
@@ -121,6 +126,11 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
     String(initial.maxStaffDiscountPercent),
   );
   const [debtThresholdAmount, setDebtThresholdAmount] = useState(centsToMoneyInput(initial.debtAlertThresholdCents));
+  const [receiptPrefix, setReceiptPrefix] = useState(initial.receiptPrefix || "WD");
+  const [nextReceiptSequence, setNextReceiptSequence] = useState(String(initial.nextReceiptSequence || 1));
+  const [receiptFooter, setReceiptFooter] = useState(initial.receiptFooter || "");
+  const [receiptEmailDefault, setReceiptEmailDefault] = useState(initial.receiptEmailDefault);
+  const [receiptPrintDefault, setReceiptPrintDefault] = useState(initial.receiptPrintDefault);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -143,6 +153,16 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
       return;
     }
 
+    const receiptSequence = Number.parseInt(nextReceiptSequence, 10);
+    if (!/^[A-Za-z0-9-]{2,10}$/.test(receiptPrefix.trim())) {
+      setMessage("Le prefixe des recus doit contenir 2 a 10 caracteres: lettres, chiffres ou tirets");
+      return;
+    }
+    if (Number.isNaN(receiptSequence) || receiptSequence < 1) {
+      setMessage("Le prochain numero de recu doit etre superieur ou egal a 1");
+      return;
+    }
+
     setSaving(true);
     setMessage(null);
 
@@ -162,6 +182,11 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
         workingDays,
         maxStaffDiscountPercent: discount,
         debtAlertThresholdCents,
+        receiptPrefix: receiptPrefix.trim().toUpperCase(),
+        nextReceiptSequence: receiptSequence,
+        receiptFooter: receiptFooter.trim(),
+        receiptEmailDefault,
+        receiptPrintDefault,
       }),
     });
 
@@ -197,6 +222,11 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
     setWorkingDays(json.data.workingDays?.length ? json.data.workingDays : [...DEFAULT_WORKING_DAYS]);
     setMaxStaffDiscountPercent(String(json.data.maxStaffDiscountPercent));
     setDebtThresholdAmount(centsToMoneyInput(json.data.debtAlertThresholdCents));
+    setReceiptPrefix(json.data.receiptPrefix ?? "WD");
+    setNextReceiptSequence(String(json.data.nextReceiptSequence ?? 1));
+    setReceiptFooter(json.data.receiptFooter ?? "");
+    setReceiptEmailDefault(Boolean(json.data.receiptEmailDefault));
+    setReceiptPrintDefault(json.data.receiptPrintDefault !== false);
     setMessage("Club enregistré");
     router.refresh();
   }
@@ -269,6 +299,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
           { href: "#club-checkin", label: "Pointage" },
           { href: "#club-planning", label: "Planning" },
           { href: "#club-alerts", label: "Alertes" },
+          { href: "#club-receipts", label: "Recus" },
         ]}
       />
 
@@ -497,6 +528,75 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
             </FieldControl>
           </FormField>
         </FormGrid>
+      </FormSection>
+
+      <FormSection
+        id="club-receipts"
+        title="Recus de paiement"
+        description="Configurez la numerotation et le texte affiche sur les recus imprimes ou verifies en ligne."
+      >
+        <FormGrid>
+          <FormField
+            label="Prefixe des recus"
+            htmlFor="receiptPrefix"
+            hint="Exemple: WD donne WD-2026-000001."
+          >
+            <input
+              id="receiptPrefix"
+              className="field uppercase"
+              value={receiptPrefix}
+              onChange={(event) => setReceiptPrefix(event.target.value.toUpperCase())}
+              maxLength={10}
+              required
+            />
+          </FormField>
+          <FormField
+            label="Prochain numero"
+            htmlFor="nextReceiptSequence"
+            hint="Augmente automatiquement apres chaque paiement."
+          >
+            <input
+              id="nextReceiptSequence"
+              type="number"
+              min={1}
+              step={1}
+              className="field"
+              value={nextReceiptSequence}
+              onChange={(event) => setNextReceiptSequence(event.target.value)}
+              required
+            />
+          </FormField>
+          <FormField
+            label="Texte en bas du recu"
+            htmlFor="receiptFooter"
+            hint="Conditions, merci, cachet du club ou mention administrative."
+            className="md:col-span-2"
+          >
+            <textarea
+              id="receiptFooter"
+              className="field min-h-24"
+              value={receiptFooter}
+              onChange={(event) => setReceiptFooter(event.target.value)}
+              maxLength={500}
+            />
+          </FormField>
+        </FormGrid>
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <ToggleRow
+            id="receiptPrintDefault"
+            label="Proposer l'impression apres paiement"
+            description="Affiche un lien direct vers le recu imprimable apres un encaissement."
+            checked={receiptPrintDefault}
+            onChange={setReceiptPrintDefault}
+          />
+          <ToggleRow
+            id="receiptEmailDefault"
+            label="Envoi email par defaut"
+            description="Reserve pour le prochain passage email: le recu pourra etre envoye automatiquement."
+            checked={receiptEmailDefault}
+            onChange={setReceiptEmailDefault}
+          />
+        </div>
       </FormSection>
 
       <FormActions sticky>

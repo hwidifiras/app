@@ -5,6 +5,7 @@ import { createMemberSchema, updateMemberSchema } from "@/lib/schemas/member";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { expireStaleSubscriptions } from "@/lib/membership-rules";
 import { resolveMemberPhone } from "@/lib/member-phone";
+import { issueReceiptForPayment } from "@/lib/receipts";
 
 export const runtime = "nodejs";
 
@@ -270,6 +271,21 @@ export async function POST(request: Request) {
             entityId: payment.id,
             userId: actor.id,
             details: JSON.stringify({ amount: paymentCents, memberId: created.id }),
+          },
+        });
+
+        const receipt = await issueReceiptForPayment(tx, payment.id, actor.id);
+        await tx.auditLog.create({
+          data: {
+            action: "RECEIPT_ISSUED",
+            entityType: "Receipt",
+            entityId: receipt.id,
+            userId: actor.id,
+            details: JSON.stringify({
+              paymentId: payment.id,
+              receiptNumber: receipt.receiptNumber,
+              source: "member-inscription",
+            }),
           },
         });
       }

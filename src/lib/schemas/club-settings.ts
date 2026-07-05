@@ -10,6 +10,13 @@ const clubLogoUrlSchema = z
     message: "URL du logo invalide (chemin relatif ou https://)",
   });
 
+const receiptPrefixSchema = z
+  .string()
+  .trim()
+  .min(2)
+  .max(10)
+  .regex(/^[A-Za-z0-9-]+$/, "Prefixe recu invalide");
+
 export const updateClubSettingsSchema = z.object({
   clubName: z.string().trim().max(120).optional(),
   clubLogoUrl: clubLogoUrlSchema.optional(),
@@ -23,6 +30,11 @@ export const updateClubSettingsSchema = z.object({
   workingDays: z.array(z.enum(CLUB_DAY_VALUES)).min(1).optional(),
   maxStaffDiscountPercent: z.number().int().min(0).max(100).optional(),
   debtAlertThresholdCents: z.number().int().min(0).max(100_000_000).optional(),
+  receiptPrefix: receiptPrefixSchema.optional(),
+  nextReceiptSequence: z.number().int().min(1).max(999_999_999).optional(),
+  receiptFooter: z.string().trim().max(500).optional(),
+  receiptEmailDefault: z.boolean().optional(),
+  receiptPrintDefault: z.boolean().optional(),
 });
 
 export type UpdateClubSettingsInput = z.infer<typeof updateClubSettingsSchema>;

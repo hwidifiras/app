@@ -23,6 +23,11 @@ function serializeSettings(settings: Awaited<ReturnType<typeof getClubSettings>>
     workingDays: settings.workingDays,
     maxStaffDiscountPercent: settings.maxStaffDiscountPercent,
     debtAlertThresholdCents: settings.debtAlertThresholdCents,
+    receiptPrefix: settings.receiptPrefix,
+    nextReceiptSequence: settings.nextReceiptSequence,
+    receiptFooter: settings.receiptFooter,
+    receiptEmailDefault: settings.receiptEmailDefault,
+    receiptPrintDefault: settings.receiptPrintDefault,
     updatedAt: settings.updatedAt.toISOString(),
   };
 }
@@ -187,6 +192,11 @@ export async function PATCH(request: Request) {
       ...(data.debtAlertThresholdCents !== undefined
         ? { debtAlertThresholdCents: data.debtAlertThresholdCents }
         : {}),
+      ...(data.receiptPrefix !== undefined ? { receiptPrefix: data.receiptPrefix.toUpperCase() } : {}),
+      ...(data.nextReceiptSequence !== undefined ? { nextReceiptSequence: data.nextReceiptSequence } : {}),
+      ...(data.receiptFooter !== undefined ? { receiptFooter: data.receiptFooter } : {}),
+      ...(data.receiptEmailDefault !== undefined ? { receiptEmailDefault: data.receiptEmailDefault } : {}),
+      ...(data.receiptPrintDefault !== undefined ? { receiptPrintDefault: data.receiptPrintDefault } : {}),
     },
   });
 

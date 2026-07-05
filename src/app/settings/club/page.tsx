@@ -56,6 +56,11 @@ export default async function SettingsClubPage() {
             workingDays: settings.workingDays,
             maxStaffDiscountPercent: settings.maxStaffDiscountPercent,
             debtAlertThresholdCents: settings.debtAlertThresholdCents,
+            receiptPrefix: settings.receiptPrefix,
+            nextReceiptSequence: settings.nextReceiptSequence,
+            receiptFooter: settings.receiptFooter,
+            receiptEmailDefault: settings.receiptEmailDefault,
+            receiptPrintDefault: settings.receiptPrintDefault,
           }}
         />
       </div>

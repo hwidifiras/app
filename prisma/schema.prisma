@@ -67,6 +67,11 @@ enum PaymentEntryType {
   REVERSAL
 }
 
+enum ReceiptStatus {
+  ISSUED
+  VOIDED
+}
+
 enum UserRole {
   ADMIN
   STAFF
@@ -118,6 +123,7 @@ model Tenant {
   subscriptionPlans     SubscriptionPlan[]
   memberSubscriptions   MemberSubscription[]
   payments              Payment[]
+  receipts              Receipt[]
   offers                Offer[]
   offerApplications     OfferApplication[]
   attendances           Attendance[]
@@ -208,6 +214,11 @@ model ClubSettings {
   workingDays                           DayOfWeek[] @default([MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY])
   maxStaffDiscountPercent               Int         @default(30)
   debtAlertThresholdCents               Int         @default(0)
+  receiptPrefix                         String      @default("WD")
+  nextReceiptSequence                   Int         @default(1)
+  receiptFooter                         String      @default("")
+  receiptEmailDefault                   Boolean     @default(false)
+  receiptPrintDefault                   Boolean     @default(true)
   updatedAt                             DateTime    @updatedAt
 }
 
@@ -507,12 +518,37 @@ model Payment {
   paymentDate          DateTime           @default(now())
   paymentMethod        String?
   notes                String?
+  receipt              Receipt?
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 
   @@index([tenantId])
   @@index([correctsPaymentId])
   @@index([createdById])
+}
+
+model Receipt {
+  id               String        @id @default(cuid())
+  tenantId         String?
+  tenant           Tenant?       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  paymentId        String        @unique
+  payment          Payment       @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  receiptNumber    String
+  verificationCode String
+  status           ReceiptStatus @default(ISSUED)
+  issuedAt         DateTime      @default(now())
+  issuedById       String?
+  voidedAt         DateTime?
+  voidReason       String?
+  snapshotJson     String
+  contentHash      String
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@unique([tenantId, receiptNumber])
+  @@index([tenantId])
+  @@index([verificationCode])
+  @@index([issuedById])
 }
 
 model Offer {

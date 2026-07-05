@@ -22,6 +22,11 @@ type PaymentRow = {
   paymentMethod: string | null;
   entryType: "PAYMENT" | "CORRECTION" | "REVERSAL";
   correctionReason: string | null;
+  receipt: {
+    id: string;
+    receiptNumber: string;
+    status: "ISSUED" | "VOIDED";
+  } | null;
 };
 
 type PaymentGroup = {
@@ -42,6 +47,11 @@ type PaymentGroup = {
     paymentMethod: string | null;
     entryType: "PAYMENT" | "CORRECTION" | "REVERSAL";
     correctionReason: string | null;
+    receipt: {
+      id: string;
+      receiptNumber: string;
+      status: "ISSUED" | "VOIDED";
+    } | null;
     sequence: number;
     status: string;
   }>;
@@ -66,6 +76,13 @@ export default async function PaymentsPage() {
             plan: { select: { name: true } },
           },
         },
+        receipt: {
+          select: {
+            id: true,
+            receiptNumber: true,
+            status: true,
+          },
+        },
       },
     });
 
@@ -86,6 +103,7 @@ export default async function PaymentsPage() {
       paymentMethod: p.paymentMethod,
       entryType: p.entryType,
       correctionReason: p.correctionReason,
+      receipt: p.receipt,
     }));
 
     // Regrouper par abonnement
@@ -141,6 +159,7 @@ export default async function PaymentsPage() {
           paymentMethod: p.paymentMethod,
           entryType: p.entryType,
           correctionReason: p.correctionReason,
+          receipt: p.receipt,
           sequence: index + 1,
           status,
         };

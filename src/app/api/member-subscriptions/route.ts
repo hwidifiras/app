@@ -13,6 +13,7 @@ import {
 } from "@/lib/membership-rules";
 import { createSubscriptionFromPlan } from "@/lib/subscription-service";
 import { sumLedgerRows } from "@/lib/payment-ledger";
+import { issueReceiptForPayment } from "@/lib/receipts";
 
 export const runtime = "nodejs";
 
@@ -142,12 +143,26 @@ export async function POST(request: Request) {
       );
 
       if (payCents > 0) {
-        await tx.payment.create({
+        const payment = await tx.payment.create({
           data: {
             memberSubscriptionId: created.id,
             amount: payCents,
             createdById: actor.id,
             paymentMethod: paymentMethod?.trim() || "CASH",
+          },
+        });
+        const receipt = await issueReceiptForPayment(tx, payment.id, actor.id);
+        await tx.auditLog.create({
+          data: {
+            action: "RECEIPT_ISSUED",
+            entityType: "Receipt",
+            entityId: receipt.id,
+            userId: actor.id,
+            details: JSON.stringify({
+              paymentId: payment.id,
+              receiptNumber: receipt.receiptNumber,
+              source: "member-subscription",
+            }),
           },
         });
       }

@@ -16,6 +16,11 @@ export type ClubSettingsData = {
   workingDays: ClubDay[];
   maxStaffDiscountPercent: number;
   debtAlertThresholdCents: number;
+  receiptPrefix: string;
+  nextReceiptSequence: number;
+  receiptFooter: string;
+  receiptEmailDefault: boolean;
+  receiptPrintDefault: boolean;
   updatedAt: Date;
 };
 
@@ -34,6 +39,11 @@ const DEFAULTS = {
   workingDays: [...DEFAULT_WORKING_DAYS],
   maxStaffDiscountPercent: 30,
   debtAlertThresholdCents: 0,
+  receiptPrefix: "WD",
+  nextReceiptSequence: 1,
+  receiptFooter: "",
+  receiptEmailDefault: false,
+  receiptPrintDefault: true,
 } as const;
 
 function normalizeClubSettings(row: Record<string, unknown>): ClubSettingsData {
@@ -74,6 +84,16 @@ function normalizeClubSettings(row: Record<string, unknown>): ClubSettingsData {
       typeof row.debtAlertThresholdCents === "number"
         ? row.debtAlertThresholdCents
         : DEFAULTS.debtAlertThresholdCents,
+    receiptPrefix: typeof row.receiptPrefix === "string" ? row.receiptPrefix : DEFAULTS.receiptPrefix,
+    nextReceiptSequence:
+      typeof row.nextReceiptSequence === "number" && row.nextReceiptSequence > 0
+        ? row.nextReceiptSequence
+        : DEFAULTS.nextReceiptSequence,
+    receiptFooter: typeof row.receiptFooter === "string" ? row.receiptFooter : DEFAULTS.receiptFooter,
+    receiptEmailDefault:
+      typeof row.receiptEmailDefault === "boolean" ? row.receiptEmailDefault : DEFAULTS.receiptEmailDefault,
+    receiptPrintDefault:
+      typeof row.receiptPrintDefault === "boolean" ? row.receiptPrintDefault : DEFAULTS.receiptPrintDefault,
     updatedAt: row.updatedAt instanceof Date ? row.updatedAt : new Date(),
   };
 }

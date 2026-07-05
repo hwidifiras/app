@@ -13,6 +13,7 @@ import {
 } from "@/lib/membership-rules";
 import { emptyEnrollmentUndoSnapshot } from "@/lib/enrollment-undo";
 import { resolveMemberPhone } from "@/lib/member-phone";
+import { issueReceiptForPayment } from "@/lib/receipts";
 import { withTenantContext } from "@/lib/tenant-context";
 
 export const runtime = "nodejs";
@@ -211,6 +212,20 @@ export async function POST(request: Request) {
                   },
                 });
                 undoSnapshot.createdPaymentIds.push(payment.id);
+                const receipt = await issueReceiptForPayment(tx, payment.id, actor.id);
+                await tx.auditLog.create({
+                  data: {
+                    action: "RECEIPT_ISSUED",
+                    entityType: "Receipt",
+                    entityId: receipt.id,
+                    userId: actor.id,
+                    details: JSON.stringify({
+                      paymentId: payment.id,
+                      receiptNumber: receipt.receiptNumber,
+                      source: "enrollment",
+                    }),
+                  },
+                });
               }
             } else {
               const existing = await tx.memberSubscription.findFirst({
@@ -244,6 +259,20 @@ export async function POST(request: Request) {
                   },
                 });
                 undoSnapshot.createdPaymentIds.push(payment.id);
+                const receipt = await issueReceiptForPayment(tx, payment.id, actor.id);
+                await tx.auditLog.create({
+                  data: {
+                    action: "RECEIPT_ISSUED",
+                    entityType: "Receipt",
+                    entityId: receipt.id,
+                    userId: actor.id,
+                    details: JSON.stringify({
+                      paymentId: payment.id,
+                      receiptNumber: receipt.receiptNumber,
+                      source: "enrollment-existing-subscription",
+                    }),
+                  },
+                });
               }
             }
 

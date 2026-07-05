@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { PaymentAddForm } from "@/components/payments/payment-add-form";
+import { getClubSettings } from "@/lib/club-settings";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -22,8 +23,11 @@ export default async function NewPaymentPage({
     amount: number;
     totalPaid: number;
   }> = [];
+  let receiptPrintDefault = true;
 
   try {
+    const settings = await getClubSettings();
+    receiptPrintDefault = settings.receiptPrintDefault;
     const rows = await prisma.memberSubscription.findMany({
       where: { status: "ACTIVE" },
       orderBy: { createdAt: "desc" },
@@ -89,6 +93,7 @@ export default async function NewPaymentPage({
 
       <PaymentAddForm
         subscriptions={payableSubscriptions}
+        receiptPrintDefault={receiptPrintDefault}
         defaultSubscriptionId={
           payableSubscriptions.some((subscription) => subscription.id === defaultSubscriptionId)
             ? defaultSubscriptionId

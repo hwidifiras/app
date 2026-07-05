@@ -5,6 +5,7 @@ export function isPublicPath(pathname: string): boolean {
   if (pathname === "/reset-password") return true;
   if (pathname === "/accueil") return true;
   if (pathname === "/homepage") return true;
+  if (pathname === "/receipts/verify") return true;
   if (pathname.startsWith("/we-discipline")) return true;
   if (pathname.startsWith("/templates")) return true;
   if (pathname.startsWith("/api/auth")) return true;

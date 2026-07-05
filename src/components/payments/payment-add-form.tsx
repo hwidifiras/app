@@ -42,9 +42,11 @@ type SubscriptionRow = {
 export function PaymentAddForm({
   subscriptions: initialSubscriptions,
   defaultSubscriptionId,
+  receiptPrintDefault = true,
 }: {
   subscriptions: SubscriptionRow[];
   defaultSubscriptionId?: string;
+  receiptPrintDefault?: boolean;
 }) {
   const router = useRouter();
   const [subscriptions, setSubscriptions] = useState(initialSubscriptions);
@@ -58,6 +60,7 @@ export function PaymentAddForm({
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [lastReceipt, setLastReceipt] = useState<{ id: string; receiptNumber: string } | null>(null);
   const { push, undoLast, loading: undoLoading, canUndo } = useActionHistory({ enableKeyboard: true });
 
   const selected = subscriptions.find((s) => s.id === subscriptionId);
@@ -96,6 +99,7 @@ export function PaymentAddForm({
 
     setLoading(true);
     setMessage(null);
+    setLastReceipt(null);
 
     const res = await fetch("/api/payments", {
       method: "POST",
@@ -110,7 +114,12 @@ export function PaymentAddForm({
     });
 
     const json = (await res.json()) as {
-      data?: { id: string; amount: number; memberSubscriptionId: string };
+      data?: {
+        id: string;
+        amount: number;
+        memberSubscriptionId: string;
+        receipt?: { id: string; receiptNumber: string } | null;
+      };
       error?: string;
     };
     setLoading(false);
@@ -156,6 +165,7 @@ export function PaymentAddForm({
             ),
           );
           setMessage("Dernier paiement annulé.");
+          setLastReceipt(null);
           return true;
         },
       });
@@ -163,6 +173,7 @@ export function PaymentAddForm({
 
     setAmount("");
     setNotes("");
+    setLastReceipt(json.data?.receipt ?? null);
     setMessage("Paiement enregistré avec succès.");
   }
 
@@ -172,12 +183,14 @@ export function PaymentAddForm({
     setSubscriptionId(firstSubscription?.id ?? "");
     setAmount("");
     setMessage(null);
+    setLastReceipt(null);
   }
 
   function selectSubscription(nextSubscriptionId: string) {
     setSubscriptionId(nextSubscriptionId);
     setAmount("");
     setMessage(null);
+    setLastReceipt(null);
   }
 
   function fillRemainingBalance() {
@@ -195,6 +208,7 @@ export function PaymentAddForm({
   function clearAmount() {
     setAmount("");
     setMessage(null);
+    setLastReceipt(null);
   }
 
   return (
@@ -218,6 +232,11 @@ export function PaymentAddForm({
           <Link href="/payments" className="text-sm font-medium text-[var(--primary)] hover:underline">
             Voir l&apos;historique
           </Link>
+          {lastReceipt && receiptPrintDefault ? (
+            <Link href={`/receipts/${lastReceipt.id}`} className="text-sm font-medium text-[var(--primary)] hover:underline">
+              Imprimer le recu {lastReceipt.receiptNumber}
+            </Link>
+          ) : null}
         </div>
       ) : null}
 
