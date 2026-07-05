@@ -35,7 +35,7 @@ The codebase already has `src/lib/recovery-policy.ts` with this shared vocabular
 | Payments | `POST /api/payments` | Creates `Payment` ledger row, issues receipt, writes `PAYMENT_CREATED` and `RECEIPT_ISSUED`. | Good. |
 | Payment correction | `PATCH /api/payments` | Admin-only correction row with `correctionReason`, original payment preserved, original receipt voided. | Good. |
 | Payment cancellation | `DELETE /api/payments` | Admin-only reversal row with reason, original preserved, original receipt voided. | Good. |
-| Enrollment | `POST /api/enrollment/apply` | Creates member/subscription/assignment/payment with audit logs and recovery snapshot. | Good. The success screen keeps a reason-required recovery action visible. |
+| Enrollment | `POST /api/enrollment/apply` | Creates member/subscription/assignment/payment with audit logs and recovery snapshot. Payments created inside the flow now also emit `PAYMENT_CREATED`. | Good. The success screen keeps a reason-required recovery action visible. |
 | Enrollment recovery | `POST /api/enrollment/revert` + `src/lib/enrollment-undo.ts` | Reverses created payments, voids receipts, cancels subscription, closes assignment, archives new member. | Good. |
 | Members | `DELETE /api/members` and `DELETE /api/members/[id]` | Archives member with audit instead of hard deleting. | Good. |
 | Subscription edits | `PATCH /api/member-subscriptions` | Blocks archived members, invalid date windows, amount below paid total, and discipline conflicts with active assignments. Formula/status/value changes require admin + reason and now write before/after audit snapshots. | Good. |
@@ -49,13 +49,33 @@ The codebase already has `src/lib/recovery-policy.ts` with this shared vocabular
 | Session cancellation | `DELETE /api/sessions/[id]` | Cancels session only if not completed and no attendances block edit, writes audit. | Good. |
 | Attendance creation/update | `POST/PATCH /api/attendances` | Uses attendance/session policies and writes audit. Corrections now keep before/after snapshots and balance delta in the same transaction. | Good. |
 | Attendance delete | `DELETE /api/attendances` | Physically deletes the attendance row after session-state checks, restores session balance, and now writes a richer `Pointage annule` audit snapshot with previous status, override reason, checker, checked time, subscription, member, session, and balance effect. | Medium-good: behavior is safeguarded and now recoverable from logs, but perfect append-only pointage history still needs a schema change. |
-| Data import apply | `POST /api/data-import` and `/api/data-import/bulk` | Applies import with audit details and rollback metadata. | Good for migration mode. |
+| Data import mode | `POST /api/data-import` activate/deactivate | Opens/closes the temporary reprise window and now writes `DATA_IMPORT_MODE_ACTIVATED` / `DATA_IMPORT_MODE_DEACTIVATED`. | Good. |
+| Data import apply | `POST /api/data-import` and `/api/data-import/bulk` | Applies import with audit details and rollback metadata. Historical payments created by import now also emit `PAYMENT_CREATED`. | Good for migration mode. |
 | Data import rollback | `rollbackDataImport()` | Physically deletes imported member/subscription/assignment/payment/attendance only if no new activity exists, then writes rollback audit. | Acceptable `draft-delete`, because rollback is blocked after real activity. |
 | Disciplines/coaches/formulas | catalog routes | Delete paths deactivate/archive and write audit. | Good. |
 | Offers | `POST/GET/DELETE /api/offers` | Offers are created or deactivated, not edited in place. The offer list now shows usage count so used offers are understood as historical templates; deactivation keeps existing inscriptions intact. | Good. |
 | Club/settings/users | settings routes | Updates write audit logs. | Good, but settings pages need clearer preview/risk copy for business-changing settings. |
 
 ## P0 Follow-Up Checks
+
+## Static Route Coverage Scan
+
+Latest scan checked every `POST`, `PATCH`, `PUT`, and `DELETE` route under `src/app/api`.
+
+Routes without a direct `auditLog.create` call are currently classified as:
+
+| Route | Why No Direct Audit Is Acceptable |
+| --- | --- |
+| `POST /api/auth/login` | Session creation only; adding this to the business log would increase system noise. |
+| `POST /api/auth/logout` | Session cookie removal only; no business record changes. |
+| `POST /api/enrollment/quote` | Calculation/preview only; no database mutation. |
+| `POST /api/enrollment/revert` | Wrapper route; the delegated undo service writes `ENROLLMENT_VOIDED`, payment reversals, and receipt void logs. |
+| `POST /api/data-import/bulk` | Wrapper route; each imported row delegates to `applyDataImport()`, which writes `DATA_IMPORT_APPLIED` and now `PAYMENT_CREATED` for imported historical payments. |
+| `PATCH /api/notifications` | Per-user read-state only; deliberately kept out of business audit logs to reduce noise. |
+
+Remaining product decision:
+
+- login/security-event logging can be added later as a separate security log if needed, but it should not pollute the operational business journal used by reception/admin staff.
 
 1. Attendance delete should be reviewed as a product decision:
    - Current behavior is guarded and audited.
