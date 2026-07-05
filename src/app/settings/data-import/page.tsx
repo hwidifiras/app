@@ -1,7 +1,9 @@
 import { headers } from "next/headers";
 
 import { DataImportWizard } from "@/components/settings/data-import-wizard";
+import { SettingsMetric } from "@/components/settings/settings-hub";
 import { PageHeader } from "@/components/ui/page-header";
+import { ReceptionInfoCard } from "@/components/ui/reception-info-card";
 import { getWeekRangeUtc } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 
@@ -72,6 +74,29 @@ export default async function DataImportPage() {
         title="Import ancien fichier"
         description="Importer l'état réel d'un adhérent actif depuis un registre papier ou Excel, sans recréer artificiellement un abonnement neuf."
       />
+
+      <section className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <SettingsMetric label="Groupes actifs" value={groups.length} detail="Cibles disponibles" />
+        <SettingsMetric label="Formules" value={plans.length} detail="Compatibles par discipline" />
+        <SettingsMetric label="Pointages récents" value={sessions.length} detail="Séances de la semaine" />
+        <SettingsMetric label="Fenêtre" value="4 heures" detail="Mode temporaire admin" />
+      </section>
+
+      <section className="mb-5 grid gap-3 lg:grid-cols-2">
+        <ReceptionInfoCard title="Quand utiliser cette page" variant="info">
+          <p>
+            Utilisez la reprise uniquement pour migrer un membre déjà actif depuis un ancien registre. Pour une nouvelle
+            vente normale, utilisez plutôt Inscrire ou Encaisser.
+          </p>
+        </ReceptionInfoCard>
+        <ReceptionInfoCard title="Sécurité" variant="warning">
+          <p>
+            Vérifiez toujours le résumé avant application. L&apos;annulation reste disponible seulement tant qu&apos;aucune
+            nouvelle activité n&apos;est liée au membre importé.
+          </p>
+        </ReceptionInfoCard>
+      </section>
+
       <div className="mx-auto w-full max-w-6xl">
         <DataImportWizard
           groups={groups.map((group) => ({
