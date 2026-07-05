@@ -1,0 +1,738 @@
+[
+  {
+    "step": 1,
+    "key": "dashboard",
+    "label": "desktop-1440x900",
+    "url": "https://we-discipline.com/",
+    "finalUrl": "https://we-discipline.com/",
+    "title": "We Discipline",
+    "h1": "Aujourd'hui au club",
+    "probe": "Tableau de bordAujourd'hui au clubLes séances à pointer, les encaissements à suivre et les priorités qui demandent une action.Datedimanche 5 juilletSéances0 aujourd'huiMembres8 actifsTendanceEncaissements 7 joursDétailTo",
+    "fileName": "01-dashboard-desktop-1440x900.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\01-dashboard-desktop-1440x900.png",
+    "size": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  {
+    "step": 2,
+    "key": "attendance-today",
+    "label": "desktop-1440x900",
+    "url": "https://we-discipline.com/attendance/today",
+    "finalUrl": "https://we-discipline.com/attendance/today",
+    "title": "We Discipline",
+    "h1": "Pointage",
+    "probe": "Retour à l'historiqueAujourd'huiPointageAucune séance aujourd'hui et aucun pointage en retard.Aucune séance planifiée aujourd'hui.",
+    "fileName": "02-attendance-today-desktop-1440x900.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\02-attendance-today-desktop-1440x900.png",
+    "size": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  {
+    "step": 3,
+    "key": "enrollment",
+    "label": "desktop-1440x900",
+    "url": "https://we-discipline.com/enrollment",
+    "finalUrl": "https://we-discipline.com/enrollment",
+    "title": "We Discipline",
+    "h1": "Inscrire",
+    "probe": "VentesInscrireCréer le dossier, choisir le cours, appliquer une offre et préparer l'encaissement.À retenirLe paiement règle la dette de la formule — il n'ajoute pas de séances en plus.Pour 2 mois, choisissez une formule ",
+    "fileName": "03-enrollment-desktop-1440x900.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\03-enrollment-desktop-1440x900.png",
+    "size": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  {
+    "step": 4,
+    "key": "payments-new",
+    "label": "desktop-1440x900",
+    "url": "https://we-discipline.com/payments/new",
+    "finalUrl": "https://we-discipline.com/payments/new",
+    "title": "We Discipline",
+    "h1": "Encaisser",
+    "probe": "Retour à la listeVentesEncaisserChoisir le membre, vérifier l'abonnement et confirmer le montant reçu.Aucun solde à encaisserAucun abonnement actif ne présente de montant restant dû.Voir les abonnements",
+    "fileName": "04-payments-new-desktop-1440x900.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\04-payments-new-desktop-1440x900.png",
+    "size": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  {
+    "step": 5,
+    "key": "payments-history",
+    "label": "desktop-1440x900",
+    "url": "https://we-discipline.com/payments",
+    "finalUrl": "https://we-discipline.com/payments",
+    "title": "We Discipline",
+    "h1": "Historique caisse",
+    "probe": "VentesHistorique caisse14 versement(s) enregistrés, total 360,00 TND.+ EncaisserRechercheFiltresÉtat du paiementTousSolde restantSoldés9 abonnements affichéswael elleuchm.combat50,00 TND/ 50,00 TNDPayé1 versementalia aff",
+    "fileName": "05-payments-history-desktop-1440x900.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\05-payments-history-desktop-1440x900.png",
+    "size": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  {
+    "step": 6,
+    "key": "members",
+    "label": "desktop-1440x900",
+    "url": "https://we-discipline.com/members",
+    "finalUrl": "https://we-discipline.com/members",
+    "title": "We Discipline",
+    "h1": "Membres",
+    "probe": "ÉlèvesMembresRechercher, filtrer et ouvrir les dossiers utiles à l'accueil.RechercheFiltres+ Ajouter un membreStatutTous les statutsActifsRésiliésPaiementTous les paiementsPayéPartielNon payéDisciplineToutes les discipli",
+    "fileName": "06-members-desktop-1440x900.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\06-members-desktop-1440x900.png",
+    "size": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  {
+    "step": 7,
+    "key": "subscriptions",
+    "label": "desktop-1440x900",
+    "url": "https://we-discipline.com/subscriptions",
+    "finalUrl": "https://we-discipline.com/subscriptions",
+    "title": "We Discipline",
+    "h1": "Abonnements",
+    "probe": "VentesAbonnementsSuivre les statuts, soldes, dates et séances restantes. RenouvelerÀ encaisser0À renouveler0Actifs9Tous9RechercheFiltresTous les statutsActifsBrouillonsExpirésRésiliésTous les paiementsSolde restantSoldés",
+    "fileName": "07-subscriptions-desktop-1440x900.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\07-subscriptions-desktop-1440x900.png",
+    "size": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  {
+    "step": 8,
+    "key": "sessions",
+    "label": "desktop-1440x900",
+    "url": "https://we-discipline.com/sessions",
+    "finalUrl": "https://we-discipline.com/sessions",
+    "title": "We Discipline",
+    "h1": "Planning",
+    "probe": "PlanningPlanningVoir les séances, filtrer par cours et ouvrir le pointage.Planning semaineCommand center des coursSemaine du lundi 29/06/2026 au dimanche 05/07/2026PrécédenteAujourd'huiSuivanteCréer séancesCours8À traite",
+    "fileName": "08-sessions-desktop-1440x900.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\08-sessions-desktop-1440x900.png",
+    "size": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  {
+    "step": 9,
+    "key": "groups",
+    "label": "desktop-1440x900",
+    "url": "https://we-discipline.com/groups",
+    "finalUrl": "https://we-discipline.com/groups",
+    "title": "We Discipline",
+    "h1": "Groupes & horaires",
+    "probe": "ClubGroupes & horairesOrganiser les groupes, coachs, salles, capacités et horaires visibles au planning.RechercheFiltresStatutTous les statutsActifsInactifs+ Nouveau cours9 groupes affichésNomSportCoach par défautHoraire",
+    "fileName": "09-groups-desktop-1440x900.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\09-groups-desktop-1440x900.png",
+    "size": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  {
+    "step": 10,
+    "key": "sports",
+    "label": "desktop-1440x900",
+    "url": "https://we-discipline.com/sports",
+    "finalUrl": "https://we-discipline.com/sports",
+    "title": "We Discipline",
+    "h1": "Disciplines",
+    "probe": "ClubDisciplinesGérer les disciplines proposées par le club.Disciplines9Actives9À compléter6Inactives0CatalogueDisciplines du clubConfigurez ce qui structure les cours, formules, coachs et abonnements.Créer une discipline",
+    "fileName": "10-sports-desktop-1440x900.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\10-sports-desktop-1440x900.png",
+    "size": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  {
+    "step": 11,
+    "key": "plans",
+    "label": "desktop-1440x900",
+    "url": "https://we-discipline.com/subscription-plans",
+    "finalUrl": "https://we-discipline.com/subscription-plans",
+    "title": "We Discipline",
+    "h1": "Formules",
+    "probe": "Retour aux abonnementsRéglagesFormules4 formules configurées. Gérez les prix, quotas et validités vendus aux membres. Nouvelle formuleRechercheFiltresStatutTous les statutsActifsInactifs4 plans affichésNomDescriptionPrix",
+    "fileName": "11-plans-desktop-1440x900.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\11-plans-desktop-1440x900.png",
+    "size": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  {
+    "step": 12,
+    "key": "offers",
+    "label": "desktop-1440x900",
+    "url": "https://we-discipline.com/offers",
+    "finalUrl": "https://we-discipline.com/offers",
+    "title": "We Discipline",
+    "h1": "Offres",
+    "probe": "RéglagesOffresGérer les réductions famille, deuxième discipline et offres rapides. Ajouter une offreOffres actives0 offre affichéeCréer une offreAucune offre activeCréez une offre avec un modèle simple.Créer une offreCré",
+    "fileName": "12-offers-desktop-1440x900.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\12-offers-desktop-1440x900.png",
+    "size": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  {
+    "step": 13,
+    "key": "settings",
+    "label": "desktop-1440x900",
+    "url": "https://we-discipline.com/settings",
+    "finalUrl": "https://we-discipline.com/settings",
+    "title": "We Discipline",
+    "h1": "Centre de configuration",
+    "probe": "RéglagesCentre de configurationPilotez les règles du club, les horaires, les documents, les accès et la reprise de données.ClubAll in GymTéléphone à compléterJours ouverts6 joursLun., Mar., Mer., Jeu., Ven., Sam.Dette vi",
+    "fileName": "13-settings-desktop-1440x900.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\13-settings-desktop-1440x900.png",
+    "size": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  {
+    "step": 14,
+    "key": "settings-club",
+    "label": "desktop-1440x900",
+    "url": "https://we-discipline.com/settings/club",
+    "finalUrl": "https://we-discipline.com/settings/club",
+    "title": "We Discipline",
+    "h1": "Club",
+    "probe": "RéglagesClubPersonnaliser logo, coordonnées et règles de pointage utilisées par la réception.ClubAll in GymTéléphone à compléterJours ouverts6 joursLun., Mar., Mer., Jeu., Ven., Sam.PointageAbsence déduitePaiement partie",
+    "fileName": "14-settings-club-desktop-1440x900.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\14-settings-club-desktop-1440x900.png",
+    "size": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  {
+    "step": 15,
+    "key": "settings-schedules",
+    "label": "desktop-1440x900",
+    "url": "https://we-discipline.com/settings/schedules",
+    "finalUrl": "https://we-discipline.com/settings/schedules",
+    "title": "We Discipline",
+    "h1": "Horaires & saisons",
+    "probe": "HorairesHoraires & saisonsCréez des horaires types, prévisualisez l'impact, puis appliquez-les à un groupe, une discipline ou toute une saison.Modèles00 créneau enregistrésGroupes actifs9Cibles disponiblesDisciplines9App",
+    "fileName": "15-settings-schedules-desktop-1440x900.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\15-settings-schedules-desktop-1440x900.png",
+    "size": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  {
+    "step": 16,
+    "key": "settings-data-import",
+    "label": "desktop-1440x900",
+    "url": "https://we-discipline.com/settings/data-import",
+    "finalUrl": "https://we-discipline.com/settings/data-import",
+    "title": "We Discipline",
+    "h1": "Import ancien fichier",
+    "probe": "RéglagesImport ancien fichierImporter l'état réel d'un adhérent actif depuis un registre papier ou Excel, sans recréer artificiellement un abonnement neuf.Groupes actifs9Cibles disponiblesFormules4Compatibles par discipl",
+    "fileName": "16-settings-data-import-desktop-1440x900.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\16-settings-data-import-desktop-1440x900.png",
+    "size": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  {
+    "step": 17,
+    "key": "settings-users",
+    "label": "desktop-1440x900",
+    "url": "https://we-discipline.com/settings/users",
+    "finalUrl": "https://we-discipline.com/settings/users",
+    "title": "We Discipline",
+    "h1": "Utilisateurs",
+    "probe": "AdministrationUtilisateursCréer les accès Admin, Réception et Coach, puis limiter chaque compte aux écrans utiles. Ajouter un utilisateurAdmin4Configuration et journalRéception2Vente, caisse et élèvesCoach0Pointage et su",
+    "fileName": "17-settings-users-desktop-1440x900.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\17-settings-users-desktop-1440x900.png",
+    "size": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  {
+    "step": 18,
+    "key": "logs",
+    "label": "desktop-1440x900",
+    "url": "https://we-discipline.com/logs",
+    "finalUrl": "https://we-discipline.com/logs",
+    "title": "We Discipline",
+    "h1": "Journal actions",
+    "probe": "Retour au tableau de bordAdministrationJournal actionsVoir qui a fait quoi dans l'application.Actions utiles108Hors systèmePaiements6Corrections et encaissementsPrésences72Pointage et séancesSystème25Bruit masqué par déf",
+    "fileName": "18-logs-desktop-1440x900.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\18-logs-desktop-1440x900.png",
+    "size": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  {
+    "step": 1,
+    "key": "dashboard",
+    "label": "mobile-390x844",
+    "url": "https://we-discipline.com/",
+    "finalUrl": "https://we-discipline.com/",
+    "title": "We Discipline",
+    "h1": "Aujourd'hui au club",
+    "probe": "Tableau de bordAujourd'hui au clubLes séances à pointer, les encaissements à suivre et les priorités qui demandent une action.Datedimanche 5 juilletSéances0 aujourd'huiMembres8 actifsTendanceEncaissements 7 joursDétailTo",
+    "fileName": "01-dashboard-mobile-390x844.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\01-dashboard-mobile-390x844.png",
+    "size": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "step": 2,
+    "key": "attendance-today",
+    "label": "mobile-390x844",
+    "url": "https://we-discipline.com/attendance/today",
+    "finalUrl": "https://we-discipline.com/attendance/today",
+    "title": "We Discipline",
+    "h1": "Pointage",
+    "probe": "Retour à l'historiqueAujourd'huiPointageAucune séance aujourd'hui et aucun pointage en retard.Aucune séance planifiée aujourd'hui.",
+    "fileName": "02-attendance-today-mobile-390x844.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\02-attendance-today-mobile-390x844.png",
+    "size": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "step": 3,
+    "key": "enrollment",
+    "label": "mobile-390x844",
+    "url": "https://we-discipline.com/enrollment",
+    "finalUrl": "https://we-discipline.com/enrollment",
+    "title": "We Discipline",
+    "h1": "Inscrire",
+    "probe": "VentesInscrireCréer le dossier, choisir le cours, appliquer une offre et préparer l'encaissement.À retenirLe paiement règle la dette de la formule — il n'ajoute pas de séances en plus.Pour 2 mois, choisissez une formule ",
+    "fileName": "03-enrollment-mobile-390x844.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\03-enrollment-mobile-390x844.png",
+    "size": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "step": 4,
+    "key": "payments-new",
+    "label": "mobile-390x844",
+    "url": "https://we-discipline.com/payments/new",
+    "finalUrl": "https://we-discipline.com/payments/new",
+    "title": "We Discipline",
+    "h1": "Encaisser",
+    "probe": "Retour à la listeVentesEncaisserChoisir le membre, vérifier l'abonnement et confirmer le montant reçu.Aucun solde à encaisserAucun abonnement actif ne présente de montant restant dû.Voir les abonnements",
+    "fileName": "04-payments-new-mobile-390x844.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\04-payments-new-mobile-390x844.png",
+    "size": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "step": 5,
+    "key": "payments-history",
+    "label": "mobile-390x844",
+    "url": "https://we-discipline.com/payments",
+    "finalUrl": "https://we-discipline.com/payments",
+    "title": "We Discipline",
+    "h1": "Historique caisse",
+    "probe": "VentesHistorique caisse14 versement(s) enregistrés, total 360,00 TND.+ EncaisserRechercheFiltresÉtat du paiementTousSolde restantSoldés9 abonnements affichéswael elleuchm.combat50,00 TND/ 50,00 TNDPayé1 versementalia aff",
+    "fileName": "05-payments-history-mobile-390x844.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\05-payments-history-mobile-390x844.png",
+    "size": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "step": 6,
+    "key": "members",
+    "label": "mobile-390x844",
+    "url": "https://we-discipline.com/members",
+    "finalUrl": "https://we-discipline.com/members",
+    "title": "We Discipline",
+    "h1": "Membres",
+    "probe": "ÉlèvesMembresRechercher, filtrer et ouvrir les dossiers utiles à l'accueil.RechercheFiltres+ Ajouter un membreStatutTous les statutsActifsRésiliésPaiementTous les paiementsPayéPartielNon payéDisciplineToutes les discipli",
+    "fileName": "06-members-mobile-390x844.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\06-members-mobile-390x844.png",
+    "size": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "step": 7,
+    "key": "subscriptions",
+    "label": "mobile-390x844",
+    "url": "https://we-discipline.com/subscriptions",
+    "finalUrl": "https://we-discipline.com/subscriptions",
+    "title": "We Discipline",
+    "h1": "Abonnements",
+    "probe": "VentesAbonnementsSuivre les statuts, soldes, dates et séances restantes. RenouvelerÀ encaisser0À renouveler0Actifs9Tous9RechercheFiltresTous les statutsActifsBrouillonsExpirésRésiliésTous les paiementsSolde restantSoldés",
+    "fileName": "07-subscriptions-mobile-390x844.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\07-subscriptions-mobile-390x844.png",
+    "size": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "step": 8,
+    "key": "sessions",
+    "label": "mobile-390x844",
+    "url": "https://we-discipline.com/sessions",
+    "finalUrl": "https://we-discipline.com/sessions",
+    "title": "We Discipline",
+    "h1": "Planning",
+    "probe": "PlanningPlanningVoir les séances, filtrer par cours et ouvrir le pointage.Planning semaineCommand center des coursSemaine du lundi 29/06/2026 au dimanche 05/07/2026PrécédenteAujourd'huiSuivanteCréer séancesCours8À traite",
+    "fileName": "08-sessions-mobile-390x844.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\08-sessions-mobile-390x844.png",
+    "size": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "step": 9,
+    "key": "groups",
+    "label": "mobile-390x844",
+    "url": "https://we-discipline.com/groups",
+    "finalUrl": "https://we-discipline.com/groups",
+    "title": "We Discipline",
+    "h1": "Groupes & horaires",
+    "probe": "ClubGroupes & horairesOrganiser les groupes, coachs, salles, capacités et horaires visibles au planning.RechercheFiltresStatutTous les statutsActifsInactifs+ Nouveau cours9 groupes affichésNomSportCoach par défautHoraire",
+    "fileName": "09-groups-mobile-390x844.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\09-groups-mobile-390x844.png",
+    "size": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "step": 10,
+    "key": "sports",
+    "label": "mobile-390x844",
+    "url": "https://we-discipline.com/sports",
+    "finalUrl": "https://we-discipline.com/sports",
+    "title": "We Discipline",
+    "h1": "Disciplines",
+    "probe": "ClubDisciplinesGérer les disciplines proposées par le club.Disciplines9Actives9À compléter6Inactives0CatalogueDisciplines du clubConfigurez ce qui structure les cours, formules, coachs et abonnements.Créer une discipline",
+    "fileName": "10-sports-mobile-390x844.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\10-sports-mobile-390x844.png",
+    "size": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "step": 11,
+    "key": "plans",
+    "label": "mobile-390x844",
+    "url": "https://we-discipline.com/subscription-plans",
+    "finalUrl": "https://we-discipline.com/subscription-plans",
+    "title": "We Discipline",
+    "h1": "Formules",
+    "probe": "Retour aux abonnementsRéglagesFormules4 formules configurées. Gérez les prix, quotas et validités vendus aux membres. Nouvelle formuleRechercheFiltresStatutTous les statutsActifsInactifs4 plans affichésNomDescriptionPrix",
+    "fileName": "11-plans-mobile-390x844.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\11-plans-mobile-390x844.png",
+    "size": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "step": 12,
+    "key": "offers",
+    "label": "mobile-390x844",
+    "url": "https://we-discipline.com/offers",
+    "finalUrl": "https://we-discipline.com/offers",
+    "title": "We Discipline",
+    "h1": "Offres",
+    "probe": "RéglagesOffresGérer les réductions famille, deuxième discipline et offres rapides. Ajouter une offreOffres actives0 offre affichéeCréer une offreAucune offre activeCréez une offre avec un modèle simple.Créer une offreCré",
+    "fileName": "12-offers-mobile-390x844.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\12-offers-mobile-390x844.png",
+    "size": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "step": 13,
+    "key": "settings",
+    "label": "mobile-390x844",
+    "url": "https://we-discipline.com/settings",
+    "finalUrl": "https://we-discipline.com/settings",
+    "title": "We Discipline",
+    "h1": "Centre de configuration",
+    "probe": "RéglagesCentre de configurationPilotez les règles du club, les horaires, les documents, les accès et la reprise de données.ClubAll in GymTéléphone à compléterJours ouverts6 joursLun., Mar., Mer., Jeu., Ven., Sam.Dette vi",
+    "fileName": "13-settings-mobile-390x844.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\13-settings-mobile-390x844.png",
+    "size": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "step": 14,
+    "key": "settings-club",
+    "label": "mobile-390x844",
+    "url": "https://we-discipline.com/settings/club",
+    "finalUrl": "https://we-discipline.com/settings/club",
+    "title": "We Discipline",
+    "h1": "Club",
+    "probe": "RéglagesClubPersonnaliser logo, coordonnées et règles de pointage utilisées par la réception.ClubAll in GymTéléphone à compléterJours ouverts6 joursLun., Mar., Mer., Jeu., Ven., Sam.PointageAbsence déduitePaiement partie",
+    "fileName": "14-settings-club-mobile-390x844.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\14-settings-club-mobile-390x844.png",
+    "size": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "step": 15,
+    "key": "settings-schedules",
+    "label": "mobile-390x844",
+    "url": "https://we-discipline.com/settings/schedules",
+    "finalUrl": "https://we-discipline.com/settings/schedules",
+    "title": "We Discipline",
+    "h1": "Horaires & saisons",
+    "probe": "HorairesHoraires & saisonsCréez des horaires types, prévisualisez l'impact, puis appliquez-les à un groupe, une discipline ou toute une saison.Modèles00 créneau enregistrésGroupes actifs9Cibles disponiblesDisciplines9App",
+    "fileName": "15-settings-schedules-mobile-390x844.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\15-settings-schedules-mobile-390x844.png",
+    "size": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "step": 16,
+    "key": "settings-data-import",
+    "label": "mobile-390x844",
+    "url": "https://we-discipline.com/settings/data-import",
+    "finalUrl": "https://we-discipline.com/settings/data-import",
+    "title": "We Discipline",
+    "h1": "Import ancien fichier",
+    "probe": "RéglagesImport ancien fichierImporter l'état réel d'un adhérent actif depuis un registre papier ou Excel, sans recréer artificiellement un abonnement neuf.Groupes actifs9Cibles disponiblesFormules4Compatibles par discipl",
+    "fileName": "16-settings-data-import-mobile-390x844.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\16-settings-data-import-mobile-390x844.png",
+    "size": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "step": 17,
+    "key": "settings-users",
+    "label": "mobile-390x844",
+    "url": "https://we-discipline.com/settings/users",
+    "finalUrl": "https://we-discipline.com/settings/users",
+    "title": "We Discipline",
+    "h1": "Utilisateurs",
+    "probe": "AdministrationUtilisateursCréer les accès Admin, Réception et Coach, puis limiter chaque compte aux écrans utiles. Ajouter un utilisateurAdmin4Configuration et journalRéception2Vente, caisse et élèvesCoach0Pointage et su",
+    "fileName": "17-settings-users-mobile-390x844.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\17-settings-users-mobile-390x844.png",
+    "size": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "step": 18,
+    "key": "logs",
+    "label": "mobile-390x844",
+    "url": "https://we-discipline.com/logs",
+    "finalUrl": "https://we-discipline.com/logs",
+    "title": "We Discipline",
+    "h1": "Journal actions",
+    "probe": "Retour au tableau de bordAdministrationJournal actionsVoir qui a fait quoi dans l'application.Actions utiles108Hors systèmePaiements6Corrections et encaissementsPrésences72Pointage et séancesSystème25Bruit masqué par déf",
+    "fileName": "18-logs-mobile-390x844.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\18-logs-mobile-390x844.png",
+    "size": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "step": 19,
+    "key": "member-detail",
+    "label": "desktop-1440x900",
+    "url": "https://we-discipline.com/members/cmr7gqoam0001ml2g56ixz3xn",
+    "finalUrl": "https://we-discipline.com/members/cmr7gqoam0001ml2g56ixz3xn",
+    "title": "We Discipline",
+    "h1": "wael elleuch",
+    "probe": "Retour aux membresWEwael elleuchActifAdulte · Garcon / homme · Inscrit le 05/07/202620369874SoldeSoldéAbonnementm.combatSéances12 séancesDernier pointageAucun pointageEncaisserRenouvelerAffecterArchiverDossier1 abo · 1 c",
+    "fileName": "19-member-detail-desktop-1440x900.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\19-member-detail-desktop-1440x900.png",
+    "size": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  {
+    "step": 20,
+    "key": "coaches",
+    "label": "desktop-1440x900",
+    "url": "https://we-discipline.com/coaches",
+    "finalUrl": "https://we-discipline.com/coaches",
+    "title": "We Discipline",
+    "h1": "Coachs",
+    "probe": "ClubCoachsGérer les coachs, leurs spécialités et leur disponibilité. Ajouter un coachAjouter un coachCréer un nouveau coach avec sa spécialité sportive.PrénomNomTéléphoneEmailOptionnelSpécialitéSpécialité non renseignéeA",
+    "fileName": "20-coaches-desktop-1440x900.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\20-coaches-desktop-1440x900.png",
+    "size": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  {
+    "step": 21,
+    "key": "settings-account",
+    "label": "desktop-1440x900",
+    "url": "https://we-discipline.com/settings/account",
+    "finalUrl": "https://we-discipline.com/settings/account",
+    "title": "We Discipline",
+    "h1": "Mon compte",
+    "probe": "RéglagesMon compteModifiez votre nom, votre email de connexion et votre mot de passe.ProfilThèmeSécuritéInformations personnellesCes informations identifient votre compte dans l'application.Nom affichéEnregistrer le nomE",
+    "fileName": "21-settings-account-desktop-1440x900.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\21-settings-account-desktop-1440x900.png",
+    "size": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  {
+    "step": 22,
+    "key": "groups-new",
+    "label": "desktop-1440x900",
+    "url": "https://we-discipline.com/groups/new",
+    "finalUrl": "https://we-discipline.com/groups/new",
+    "title": "We Discipline",
+    "h1": "Nouveau groupe",
+    "probe": "Retour à la listeClubNouveau groupeCréer le groupe, puis planifier ses horaires.InfosMembresInformationsSport, coach, salle et capacité du cours.NomSportChoisirAirobicBac sportSelf Defence adultesSelf Defence kidsTotal c",
+    "fileName": "22-groups-new-desktop-1440x900.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\22-groups-new-desktop-1440x900.png",
+    "size": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  {
+    "step": 23,
+    "key": "plans-new",
+    "label": "desktop-1440x900",
+    "url": "https://we-discipline.com/subscription-plans/new",
+    "finalUrl": "https://we-discipline.com/subscription-plans/new",
+    "title": "We Discipline",
+    "h1": "Nouvelle formule",
+    "probe": "Retour aux formulesRéglagesNouvelle formuleCréer une formule avec tarif, durée et nombre de séances.FormulesUne formule fixe ce que le membre achète : prix, quota de séances (12 avec 3/sem.) et validité. Pour 2 mois, cré",
+    "fileName": "23-plans-new-desktop-1440x900.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\23-plans-new-desktop-1440x900.png",
+    "size": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  {
+    "step": 19,
+    "key": "member-detail",
+    "label": "mobile-390x844",
+    "url": "https://we-discipline.com/members/cmr7gqoam0001ml2g56ixz3xn",
+    "finalUrl": "https://we-discipline.com/members/cmr7gqoam0001ml2g56ixz3xn",
+    "title": "We Discipline",
+    "h1": "wael elleuch",
+    "probe": "Retour aux membresWEwael elleuchActifAdulte · Garcon / homme · Inscrit le 05/07/202620369874SoldeSoldéAbonnementm.combatSéances12 séancesDernier pointageAucun pointageEncaisserRenouvelerAffecterArchiverDossier1 abo · 1 c",
+    "fileName": "19-member-detail-mobile-390x844.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\19-member-detail-mobile-390x844.png",
+    "size": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "step": 20,
+    "key": "coaches",
+    "label": "mobile-390x844",
+    "url": "https://we-discipline.com/coaches",
+    "finalUrl": "https://we-discipline.com/coaches",
+    "title": "We Discipline",
+    "h1": "Coachs",
+    "probe": "ClubCoachsGérer les coachs, leurs spécialités et leur disponibilité. Ajouter un coachAjouter un coachCréer un nouveau coach avec sa spécialité sportive.PrénomNomTéléphoneEmailOptionnelSpécialitéSpécialité non renseignéeA",
+    "fileName": "20-coaches-mobile-390x844.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\20-coaches-mobile-390x844.png",
+    "size": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "step": 21,
+    "key": "settings-account",
+    "label": "mobile-390x844",
+    "url": "https://we-discipline.com/settings/account",
+    "finalUrl": "https://we-discipline.com/settings/account",
+    "title": "We Discipline",
+    "h1": "Mon compte",
+    "probe": "RéglagesMon compteModifiez votre nom, votre email de connexion et votre mot de passe.ProfilThèmeSécuritéInformations personnellesCes informations identifient votre compte dans l'application.Nom affichéEnregistrer le nomE",
+    "fileName": "21-settings-account-mobile-390x844.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\21-settings-account-mobile-390x844.png",
+    "size": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "step": 22,
+    "key": "groups-new",
+    "label": "mobile-390x844",
+    "url": "https://we-discipline.com/groups/new",
+    "finalUrl": "https://we-discipline.com/groups/new",
+    "title": "We Discipline",
+    "h1": "Nouveau groupe",
+    "probe": "Retour à la listeClubNouveau groupeCréer le groupe, puis planifier ses horaires.InfosMembresInformationsSport, coach, salle et capacité du cours.NomSportChoisirAirobicBac sportSelf Defence adultesSelf Defence kidsTotal c",
+    "fileName": "22-groups-new-mobile-390x844.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\22-groups-new-mobile-390x844.png",
+    "size": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "step": 23,
+    "key": "plans-new",
+    "label": "mobile-390x844",
+    "url": "https://we-discipline.com/subscription-plans/new",
+    "finalUrl": "https://we-discipline.com/subscription-plans/new",
+    "title": "We Discipline",
+    "h1": "Nouvelle formule",
+    "probe": "Retour aux formulesRéglagesNouvelle formuleCréer une formule avec tarif, durée et nombre de séances.FormulesUne formule fixe ce que le membre achète : prix, quota de séances (12 avec 3/sem.) et validité. Pour 2 mois, cré",
+    "fileName": "23-plans-new-mobile-390x844.png",
+    "filePath": "C:\\Users\\Administrateur\\Documents\\serveur root@178.105.144.196\\gymday-app-clone\\docs\\audits\\full-product-audit-2026-07-05\\screenshots\\23-plans-new-mobile-390x844.png",
+    "size": {
+      "width": 390,
+      "height": 844
+    }
+  }
+]
