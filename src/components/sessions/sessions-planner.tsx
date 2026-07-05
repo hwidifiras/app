@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   CalendarDays,
   CalendarPlus,
@@ -567,6 +568,14 @@ export function SessionsPlanner({
     }),
     [dayFilter, filteredSessionDateKeys, weekDays, workingDaySet],
   );
+  const hiddenClosedDays = useMemo(
+    () => weekDays.filter((day) => !workingDaySet.has(day.dayOfWeek) && !filteredSessionDateKeys.has(day.key)),
+    [filteredSessionDateKeys, weekDays, workingDaySet],
+  );
+  const closedDaysWithSessions = useMemo(
+    () => visibleWeekDays.filter((day) => !workingDaySet.has(day.dayOfWeek) && filteredSessionDateKeys.has(day.key)),
+    [filteredSessionDateKeys, visibleWeekDays, workingDaySet],
+  );
   const sessionsByDate = useMemo(() => {
     const map = new Map<string, SessionDto[]>();
 
@@ -952,6 +961,25 @@ export function SessionsPlanner({
           <p className="mt-2 text-xs text-[var(--muted-foreground)]">
             {filteredSessions.length} séance{filteredSessions.length > 1 ? "s" : ""} affichée{filteredSessions.length > 1 ? "s" : ""}
           </p>
+          {dayFilter === "ALL" && (hiddenClosedDays.length > 0 || closedDaysWithSessions.length > 0) ? (
+            <div className="mt-2 flex flex-col gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-900 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                {hiddenClosedDays.length > 0 ? (
+                  <span className="font-semibold">
+                    {hiddenClosedDays.length} jour{hiddenClosedDays.length > 1 ? "s" : ""} fermé{hiddenClosedDays.length > 1 ? "s" : ""} sans cours masqué{hiddenClosedDays.length > 1 ? "s" : ""}.
+                  </span>
+                ) : null}
+                {closedDaysWithSessions.length > 0 ? (
+                  <span className={hiddenClosedDays.length > 0 ? "ml-1" : "font-semibold"}>
+                    {closedDaysWithSessions.length} jour{closedDaysWithSessions.length > 1 ? "s" : ""} fermé{closedDaysWithSessions.length > 1 ? "s" : ""} reste{closedDaysWithSessions.length > 1 ? "nt" : ""} visible{closedDaysWithSessions.length > 1 ? "s" : ""} car des séances existent dessus.
+                  </span>
+                ) : null}
+              </div>
+              <Link href="/settings/club" prefetch={false} className="shrink-0 font-bold text-[var(--primary)] hover:underline">
+                Régler les jours
+              </Link>
+            </div>
+          ) : null}
         </div>
 
         {loading ? <p className="mt-4 text-sm text-[var(--muted-foreground)]">Chargement du planning...</p> : null}
