@@ -28,6 +28,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Offers remain create/deactivate only; active offer cards now show usage count so used discounts are treated as historical templates, not editable meanings.
 - Attendance corrections now write before/after snapshots and balance delta inside the same transaction; session finalize/reopen logs include staff-facing reasons.
 - Attendance undo keeps its balance adjustment and audit entry inside the same transaction.
+- Member list edits now write actor-linked before/after audit snapshots, so profile corrections made outside the member detail page remain traceable.
 
 ### Receipts
 
@@ -276,6 +277,7 @@ Latest UI settings checkpoint:
 - Direct group assignment audit pass now logs created, updated, and closed assignments with before/after details and generated subscription linkage; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Bulk group assignment audit pass now logs created/reactivated assignment IDs, requested members, skip counts, and tenant-linked close summaries; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Household audit pass now logs foyer creation and member additions to foyers with readable audit labels; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
+- Member list edit audit pass now logs before/after profile snapshots for `MEMBER_UPDATED`; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
 
 Start a disposable local PostgreSQL test database, or set `TEST_DATABASE_URL`, before relying on `npm.cmd test`.

@@ -3,13 +3,68 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createMemberSchema, updateMemberSchema } from "@/lib/schemas/member";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
-import { expireStaleSubscriptions } from "@/lib/membership-rules";
 import { resolveMemberPhone } from "@/lib/member-phone";
 import { issueReceiptForPayment } from "@/lib/receipts";
 import { checkGroupMemberCompatibility } from "@/lib/demographics";
 import { memberProfileCompletionError } from "@/lib/member-profile-policy";
 
 export const runtime = "nodejs";
+
+type MemberAuditSource = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string | null;
+  memberType: string;
+  gender: string;
+  birthDate: Date | null;
+  address: string | null;
+  parentName: string | null;
+  parentPhone: string | null;
+  parentAddress: string | null;
+  status: string;
+  joinedAt: Date;
+  archivedAt: Date | null;
+};
+
+const memberAuditSelect = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  phone: true,
+  email: true,
+  memberType: true,
+  gender: true,
+  birthDate: true,
+  address: true,
+  parentName: true,
+  parentPhone: true,
+  parentAddress: true,
+  status: true,
+  joinedAt: true,
+  archivedAt: true,
+} as const;
+
+function memberAuditSnapshot(member: MemberAuditSource) {
+  return {
+    id: member.id,
+    firstName: member.firstName,
+    lastName: member.lastName,
+    phone: member.phone,
+    email: member.email,
+    memberType: member.memberType,
+    gender: member.gender,
+    birthDate: member.birthDate?.toISOString() ?? null,
+    address: member.address,
+    parentName: member.parentName,
+    parentPhone: member.parentPhone,
+    parentAddress: member.parentAddress,
+    status: member.status,
+    joinedAt: member.joinedAt.toISOString(),
+    archivedAt: member.archivedAt?.toISOString() ?? null,
+  };
+}
 
 export async function GET(request: Request) {
   try {
@@ -363,8 +418,9 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "members.manage");
+    actor = await requirePermission(request, "members.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -404,20 +460,11 @@ export async function PATCH(request: Request) {
   const payload = updatePayload.data;
 
   try {
-    const profileTouched =
-      payload.memberType !== undefined ||
-      payload.gender !== undefined ||
-      payload.parentName !== undefined ||
-      payload.parentPhone !== undefined;
-
-    if (profileTouched) {
-      const existing = await prisma.member.findUnique({
+    const updated = await prisma.$transaction(async (tx) => {
+      const existing = await tx.member.findUnique({
         where: { id: memberId },
         select: {
-          memberType: true,
-          gender: true,
-          parentName: true,
-          parentPhone: true,
+          ...memberAuditSelect,
           groups: {
             where: { status: "ACTIVE" },
             select: {
@@ -434,76 +481,116 @@ export async function PATCH(request: Request) {
       });
 
       if (!existing) {
-        return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
+        throw new Error("MEMBER_NOT_FOUND");
       }
 
-      const targetMemberType = payload.memberType ?? existing.memberType;
-      const targetGender = payload.gender ?? existing.gender;
-      const targetParentName = payload.parentName === undefined ? existing.parentName : payload.parentName;
-      const targetParentPhone = payload.parentPhone === undefined ? existing.parentPhone : payload.parentPhone;
-      const profileError = memberProfileCompletionError({
-        memberType: targetMemberType,
-        gender: targetGender,
-        parentName: targetParentName,
-        parentPhone: targetParentPhone,
-      });
+      const profileTouched =
+        payload.memberType !== undefined ||
+        payload.gender !== undefined ||
+        payload.parentName !== undefined ||
+        payload.parentPhone !== undefined;
 
-      if (profileError) {
-        return NextResponse.json({ error: profileError }, { status: 400 });
-      }
-
-      const incompatibleAssignment = existing.groups.find((assignment) => {
-        return !checkGroupMemberCompatibility({
-          groupType: assignment.group.groupType,
-          genderPolicy: assignment.group.genderPolicy,
+      if (profileTouched) {
+        const targetMemberType = payload.memberType ?? existing.memberType;
+        const targetGender = payload.gender ?? existing.gender;
+        const targetParentName = payload.parentName === undefined ? existing.parentName : payload.parentName;
+        const targetParentPhone = payload.parentPhone === undefined ? existing.parentPhone : payload.parentPhone;
+        const profileError = memberProfileCompletionError({
           memberType: targetMemberType,
           gender: targetGender,
-        }).ok;
+          parentName: targetParentName,
+          parentPhone: targetParentPhone,
+        });
+
+        if (profileError) {
+          throw new Error(`MEMBER_PROFILE_INCOMPLETE:${profileError}`);
+        }
+
+        const incompatibleAssignment = existing.groups.find((assignment) => {
+          return !checkGroupMemberCompatibility({
+            groupType: assignment.group.groupType,
+            genderPolicy: assignment.group.genderPolicy,
+            memberType: targetMemberType,
+            gender: targetGender,
+          }).ok;
+        });
+
+        if (incompatibleAssignment) {
+          throw new Error(`MEMBER_POLICY_MISMATCH:${incompatibleAssignment.group.name}`);
+        }
+      }
+
+      const member = await tx.member.update({
+        where: { id: memberId },
+        data: {
+          firstName: payload.firstName,
+          lastName: payload.lastName,
+          phone: payload.phone,
+          email:
+            payload.email === undefined
+              ? undefined
+              : payload.email === "" || payload.email === null
+                ? null
+                : payload.email,
+          memberType: payload.memberType,
+          gender: payload.gender,
+          birthDate: payload.birthDate === undefined ? undefined : new Date(payload.birthDate),
+          address: payload.address === undefined ? undefined : payload.address?.trim() || null,
+          parentName:
+            payload.memberType && payload.memberType !== "KID"
+              ? null
+              : payload.parentName === undefined ? undefined : payload.parentName?.trim() || null,
+          parentPhone:
+            payload.memberType && payload.memberType !== "KID"
+              ? null
+              : payload.parentPhone === undefined ? undefined : payload.parentPhone?.trim() || null,
+          parentAddress:
+            payload.memberType && payload.memberType !== "KID"
+              ? null
+              : payload.parentAddress === undefined ? undefined : payload.parentAddress?.trim() || null,
+        },
       });
 
-      if (incompatibleAssignment) {
-        return NextResponse.json(
-          {
-            error: `Modification impossible: l'eleve resterait incompatible avec le cours "${incompatibleAssignment.group.name}".`,
-          },
-          { status: 409 },
-        );
-      }
-    }
+      await tx.auditLog.create({
+        data: {
+          action: "MEMBER_UPDATED",
+          entityType: "Member",
+          entityId: member.id,
+          userId: actor.id,
+          details: JSON.stringify({
+            fields: Object.entries(payload)
+              .filter(([, value]) => value !== undefined)
+              .map(([field]) => field),
+            before: memberAuditSnapshot(existing),
+            after: memberAuditSnapshot(member),
+          }),
+        },
+      });
 
-    const updated = await prisma.member.update({
-      where: { id: memberId },
-      data: {
-        firstName: payload.firstName,
-        lastName: payload.lastName,
-        phone: payload.phone,
-        email:
-          payload.email === undefined
-            ? undefined
-            : payload.email === "" || payload.email === null
-              ? null
-              : payload.email,
-        memberType: payload.memberType,
-        gender: payload.gender,
-        birthDate: payload.birthDate === undefined ? undefined : new Date(payload.birthDate),
-        address: payload.address === undefined ? undefined : payload.address?.trim() || null,
-        parentName:
-          payload.memberType && payload.memberType !== "KID"
-            ? null
-            : payload.parentName === undefined ? undefined : payload.parentName?.trim() || null,
-        parentPhone:
-          payload.memberType && payload.memberType !== "KID"
-            ? null
-            : payload.parentPhone === undefined ? undefined : payload.parentPhone?.trim() || null,
-        parentAddress:
-          payload.memberType && payload.memberType !== "KID"
-            ? null
-            : payload.parentAddress === undefined ? undefined : payload.parentAddress?.trim() || null,
-      },
+      return member;
     });
 
     return NextResponse.json({ data: updated });
   } catch (error) {
+    if (error instanceof Error && error.message === "MEMBER_NOT_FOUND") {
+      return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
+    }
+
+    if (error instanceof Error && error.message.startsWith("MEMBER_POLICY_MISMATCH:")) {
+      const groupName = error.message.split(":").slice(1).join(":");
+      return NextResponse.json(
+        {
+          error: `Modification impossible: l'eleve resterait incompatible avec le cours "${groupName}".`,
+        },
+        { status: 409 },
+      );
+    }
+
+    if (error instanceof Error && error.message.startsWith("MEMBER_PROFILE_INCOMPLETE:")) {
+      const reason = error.message.split(":").slice(1).join(":");
+      return NextResponse.json({ error: reason }, { status: 400 });
+    }
+
     const isDuplicatePhone =
       typeof error === "object" &&
       error !== null &&
@@ -558,57 +645,73 @@ export async function DELETE(request: Request) {
     const now = new Date();
 
     const archived = await prisma.$transaction(async (tx) => {
+      const existing = await tx.member.findFirst({
+        where: { id: memberId },
+        include: {
+          groups: { where: { status: "ACTIVE" }, select: { id: true } },
+          subscriptions: { where: { status: "ACTIVE" }, select: { id: true } },
+        },
+      });
+
+      if (!existing) {
+        throw new Error("MEMBER_NOT_FOUND");
+      }
+
       const member = await tx.member.update({
         where: { id: memberId },
         data: {
           status: "ARCHIVED",
           archivedAt: now,
+          groups: {
+            updateMany: {
+              where: { status: "ACTIVE" },
+              data: {
+                status: "INACTIVE",
+                endDate: now,
+              },
+            },
+          },
+          subscriptions: {
+            updateMany: {
+              where: { status: "ACTIVE" },
+              data: {
+                status: "CANCELLED",
+                endDate: now,
+              },
+            },
+          },
         },
       });
 
-      await tx.groupMember.updateMany({
-        where: {
-          memberId,
-          status: "ACTIVE",
-        },
+      await tx.auditLog.create({
         data: {
-          status: "INACTIVE",
-          endDate: now,
+          action: "MEMBER_ARCHIVED",
+          entityType: "Member",
+          entityId: member.id,
+          userId: actor.id,
+          details: JSON.stringify({
+            archivedAt: now.toISOString(),
+            activeGroupAssignmentsClosed: existing.groups.length,
+            activeSubscriptionsCancelled: existing.subscriptions.length,
+          }),
         },
-      });
-
-      await tx.memberSubscription.updateMany({
-        where: { memberId, status: "ACTIVE" },
-        data: { status: "CANCELLED" },
       });
 
       return member;
     });
 
-    await expireStaleSubscriptions(memberId);
-
-    await prisma.auditLog.create({
+    return NextResponse.json({
       data: {
-        action: "MEMBER_ARCHIVED",
-        entityType: "Member",
-        entityId: memberId,
-        userId: actor.id,
-        details: JSON.stringify({ archivedAt: now.toISOString() }),
+        id: archived.id,
+        status: archived.status,
+        archivedAt: archived.archivedAt?.toISOString() ?? null,
       },
     });
-
-    return NextResponse.json({ data: archived });
   } catch (error) {
-    const isNotFound =
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      (error as { code?: string }).code === "P2025";
-
-    if (isNotFound) {
+    if (error instanceof Error && error.message === "MEMBER_NOT_FOUND") {
       return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
     }
 
-    return NextResponse.json({ error: "Erreur serveur lors de la résiliation" }, { status: 500 });
+    return NextResponse.json({ error: "Erreur serveur lors de l'archivage" }, { status: 500 });
   }
 }
