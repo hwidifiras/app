@@ -547,7 +547,7 @@ function CtaButton({
         "group inline-flex min-h-12 items-center justify-center gap-2 rounded-md px-5 text-sm font-bold transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#38BDF8]",
         variant === "primary" && "bg-[#2563EB] !text-white shadow-[0_18px_45px_rgba(37,99,235,0.28)] hover:bg-[#1D4ED8]",
         variant === "secondary" && "border border-slate-300 bg-white text-[#111827] hover:border-[#2563EB] hover:text-[#2563EB]",
-        variant === "dark" && "border border-white/18 bg-white/10 text-white hover:bg-white hover:text-[#111827]",
+        variant === "dark" && "border border-white/18 bg-white/10 text-white hover:border-[#38BDF8] hover:bg-[#2563EB] hover:text-white",
       )}
     >
       {children}
