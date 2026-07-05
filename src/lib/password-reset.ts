@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 
 import { prisma } from "@/lib/prisma";
+import { getRequiredTenantId } from "@/lib/tenant-context";
 
 const RESET_TTL_MINUTES = 60;
 
@@ -16,17 +17,18 @@ export function buildResetUrl(token: string, origin?: string): string {
 }
 
 export async function createPasswordResetToken(userId: string) {
+  const tenantId = getRequiredTenantId();
   const token = randomBytes(32).toString("hex");
   const tokenHash = hashResetToken(token);
   const expiresAt = new Date(Date.now() + RESET_TTL_MINUTES * 60 * 1000);
 
   await prisma.passwordResetToken.updateMany({
-    where: { userId, usedAt: null },
+    where: { tenantId, userId, usedAt: null },
     data: { usedAt: new Date() },
   });
 
   await prisma.passwordResetToken.create({
-    data: { userId, tokenHash, expiresAt },
+    data: { tenantId, userId, tokenHash, expiresAt },
   });
 
   return { token, expiresAt };

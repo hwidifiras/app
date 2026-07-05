@@ -69,13 +69,20 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
   }
 
-  const updated = await prisma.user.update({
-    where: { id: target.id },
+  const updateResult = await prisma.user.updateMany({
+    where: { id: target.id, tenantId: admin.tenantId },
     data: {
       ...(name !== undefined ? { name } : {}),
       ...(email !== undefined ? { email: nextEmail } : {}),
       ...(isActive !== undefined ? { isActive } : {}),
     },
+  });
+  if (updateResult.count !== 1) {
+    return NextResponse.json({ error: "Utilisateur introuvable" }, { status: 404 });
+  }
+
+  const updated = await prisma.user.findFirstOrThrow({
+    where: { id: target.id, tenantId: admin.tenantId },
     select: {
       id: true,
       email: true,

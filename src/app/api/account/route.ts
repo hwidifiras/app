@@ -126,13 +126,20 @@ export async function PATCH(request: Request) {
 
   const passwordHash = newPassword ? await hashPassword(newPassword) : undefined;
 
-  const updated = await prisma.user.update({
-    where: { id: user.id },
+  const updateResult = await prisma.user.updateMany({
+    where: { id: user.id, tenantId: auth.tenantId },
     data: {
       name: name ?? user.name,
       email: nextEmail,
       ...(passwordHash ? { passwordHash } : {}),
     },
+  });
+  if (updateResult.count !== 1) {
+    return NextResponse.json({ error: "Compte introuvable ou dÃ©sactivÃ©" }, { status: 404 });
+  }
+
+  const updated = await prisma.user.findFirstOrThrow({
+    where: { id: user.id, tenantId: auth.tenantId },
     select: {
       id: true,
       email: true,

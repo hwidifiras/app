@@ -50,24 +50,34 @@ export async function POST(request: Request) {
 
   const passwordHash = await hashPassword(parsed.data.password);
 
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: resetToken.userId },
-      data: { passwordHash },
-    }),
-    prisma.passwordResetToken.update({
-      where: { id: resetToken.id },
-      data: { usedAt: new Date() },
-    }),
-    prisma.auditLog.create({
-      data: {
-        tenantId: tenant.context.tenantId,
-        action: "PASSWORD_RESET_COMPLETED",
-        entityType: "User",
-        entityId: resetToken.userId,
-      },
-    }),
-  ]);
+  try {
+    await prisma.$transaction(async (tx) => {
+      const userUpdate = await tx.user.updateMany({
+        where: { id: resetToken.userId, tenantId: tenant.context.tenantId },
+        data: { passwordHash },
+      });
+      const tokenUpdate = await tx.passwordResetToken.updateMany({
+        where: { id: resetToken.id, tenantId: tenant.context.tenantId },
+        data: { usedAt: new Date() },
+      });
+      if (userUpdate.count !== 1 || tokenUpdate.count !== 1) {
+        throw new Error("PASSWORD_RESET_SCOPE_MISMATCH");
+      }
+      await tx.auditLog.create({
+        data: {
+          tenantId: tenant.context.tenantId,
+          action: "PASSWORD_RESET_COMPLETED",
+          entityType: "User",
+          entityId: resetToken.userId,
+        },
+      });
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "PASSWORD_RESET_SCOPE_MISMATCH") {
+      return NextResponse.json({ error: "Lien invalide ou expire" }, { status: 400 });
+    }
+    throw error;
+  }
 
   return NextResponse.json({ data: { ok: true } });
 }
