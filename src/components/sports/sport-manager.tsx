@@ -11,6 +11,7 @@ import { FormField } from "@/components/ui/form-layout";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListSearch } from "@/components/ui/list-controls";
 import { Pagination, usePagination } from "@/components/ui/pagination";
+import { SportSuggestionPicker } from "@/components/sports/sport-suggestion-picker";
 import {
   MARTIAL_ARTS_DISCIPLINE_SUGGESTIONS,
   type MartialArtsDisciplineSuggestion,
@@ -377,39 +378,11 @@ export function SportManager({ initialSports }: SportManagerProps) {
 
         {createOpen ? (
           <div id="sport-create" className="mt-4 space-y-4 border-t border-[var(--border)] pt-4">
-            {disciplineSuggestions.length > 0 ? (
-              <div className="space-y-2">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
-                    Suggestions martiales
-                  </p>
-                  <p className="text-sm text-[var(--muted-foreground)]">
-                    Choisissez un modele pour remplir rapidement le nom et la description.
-                  </p>
-                </div>
-                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                  {disciplineSuggestions.slice(0, 8).map((suggestion) => {
-                    const selected = name.trim().toLocaleLowerCase("fr") === suggestion.name.toLocaleLowerCase("fr");
-                    return (
-                      <button
-                        key={suggestion.name}
-                        type="button"
-                        onClick={() => applyDisciplineSuggestion(suggestion)}
-                        className={cn(
-                          "rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-left transition hover:border-[var(--primary)]/45 hover:bg-[var(--primary)]/5",
-                          selected && "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]",
-                        )}
-                      >
-                        <span className="block text-sm font-semibold text-[var(--foreground)]">{suggestion.name}</span>
-                        <span className="mt-1 line-clamp-2 block text-xs text-[var(--muted-foreground)]">
-                          {suggestion.description}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null}
+            <SportSuggestionPicker
+              suggestions={disciplineSuggestions}
+              selectedName={name}
+              onSelect={applyDisciplineSuggestion}
+            />
 
             <form
               onSubmit={onSubmit}
