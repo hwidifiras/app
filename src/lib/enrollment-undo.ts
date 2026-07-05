@@ -115,7 +115,7 @@ async function reverseCreatedPayments(
 
   for (const payment of payments) {
     if (payment.entryType !== "PAYMENT") continue;
-    const effectiveAmount = await getEffectivePaymentAmount(tx, payment.id);
+    const effectiveAmount = await getEffectivePaymentAmount(tx, payment.id, tenantId);
     if (effectiveAmount <= 0) continue;
 
     const reversal = await tx.payment.create({

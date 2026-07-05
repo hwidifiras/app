@@ -7,9 +7,10 @@ export function sumLedgerRows(payments: Array<Pick<Payment, "amount">>): number 
 export async function getSubscriptionLedgerTotal(
   tx: Prisma.TransactionClient,
   memberSubscriptionId: string,
+  tenantId?: string | null,
 ): Promise<number> {
   const aggregate = await tx.payment.aggregate({
-    where: { memberSubscriptionId },
+    where: { memberSubscriptionId, ...(tenantId ? { tenantId } : {}) },
     _sum: { amount: true },
   });
 
@@ -19,14 +20,15 @@ export async function getSubscriptionLedgerTotal(
 export async function getEffectivePaymentAmount(
   tx: Prisma.TransactionClient,
   paymentId: string,
+  tenantId?: string | null,
 ): Promise<number> {
   const [payment, corrections] = await Promise.all([
-    tx.payment.findUnique({
-      where: { id: paymentId },
+    tx.payment.findFirst({
+      where: { id: paymentId, ...(tenantId ? { tenantId } : {}) },
       select: { amount: true },
     }),
     tx.payment.aggregate({
-      where: { correctsPaymentId: paymentId },
+      where: { correctsPaymentId: paymentId, ...(tenantId ? { tenantId } : {}) },
       _sum: { amount: true },
     }),
   ]);

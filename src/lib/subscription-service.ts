@@ -41,10 +41,13 @@ export async function expireActiveSubscriptionForSportWithSnapshot(
     return { expiredId: null as string | null, remainingSessions: 0 };
   }
 
-  await tx.memberSubscription.update({
-    where: { id: active.id },
+  const updateResult = await tx.memberSubscription.updateMany({
+    where: { id: active.id, ...(tenantId ? { tenantId } : {}) },
     data: { status: "EXPIRED" },
   });
+  if (updateResult.count !== 1) {
+    throw new Error("SUBSCRIPTION_SCOPE_MISMATCH");
+  }
 
   return { expiredId: active.id, remainingSessions: active.remainingSessions };
 }

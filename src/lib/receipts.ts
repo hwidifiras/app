@@ -134,7 +134,7 @@ async function nextReceiptSettings(
   }
 
   const updated = await tx.clubSettings.update({
-    where: { id: existing.id },
+    where: tenantId ? { tenantId } : { id: existing.id },
     data: { nextReceiptSequence: { increment: 1 } },
     select: {
       id: true,
@@ -184,7 +184,7 @@ export async function issueReceiptForPayment(
   const { settings, sequence } = await nextReceiptSettings(tx, tenantId);
   const receiptNumber = formatReceiptNumber(settings.receiptPrefix, issuedAt, sequence);
   const verificationCode = generateReceiptVerificationCode();
-  const totalPaidAfter = await getSubscriptionLedgerTotal(tx, payment.memberSubscriptionId);
+  const totalPaidAfter = await getSubscriptionLedgerTotal(tx, payment.memberSubscriptionId, tenantId);
   const remainingAfter = Math.max(0, payment.memberSubscription.amount - totalPaidAfter);
 
   const snapshotWithoutReceipt = {
@@ -258,9 +258,13 @@ export async function issueReceiptForPayment(
     },
   };
 
-  return tx.receipt.update({
-    where: { id: created.id },
+  await tx.receipt.updateMany({
+    where: { id: created.id, ...(tenantId ? { tenantId } : {}) },
     data: { snapshotJson: JSON.stringify(finalSnapshot) },
+  });
+
+  return tx.receipt.findFirstOrThrow({
+    where: { id: created.id, ...(tenantId ? { tenantId } : {}) },
   });
 }
 
@@ -276,12 +280,16 @@ export async function voidReceiptForPayment(
 
   if (!receipt || receipt.status === "VOIDED") return null;
 
-  return tx.receipt.update({
-    where: { id: receipt.id },
+  await tx.receipt.updateMany({
+    where: { id: receipt.id, ...(tenantId ? { tenantId } : {}) },
     data: {
       status: "VOIDED",
       voidedAt: new Date(),
       voidReason: reason.trim(),
     },
+  });
+
+  return tx.receipt.findFirstOrThrow({
+    where: { id: receipt.id, ...(tenantId ? { tenantId } : {}) },
   });
 }

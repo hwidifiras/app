@@ -103,7 +103,7 @@ export async function POST(request: Request) {
         throw new Error("SUB_NOT_FOUND");
       }
 
-      const totalPaid = await getSubscriptionLedgerTotal(tx, memberSubscriptionId);
+      const totalPaid = await getSubscriptionLedgerTotal(tx, memberSubscriptionId, actor.tenantId);
       const newTotal = totalPaid + amount;
       const totalCheck = validateLedgerTotal(newTotal, subscription.amount);
 
@@ -266,10 +266,10 @@ export async function PATCH(request: Request) {
       if (!existing) throw new Error("PAYMENT_NOT_FOUND");
       if (existing.entryType !== "PAYMENT") throw new Error("LEDGER_ENTRY_IMMUTABLE");
 
-      const effectiveBefore = await getEffectivePaymentAmount(tx, paymentId);
+      const effectiveBefore = await getEffectivePaymentAmount(tx, paymentId, actor.tenantId);
       const correctedAmount = payload.amount ?? effectiveBefore;
       const delta = correctedAmount - effectiveBefore;
-      const totalBefore = await getSubscriptionLedgerTotal(tx, existing.memberSubscriptionId);
+      const totalBefore = await getSubscriptionLedgerTotal(tx, existing.memberSubscriptionId, actor.tenantId);
       const totalAfter = totalBefore + delta;
       const totalCheck = validateLedgerTotal(totalAfter, existing.memberSubscription.amount);
 
@@ -426,12 +426,12 @@ export async function DELETE(request: Request) {
       if (!existing) throw new Error("PAYMENT_NOT_FOUND");
       if (existing.entryType !== "PAYMENT") throw new Error("LEDGER_ENTRY_IMMUTABLE");
 
-      const effectiveAmount = await getEffectivePaymentAmount(tx, paymentId);
+      const effectiveAmount = await getEffectivePaymentAmount(tx, paymentId, actor.tenantId);
       if (effectiveAmount <= 0) {
         throw new Error("PAYMENT_ALREADY_REVERSED");
       }
 
-      const totalBefore = await getSubscriptionLedgerTotal(tx, existing.memberSubscriptionId);
+      const totalBefore = await getSubscriptionLedgerTotal(tx, existing.memberSubscriptionId, actor.tenantId);
       const totalAfter = totalBefore - effectiveAmount;
       const totalCheck = validateLedgerTotal(totalAfter, existing.memberSubscription.amount);
 
