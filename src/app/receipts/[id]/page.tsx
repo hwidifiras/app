@@ -9,15 +9,33 @@ import { prisma } from "@/lib/prisma";
 import { buildReceiptVerificationQrDataUrl } from "@/lib/receipt-qr";
 import { parseReceiptSnapshot } from "@/lib/receipts";
 import { buildReceiptVerificationUrl } from "@/lib/receipt-verification-url";
+import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function ReceiptPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const authUser = await getAuthUser();
+
+  if (!authUser) {
+    return (
+      <main className="app-shell py-4 md:py-8 print:bg-white print:p-0">
+        <PageHeader
+          overline="Caisse"
+          title="Reçu indisponible"
+          description="Connectez-vous pour consulter ce reçu."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
+
   const h = await headers();
-  const receipt = await prisma.receipt.findUnique({
-    where: { id },
+  const receipt = await prisma.receipt.findFirst({
+    where: { id, tenantId: authUser.tenantId },
     select: {
       id: true,
       receiptNumber: true,
