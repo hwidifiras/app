@@ -6,6 +6,7 @@ import { getAuthUser } from "@/lib/request-user";
 import { PageHeader } from "@/components/ui/page-header";
 import { SettingsMetric } from "@/components/settings/settings-hub";
 import { UserCreateForm } from "@/components/settings/user-create-form";
+import { UserRoleGuide } from "@/components/settings/user-role-guide";
 import { UsersListClient } from "@/components/settings/users-list-client";
 import { deriveUserRoleIntent } from "@/lib/user-role-intent";
 
@@ -79,6 +80,8 @@ export default async function SettingsUsersPage() {
         <SettingsMetric label="Coach" value={roleCounts.coach} detail="Pointage et suivi cours" />
         <SettingsMetric label="Désactivés" value={roleCounts.inactive} detail="Accès coupés immédiatement" />
       </section>
+
+      <UserRoleGuide />
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(380px,0.85fr)]">
         <section className="panel order-2 p-4 xl:order-1 md:p-6">
