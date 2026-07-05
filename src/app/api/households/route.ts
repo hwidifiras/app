@@ -30,8 +30,9 @@ function householdAuditSnapshot(household: {
 }
 
 export async function GET(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "members.manage");
+    actor = await requirePermission(request, "members.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -40,8 +41,8 @@ export async function GET(request: Request) {
   const memberId = searchParams.get("memberId")?.trim();
 
   if (memberId) {
-    const link = await prisma.householdMember.findUnique({
-      where: { memberId },
+    const link = await prisma.householdMember.findFirst({
+      where: { tenantId: actor.tenantId, memberId },
       include: {
         household: {
           include: {
@@ -66,8 +67,10 @@ export async function GET(request: Request) {
   }
 
   const households = await prisma.household.findMany({
+    where: { tenantId: actor.tenantId },
     include: {
       members: {
+        where: { tenantId: actor.tenantId },
         include: {
           member: {
             select: { id: true, firstName: true, lastName: true, phone: true },
@@ -105,11 +108,20 @@ export async function POST(request: Request) {
     );
   }
 
-  const existing = await prisma.householdMember.findUnique({
-    where: { memberId: parsed.data.memberId },
+  const existing = await prisma.householdMember.findFirst({
+    where: { tenantId: actor.tenantId, memberId: parsed.data.memberId },
   });
   if (existing) {
     return NextResponse.json({ error: "Ce membre appartient déjà à un foyer" }, { status: 409 });
+  }
+
+  const member = await prisma.member.findFirst({
+    where: { id: parsed.data.memberId, tenantId: actor.tenantId },
+    select: { id: true },
+  });
+
+  if (!member) {
+    return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
   }
 
   try {
@@ -144,7 +156,7 @@ export async function POST(request: Request) {
           entityType: "Household",
           entityId: created.id,
           userId: actor.id,
-          details: JSON.stringify({ after: householdAuditSnapshot(created) }),
+          details: JSON.stringify({ tenantId: actor.tenantId, after: householdAuditSnapshot(created) }),
         },
       });
 
@@ -180,11 +192,30 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const existing = await prisma.householdMember.findUnique({
-    where: { memberId: addParsed.data.memberId },
+  const existing = await prisma.householdMember.findFirst({
+    where: { tenantId: actor.tenantId, memberId: addParsed.data.memberId },
   });
   if (existing) {
     return NextResponse.json({ error: "Ce membre appartient déjà à un foyer" }, { status: 409 });
+  }
+
+  const [household, member] = await Promise.all([
+    prisma.household.findFirst({
+      where: { id: addParsed.data.householdId, tenantId: actor.tenantId },
+      select: { id: true },
+    }),
+    prisma.member.findFirst({
+      where: { id: addParsed.data.memberId, tenantId: actor.tenantId },
+      select: { id: true },
+    }),
+  ]);
+
+  if (!household) {
+    return NextResponse.json({ error: "Foyer introuvable" }, { status: 404 });
+  }
+
+  if (!member) {
+    return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
   }
 
   try {
@@ -210,6 +241,7 @@ export async function PATCH(request: Request) {
           entityId: created.householdId,
           userId: actor.id,
           details: JSON.stringify({
+            tenantId: actor.tenantId,
             householdId: created.householdId,
             householdLabel: created.household.label,
             memberId: created.memberId,

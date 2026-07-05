@@ -22,14 +22,16 @@ const createUserSchema = z.object({
 });
 
 export async function GET(request: Request) {
+  let admin;
   try {
-    await requireAdmin(request);
+    admin = await requireAdmin(request);
   } catch (e) {
     const code = e instanceof Error ? e.message : "FORBIDDEN";
     return NextResponse.json({ error: code === "UNAUTHENTICATED" ? "Non authentifié" : "Accès refusé" }, { status: code === "UNAUTHENTICATED" ? 401 : 403 });
   }
 
   const users = await prisma.user.findMany({
+    where: { tenantId: admin.tenantId },
     orderBy: [{ role: "asc" }, { createdAt: "desc" }],
     select: {
       id: true,
@@ -38,7 +40,7 @@ export async function GET(request: Request) {
       role: true,
       isActive: true,
       createdAt: true,
-      permissions: { select: { key: true } },
+      permissions: { where: { tenantId: admin.tenantId }, select: { key: true } },
     },
     take: 200,
   });
@@ -116,7 +118,7 @@ export async function POST(request: Request) {
       entityType: "User",
       entityId: user.id,
       userId: admin.id,
-      details: JSON.stringify({ email: user.email, role: user.role, permissions }),
+      details: JSON.stringify({ tenantId: admin.tenantId, email: user.email, role: user.role, permissions }),
     },
   });
 
