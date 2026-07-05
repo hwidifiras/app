@@ -6,6 +6,7 @@ import {
   PAYMENT_REMINDER_COOLDOWN_DAYS,
   type DashboardDebtReminderRow,
 } from "@/lib/payment-reminder-types";
+import { getRequiredTenantId } from "@/lib/tenant-context";
 
 export const PAYMENT_REMINDER_AUDIT_ACTION = "PAYMENT_REMINDER_SENT";
 export { PAYMENT_REMINDER_COOLDOWN_DAYS, type DashboardDebtReminderRow };
@@ -33,9 +34,11 @@ export async function getLastReminderDatesByMemberIds(
   memberIds: string[],
 ): Promise<Map<string, Date>> {
   if (memberIds.length === 0) return new Map();
+  const tenantId = getRequiredTenantId();
 
   const logs = await prisma.auditLog.findMany({
     where: {
+      tenantId,
       action: PAYMENT_REMINDER_AUDIT_ACTION,
       entityType: "Member",
       entityId: { in: memberIds },
@@ -59,9 +62,10 @@ export async function enrichDebtsWithReminderMeta(
 ): Promise<DashboardDebtReminderRow[]> {
   const now = options.now ?? new Date();
   const lastReminders = await getLastReminderDatesByMemberIds(debts.map((debt) => debt.memberId));
+  const tenantId = getRequiredTenantId();
 
   const members = await prisma.member.findMany({
-    where: { id: { in: debts.map((debt) => debt.memberId) } },
+    where: { tenantId, id: { in: debts.map((debt) => debt.memberId) } },
     select: { id: true, email: true },
   });
   const emailByMember = new Map(members.map((member) => [member.id, member.email?.trim() || null]));
@@ -81,8 +85,9 @@ export async function enrichDebtsWithReminderMeta(
 }
 
 async function loadMemberDebtDetails(memberId: string, now = new Date()) {
+  const tenantId = getRequiredTenantId();
   const subscriptions = await prisma.memberSubscription.findMany({
-    where: { memberId, status: "ACTIVE" },
+    where: { tenantId, memberId, status: "ACTIVE" },
     select: {
       id: true,
       amount: true,
@@ -127,6 +132,7 @@ export async function sendPaymentReminderToMember(
   memberId: string,
   options: { actorUserId?: string | null; force?: boolean; now?: Date } = {},
 ): Promise<PaymentReminderResult> {
+  const tenantId = getRequiredTenantId();
   const now = options.now ?? new Date();
 
   if (!isPaymentReminderEmailConfigured()) {
@@ -179,11 +185,13 @@ export async function sendPaymentReminderToMember(
 
   await prisma.auditLog.create({
     data: {
+      tenantId,
       action: PAYMENT_REMINDER_AUDIT_ACTION,
       entityType: "Member",
       entityId: memberId,
       userId: options.actorUserId ?? null,
       details: JSON.stringify({
+        tenantId,
         email: details.email,
         totalDebtCents: details.totalDebtCents,
         lines: details.lines,

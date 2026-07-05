@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getWeekRangeUtc } from "@/lib/dates";
 import type { GroupTypeValue } from "@/lib/demographics";
+import { getRequiredTenantId } from "@/lib/tenant-context";
 
 export const RECOVERY_OVERRIDE_PREFIX = "Récupération";
 
@@ -10,10 +11,12 @@ export async function countWeeklySlotUsage(
   memberSubscriptionId: string,
   sessionDate: Date,
 ): Promise<number> {
+  const tenantId = getRequiredTenantId();
   const { start, end } = getWeekRangeUtc(sessionDate);
 
   return prisma.attendance.count({
     where: {
+      tenantId,
       memberSubscriptionId,
       status: { in: [...WEEKLY_SLOT_STATUSES] },
       session: {
@@ -35,10 +38,12 @@ export async function findRecoveryEligibleAbsences(params: {
   targetGroupType: GroupTypeValue;
   targetSessionDate: Date;
 }) {
+  const tenantId = getRequiredTenantId();
   const { start, end } = getWeekRangeUtc(params.targetSessionDate);
 
   const absences = await prisma.attendance.findMany({
     where: {
+      tenantId,
       memberId: params.memberId,
       status: "ABSENT",
       session: {
@@ -68,6 +73,7 @@ export async function findRecoveryEligibleAbsences(params: {
 
   const recoveriesThisWeek = await prisma.attendance.findMany({
     where: {
+      tenantId,
       memberId: params.memberId,
       status: "OVERRIDE",
       session: {
@@ -108,8 +114,9 @@ export async function validateRecoveryCheckIn(params: {
 }
 
 export async function listRecoveryCandidatesForSession(sessionId: string) {
-  const session = await prisma.session.findUnique({
-    where: { id: sessionId },
+  const tenantId = getRequiredTenantId();
+  const session = await prisma.session.findFirst({
+    where: { id: sessionId, tenantId },
     select: {
       id: true,
       sessionDate: true,
@@ -124,6 +131,7 @@ export async function listRecoveryCandidatesForSession(sessionId: string) {
 
   const absences = await prisma.attendance.findMany({
     where: {
+      tenantId,
       status: "ABSENT",
       session: {
         id: { not: session.id },
@@ -152,6 +160,7 @@ export async function listRecoveryCandidatesForSession(sessionId: string) {
 
   const recoveries = await prisma.attendance.findMany({
     where: {
+      tenantId,
       status: "OVERRIDE",
       overrideReason: { startsWith: RECOVERY_OVERRIDE_PREFIX },
       session: { sessionDate: { gte: start, lt: end } },

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getAppTimeZone } from "@/lib/dates";
 import { getClubSettings } from "@/lib/club-settings";
+import { getRequiredTenantId } from "@/lib/tenant-context";
 
 function timeToMinutes(time: string): number {
   const [hours, minutes] = time.split(":").map((value) => Number(value));
@@ -38,8 +39,10 @@ export async function findSessionSlotConflict(params: {
   startTime: string;
   excludeIds: string[];
 }) {
+  const tenantId = getRequiredTenantId();
   return prisma.session.findFirst({
     where: {
+      tenantId,
       groupId: params.groupId,
       sessionDate: params.sessionDate,
       startTime: params.startTime,
@@ -75,8 +78,9 @@ function sameRoom(roomA: string | null | undefined, roomB: string | null | undef
 }
 
 async function coachIsQualifiedForAllSports(coachId: string, sportIds: string[]) {
-  const coach = await prisma.coach.findUnique({
-    where: { id: coachId },
+  const tenantId = getRequiredTenantId();
+  const coach = await prisma.coach.findFirst({
+    where: { id: coachId, tenantId },
     select: {
       sportId: true,
       qualifications: { select: { sportId: true } },
@@ -102,12 +106,14 @@ async function findOverlappingSessions(params: {
   room?: string;
 }): Promise<SessionConflictCandidate[]> {
   const where: {
+    tenantId: string;
     sessionDate: Date;
     id?: { not: string } | { notIn: string[] };
     coachId?: string;
     room?: string;
     status?: { not: "CANCELLED" };
   } = {
+    tenantId: getRequiredTenantId(),
     sessionDate: params.sessionDate,
     status: { not: "CANCELLED" },
     ...(params.excludeIds.length === 1

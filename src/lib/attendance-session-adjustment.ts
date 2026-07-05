@@ -1,5 +1,7 @@
 import type { AttendanceStatus, Prisma } from "@prisma/client";
 
+import { getRequiredTenantId } from "@/lib/tenant-context";
+
 export function statusConsumesSession(
   status: AttendanceStatus,
   absentConsumesSession: boolean,
@@ -29,6 +31,7 @@ export async function applySessionBalanceDelta(
     sportId: string;
   },
 ): Promise<{ memberSubscriptionId: string | null }> {
+  const tenantId = getRequiredTenantId();
   if (params.delta === 0) {
     return { memberSubscriptionId: params.memberSubscriptionId };
   }
@@ -39,16 +42,20 @@ export async function applySessionBalanceDelta(
     if (!subscriptionId) {
       return { memberSubscriptionId: null };
     }
-    await tx.memberSubscription.update({
-      where: { id: subscriptionId },
+    const updated = await tx.memberSubscription.updateMany({
+      where: { id: subscriptionId, tenantId },
       data: { remainingSessions: { increment: params.delta } },
     });
+    if (updated.count === 0) {
+      throw new Error("SUBSCRIPTION_NOT_FOUND");
+    }
     return { memberSubscriptionId: subscriptionId };
   }
 
   if (!subscriptionId) {
     const active = await tx.memberSubscription.findFirst({
       where: {
+        tenantId,
         memberId: params.memberId,
         sportId: params.sportId,
         status: "ACTIVE",
@@ -64,7 +71,7 @@ export async function applySessionBalanceDelta(
   }
 
   const updated = await tx.memberSubscription.updateMany({
-    where: { id: subscriptionId, remainingSessions: { gt: 0 } },
+    where: { id: subscriptionId, tenantId, remainingSessions: { gt: 0 } },
     data: { remainingSessions: { decrement: Math.abs(params.delta) } },
   });
 

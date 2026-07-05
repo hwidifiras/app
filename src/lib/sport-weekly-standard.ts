@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { isScheduleActiveOnDate, scheduleWindowWhere } from "@/lib/assignment-policy";
 import { getWeekRangeUtc } from "@/lib/dates";
+import { getRequiredTenantId } from "@/lib/tenant-context";
 
 type DayOfWeekValue = "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY";
 
@@ -29,9 +30,10 @@ function countSchedulesActiveInWeek(
 
 /** Max weekly schedule slots among active groups for a sport. */
 export async function getSportMaxWeeklySessions(sportId: string, referenceDate: Date = new Date()): Promise<number | null> {
+  const tenantId = getRequiredTenantId();
   const { start, end } = getWeekRangeUtc(referenceDate);
   const groups = await prisma.group.findMany({
-    where: { sportId, isActive: true },
+    where: { tenantId, sportId, isActive: true },
     select: {
       schedules: {
         where: scheduleWindowWhere(start, end),
@@ -49,9 +51,10 @@ export async function getSportMaxWeeklySessions(sportId: string, referenceDate: 
 }
 
 export async function getGroupWeeklyScheduleCount(groupId: string, referenceDate: Date = new Date()): Promise<number> {
+  const tenantId = getRequiredTenantId();
   const { start, end } = getWeekRangeUtc(referenceDate);
   const schedules = await prisma.groupSchedule.findMany({
-    where: { groupId, ...scheduleWindowWhere(start, end) },
+    where: { tenantId, groupId, ...scheduleWindowWhere(start, end) },
     select: { dayOfWeek: true, effectiveFrom: true, effectiveTo: true },
   });
   return countSchedulesActiveInWeek(schedules, start);

@@ -7,6 +7,7 @@ import {
   type ActiveSubscriptionView,
 } from "@/lib/membership-rules";
 import { prisma } from "@/lib/prisma";
+import { getRequiredTenantId } from "@/lib/tenant-context";
 
 export type AttendancePolicyFailure = {
   status: number;
@@ -45,8 +46,9 @@ export function sessionMutationFailure(
 }
 
 export async function activeMemberFailure(memberId: string): Promise<AttendancePolicyFailure | null> {
-  const member = await prisma.member.findUnique({
-    where: { id: memberId },
+  const tenantId = getRequiredTenantId();
+  const member = await prisma.member.findFirst({
+    where: { id: memberId, tenantId },
     select: { status: true },
   });
 

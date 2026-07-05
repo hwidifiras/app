@@ -59,9 +59,10 @@ export async function validateCoachSportEligibility(params: {
   actor: RequestUser;
   overrideReason?: string | null;
 }): Promise<CoachSportEligibilityResult> {
+  const tenantId = params.actor.tenantId;
   const [coach, sport] = await Promise.all([
-    prisma.coach.findUnique({
-      where: { id: params.coachId },
+    prisma.coach.findFirst({
+      where: { id: params.coachId, tenantId },
       select: {
         id: true,
         firstName: true,
@@ -71,8 +72,8 @@ export async function validateCoachSportEligibility(params: {
         qualifications: { select: { sportId: true } },
       },
     }),
-    prisma.sport.findUnique({
-      where: { id: params.sportId },
+    prisma.sport.findFirst({
+      where: { id: params.sportId, tenantId },
       select: { id: true, name: true, isActive: true },
     }),
   ]);
