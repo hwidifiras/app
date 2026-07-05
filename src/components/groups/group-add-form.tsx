@@ -7,25 +7,11 @@ import { FormActions, FormSection, FormSectionNav } from "@/components/ui/form-l
 import { GroupMemberSelector } from "@/components/groups/group-member-selector";
 import { GroupPolicyPicker } from "@/components/groups/group-policy-picker";
 import { GroupSetupSummary } from "@/components/groups/group-setup-summary";
+import { formatCoachName, formatCoachOptionLabel, isCoachQualifiedForSport } from "@/lib/coach-display";
 import { isMemberAllowedInGroupPolicy, type GroupGenderPolicyValue, type GroupTypeValue } from "@/lib/demographics";
 import { CoachDto } from "@/types/coach";
 import { MemberDto } from "@/types/member";
 import { SportDto } from "@/types/sport";
-
-function formatCoachOptionLabel(coach: CoachDto) {
-  const name = `${coach.firstName} ${coach.lastName}`;
-  const qualified = coach.qualifiedSports.map((sport) => sport.name).join(", ");
-  return qualified ? `${name} - ${qualified}` : coach.sportName ? `${name} - ${coach.sportName}` : name;
-}
-
-function formatCoachName(coach: CoachDto | undefined) {
-  return coach ? `${coach.firstName} ${coach.lastName}` : null;
-}
-
-function coachIsQualifiedForSport(coach: CoachDto | undefined, sportId: string) {
-  if (!coach || !sportId) return true;
-  return coach.qualifiedSportIds.includes(sportId);
-}
 
 export function GroupAddForm({
   sportsOptions,
@@ -77,7 +63,7 @@ export function GroupAddForm({
   const selectedCoach = coachesOptions.find((coach) => coach.id === coachId);
   const selectedSport = sports.find((sport) => sport.id === sportId);
   const compatibleMemberCount = membersOptions.filter((member) => isMemberAllowed(member)).length;
-  const needsCoachSportOverride = !coachIsQualifiedForSport(selectedCoach, sportId);
+  const needsCoachSportOverride = !isCoachQualifiedForSport(selectedCoach, sportId);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

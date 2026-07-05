@@ -46,6 +46,7 @@ import {
   DEFAULT_WORKING_DAYS,
   type ClubDay,
 } from "@/lib/club-working-days";
+import { formatCoachOptionLabel, isCoachQualifiedForSport } from "@/lib/coach-display";
 import { cn } from "@/lib/utils";
 
 type SessionsPlannerProps = {
@@ -82,20 +83,6 @@ type SessionGenerationPreview = {
   createdCount: number;
   skippedCount: number;
 };
-
-function coachOptionLabel(coach: SessionsPlannerProps["coachesOptions"][number]) {
-  const qualified = coach.qualifiedSports.map((sport) => sport.name).join(", ");
-  const name = `${coach.firstName} ${coach.lastName}`;
-  return qualified ? `${name} - ${qualified}` : name;
-}
-
-function coachIsQualifiedForSport(
-  coach: SessionsPlannerProps["coachesOptions"][number] | undefined,
-  sportId?: string,
-) {
-  if (!coach || !sportId) return true;
-  return coach.qualifiedSportIds.includes(sportId);
-}
 
 function getWeekDays(weekStartIso: string) {
   const start = new Date(`${weekStartIso}T12:00:00.000Z`);
@@ -173,7 +160,7 @@ export function SessionsPlanner({
     editingSession &&
       editForm.coachId &&
       editCoachChanged &&
-      !coachIsQualifiedForSport(selectedEditCoach, editingSession.groupSportId),
+      !isCoachQualifiedForSport(selectedEditCoach, editingSession.groupSportId),
   );
 
   useEffect(() => {
@@ -1391,7 +1378,7 @@ export function SessionsPlanner({
                 >
                   <option value="">Aucun</option>
                   {coachesOptions.map((coach) => (
-                    <option key={coach.id} value={coach.id}>{coachOptionLabel(coach)}</option>
+                    <option key={coach.id} value={coach.id}>{formatCoachOptionLabel(coach)}</option>
                   ))}
                 </select>
                 {needsCoachSportOverride ? (
