@@ -57,7 +57,7 @@ const ACTION_LABELS: Record<string, string> = {
   ACCOUNT_UPDATED: "Mon compte mis à jour",
   ATTENDANCE_CREATED: "Présence enregistrée",
   ATTENDANCE_UPDATED: "Présence modifiée",
-  ATTENDANCE_DELETED: "Présence supprimée",
+  ATTENDANCE_DELETED: "Pointage annulé",
   SESSION_POSTPONED: "Séance reportée",
   ADMIN_BOOTSTRAPPED: "Premier administrateur créé",
 };

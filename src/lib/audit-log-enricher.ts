@@ -313,7 +313,11 @@ export async function enrichAuditLogPresentation(
         }
       }
 
-      const status = (details?.status as string) ?? (details?.newStatus as string) ?? att?.status;
+      const status =
+        (details?.status as string) ??
+        (details?.newStatus as string) ??
+        (details?.previousStatus as string) ??
+        att?.status;
       if (status) rows.push({ label: "Statut", value: STATUS_LABELS[status] ?? status });
 
       if (log.action === "ATTENDANCE_UPDATED" && details?.oldStatus && details?.newStatus) {
@@ -325,6 +329,13 @@ export async function enrichAuditLogPresentation(
 
       if (details?.overrideReason) {
         rows.push({ label: "Motif exception", value: String(details.overrideReason) });
+      }
+
+      if (log.action === "ATTENDANCE_DELETED") {
+        if (details?.reason) rows.push({ label: "Motif", value: String(details.reason) });
+        if (typeof details?.sessionBalanceDelta === "number") {
+          rows.push({ label: "Solde séances", value: `${details.sessionBalanceDelta > 0 ? "+" : ""}${details.sessionBalanceDelta}` });
+        }
       }
 
       if (rows.length) sections.push({ title: "Pointage", rows });

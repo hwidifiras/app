@@ -46,7 +46,7 @@ The codebase already has `src/lib/recovery-policy.ts` with this shared vocabular
 | Schedule templates | `DELETE /api/schedule-templates/[id]` | Sets `isActive=false`, writes audit. | Good. |
 | Sessions | `DELETE /api/sessions/[id]` | Cancels session only if not completed and no attendances block edit, writes audit. | Good. |
 | Attendance creation/update | `POST/PATCH /api/attendances` | Uses attendance/session policies and writes audit. | Good, but finalization correction UX still needs review. |
-| Attendance delete | `DELETE /api/attendances` | Physically deletes the attendance row after session-state checks, restores session balance, writes audit. | Medium: behavior is safeguarded, but "delete" removes the pointage row. Consider future correction/void row if pointage history must be fully append-only. |
+| Attendance delete | `DELETE /api/attendances` | Physically deletes the attendance row after session-state checks, restores session balance, and now writes a richer `Pointage annule` audit snapshot with previous status, override reason, checker, checked time, subscription, member, session, and balance effect. | Medium-good: behavior is safeguarded and now recoverable from logs, but perfect append-only pointage history still needs a schema change. |
 | Data import apply | `POST /api/data-import` and `/api/data-import/bulk` | Applies import with audit details and rollback metadata. | Good for migration mode. |
 | Data import rollback | `rollbackDataImport()` | Physically deletes imported member/subscription/assignment/payment/attendance only if no new activity exists, then writes rollback audit. | Acceptable `draft-delete`, because rollback is blocked after real activity. |
 | Disciplines/coaches/formulas/offers | catalog routes | Delete paths deactivate/archive and write audit. | Good. |
@@ -56,7 +56,8 @@ The codebase already has `src/lib/recovery-policy.ts` with this shared vocabular
 
 1. Attendance delete should be reviewed as a product decision:
    - Current behavior is guarded and audited.
-   - If the client wants perfect pointage history, change delete into `ATTENDANCE_VOIDED` or `ATTENDANCE_CORRECTED` with a preserved row.
+   - Audit details now preserve the previous pointage snapshot.
+   - If the client wants perfect append-only pointage history, change delete into `ATTENDANCE_VOIDED` or `ATTENDANCE_CORRECTED` with a preserved row and schema support.
 
 2. Session edits with existing business activity should stay conservative:
    - Current cancellation checks attendances.

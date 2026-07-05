@@ -57,6 +57,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - `data-import-wizard.tsx` now delegates the import mode and recent rollback list UI to `data-import-status-ui.tsx`, keeping import actions in the wizard while reducing presentation markup.
 - A broader product-readiness roadmap now exists at `docs/audits/product-readiness-roadmap-2026-07-05.md`, covering recoverability, receipts, UI/UX consistency, settings polish, group/coach/enrollment rules, and code organization.
 - A mutation recoverability audit now exists at `docs/audits/mutation-recoverability-audit-2026-07-05.md`, mapping payment, enrollment, attendance, sessions, schedules, group assignments, data import, and catalog mutations to the recovery vocabulary.
+- Attendance undo/cancellation now records a richer audit snapshot and is presented as `Pointage annulé` instead of `Présence supprimée`.
 
 ## Current Product Fingerprint To Reuse
 
@@ -86,7 +87,7 @@ Audit every mutation route under `src/app/api` and classify it:
 Highest-risk routes to re-check next:
 
 - attendance corrections after finalization;
-- attendance delete is guarded and audited, but still physically removes the attendance row; decide whether to preserve a voided/corrected row instead;
+- attendance delete is guarded and now records a detailed previous-state audit snapshot, but still physically removes the attendance row; decide whether to preserve a voided/corrected row in a future schema pass;
 - session edit audit coverage beyond cancellation;
 - group schedule generation preview and future-session effects;
 - subscription edit/cancel with existing payments and assignments;
@@ -182,6 +183,7 @@ Latest UI settings checkpoint:
 - `schedule-templates-manager.tsx` UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `data-import-wizard.tsx` bulk preview UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `data-import-wizard.tsx` status/rollback UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
+- Attendance undo audit enrichment passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
 
 Start a disposable local PostgreSQL test database, or set `TEST_DATABASE_URL`, before relying on `npm.cmd test`.

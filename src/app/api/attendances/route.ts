@@ -443,6 +443,9 @@ export async function PATCH(request: Request) {
       select: {
         memberId: true,
         status: true,
+        overrideReason: true,
+        checkedBy: true,
+        checkedAt: true,
         memberSubscriptionId: true,
         session: {
           select: {
@@ -685,6 +688,9 @@ export async function DELETE(request: Request) {
       select: {
         memberId: true,
         status: true,
+        overrideReason: true,
+        checkedBy: true,
+        checkedAt: true,
         memberSubscriptionId: true,
         session: {
           select: {
@@ -753,9 +759,18 @@ export async function DELETE(request: Request) {
           userId: actor.id,
           details: JSON.stringify({
             deletedAt: new Date().toISOString(),
+            reason: "Annulation du pointage",
             previousStatus: existing.status,
+            previous: {
+              status: existing.status,
+              overrideReason: existing.overrideReason,
+              checkedBy: existing.checkedBy,
+              checkedAt: existing.checkedAt.toISOString(),
+              memberSubscriptionId: existing.memberSubscriptionId,
+            },
             memberId: existing.memberId,
             sessionId: existing.session.id,
+            memberSubscriptionId: existing.memberSubscriptionId,
             sessionBalanceDelta: creditDelta,
           }),
         },
