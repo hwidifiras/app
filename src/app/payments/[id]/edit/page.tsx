@@ -4,21 +4,38 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { PaymentEditForm } from "@/components/payments/payment-edit-form";
 import { buildReceiptDeliveryStatus, RECEIPT_EMAIL_AUDIT_ACTIONS } from "@/lib/receipt-delivery-status";
+import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function EditPaymentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const authUser = await getAuthUser();
+
+  if (!authUser) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Ventes"
+          title="Correction paiement"
+          description="Connectez-vous pour corriger un paiement."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
 
   let hasError = false;
   let payment: Awaited<ReturnType<typeof getPayment>> = null;
   let receiptDeliveryLogs: Awaited<ReturnType<typeof getReceiptDeliveryLogs>> = [];
 
   try {
-    payment = await getPayment(id);
+    payment = await getPayment(id, authUser.tenantId);
     if (payment?.receipt) {
-      receiptDeliveryLogs = await getReceiptDeliveryLogs(payment.receipt.id);
+      receiptDeliveryLogs = await getReceiptDeliveryLogs(payment.receipt.id, authUser.tenantId);
     }
   } catch {
     hasError = true;
@@ -67,9 +84,9 @@ export default async function EditPaymentPage({ params }: { params: Promise<{ id
   );
 }
 
-async function getPayment(id: string) {
-  return await prisma.payment.findUnique({
-    where: { id },
+async function getPayment(id: string, tenantId: string) {
+  return await prisma.payment.findFirst({
+    where: { id, tenantId },
     include: {
       memberSubscription: {
         select: {
@@ -92,9 +109,10 @@ async function getPayment(id: string) {
   });
 }
 
-async function getReceiptDeliveryLogs(receiptId: string) {
+async function getReceiptDeliveryLogs(receiptId: string, tenantId: string) {
   const logs = await prisma.auditLog.findMany({
     where: {
+      tenantId,
       entityType: "Receipt",
       entityId: receiptId,
       action: { in: [...RECEIPT_EMAIL_AUDIT_ACTIONS] },
@@ -105,7 +123,7 @@ async function getReceiptDeliveryLogs(receiptId: string) {
   const userIds = [...new Set(logs.map((log) => log.userId).filter((userId): userId is string => Boolean(userId)))];
   const users = userIds.length
     ? await prisma.user.findMany({
-        where: { id: { in: userIds } },
+        where: { tenantId, id: { in: userIds } },
         select: { id: true, name: true, email: true },
       })
     : [];
