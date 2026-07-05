@@ -19,6 +19,9 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Enrollment recovery now reverses payments, voids receipts, cancels subscriptions, closes assignments, and archives newly created members where applicable.
 - Catalog records for disciplines, coaches, and formulas are deactivated instead of physically deleted in normal flows.
 - Receipts are created for original payment entries and voided when the original payment is corrected or reversed.
+- Group schedules are closed with an end date and audit trail instead of being physically deleted.
+- Session cancellation keeps the session row and now writes an actor-linked audit entry.
+- Attendance undo keeps its balance adjustment and audit entry inside the same transaction.
 
 ### Receipts
 
@@ -73,7 +76,8 @@ Audit every mutation route under `src/app/api` and classify it:
 Highest-risk routes to re-check next:
 
 - attendance corrections after finalization;
-- group schedule regeneration and future sessions;
+- session edit audit coverage beyond cancellation;
+- group schedule generation preview and future-session effects;
 - subscription edit/cancel with existing payments and assignments;
 - offer edits after use;
 - data import rollback boundaries.
@@ -140,13 +144,15 @@ Future gym-management add-on should not fork the whole app. Prepare by:
 
 ## Known Verification Blocker
 
-`npm.cmd test` currently fails before tests execute because `scripts/test-db-reset.mjs` calls:
+`npm.cmd test` currently fails before tests execute because no local PostgreSQL server is listening at `localhost:5432`.
+
+The reset script now fails fast with:
 
 ```text
-npx prisma migrate reset --force --skip-seed
+Cannot reach local test database at localhost:5432.
+Start PostgreSQL for tests or set TEST_DATABASE_URL to a reachable disposable test database.
+Refused to run Prisma reset for gymday_test because the database server is unavailable.
 ```
-
-and Prisma returns `Schema engine error` against local PostgreSQL database `gymday_test` on `localhost:5432`.
 
 Recent checkpoints still passed:
 
@@ -154,4 +160,4 @@ Recent checkpoints still passed:
 - `npm.cmd run lint`
 - `npm.cmd run build`
 
-The test database reset needs its own repair pass before test results can be trusted again.
+Start a disposable local PostgreSQL test database, or set `TEST_DATABASE_URL`, before relying on `npm.cmd test`.
