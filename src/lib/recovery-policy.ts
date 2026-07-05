@@ -308,6 +308,15 @@ export const RECOVERY_POLICIES: RecoveryPolicy[] = [
   },
   {
     area: "data-import",
+    action: "data-import-mode-changed",
+    auditActions: ["DATA_IMPORT_MODE_ACTIVATED", "DATA_IMPORT_MODE_DEACTIVATED"],
+    normalUserCopy: "Mode reprise modifie",
+    behavior: "edit",
+    reasonRequired: false,
+    preservesHistory: true,
+  },
+  {
+    area: "data-import",
     action: "data-import-applied",
     auditActions: ["DATA_IMPORT_APPLIED"],
     normalUserCopy: "Import applique",

@@ -105,10 +105,30 @@ export async function POST(request: Request) {
 
   if (action === "activate") {
     const expiresAt = await activateDataImportMode(auth.user);
+    await prisma.auditLog.create({
+      data: {
+        tenantId: auth.user.tenantId,
+        action: "DATA_IMPORT_MODE_ACTIVATED",
+        entityType: "DataImportMode",
+        entityId: auth.user.tenantId,
+        userId: auth.user.id,
+        details: JSON.stringify({ expiresAt: expiresAt.toISOString() }),
+      },
+    });
     return NextResponse.json({ data: { active: true, expiresAt: expiresAt.toISOString() } });
   }
   if (action === "deactivate") {
     await deactivateDataImportMode();
+    await prisma.auditLog.create({
+      data: {
+        tenantId: auth.user.tenantId,
+        action: "DATA_IMPORT_MODE_DEACTIVATED",
+        entityType: "DataImportMode",
+        entityId: auth.user.tenantId,
+        userId: auth.user.id,
+        details: JSON.stringify({ deactivatedAt: new Date().toISOString() }),
+      },
+    });
     return NextResponse.json({ data: { active: false, expiresAt: null } });
   }
 

@@ -39,6 +39,8 @@ const ACTION_LABELS: Record<string, string> = {
   ENROLLMENT_REVERTED: "Inscription annulee",
   DATA_IMPORT_APPLIED: "Import applique",
   DATA_IMPORT_ROLLED_BACK: "Import annule",
+  DATA_IMPORT_MODE_ACTIVATED: "Mode reprise active",
+  DATA_IMPORT_MODE_DEACTIVATED: "Mode reprise desactive",
   GROUP_MEMBER_CREATED: "Affectation groupe creee",
   GROUP_MEMBER_UPDATED: "Affectation groupe modifiee",
   GROUP_MEMBER_CLOSED: "Affectation groupe fermee",

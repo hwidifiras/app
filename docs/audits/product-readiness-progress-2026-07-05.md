@@ -19,6 +19,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Initial payments created while adding a subscription now emit `PAYMENT_CREATED`, not only receipt/subscription logs.
 - Payments created inside enrollment now emit `PAYMENT_CREATED` before receipt issuance for both new and reused subscriptions.
 - Historical payments created during manual or Excel reprise now emit `PAYMENT_CREATED` inside the import transaction.
+- Activating or deactivating temporary reprise mode now writes an admin audit entry.
 - Enrollment recovery now reverses payments, voids receipts, cancels subscriptions, closes assignments, and archives newly created members where applicable.
 - New enrollments now persist a recovery key and undo snapshot in the enrollment audit log. Member detail can surface recent recoverable inscriptions and void them later with a required reason when no attendance has consumed the affected rows.
 - Direct member inscription now logs the created student and group assignment, not only the subscription/payment side effects.
@@ -289,6 +290,7 @@ Latest UI settings checkpoint:
 - Subscription initial-payment audit pass now logs `PAYMENT_CREATED` before issuing receipts in `/api/member-subscriptions`; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Enrollment payment audit pass now logs `PAYMENT_CREATED` before receipt issuance for new subscriptions and reused active subscriptions; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Data import payment audit pass now logs `PAYMENT_CREATED` for historical payments created by manual and Excel reprise; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
+- Data import mode audit pass now logs `DATA_IMPORT_MODE_ACTIVATED` and `DATA_IMPORT_MODE_DEACTIVATED`; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
 
 Start a disposable local PostgreSQL test database, or set `TEST_DATABASE_URL`, before relying on `npm.cmd test`.
