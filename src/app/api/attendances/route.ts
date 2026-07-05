@@ -744,20 +744,22 @@ export async function DELETE(request: Request) {
       }
 
       await tx.attendance.delete({ where: { id: attendanceId } });
-    });
 
-    await prisma.auditLog.create({
-      data: {
-        action: "ATTENDANCE_DELETED",
-        entityType: "Attendance",
-        entityId: attendanceId,
-        userId: actor?.id ?? null,
-        details: JSON.stringify({
-          deletedAt: new Date().toISOString(),
-          previousStatus: existing.status,
-          sessionBalanceDelta: creditDelta,
-        }),
-      },
+      await tx.auditLog.create({
+        data: {
+          action: "ATTENDANCE_DELETED",
+          entityType: "Attendance",
+          entityId: attendanceId,
+          userId: actor.id,
+          details: JSON.stringify({
+            deletedAt: new Date().toISOString(),
+            previousStatus: existing.status,
+            memberId: existing.memberId,
+            sessionId: existing.session.id,
+            sessionBalanceDelta: creditDelta,
+          }),
+        },
+      });
     });
 
     return NextResponse.json({ data: { id: attendanceId } });
