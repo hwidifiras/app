@@ -4,9 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   CalendarDays,
-  CalendarPlus,
-  ChevronLeft,
-  ChevronRight,
   RotateCcw,
 } from "lucide-react";
 
@@ -18,13 +15,18 @@ import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { UndoButton } from "@/components/ui/undo-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
-  PlanningLegend,
   SessionDetailPanel,
   SessionTile,
   formatDateFr,
   isTodaySession,
   sessionDateKey,
 } from "@/components/sessions/session-planner-ui";
+import {
+  PlanningCommandHeader,
+  PlanningSummaryStrip,
+  PlanningViewSwitcher,
+  type PlanningViewMode,
+} from "@/components/sessions/session-planner-command";
 import {
   SessionGenerationPanel,
   type SessionGenerationPreview,
@@ -52,7 +54,6 @@ import {
   type ClubDay,
 } from "@/lib/club-working-days";
 import { formatCoachOptionLabel, isCoachQualifiedForSport } from "@/lib/coach-display";
-import { cn } from "@/lib/utils";
 
 type SessionsPlannerProps = {
   initialSessions: SessionDto[];
@@ -74,8 +75,6 @@ type SessionsPlannerProps = {
   };
 };
 
-type PlanningViewMode = "week" | "day" | "coach" | "room";
-
 function getWeekDays(weekStartIso: string) {
   const start = new Date(`${weekStartIso}T12:00:00.000Z`);
 
@@ -92,13 +91,6 @@ function getWeekDays(weekStartIso: string) {
     };
   });
 }
-
-const planningViewModes: Array<{ value: PlanningViewMode; label: string }> = [
-  { value: "week", label: "Semaine" },
-  { value: "day", label: "Jour" },
-  { value: "coach", label: "Coach" },
-  { value: "room", label: "Salle" },
-];
 
 export function SessionsPlanner({
   initialSessions,
@@ -735,33 +727,16 @@ export function SessionsPlanner({
   return (
     <div>
       <section className="panel p-3 sm:p-5">
-        <div className="flex flex-col gap-4 border-b border-[var(--border)] pb-4 xl:flex-row xl:items-start xl:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--primary)]">Planning semaine</p>
-            <h2 className="mt-1 text-xl font-semibold text-[var(--foreground)]">Command center des cours</h2>
-            <p className="text-sm text-[var(--muted-foreground)]">
-              Semaine du {formatDateFr(`${weekStart}T12:00:00.000Z`)} au {formatDateFr(`${weekEnd}T12:00:00.000Z`)}
-            </p>
-          </div>
-
-          <div className="grid gap-2 sm:grid-cols-[auto_auto_auto_auto] xl:justify-end">
-            <button type="button" onClick={() => { void goToWeek(-1); }} className="btn btn-ghost px-3" aria-label="Semaine précédente">
-              <ChevronLeft className="size-4" />
-              <span className="hidden sm:inline">Précédente</span>
-            </button>
-            <button type="button" onClick={() => { void resetCurrentWeek(); }} className="btn btn-ghost">
-              Aujourd&apos;hui
-            </button>
-            <button type="button" onClick={() => { void goToWeek(1); }} className="btn btn-ghost px-3" aria-label="Semaine suivante">
-              <span className="hidden sm:inline">Suivante</span>
-              <ChevronRight className="size-4" />
-            </button>
-            <button type="button" onClick={() => { void previewSessionsGeneration(); }} disabled={generating || loading} className="btn btn-primary">
-              <CalendarPlus className="size-4" />
-              {generating ? "Analyse..." : "Générer depuis horaires"}
-            </button>
-          </div>
-        </div>
+        <PlanningCommandHeader
+          weekStart={weekStart}
+          weekEnd={weekEnd}
+          generating={generating}
+          loading={loading}
+          onPreviousWeek={() => { void goToWeek(-1); }}
+          onCurrentWeek={() => { void resetCurrentWeek(); }}
+          onNextWeek={() => { void goToWeek(1); }}
+          onPreviewGeneration={() => { void previewSessionsGeneration(); }}
+        />
 
         {generationPreview ? (
           <SessionGenerationPanel
@@ -773,79 +748,8 @@ export function SessionsPlanner({
           />
         ) : null}
 
-        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2">
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">Cours</p>
-            <p className="mt-1 text-lg font-bold text-[var(--foreground)]">{weekSummary.total}</p>
-          </div>
-          <div className="rounded-lg border border-[var(--warning)]/25 bg-[var(--warning)]/10 px-3 py-2">
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[var(--warning)]">À traiter</p>
-            <p className="mt-1 text-lg font-bold text-[var(--foreground)]">{weekSummary.needsFinalization}</p>
-          </div>
-          <div className="rounded-lg border border-[var(--success)]/25 bg-[var(--success)]/10 px-3 py-2">
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[var(--success)]">Terminés</p>
-            <p className="mt-1 text-lg font-bold text-[var(--foreground)]">{weekSummary.completed}</p>
-          </div>
-          <div className="rounded-lg border border-[var(--danger)]/25 bg-[var(--danger)]/10 px-3 py-2">
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[var(--danger)]">Conflits</p>
-            <p className="mt-1 text-lg font-bold text-[var(--foreground)]">{weekSummary.conflicts}</p>
-          </div>
-        </div>
-
-        {(weekSummary.noCoach > 0 || weekSummary.cancelledOrRescheduled > 0 || weekSummary.needsAttendance > 0) ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {weekSummary.needsAttendance > 0 ? (
-              <span className="rounded-full bg-[var(--primary)]/10 px-3 py-1 text-xs font-semibold text-[var(--primary)]">
-                {weekSummary.needsAttendance} à pointer
-              </span>
-            ) : null}
-            {weekSummary.noCoach > 0 ? (
-              <span className="rounded-full bg-[var(--warning)]/10 px-3 py-1 text-xs font-semibold text-[var(--warning)]">
-                {weekSummary.noCoach} sans coach
-              </span>
-            ) : null}
-            {weekSummary.cancelledOrRescheduled > 0 ? (
-              <span className="rounded-full bg-[var(--muted-surface)] px-3 py-1 text-xs font-semibold text-[var(--muted-foreground)]">
-                {weekSummary.cancelledOrRescheduled} annulé/reporté
-              </span>
-            ) : null}
-          </div>
-        ) : null}
-
-        {weekSummary.conflicts > 0 ? (
-          <div className="mt-3 flex flex-col gap-3 rounded-lg border border-[var(--danger)]/25 bg-[var(--danger)]/10 px-3 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <p className="font-bold text-[var(--danger)]">{weekSummary.conflicts} conflit{weekSummary.conflicts > 1 ? "s" : ""} à corriger</p>
-              <p className="mt-0.5 text-xs text-[var(--foreground)]">
-                Un coach ou une salle est utilisé sur deux cours qui se chevauchent.
-              </p>
-            </div>
-            <button type="button" onClick={focusFirstConflict} className="btn btn-ghost btn-sm shrink-0 border-[var(--danger)]/30 text-[var(--danger)]">
-              Voir le premier conflit
-            </button>
-          </div>
-        ) : null}
-
-        <div className="mt-3 flex flex-col gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-2 md:flex-row md:items-center md:justify-between">
-          <div className="grid grid-cols-2 gap-1 sm:flex sm:flex-wrap">
-            {planningViewModes.map((mode) => (
-              <button
-                key={mode.value}
-                type="button"
-                onClick={() => setViewMode(mode.value)}
-                className={cn(
-                  "rounded-md px-3 py-2 text-xs font-bold transition",
-                  viewMode === mode.value
-                    ? "bg-[var(--primary)] text-white shadow-sm"
-                    : "text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]",
-                )}
-              >
-                {mode.label}
-              </button>
-            ))}
-          </div>
-          <PlanningLegend />
-        </div>
+        <PlanningSummaryStrip summary={weekSummary} onFocusFirstConflict={focusFirstConflict} />
+        <PlanningViewSwitcher viewMode={viewMode} onViewModeChange={setViewMode} />
 
         <div className="list-toolbar sticky top-[57px] z-20 -mx-2 mt-3 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[3.5rem]">
           <div className="flex flex-col gap-2 md:flex-row md:items-end">
