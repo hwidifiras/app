@@ -267,8 +267,9 @@ async function generateSessionsForGroup(
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  let actor;
   try {
-    await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -318,29 +319,48 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Horaire introuvable" }, { status: 404 });
   }
 
-  const updated = await prisma.groupSchedule.update({
-    where: { id: scheduleId },
-    data: {
-      ...(parsed.data.dayOfWeek !== undefined ? { dayOfWeek: parsed.data.dayOfWeek } : {}),
-      ...(parsed.data.startTime !== undefined ? { startTime: parsed.data.startTime } : {}),
-      ...(parsed.data.durationMinutes !== undefined ? { durationMinutes: parsed.data.durationMinutes } : {}),
-      ...(parsed.data.effectiveFrom !== undefined
-        ? { effectiveFrom: new Date(parsed.data.effectiveFrom) }
-        : {}),
-      ...(parsed.data.effectiveTo === undefined
-        ? {}
-        : parsed.data.effectiveTo === null
-          ? { effectiveTo: null }
-          : { effectiveTo: new Date(parsed.data.effectiveTo) }),
-    },
+  const updated = await prisma.$transaction(async (tx) => {
+    const next = await tx.groupSchedule.update({
+      where: { id: scheduleId },
+      data: {
+        ...(parsed.data.dayOfWeek !== undefined ? { dayOfWeek: parsed.data.dayOfWeek } : {}),
+        ...(parsed.data.startTime !== undefined ? { startTime: parsed.data.startTime } : {}),
+        ...(parsed.data.durationMinutes !== undefined ? { durationMinutes: parsed.data.durationMinutes } : {}),
+        ...(parsed.data.effectiveFrom !== undefined
+          ? { effectiveFrom: new Date(parsed.data.effectiveFrom) }
+          : {}),
+        ...(parsed.data.effectiveTo === undefined
+          ? {}
+          : parsed.data.effectiveTo === null
+            ? { effectiveTo: null }
+            : { effectiveTo: new Date(parsed.data.effectiveTo) }),
+      },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        action: "GROUP_SCHEDULE_UPDATED",
+        entityType: "GroupSchedule",
+        entityId: scheduleId,
+        userId: actor.id,
+        details: JSON.stringify({
+          groupId: id,
+          previous: toScheduleDto(existing),
+          next: toScheduleDto(next),
+        }),
+      },
+    });
+
+    return next;
   });
 
   return NextResponse.json({ data: toScheduleDto(updated) });
 }
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  let actor;
   try {
-    await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -378,9 +398,30 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     return NextResponse.json({ error: "Horaire introuvable" }, { status: 404 });
   }
 
-  await prisma.groupSchedule.delete({
-    where: { id: scheduleId },
+  const closedAt = utcDateOnlyForTimeZone(new Date());
+  const updated = await prisma.$transaction(async (tx) => {
+    const closed = await tx.groupSchedule.update({
+      where: { id: scheduleId },
+      data: { effectiveTo: closedAt },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        action: "GROUP_SCHEDULE_CLOSED",
+        entityType: "GroupSchedule",
+        entityId: scheduleId,
+        userId: actor.id,
+        details: JSON.stringify({
+          groupId: id,
+          previous: toScheduleDto(existing),
+          next: toScheduleDto(closed),
+          reason: "Retrait d'horaire sans suppression de l'historique",
+        }),
+      },
+    });
+
+    return closed;
   });
 
-  return NextResponse.json({ data: { deleted: true } });
+  return NextResponse.json({ data: toScheduleDto(updated), closed: true });
 }

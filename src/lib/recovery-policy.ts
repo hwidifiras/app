@@ -57,6 +57,14 @@ export const RECOVERY_POLICIES: RecoveryPolicy[] = [
     preservesHistory: true,
   },
   {
+    area: "group-schedules",
+    action: "group-schedule-closed",
+    normalUserCopy: "Horaire retire",
+    behavior: "close",
+    reasonRequired: false,
+    preservesHistory: true,
+  },
+  {
     area: "attendance",
     action: "attendance-corrected",
     normalUserCopy: "Pointage corrige",

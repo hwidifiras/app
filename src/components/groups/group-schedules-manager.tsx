@@ -77,6 +77,7 @@ function daySortIndex(day: string) {
 function getScheduleStatus(row: ScheduleRow, today = todayInputValue()): ScheduleStatus {
   const from = toDateInput(row.effectiveFrom);
   const to = toDateInput(row.effectiveTo);
+  if (from && to && to < from) return "PAST";
   if (from && today < from) return "FUTURE";
   if (to && today > to) return "PAST";
   return "ACTIVE";
@@ -375,10 +376,11 @@ export function GroupSchedulesManager({
       return;
     }
 
-    setSchedules((current) => current.filter((s) => s.id !== scheduleId));
+    const result = await response.json();
+    setSchedules((current) => current.map((row) => (row.id === scheduleId ? result.data : row)));
     setPendingDeleteSchedule(null);
     setEditingSchedule(null);
-    setMessage("Horaire supprimé.");
+    setMessage("Horaire retiré sans supprimer l'historique.");
     setDeletingId(null);
   }
 
@@ -580,7 +582,7 @@ export function GroupSchedulesManager({
                 onClick={() => setPendingDeleteSchedule(editingSchedule)}
                 className="btn btn-danger btn-block-mobile"
               >
-                Supprimer définitivement
+                Retirer l&apos;horaire
               </button>
               <button type="submit" disabled={savingEditId !== null} className="btn btn-primary btn-block-mobile">
                 {savingEditId ? "Enregistrement..." : "Enregistrer l'horaire"}
@@ -726,13 +728,13 @@ export function GroupSchedulesManager({
 
       <ConfirmDialog
         open={pendingDeleteSchedule !== null}
-        title="Supprimer définitivement cet horaire ?"
+        title="Retirer cet horaire ?"
         description={
           pendingDeleteSchedule
-            ? `${dayLabels[pendingDeleteSchedule.dayOfWeek as DayOfWeekValue] ?? pendingDeleteSchedule.dayOfWeek} à ${pendingDeleteSchedule.startTime}. Préférez arrêter l'horaire si cette règle a déjà servi au planning.`
+            ? `${dayLabels[pendingDeleteSchedule.dayOfWeek as DayOfWeekValue] ?? pendingDeleteSchedule.dayOfWeek} à ${pendingDeleteSchedule.startTime}. L'horaire sera fermé et restera visible dans l'historique.`
             : ""
         }
-        confirmLabel="Supprimer définitivement"
+        confirmLabel="Retirer l'horaire"
         loading={deletingId === pendingDeleteSchedule?.id}
         onCancel={() => setPendingDeleteSchedule(null)}
         onConfirm={() => pendingDeleteSchedule ? onDeleteSchedule(pendingDeleteSchedule.id) : undefined}
