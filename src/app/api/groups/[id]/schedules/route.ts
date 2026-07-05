@@ -34,16 +34,17 @@ function toScheduleDto(schedule: {
 }
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  let actor;
   try {
-    await requirePermission(_request, "catalog.manage");
+    actor = await requirePermission(_request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
 
   const { id } = await params;
 
-  const group = await prisma.group.findUnique({
-    where: { id },
+  const group = await prisma.group.findFirst({
+    where: { id, tenantId: actor.tenantId },
     select: { id: true },
   });
 
@@ -52,7 +53,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   }
 
   const schedules = await prisma.groupSchedule.findMany({
-    where: { groupId: id },
+    where: { tenantId: actor.tenantId, groupId: id },
     orderBy: { createdAt: "asc" },
   });
 
@@ -107,8 +108,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const parsedData = parsedList.filter((p): p is typeof p & { success: true } => p.success).map((p) => p.data);
 
-  const group = await prisma.group.findUnique({
-    where: { id },
+  const group = await prisma.group.findFirst({
+    where: { id, tenantId: actor.tenantId },
     select: { id: true },
   });
 
@@ -122,6 +123,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     for (const data of parsedData) {
       const schedule = await tx.groupSchedule.create({
         data: {
+          tenantId: actor.tenantId,
           groupId: id,
           dayOfWeek: data.dayOfWeek,
           startTime: data.startTime,
@@ -136,11 +138,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     await tx.auditLog.create({
       data: {
+        tenantId: actor.tenantId,
         action: "GROUP_SCHEDULE_CREATED",
         entityType: "Group",
         entityId: id,
         userId: actor.id,
         details: JSON.stringify({
+          tenantId: actor.tenantId,
           groupId: id,
           count: schedules.length,
           schedules: schedules.map(toScheduleDto),
@@ -158,7 +162,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       ? bodyObj.horizonDays
       : 90;
 
-    sessionResult = await generateSessionsForGroup(id, created, horizonDays, actor.id);
+    sessionResult = await generateSessionsForGroup(id, created, horizonDays, actor.id, actor.tenantId);
   }
 
   return NextResponse.json(
@@ -174,7 +178,8 @@ async function generateSessionsForGroup(
   groupId: string,
   schedules: { id: string; dayOfWeek: string; startTime: string; durationMinutes: number; effectiveFrom: Date; effectiveTo: Date | null }[],
   horizonDays: number,
-  actorId: string
+  actorId: string,
+  tenantId: string,
 ) {
   const today = utcDateOnlyForTimeZone(new Date());
   const endDate = new Date(today);
@@ -190,8 +195,8 @@ async function generateSessionsForGroup(
     [6, "SATURDAY"],
   ]);
 
-  const group = await prisma.group.findUnique({
-    where: { id: groupId },
+  const group = await prisma.group.findFirst({
+    where: { id: groupId, tenantId },
     select: { coachId: true, room: true },
   });
 
@@ -199,6 +204,7 @@ async function generateSessionsForGroup(
   const room = sessionRoomFromGroup(group?.room);
 
   const candidates: {
+    tenantId: string;
     groupId: string;
     scheduleId: string;
     sessionDate: Date;
@@ -230,6 +236,7 @@ async function generateSessionsForGroup(
       const endTime = `${String(endDateObj.getHours()).padStart(2, "0")}:${String(endDateObj.getMinutes()).padStart(2, "0")}`;
 
       candidates.push({
+        tenantId,
         groupId,
         scheduleId: schedule.id,
         sessionDate: new Date(d),
@@ -249,6 +256,7 @@ async function generateSessionsForGroup(
   // Deduplicate against existing sessions
   const existing = await prisma.session.findMany({
     where: {
+      tenantId,
       groupId,
       sessionDate: {
         gte: today,
@@ -270,6 +278,7 @@ async function generateSessionsForGroup(
     const result = await prisma.session.createMany({
       data: toCreate.map((c) => ({
         groupId: c.groupId,
+        tenantId: c.tenantId,
         scheduleId: c.scheduleId,
         sessionDate: c.sessionDate,
         startTime: c.startTime,
@@ -282,11 +291,13 @@ async function generateSessionsForGroup(
 
     await prisma.auditLog.create({
       data: {
+        tenantId,
         action: "SESSIONS_GENERATED",
         entityType: "Group",
         entityId: groupId,
         userId: actorId,
         details: JSON.stringify({
+          tenantId,
           source: "group_schedule_create_auto_generate",
           horizonDays,
           groupId,
@@ -342,8 +353,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     );
   }
 
-  const group = await prisma.group.findUnique({
-    where: { id },
+  const group = await prisma.group.findFirst({
+    where: { id, tenantId: actor.tenantId },
     select: { id: true },
   });
 
@@ -352,7 +363,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   const existing = await prisma.groupSchedule.findFirst({
-    where: { id: scheduleId, groupId: id },
+    where: { id: scheduleId, tenantId: actor.tenantId, groupId: id },
   });
 
   if (!existing) {
@@ -379,11 +390,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     await tx.auditLog.create({
       data: {
+        tenantId: actor.tenantId,
         action: "GROUP_SCHEDULE_UPDATED",
         entityType: "GroupSchedule",
         entityId: scheduleId,
         userId: actor.id,
         details: JSON.stringify({
+          tenantId: actor.tenantId,
           groupId: id,
           previous: toScheduleDto(existing),
           next: toScheduleDto(next),
@@ -421,8 +434,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
   const { scheduleId } = body as { scheduleId: string };
 
-  const group = await prisma.group.findUnique({
-    where: { id },
+  const group = await prisma.group.findFirst({
+    where: { id, tenantId: actor.tenantId },
     select: { id: true },
   });
 
@@ -431,7 +444,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   }
 
   const existing = await prisma.groupSchedule.findFirst({
-    where: { id: scheduleId, groupId: id },
+    where: { id: scheduleId, tenantId: actor.tenantId, groupId: id },
   });
 
   if (!existing) {
@@ -447,11 +460,13 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
     await tx.auditLog.create({
       data: {
+        tenantId: actor.tenantId,
         action: "GROUP_SCHEDULE_CLOSED",
         entityType: "GroupSchedule",
         entityId: scheduleId,
         userId: actor.id,
         details: JSON.stringify({
+          tenantId: actor.tenantId,
           groupId: id,
           previous: toScheduleDto(existing),
           next: toScheduleDto(closed),
