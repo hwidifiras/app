@@ -4,6 +4,7 @@ import { applyDataImport, dataImportErrorMessage, inspectDataImport } from "@/li
 import { resolveMemberPhone } from "@/lib/member-phone";
 import { prisma } from "@/lib/prisma";
 import { dataImportPayloadSchema, type DataImportPayload } from "@/lib/schemas/data-import";
+import { getRequiredTenantId } from "@/lib/tenant-context";
 
 type LookupRecord = {
   id: string;
@@ -338,6 +339,7 @@ async function loadRows(buffer: Buffer, fileName: string): Promise<RawRow[]> {
 }
 
 async function prepareBulkImport(buffer: Buffer, fileName: string, fallbackCutoverDate: string): Promise<PreparedRow[]> {
+  const tenantId = getRequiredTenantId();
   const rows = await loadRows(buffer, fileName);
   if (rows.length === 0) throw new Error("BULK_IMPORT_EMPTY_WORKBOOK");
 
@@ -350,11 +352,11 @@ async function prepareBulkImport(buffer: Buffer, fileName: string, fallbackCutov
 
   const [groups, plans] = await Promise.all([
     prisma.group.findMany({
-      where: { isActive: true },
+      where: { tenantId, isActive: true },
       select: { id: true, name: true, sportId: true },
     }),
     prisma.subscriptionPlan.findMany({
-      where: { isActive: true },
+      where: { tenantId, isActive: true },
       select: { id: true, name: true, sportId: true, price: true, totalSessions: true, validityDays: true },
     }),
   ]);
