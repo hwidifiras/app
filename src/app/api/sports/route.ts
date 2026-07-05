@@ -8,6 +8,22 @@ import { listSportOverviews } from "@/lib/sports-overview";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+type SportAuditSnapshot = {
+  id: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+};
+
+function sportAuditSnapshot(sport: SportAuditSnapshot) {
+  return {
+    id: sport.id,
+    name: sport.name,
+    description: sport.description,
+    isActive: sport.isActive,
+  };
+}
+
 export async function GET(request: Request) {
   try {
     await requirePermission(request, "catalog.manage");
@@ -28,8 +44,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -57,11 +74,26 @@ export async function POST(request: Request) {
   const descriptionValue = parsed.data.description?.trim() || null;
 
   try {
-    const sport = await prisma.sport.create({
-      data: {
-        name: parsed.data.name,
-        description: descriptionValue,
-      },
+    const sport = await prisma.$transaction(async (tx) => {
+      const created = await tx.sport.create({
+        data: {
+          name: parsed.data.name,
+          description: descriptionValue,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          tenantId: actor.tenantId,
+          action: "SPORT_CREATED",
+          entityType: "Sport",
+          entityId: created.id,
+          userId: actor.id,
+          details: JSON.stringify({ after: sportAuditSnapshot(created) }),
+        },
+      });
+
+      return created;
     });
 
     return NextResponse.json({ data: sport }, { status: 201 });
@@ -81,8 +113,9 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -120,18 +153,41 @@ export async function PATCH(request: Request) {
   const payload = updatePayload.data;
 
   try {
-    const updated = await prisma.sport.update({
-      where: { id: sportId },
-      data: {
-        name: payload.name,
-        description:
-          payload.description === undefined
-            ? undefined
-            : payload.description === "" || payload.description === null
-              ? null
-              : payload.description,
-        isActive: payload.isActive,
-      },
+    const current = await prisma.sport.findUnique({ where: { id: sportId } });
+    if (!current) {
+      return NextResponse.json({ error: "Sport introuvable" }, { status: 404 });
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const next = await tx.sport.update({
+        where: { id: sportId },
+        data: {
+          name: payload.name,
+          description:
+            payload.description === undefined
+              ? undefined
+              : payload.description === "" || payload.description === null
+                ? null
+                : payload.description,
+          isActive: payload.isActive,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          tenantId: actor.tenantId,
+          action: "SPORT_UPDATED",
+          entityType: "Sport",
+          entityId: sportId,
+          userId: actor.id,
+          details: JSON.stringify({
+            before: sportAuditSnapshot(current),
+            after: sportAuditSnapshot(next),
+          }),
+        },
+      });
+
+      return next;
     });
 
     return NextResponse.json({ data: updated });
@@ -239,6 +295,7 @@ export async function DELETE(request: Request) {
 
     await prisma.auditLog.create({
       data: {
+        tenantId: actor.tenantId,
         action: "SPORT_DEACTIVATED",
         entityType: "Sport",
         entityId: sportId,
