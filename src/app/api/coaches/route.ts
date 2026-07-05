@@ -9,6 +9,23 @@ import { buildCoachDto } from "@/lib/coach-view-model";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+function activeCoachGroupInclude(referenceDate = new Date()) {
+  return {
+    where: { isActive: true },
+    select: {
+      id: true,
+      name: true,
+      room: true,
+      sport: { select: { name: true } },
+      schedules: {
+        where: { OR: [{ effectiveTo: null }, { effectiveTo: { gte: referenceDate } }] },
+        select: { id: true },
+      },
+    },
+    orderBy: { name: "asc" as const },
+  };
+}
+
 export async function GET(request: Request) {
   try {
     await requirePermission(request, "catalog.manage");
@@ -38,20 +55,7 @@ export async function GET(request: Request) {
         include: { sport: { select: { id: true, name: true } } },
         orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
       },
-      groups: {
-        where: { isActive: true },
-        select: {
-          id: true,
-          name: true,
-          room: true,
-          sport: { select: { name: true } },
-          schedules: {
-            where: { OR: [{ effectiveTo: null }, { effectiveTo: { gte: now } }] },
-            select: { id: true },
-          },
-        },
-        orderBy: { name: "asc" },
-      },
+      groups: activeCoachGroupInclude(now),
     },
     orderBy: { createdAt: "desc" },
   });
@@ -102,43 +106,45 @@ export async function POST(request: Request) {
   }
 
   try {
-    const coach = await prisma.coach.create({
-      data: {
-        tenantId: actor.tenantId,
-        firstName: parsed.data.firstName,
-        lastName: parsed.data.lastName,
-        phone: parsed.data.phone,
-        email: emailValue,
-        sportId: sportIdValue,
-        qualifications: {
-          create: qualifiedSportIds.map((qualifiedSportId) => ({
-            tenantId: actor.tenantId,
-            sportId: qualifiedSportId,
-            isPrimary: qualifiedSportId === sportIdValue,
-          })),
-        },
-      },
-      include: {
-        sport: { select: { id: true, name: true } },
-        qualifications: {
-          include: { sport: { select: { id: true, name: true } } },
-          orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
-        },
-        groups: {
-          where: { isActive: true },
-          select: {
-            id: true,
-            name: true,
-            room: true,
-            sport: { select: { name: true } },
-            schedules: {
-              where: { OR: [{ effectiveTo: null }, { effectiveTo: { gte: new Date() } }] },
-              select: { id: true },
-            },
+    const coach = await prisma.$transaction(async (tx) => {
+      const created = await tx.coach.create({
+        data: {
+          tenantId: actor.tenantId,
+          firstName: parsed.data.firstName,
+          lastName: parsed.data.lastName,
+          phone: parsed.data.phone,
+          email: emailValue,
+          sportId: sportIdValue,
+          qualifications: {
+            create: qualifiedSportIds.map((qualifiedSportId) => ({
+              tenantId: actor.tenantId,
+              sportId: qualifiedSportId,
+              isPrimary: qualifiedSportId === sportIdValue,
+            })),
           },
-          orderBy: { name: "asc" },
         },
-      },
+        include: {
+          sport: { select: { id: true, name: true } },
+          qualifications: {
+            include: { sport: { select: { id: true, name: true } } },
+            orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+          },
+          groups: activeCoachGroupInclude(),
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          tenantId: actor.tenantId,
+          action: "COACH_CREATED",
+          entityType: "Coach",
+          entityId: created.id,
+          userId: actor.id,
+          details: JSON.stringify({ after: buildCoachDto(created) }),
+        },
+      });
+
+      return created;
     });
 
     return NextResponse.json({ data: buildCoachDto(coach) }, { status: 201 });
@@ -218,6 +224,22 @@ export async function PATCH(request: Request) {
   }
 
   try {
+    const before = await prisma.coach.findUnique({
+      where: { id: coachId },
+      include: {
+        sport: { select: { id: true, name: true } },
+        qualifications: {
+          include: { sport: { select: { id: true, name: true } } },
+          orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+        },
+        groups: activeCoachGroupInclude(),
+      },
+    });
+
+    if (!before) {
+      return NextResponse.json({ error: "Coach introuvable" }, { status: 404 });
+    }
+
     const updated = await prisma.$transaction(async (tx) => {
       await tx.coach.update({
         where: { id: coachId },
@@ -262,7 +284,7 @@ export async function PATCH(request: Request) {
         }
       }
 
-      return tx.coach.findUniqueOrThrow({
+      const next = await tx.coach.findUniqueOrThrow({
         where: { id: coachId },
         include: {
           sport: { select: { id: true, name: true } },
@@ -270,22 +292,25 @@ export async function PATCH(request: Request) {
             include: { sport: { select: { id: true, name: true } } },
             orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
           },
-          groups: {
-            where: { isActive: true },
-            select: {
-              id: true,
-              name: true,
-              room: true,
-              sport: { select: { name: true } },
-              schedules: {
-                where: { OR: [{ effectiveTo: null }, { effectiveTo: { gte: new Date() } }] },
-                select: { id: true },
-              },
-            },
-            orderBy: { name: "asc" },
-          },
+          groups: activeCoachGroupInclude(),
         },
       });
+
+      await tx.auditLog.create({
+        data: {
+          tenantId: actor.tenantId,
+          action: "COACH_UPDATED",
+          entityType: "Coach",
+          entityId: coachId,
+          userId: actor.id,
+          details: JSON.stringify({
+            before: buildCoachDto(before),
+            after: buildCoachDto(next),
+          }),
+        },
+      });
+
+      return next;
     });
 
     return NextResponse.json({ data: buildCoachDto(updated) });
