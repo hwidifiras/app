@@ -48,9 +48,10 @@ function suggestOfferKind(input: {
   return null;
 }
 
-export async function getMemberOfferContext(memberId: string): Promise<MemberOfferContext> {
-  const member = await prisma.member.findUnique({
-    where: { id: memberId },
+export async function getMemberOfferContext(memberId: string, tenantId?: string): Promise<MemberOfferContext> {
+  const tenantWhere = tenantId ? { tenantId } : {};
+  const member = await prisma.member.findFirst({
+    where: { id: memberId, ...tenantWhere },
     select: { id: true, firstName: true, lastName: true },
   });
 
@@ -60,15 +61,15 @@ export async function getMemberOfferContext(memberId: string): Promise<MemberOff
 
   const [householdMembers, activeSubscriptions, offers] = await Promise.all([
     prisma.householdMember.findMany({
-      where: { memberId },
+      where: { memberId, ...tenantWhere },
       select: { householdId: true },
     }),
     prisma.memberSubscription.findMany({
-      where: { memberId, status: "ACTIVE" },
+      where: { memberId, ...tenantWhere, status: "ACTIVE" },
       select: { sportId: true, sport: { select: { name: true } } },
     }),
     prisma.offer.findMany({
-      where: { isActive: true },
+      where: { ...tenantWhere, isActive: true },
       orderBy: { createdAt: "desc" },
       include: { sport: { select: { name: true } } },
     }),
@@ -77,7 +78,7 @@ export async function getMemberOfferContext(memberId: string): Promise<MemberOff
   const householdSize =
     householdMembers.length > 0
       ? await prisma.householdMember.count({
-          where: { householdId: householdMembers[0].householdId },
+          where: { ...tenantWhere, householdId: householdMembers[0].householdId },
         })
       : 1;
 

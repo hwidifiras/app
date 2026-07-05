@@ -10,16 +10,17 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  let actor;
   try {
-    await requirePermission(_request, "members.manage");
+    actor = await requirePermission(_request, "members.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
 
   const { id } = await params;
 
-  const member = await prisma.member.findUnique({
-    where: { id },
+  const member = await prisma.member.findFirst({
+    where: { id, tenantId: actor.tenantId },
     select: { id: true },
   });
 
@@ -27,7 +28,7 @@ export async function GET(
     return NextResponse.json({ error: "Élève introuvable" }, { status: 404 });
   }
 
-  const context = await getMemberOfferContext(id);
+  const context = await getMemberOfferContext(id, actor.tenantId);
 
   return NextResponse.json({ data: context });
 }

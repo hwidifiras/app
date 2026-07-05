@@ -12,8 +12,9 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  let actor;
   try {
-    await requirePermission(_request, "members.manage");
+    actor = await requirePermission(_request, "members.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -21,8 +22,8 @@ export async function GET(
   const { id } = await params;
 
   try {
-    const member = await prisma.member.findUnique({
-      where: { id },
+    const member = await prisma.member.findFirst({
+      where: { id, tenantId: actor.tenantId },
       include: {
         groups: {
           where: { status: "ACTIVE" },
@@ -132,6 +133,15 @@ export async function DELETE(
   try {
     const now = new Date();
     const archived = await prisma.$transaction(async (tx) => {
+      const existing = await tx.member.findFirst({
+        where: { id, tenantId: actor.tenantId },
+        select: { id: true },
+      });
+
+      if (!existing) {
+        throw new Error("MEMBER_NOT_FOUND");
+      }
+
       const member = await tx.member.update({
         where: { id },
         data: {
@@ -141,7 +151,7 @@ export async function DELETE(
       });
 
       await tx.groupMember.updateMany({
-        where: { memberId: id, status: "ACTIVE" },
+        where: { tenantId: actor.tenantId, memberId: id, status: "ACTIVE" },
         data: {
           status: "INACTIVE",
           endDate: now,
@@ -149,17 +159,19 @@ export async function DELETE(
       });
 
       await tx.memberSubscription.updateMany({
-        where: { memberId: id, status: "ACTIVE" },
+        where: { tenantId: actor.tenantId, memberId: id, status: "ACTIVE" },
         data: { status: "CANCELLED" },
       });
 
       await tx.auditLog.create({
         data: {
+          tenantId: actor.tenantId,
           action: "MEMBER_ARCHIVED",
           entityType: "Member",
           entityId: member.id,
           userId: actor.id,
           details: JSON.stringify({
+            tenantId: actor.tenantId,
             firstName: member.firstName,
             lastName: member.lastName,
             phone: member.phone,
@@ -186,7 +198,7 @@ export async function DELETE(
         ? (error as { code?: string }).code
         : null;
 
-    if (errorCode === "P2025") {
+    if ((error instanceof Error && error.message === "MEMBER_NOT_FOUND") || errorCode === "P2025") {
       return NextResponse.json(
         { error: "Membre introuvable" },
         { status: 404 },
@@ -263,6 +275,30 @@ export async function PATCH(
 
   try {
     const updated = await prisma.$transaction(async (tx) => {
+      const existing = await tx.member.findFirst({
+        where: { id, tenantId: actor.tenantId },
+        select: {
+          memberType: true,
+          gender: true,
+          parentName: true,
+          parentPhone: true,
+          groups: {
+            where: { status: "ACTIVE" },
+            select: {
+              group: {
+                select: {
+                  name: true,
+                  groupType: true,
+                  genderPolicy: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!existing) throw new Error("MEMBER_NOT_FOUND");
+
       const profileTouched =
         payload.memberType !== undefined ||
         payload.gender !== undefined ||
@@ -270,30 +306,6 @@ export async function PATCH(
         payload.parentPhone !== undefined;
 
       if (profileTouched) {
-        const existing = await tx.member.findUnique({
-          where: { id },
-          select: {
-            memberType: true,
-            gender: true,
-            parentName: true,
-            parentPhone: true,
-            groups: {
-              where: { status: "ACTIVE" },
-              select: {
-                group: {
-                  select: {
-                    name: true,
-                    groupType: true,
-                    genderPolicy: true,
-                  },
-                },
-              },
-            },
-          },
-        });
-
-        if (!existing) throw new Error("MEMBER_NOT_FOUND");
-
         const targetMemberType = payload.memberType ?? existing.memberType;
         const targetGender = payload.gender ?? existing.gender;
         const targetParentName = payload.parentName === undefined ? existing.parentName : payload.parentName;
@@ -331,11 +343,13 @@ export async function PATCH(
 
       await tx.auditLog.create({
         data: {
+          tenantId: actor.tenantId,
           action: "MEMBER_UPDATED",
           entityType: "Member",
           entityId: member.id,
           userId: actor.id,
           details: JSON.stringify({
+            tenantId: actor.tenantId,
             fields: Object.keys(updateData),
           }),
         },

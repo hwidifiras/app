@@ -10,17 +10,27 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  let actor;
   try {
-    await requirePermission(request, "members.manage");
+    actor = await requirePermission(request, "members.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
 
   const { id } = await params;
+  const member = await prisma.member.findFirst({
+    where: { id, tenantId: actor.tenantId },
+    select: { id: true },
+  });
+
+  if (!member) {
+    return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
+  }
+
   await expireStaleSubscriptions(id);
 
   const subscriptions = await prisma.memberSubscription.findMany({
-    where: { memberId: id },
+    where: { tenantId: actor.tenantId, memberId: id },
     include: {
       sport: { select: { id: true, name: true } },
       plan: { select: { id: true, name: true, totalSessions: true } },
