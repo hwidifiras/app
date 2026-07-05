@@ -40,7 +40,7 @@ type ClosureBlocker = {
   scheduleCount: number;
 };
 
-async function findWorkingDayClosureBlockers(removedDays: ClubDay[]): Promise<ClosureBlocker[]> {
+async function findWorkingDayClosureBlockers(tenantId: string, removedDays: ClubDay[]): Promise<ClosureBlocker[]> {
   if (removedDays.length === 0) return [];
 
   const removed = new Set<ClubDay>(removedDays);
@@ -49,6 +49,7 @@ async function findWorkingDayClosureBlockers(removedDays: ClubDay[]): Promise<Cl
   const [sessions, schedules] = await Promise.all([
     prisma.session.findMany({
       where: {
+        tenantId,
         sessionDate: { gte: today },
         status: { not: "CANCELLED" },
       },
@@ -56,9 +57,10 @@ async function findWorkingDayClosureBlockers(removedDays: ClubDay[]): Promise<Cl
     }),
     prisma.groupSchedule.findMany({
       where: {
+        tenantId,
         dayOfWeek: { in: removedDays },
         OR: [{ effectiveTo: null }, { effectiveTo: { gte: today } }],
-        group: { isActive: true },
+        group: { tenantId, isActive: true },
       },
       select: { dayOfWeek: true },
     }),
@@ -149,7 +151,7 @@ export async function PATCH(request: Request) {
   if (data.workingDays !== undefined) {
     const nextWorkingDays = new Set(data.workingDays);
     const removedDays = before.workingDays.filter((day) => !nextWorkingDays.has(day));
-    const blockers = await findWorkingDayClosureBlockers(removedDays);
+    const blockers = await findWorkingDayClosureBlockers(admin.tenantId, removedDays);
     if (blockers.length > 0) {
       return NextResponse.json(
         {
@@ -169,7 +171,7 @@ export async function PATCH(request: Request) {
   }
 
   const updated = await prisma.clubSettings.update({
-    where: { id: before.id },
+    where: { tenantId: admin.tenantId },
     data: {
       ...(data.clubName !== undefined ? { clubName: data.clubName } : {}),
       ...(data.clubAddress !== undefined ? { clubAddress: data.clubAddress } : {}),
@@ -206,11 +208,13 @@ export async function PATCH(request: Request) {
 
   await prisma.auditLog.create({
     data: {
+      tenantId: admin.tenantId,
       action: "CLUB_SETTINGS_UPDATED",
       entityType: "ClubSettings",
       entityId: updated.id,
       userId: admin.id,
       details: JSON.stringify({
+        tenantId: admin.tenantId,
         before: serializeSettings(before),
         after: serializeSettings(updated),
       }),

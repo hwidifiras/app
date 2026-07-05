@@ -53,6 +53,7 @@ function needsRenewal(subscription: { status: string; endDate: Date | null; rema
 export async function GET(request: Request) {
   try {
     const user = await requireAuth(request);
+    const tenantId = user.tenantId;
     const includeAttendance = await userHasPermission(user, "attendance.manage");
     const includePayments = await userHasPermission(user, "payments.manage");
     const includeCatalog = await userHasPermission(user, "catalog.manage");
@@ -66,6 +67,7 @@ export async function GET(request: Request) {
       includeAttendance
         ? prisma.session.findMany({
             where: {
+              tenantId,
               status: { in: ["PLANNED", "RESCHEDULED"] },
               sessionDate: { gte: overdueSince, lte: today },
             },
@@ -76,7 +78,7 @@ export async function GET(request: Request) {
               endTime: true,
               group: {
                 select: {
-                  members: { select: { memberId: true, startDate: true, endDate: true } },
+                  members: { where: { tenantId }, select: { memberId: true, startDate: true, endDate: true } },
                 },
               },
               attendances: { select: { memberId: true } },
@@ -85,7 +87,7 @@ export async function GET(request: Request) {
         : Promise.resolve([]),
       includePayments || includeCatalog
         ? prisma.memberSubscription.findMany({
-            where: { status: "ACTIVE" },
+            where: { tenantId, status: "ACTIVE" },
             select: {
               id: true,
               amount: true,
@@ -99,6 +101,7 @@ export async function GET(request: Request) {
       includeCatalog
         ? prisma.session.findMany({
             where: {
+              tenantId,
               sessionDate: { gte: weekStart, lt: weekEnd },
               status: { not: "CANCELLED" },
             },
@@ -117,7 +120,7 @@ export async function GET(request: Request) {
         : Promise.resolve([]),
       includeCatalog
         ? prisma.coach.findMany({
-            where: { isActive: true },
+            where: { tenantId, isActive: true },
             select: {
               id: true,
               sportId: true,

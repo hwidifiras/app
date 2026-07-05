@@ -32,6 +32,7 @@ function hasAccess(role: "ADMIN" | "STAFF", permissions: string[], permission: s
 export async function GET(request: Request) {
   try {
     const user = await requireAuth(request);
+    const tenantId = user.tenantId;
     const includePayments = hasAccess(user.role, user.permissions, "payments.manage");
     const includeExpirations = hasAccess(user.role, user.permissions, "catalog.manage");
     const includeAttendance = hasAccess(user.role, user.permissions, "attendance.manage");
@@ -47,7 +48,7 @@ export async function GET(request: Request) {
     const [settings, subscriptions, sessions, reads] = await Promise.all([
       getClubSettings(),
       prisma.memberSubscription.findMany({
-        where: { status: "ACTIVE" },
+        where: { tenantId, status: "ACTIVE" },
         select: {
           id: true,
           amount: true,
@@ -66,6 +67,7 @@ export async function GET(request: Request) {
       includeAttendance
         ? prisma.session.findMany({
             where: {
+              tenantId,
               status: { in: ["PLANNED", "RESCHEDULED"] },
               sessionDate: { gte: overdueSince, lte: today },
             },
@@ -78,6 +80,7 @@ export async function GET(request: Request) {
                 select: {
                   name: true,
                   members: {
+                    where: { tenantId },
                     select: { memberId: true, startDate: true, endDate: true },
                   },
                 },
@@ -87,7 +90,7 @@ export async function GET(request: Request) {
           })
         : Promise.resolve([]),
       prisma.notificationRead.findMany({
-        where: { userId: user.id },
+        where: { tenantId, userId: user.id },
         select: { notificationKey: true },
       }),
     ]);

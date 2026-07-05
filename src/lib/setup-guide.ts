@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getRequiredTenantId } from "@/lib/tenant-context";
 
 export type SetupGuideStepId = "sport" | "coach" | "group" | "plan" | "member";
 
@@ -68,12 +69,13 @@ export type SetupGuideProgress = {
 };
 
 export async function getSetupGuideProgress(): Promise<SetupGuideProgress> {
+  const tenantId = getRequiredTenantId();
   const [sportCount, coachCount, groupCount, planCount, memberCount] = await Promise.all([
-    prisma.sport.count(),
-    prisma.coach.count(),
-    prisma.group.count(),
-    prisma.subscriptionPlan.count(),
-    prisma.member.count(),
+    prisma.sport.count({ where: { tenantId } }),
+    prisma.coach.count({ where: { tenantId } }),
+    prisma.group.count({ where: { tenantId } }),
+    prisma.subscriptionPlan.count({ where: { tenantId } }),
+    prisma.member.count({ where: { tenantId } }),
   ]);
 
   const doneById: Record<SetupGuideStepId, boolean> = {
