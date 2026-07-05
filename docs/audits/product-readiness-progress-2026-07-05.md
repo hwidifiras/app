@@ -19,6 +19,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Enrollment recovery now reverses payments, voids receipts, cancels subscriptions, closes assignments, and archives newly created members where applicable.
 - New enrollments now persist a recovery key and undo snapshot in the enrollment audit log. Member detail can surface recent recoverable inscriptions and void them later with a required reason when no attendance has consumed the affected rows.
 - Catalog records for disciplines, coaches, and formulas are deactivated instead of physically deleted in normal flows.
+- Group creation and group setup edits now write actor-linked audit entries with before/after snapshots for public policy, discipline, coach, room, capacity, and active state.
 - Receipts are created for original payment entries and voided when the original payment is corrected or reversed.
 - Group schedules are closed with an end date and audit trail instead of being physically deleted.
 - Session cancellation keeps the session row and now writes an actor-linked audit entry.
@@ -278,6 +279,7 @@ Latest UI settings checkpoint:
 - Bulk group assignment audit pass now logs created/reactivated assignment IDs, requested members, skip counts, and tenant-linked close summaries; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Household audit pass now logs foyer creation and member additions to foyers with readable audit labels; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Member list edit audit pass now logs before/after profile snapshots for `MEMBER_UPDATED`; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
+- Group create/update audit pass now logs `GROUP_CREATED` and `GROUP_UPDATED` with before/after course setup snapshots and readable log labels; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
 
 Start a disposable local PostgreSQL test database, or set `TEST_DATABASE_URL`, before relying on `npm.cmd test`.

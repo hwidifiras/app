@@ -25,6 +25,36 @@ type DayOfWeekValue =
   | "SATURDAY"
   | "SUNDAY";
 
+type GroupAuditSource = {
+  id: string;
+  name: string;
+  groupType: string;
+  genderPolicy: string;
+  sportId: string;
+  coachId: string;
+  capacity: number;
+  room: string | null;
+  isActive: boolean;
+  sport?: { name: string } | null;
+  coach?: { firstName: string; lastName: string } | null;
+};
+
+function groupAuditSnapshot(group: GroupAuditSource) {
+  return {
+    id: group.id,
+    name: group.name,
+    groupType: group.groupType,
+    genderPolicy: group.genderPolicy,
+    sportId: group.sportId,
+    sportName: group.sport?.name ?? null,
+    coachId: group.coachId,
+    coachName: group.coach ? `${group.coach.firstName} ${group.coach.lastName}` : null,
+    capacity: group.capacity,
+    room: group.room,
+    isActive: group.isActive,
+  };
+}
+
 function toGroupDto(group: {
   id: string;
   name: string;
@@ -182,6 +212,18 @@ export async function POST(request: Request) {
       },
     });
 
+    await tx.auditLog.create({
+      data: {
+        action: "GROUP_CREATED",
+        entityType: "Group",
+        entityId: group.id,
+        userId: actor.id,
+        details: JSON.stringify({
+          after: groupAuditSnapshot(group),
+        }),
+      },
+    });
+
     const details = coachSportOverrideAuditDetails(eligibility, {
       groupId: group.id,
       groupName: group.name,
@@ -252,9 +294,13 @@ export async function PATCH(request: Request) {
       name: true,
       sportId: true,
       coachId: true,
+      capacity: true,
       room: true,
       groupType: true,
       genderPolicy: true,
+      isActive: true,
+      sport: { select: { name: true } },
+      coach: { select: { firstName: true, lastName: true } },
       members: {
         where: { status: "ACTIVE" },
         select: {
@@ -400,6 +446,31 @@ export async function PATCH(request: Request) {
           sport: { select: { name: true } },
           coach: { select: { firstName: true, lastName: true } },
           schedules: { orderBy: { createdAt: "asc" } },
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          action: "GROUP_UPDATED",
+          entityType: "Group",
+          entityId: group.id,
+          userId: actor.id,
+          details: JSON.stringify({
+            fields: Object.entries(payload)
+              .filter(
+                ([field, value]) =>
+                  value !== undefined &&
+                  field !== "applyCoachToFutureSessions" &&
+                  field !== "coachSportOverrideReason",
+              )
+              .map(([field]) => field),
+            before: groupAuditSnapshot(existingGroup),
+            after: groupAuditSnapshot(group),
+            appliedCoachToFutureSessions:
+              shouldApplyCoachToFutureSessions && futureSessionsForCoachPropagation.length > 0
+                ? futureSessionsForCoachPropagation.length
+                : 0,
+          }),
         },
       });
 

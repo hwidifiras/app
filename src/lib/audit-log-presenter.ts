@@ -44,6 +44,8 @@ const ACTION_LABELS: Record<string, string> = {
   GROUP_MEMBER_CLOSED: "Affectation groupe fermee",
   GROUP_MEMBERS_ASSIGNED: "Affectations groupe ajoutees",
   GROUP_MEMBERS_CLOSED: "Affectations groupe fermees",
+  GROUP_CREATED: "Groupe cree",
+  GROUP_UPDATED: "Groupe modifie",
   HOUSEHOLD_CREATED: "Foyer cree",
   HOUSEHOLD_MEMBER_ADDED: "Membre ajoute au foyer",
   GROUP_SCHEDULE_UPDATED: "Horaire de groupe modifie",
