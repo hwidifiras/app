@@ -52,7 +52,7 @@ function isSystemLog(log: { action: string; entityType: string; userId: string |
 function getLogCategory(log: { action: string; entityType: string; userId: string | null }): LogCategory {
   if (isSystemLog(log)) return "SYSTEM";
   if (log.action.startsWith("PAYMENT") || log.entityType === "Payment") return "PAYMENTS";
-  if (log.action.startsWith("ATTENDANCE") || log.action.startsWith("SESSION_")) return "ATTENDANCE";
+  if (log.action.startsWith("ATTENDANCE") || log.action.startsWith("SESSION_") || log.action === "SESSIONS_GENERATED") return "ATTENDANCE";
   if (log.action.startsWith("ENROLLMENT") || log.action.startsWith("MEMBER_SUBSCRIPTION")) return "ENROLLMENT";
   if (
     log.action.startsWith("CLUB_SETTINGS") ||

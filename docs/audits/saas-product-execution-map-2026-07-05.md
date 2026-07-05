@@ -110,7 +110,7 @@ Capture `1440x900` and `390x844` before deeper UI changes:
 
 ### Known UI Risks To Hunt
 
-- broad buttons that do not explain impact, especially `Creer seances`;
+- broad buttons that do not explain impact, especially `Creer seances` (planning generation now has a preview/confirm step);
 - empty non-working days wasting planning space;
 - conflict badges causing anxiety before the user opens the details;
 - duplicated buttons for the same intent;
@@ -243,7 +243,7 @@ If an admin unchecks a working day that still has future sessions or active sche
 - hide non-working empty days from planning;
 - show a compact "closed days hidden" hint;
 - never hide a day with existing sessions;
-- make `Creer seances` explain the date range and number of sessions before generation;
+- make `Creer seances` explain the date range and number of sessions before generation; implemented for `/sessions`;
 - move conflict reasons to the selected/expanded state;
 - make weekly cards shorter and expandable by default.
 

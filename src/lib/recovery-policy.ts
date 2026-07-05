@@ -214,6 +214,16 @@ export const RECOVERY_POLICIES: RecoveryPolicy[] = [
     notes: "Future UX should ask for a reason on broad permanent changes.",
   },
   {
+    area: "sessions",
+    action: "sessions-generated",
+    auditActions: ["SESSIONS_GENERATED"],
+    normalUserCopy: "Seances generees",
+    behavior: "draft-delete",
+    reasonRequired: false,
+    preservesHistory: true,
+    notes: "Generation is previewed before confirmation; generated sessions can be cancelled or edited before pointage.",
+  },
+  {
     area: "attendance",
     action: "attendance-created",
     auditActions: ["ATTENDANCE_CREATED"],

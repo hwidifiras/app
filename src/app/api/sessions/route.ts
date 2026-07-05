@@ -143,8 +143,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -170,7 +171,8 @@ export async function POST(request: Request) {
   }
 
   const horizonDays = parsed.data.horizonDays ?? 56;
-  const bodyGroupId = typeof body === "object" && body !== null && "groupId" in body ? (body as { groupId?: string }).groupId : undefined;
+  const bodyGroupId = parsed.data.groupId;
+  const dryRun = parsed.data.dryRun === true;
 
   const startDate = toUtcDateOnly(new Date());
   const endDate = new Date(startDate);
@@ -190,6 +192,7 @@ export async function POST(request: Request) {
       },
     },
   });
+  const activeScheduleCount = groups.reduce((sum, group) => sum + group.schedules.length, 0);
 
   const candidates: Array<{
     groupId: string;
@@ -241,6 +244,12 @@ export async function POST(request: Request) {
     return NextResponse.json({
       data: {
         horizonDays,
+        dryRun,
+        groupId: bodyGroupId ?? null,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        groupCount: groups.length,
+        activeScheduleCount,
         candidatesCount: 0,
         createdCount: 0,
         skippedCount: 0,
@@ -286,9 +295,32 @@ export async function POST(request: Request) {
     return NextResponse.json({
       data: {
         horizonDays,
+        dryRun,
+        groupId: bodyGroupId ?? null,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        groupCount: groups.length,
+        activeScheduleCount,
         candidatesCount: uniqueCandidates.length,
         createdCount: 0,
         skippedCount: uniqueCandidates.length,
+      },
+    });
+  }
+
+  if (dryRun) {
+    return NextResponse.json({
+      data: {
+        horizonDays,
+        dryRun: true,
+        groupId: bodyGroupId ?? null,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        groupCount: groups.length,
+        activeScheduleCount,
+        candidatesCount: uniqueCandidates.length,
+        createdCount: toCreate.length,
+        skippedCount: uniqueCandidates.length - toCreate.length,
       },
     });
   }
@@ -297,9 +329,35 @@ export async function POST(request: Request) {
     data: toCreate,
   });
 
+  await prisma.auditLog.create({
+    data: {
+      action: "SESSIONS_GENERATED",
+      entityType: bodyGroupId ? "Group" : "Session",
+      entityId: bodyGroupId ?? "bulk",
+      userId: actor.id,
+      details: JSON.stringify({
+        horizonDays,
+        groupId: bodyGroupId ?? null,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        groupCount: groups.length,
+        activeScheduleCount,
+        candidatesCount: uniqueCandidates.length,
+        createdCount: result.count,
+        skippedCount: uniqueCandidates.length - result.count,
+      }),
+    },
+  });
+
   return NextResponse.json({
     data: {
       horizonDays,
+      dryRun: false,
+      groupId: bodyGroupId ?? null,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      groupCount: groups.length,
+      activeScheduleCount,
       candidatesCount: uniqueCandidates.length,
       createdCount: result.count,
       skippedCount: uniqueCandidates.length - result.count,

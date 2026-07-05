@@ -2,6 +2,8 @@ import { z } from "zod";
 
 export const generateSessionsSchema = z.object({
   horizonDays: z.number().int().min(1, "horizonDays invalide").max(120, "horizonDays invalide").optional(),
+  groupId: z.string().min(1, "groupe invalide").optional(),
+  dryRun: z.boolean().optional(),
 });
 
 export const updateSessionSchema = z.object({

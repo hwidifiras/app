@@ -49,6 +49,7 @@ const ACTION_LABELS: Record<string, string> = {
   SCHEDULE_TEMPLATE_UPDATED: "Modele horaire modifie",
   SCHEDULE_TEMPLATE_APPLIED: "Modele horaire applique",
   SCHEDULE_TEMPLATE_ARCHIVED: "Modele horaire archive",
+  SESSIONS_GENERATED: "Seances generees",
   SPORT_DEACTIVATED: "Discipline desactivee",
   COACH_DEACTIVATED: "Coach desactive",
   SUBSCRIPTION_PLAN_DEACTIVATED: "Formule desactivee",

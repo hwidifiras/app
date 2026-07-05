@@ -69,6 +69,19 @@ type SessionsPlannerProps = {
 
 type PlanningViewMode = "week" | "day" | "coach" | "room";
 
+type SessionGenerationPreview = {
+  horizonDays: number;
+  dryRun: boolean;
+  groupId: string | null;
+  startDate: string;
+  endDate: string;
+  groupCount: number;
+  activeScheduleCount: number;
+  candidatesCount: number;
+  createdCount: number;
+  skippedCount: number;
+};
+
 function coachOptionLabel(coach: SessionsPlannerProps["coachesOptions"][number]) {
   const qualified = coach.qualifiedSports.map((sport) => sport.name).join(", ");
   const name = `${coach.firstName} ${coach.lastName}`;
@@ -127,6 +140,7 @@ export function SessionsPlanner({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [generationPreview, setGenerationPreview] = useState<SessionGenerationPreview | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pendingDeleteSession, setPendingDeleteSession] = useState<SessionDto | null>(null);
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
@@ -212,6 +226,7 @@ export function SessionsPlanner({
 
   async function onGroupChange(nextGroupId: string) {
     setGroupId(nextGroupId);
+    setGenerationPreview(null);
     await reloadSessions(weekStart, nextGroupId);
   }
 
@@ -440,14 +455,44 @@ export function SessionsPlanner({
     setExpandedSessionId((current) => (current === session.id ? null : session.id));
   }
 
+  function buildGenerationBody(dryRun: boolean) {
+    const body: Record<string, unknown> = { horizonDays: 56, dryRun };
+    if (groupId) {
+      body.groupId = groupId;
+    }
+    return body;
+  }
+
+  async function previewSessionsGeneration() {
+    setGenerating(true);
+    setMessage(null);
+    setGenerationPreview(null);
+
+    const response = await fetch("/api/sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(buildGenerationBody(true)),
+    });
+    const result = await parseApiResponse<{
+      data?: SessionGenerationPreview;
+      error?: string;
+    }>(response);
+
+    if (!response.ok) {
+      setMessage(result.error ?? "Impossible de preparer la generation.");
+      setGenerating(false);
+      return;
+    }
+
+    setGenerationPreview(result.data ?? null);
+    setGenerating(false);
+  }
+
   async function generateSessions() {
     setGenerating(true);
     setMessage(null);
 
-    const body: Record<string, unknown> = { horizonDays: 56 };
-    if (groupId) {
-      body.groupId = groupId;
-    }
+    const body = buildGenerationBody(false);
 
     const response = await fetch("/api/sessions", {
       method: "POST",
@@ -455,7 +500,7 @@ export function SessionsPlanner({
       body: JSON.stringify(body),
     });
     const result = await parseApiResponse<{
-      data?: { createdCount: number; skippedCount: number };
+      data?: SessionGenerationPreview;
       error?: string;
     }>(response);
 
@@ -468,6 +513,7 @@ export function SessionsPlanner({
     await reloadSessions(weekStart, groupId);
     const created = result.data?.createdCount ?? 0;
     const skipped = result.data?.skippedCount ?? 0;
+    setGenerationPreview(null);
     setMessage(
       `${created} séance${created > 1 ? "s" : ""} créée${created > 1 ? "s" : ""}, ${skipped} déjà existante${skipped > 1 ? "s" : ""}.`,
     );
@@ -707,6 +753,10 @@ export function SessionsPlanner({
     }
   }
 
+  const generationTargetLabel = generationPreview?.groupId
+    ? groupsOptions.find((group) => group.id === generationPreview.groupId)?.name ?? "Groupe selectionne"
+    : "Tous les groupes actifs";
+
   return (
     <div>
       <section className="panel p-3 sm:p-5">
@@ -731,12 +781,60 @@ export function SessionsPlanner({
               <span className="hidden sm:inline">Suivante</span>
               <ChevronRight className="size-4" />
             </button>
-            <button type="button" onClick={() => { void generateSessions(); }} disabled={generating || loading} className="btn btn-primary">
+            <button type="button" onClick={() => { void previewSessionsGeneration(); }} disabled={generating || loading} className="btn btn-primary">
               <CalendarPlus className="size-4" />
-              {generating ? "Création..." : "Créer séances"}
+              {generating ? "Analyse..." : "Préparer séances"}
             </button>
           </div>
         </div>
+
+        {generationPreview ? (
+          <div className="mt-4 rounded-lg border border-[var(--primary)]/25 bg-[var(--primary)]/5 p-4 shadow-[var(--shadow-panel)]">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-[var(--primary)]">
+                  Apercu generation
+                </p>
+                <h3 className="mt-1 text-base font-black text-[var(--foreground)]">
+                  {generationPreview.createdCount > 0
+                    ? `${generationPreview.createdCount} seance${generationPreview.createdCount > 1 ? "s" : ""} a creer`
+                    : "Aucune nouvelle seance a creer"}
+                </h3>
+                <p className="mt-1 text-sm leading-relaxed text-[var(--muted-foreground)]">
+                  Cible: {generationTargetLabel}. Periode du {formatDateFr(generationPreview.startDate)} au{" "}
+                  {formatDateFr(generationPreview.endDate)}. Les seances deja existantes seront ignorees.
+                </p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2 lg:min-w-[20rem]">
+                <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
+                  <p className="text-[0.62rem] font-bold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
+                    Horaires actifs
+                  </p>
+                  <p className="mt-1 text-lg font-black text-[var(--foreground)]">{generationPreview.activeScheduleCount}</p>
+                </div>
+                <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
+                  <p className="text-[0.62rem] font-bold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
+                    Deja existantes
+                  </p>
+                  <p className="mt-1 text-lg font-black text-[var(--foreground)]">{generationPreview.skippedCount}</p>
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <button type="button" className="btn btn-ghost btn-block-mobile" onClick={() => setGenerationPreview(null)}>
+                Annuler
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-block-mobile"
+                disabled={generating || generationPreview.createdCount === 0}
+                onClick={() => { void generateSessions(); }}
+              >
+                {generating ? "Creation..." : `Generer ${generationPreview.createdCount} seance${generationPreview.createdCount > 1 ? "s" : ""}`}
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2">
