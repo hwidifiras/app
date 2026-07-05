@@ -8,6 +8,7 @@ import {
 import {
   applyDataImport,
   dataImportErrorMessage,
+  getDataImportRollbackEligibility,
   inspectDataImport,
   rollbackDataImport,
 } from "@/lib/data-import-service";
@@ -30,11 +31,12 @@ async function adminOrResponse(request: Request) {
 export async function GET(request: Request) {
   const auth = await adminOrResponse(request);
   if (!auth.user) return auth.response;
+  const tenantId = auth.user.tenantId;
 
   const [mode, recentImports] = await Promise.all([
     getDataImportMode(auth.user),
     prisma.auditLog.findMany({
-      where: { action: "DATA_IMPORT_APPLIED" },
+      where: { tenantId, action: "DATA_IMPORT_APPLIED" },
       orderBy: { createdAt: "desc" },
       take: 10,
       select: { id: true, entityId: true, details: true, createdAt: true },
@@ -42,7 +44,7 @@ export async function GET(request: Request) {
   ]);
 
   const rolledBack = await prisma.auditLog.findMany({
-    where: { action: "DATA_IMPORT_ROLLED_BACK" },
+    where: { tenantId, action: "DATA_IMPORT_ROLLED_BACK" },
     select: { details: true },
   });
   const rolledBackIds = new Set(
@@ -58,22 +60,30 @@ export async function GET(request: Request) {
 
   const memberIds = recentImports.map((row) => row.entityId);
   const members = await prisma.member.findMany({
-    where: { id: { in: memberIds } },
+    where: { tenantId, id: { in: memberIds } },
     select: { id: true, firstName: true, lastName: true },
   });
   const names = new Map(members.map((member) => [member.id, `${member.firstName} ${member.lastName}`]));
+  const recentImportRows = await Promise.all(
+    recentImports.map(async (row) => {
+      const rollback = await getDataImportRollbackEligibility(row.id, rolledBackIds);
+      return {
+        id: row.id,
+        memberId: row.entityId,
+        memberName: names.get(row.entityId) ?? "Reprise annulée",
+        createdAt: row.createdAt.toISOString(),
+        canRollback: rollback.canRollback,
+        rollbackStatus: rollback.status,
+        rollbackReason: rollback.reason,
+      };
+    }),
+  );
 
   return NextResponse.json({
     data: {
       active: mode.active,
       expiresAt: mode.expiresAt?.toISOString() ?? null,
-      recentImports: recentImports.map((row) => ({
-        id: row.id,
-        memberId: row.entityId,
-        memberName: names.get(row.entityId) ?? "Reprise annulée",
-        createdAt: row.createdAt.toISOString(),
-        canRollback: !rolledBackIds.has(row.id) && names.has(row.entityId),
-      })),
+      recentImports: recentImportRows,
     },
   });
 }

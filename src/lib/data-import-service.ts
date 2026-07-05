@@ -301,14 +301,47 @@ type ImportAuditDetails = {
   attendanceIds: string[];
 };
 
-export async function rollbackDataImport(auditLogId: string, actorId: string) {
-  const tenantId = getRequiredTenantId();
-  const audit = await prisma.auditLog.findUnique({ where: { id: auditLogId } });
-  if (!audit || audit.action !== "DATA_IMPORT_APPLIED" || !audit.details) {
-    throw new Error("IMPORT_NOT_FOUND");
-  }
+export type DataImportRollbackStatus =
+  | "AVAILABLE"
+  | "ROLLED_BACK"
+  | "LOCKED_BY_ACTIVITY"
+  | "ALREADY_REMOVED"
+  | "NOT_FOUND";
 
-  const details = JSON.parse(audit.details) as ImportAuditDetails;
+export type DataImportRollbackEligibility = {
+  canRollback: boolean;
+  status: DataImportRollbackStatus;
+  reason: string;
+};
+
+function parseImportAuditDetails(details: string | null): ImportAuditDetails | null {
+  if (!details) return null;
+  try {
+    const parsed = JSON.parse(details) as Partial<ImportAuditDetails>;
+    if (
+      typeof parsed.memberId !== "string" ||
+      typeof parsed.subscriptionId !== "string" ||
+      typeof parsed.assignmentId !== "string" ||
+      !Array.isArray(parsed.attendanceIds)
+    ) {
+      return null;
+    }
+
+    return {
+      memberId: parsed.memberId,
+      subscriptionId: parsed.subscriptionId,
+      assignmentId: parsed.assignmentId,
+      paymentId: typeof parsed.paymentId === "string" ? parsed.paymentId : null,
+      attendanceIds: parsed.attendanceIds.filter((id): id is string => typeof id === "string"),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function resolveDataImportRollbackStatus(
+  details: ImportAuditDetails,
+): Promise<DataImportRollbackStatus> {
   const [member, subscription] = await Promise.all([
     prisma.member.findUnique({
       where: { id: details.memberId },
@@ -329,7 +362,8 @@ export async function rollbackDataImport(auditLogId: string, actorId: string) {
     }),
   ]);
 
-  if (!member || !subscription) throw new Error("IMPORT_ALREADY_REMOVED");
+  if (!member || !subscription) return "ALREADY_REMOVED";
+
   const expectedAttendanceIds = new Set(details.attendanceIds);
   const hasExternalData =
     member.groups.some((row) => row.id !== details.assignmentId) ||
@@ -338,7 +372,71 @@ export async function rollbackDataImport(auditLogId: string, actorId: string) {
     subscription.attendances.some((row) => !expectedAttendanceIds.has(row.id)) ||
     subscription.payments.some((row) => row.id !== details.paymentId) ||
     Boolean(member.householdLink);
-  if (hasExternalData) throw new Error("IMPORT_HAS_NEW_ACTIVITY");
+
+  return hasExternalData ? "LOCKED_BY_ACTIVITY" : "AVAILABLE";
+}
+
+function rollbackEligibilityForStatus(
+  status: DataImportRollbackStatus,
+): DataImportRollbackEligibility {
+  const reasons: Record<DataImportRollbackStatus, string> = {
+    AVAILABLE:
+      "Annulable tant qu'aucune présence, paiement, abonnement ou lien famille n'a été ajouté après la reprise.",
+    ROLLED_BACK: "Cet import a déjà été annulé et reste visible dans le journal.",
+    LOCKED_BY_ACTIVITY:
+      "Le membre a déjà une nouvelle activité. Corrigez depuis la fiche membre, paiement ou abonnement pour garder la trace.",
+    ALREADY_REMOVED: "Les données de reprise ne sont plus présentes dans le dossier membre.",
+    NOT_FOUND: "Journal d'import introuvable ou incomplet.",
+  };
+
+  return {
+    canRollback: status === "AVAILABLE",
+    status,
+    reason: reasons[status],
+  };
+}
+
+export async function getDataImportRollbackEligibility(
+  auditLogId: string,
+  rolledBackIds: ReadonlySet<string> = new Set(),
+): Promise<DataImportRollbackEligibility> {
+  if (rolledBackIds.has(auditLogId)) {
+    return rollbackEligibilityForStatus("ROLLED_BACK");
+  }
+
+  const tenantId = getRequiredTenantId();
+  const audit = await prisma.auditLog.findFirst({
+    where: { id: auditLogId, tenantId },
+    select: { action: true, details: true },
+  });
+  if (!audit || audit.action !== "DATA_IMPORT_APPLIED") {
+    return rollbackEligibilityForStatus("NOT_FOUND");
+  }
+
+  const details = parseImportAuditDetails(audit.details);
+  if (!details) return rollbackEligibilityForStatus("NOT_FOUND");
+
+  const status = await resolveDataImportRollbackStatus(details);
+  return rollbackEligibilityForStatus(status);
+}
+
+export async function rollbackDataImport(auditLogId: string, actorId: string) {
+  const tenantId = getRequiredTenantId();
+  const audit = await prisma.auditLog.findFirst({
+    where: { id: auditLogId, tenantId },
+    select: { action: true, details: true },
+  });
+  if (!audit || audit.action !== "DATA_IMPORT_APPLIED" || !audit.details) {
+    throw new Error("IMPORT_NOT_FOUND");
+  }
+
+  const details = parseImportAuditDetails(audit.details);
+  if (!details) throw new Error("IMPORT_NOT_FOUND");
+
+  const rollbackStatus = await resolveDataImportRollbackStatus(details);
+  if (rollbackStatus === "ALREADY_REMOVED") throw new Error("IMPORT_ALREADY_REMOVED");
+  if (rollbackStatus === "LOCKED_BY_ACTIVITY") throw new Error("IMPORT_HAS_NEW_ACTIVITY");
+  if (rollbackStatus !== "AVAILABLE") throw new Error("IMPORT_NOT_FOUND");
 
   await prisma.$transaction(async (tx) => {
     await tx.attendance.deleteMany({ where: { id: { in: details.attendanceIds } } });

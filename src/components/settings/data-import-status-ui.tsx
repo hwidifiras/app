@@ -6,6 +6,8 @@ export type RecentImport = {
   memberName: string;
   createdAt: string;
   canRollback: boolean;
+  rollbackStatus: "AVAILABLE" | "ROLLED_BACK" | "LOCKED_BY_ACTIVITY" | "ALREADY_REMOVED" | "NOT_FOUND";
+  rollbackReason: string;
 };
 
 export type ImportStatus = {
@@ -71,6 +73,29 @@ export function DataImportModePanel({
   );
 }
 
+const rollbackStatusLabels: Record<RecentImport["rollbackStatus"], string> = {
+  AVAILABLE: "Annulable",
+  ROLLED_BACK: "Déjà annulé",
+  LOCKED_BY_ACTIVITY: "Verrouillé",
+  ALREADY_REMOVED: "Données retirées",
+  NOT_FOUND: "À vérifier",
+};
+
+const rollbackStatusStyles: Record<RecentImport["rollbackStatus"], string> = {
+  AVAILABLE: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  ROLLED_BACK: "border-blue-200 bg-blue-50 text-blue-700",
+  LOCKED_BY_ACTIVITY: "border-amber-200 bg-amber-50 text-amber-800",
+  ALREADY_REMOVED: "border-slate-200 bg-slate-50 text-slate-600",
+  NOT_FOUND: "border-red-200 bg-red-50 text-red-700",
+};
+
+function rollbackHelperText(item: RecentImport, modeActive: boolean) {
+  if (item.canRollback && !modeActive) {
+    return "Ouvrez le mode temporaire pour annuler cet import.";
+  }
+  return item.rollbackReason;
+}
+
 export function RecentImportsPanel({
   status,
   busy,
@@ -84,7 +109,8 @@ export function RecentImportsPanel({
     <section className="panel p-4 sm:p-5">
       <h2 className="font-semibold">Derniers imports</h2>
       <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-        L&apos;annulation reste disponible seulement tant qu&apos;aucune nouvelle activité n&apos;est liée au membre.
+        L&apos;annulation reste disponible seulement avant toute nouvelle présence, paiement, abonnement ou lien famille.
+        Les lignes verrouillées se corrigent depuis les écrans métier pour garder la trace.
       </p>
       <div className="mt-4 space-y-2">
         {status.recentImports.length === 0 ? (
@@ -95,10 +121,20 @@ export function RecentImportsPanel({
               key={item.id}
               className="flex flex-col gap-3 rounded-lg border border-[var(--border)] p-3 shadow-[var(--shadow-panel)] sm:flex-row sm:items-center sm:justify-between"
             >
-              <div>
-                <p className="text-sm font-semibold">{item.memberName}</p>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold">{item.memberName}</p>
+                  <span
+                    className={`rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${rollbackStatusStyles[item.rollbackStatus]}`}
+                  >
+                    {rollbackStatusLabels[item.rollbackStatus]}
+                  </span>
+                </div>
                 <p className="text-xs text-[var(--muted-foreground)]">
                   {new Date(item.createdAt).toLocaleString("fr-FR")}
+                </p>
+                <p className="mt-1 max-w-2xl text-xs text-[var(--muted-foreground)]">
+                  {rollbackHelperText(item, status.active)}
                 </p>
               </div>
               {item.canRollback && status.active ? (
@@ -111,7 +147,9 @@ export function RecentImportsPanel({
                   <RotateCcw className="size-4" /> Annuler l&apos;import
                 </button>
               ) : (
-                <span className="text-xs text-[var(--muted-foreground)]">Annulation indisponible</span>
+                <span className="text-xs font-semibold text-[var(--muted-foreground)]">
+                  Annulation indisponible
+                </span>
               )}
             </div>
           ))
