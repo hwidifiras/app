@@ -82,6 +82,7 @@ export const clubSection: NavSection = {
 export const settingsSection: NavSection = {
   title: "Réglages",
   items: [
+    { href: "/settings", label: "Vue d'ensemble", icon: SlidersHorizontal },
     { href: "/settings/club", label: "Club", icon: SlidersHorizontal },
     { href: "/settings/schedules", label: "Horaires & saisons", icon: CalendarClock },
     { href: "/subscription-plans", label: "Formules", icon: ClipboardCheck },
@@ -96,6 +97,11 @@ export const adminSection: NavSection = {
     { href: "/settings/users", label: "Utilisateurs", icon: Users, adminOnly: true },
     { href: "/logs", label: "Journal actions", icon: ShieldCheck, adminOnly: true },
   ],
+};
+
+export const accountSettingsSection: NavSection = {
+  title: "Réglages",
+  items: [{ href: "/settings/account", label: "Mon compte", icon: User }],
 };
 
 export const clubConfigSection: NavSection = {
@@ -113,6 +119,7 @@ export const navSections: NavSection[] = [dailySection, salesSection, studentsSe
 
 export function isLinkActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
+  if (href === "/settings") return pathname === "/settings";
   if (href === "/attendance") {
     return (
       pathname === href ||
@@ -128,7 +135,7 @@ export function isLinkActive(pathname: string, href: string) {
 }
 
 export function getConfigurationSections(role: string | null) {
-  return role === "ADMIN" ? [settingsSection, adminSection] : [settingsSection];
+  return role === "ADMIN" ? [settingsSection, adminSection] : [accountSettingsSection];
 }
 
 export function NavLink({
