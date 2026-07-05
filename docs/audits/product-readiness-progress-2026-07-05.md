@@ -300,6 +300,7 @@ Latest UI settings checkpoint:
 - Enrollment payment audit pass now logs `PAYMENT_CREATED` before receipt issuance for new subscriptions and reused active subscriptions; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Data import payment audit pass now logs `PAYMENT_CREATED` for historical payments created by manual and Excel reprise; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Data import mode audit pass now logs `DATA_IMPORT_MODE_ACTIVATED` and `DATA_IMPORT_MODE_DEACTIVATED`; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
+- Planning hidden-duplicate cleanup removed an invisible duplicate week board and its unused grouping work from `sessions-planner.tsx`; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
 
 Start a disposable local PostgreSQL test database, or set `TEST_DATABASE_URL`, before relying on `npm.cmd test`.
