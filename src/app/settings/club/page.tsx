@@ -1,20 +1,18 @@
-import { headers } from "next/headers";
-
 import { ClubSettingsForm } from "@/components/settings/club-settings-form";
 import { ReceptionRulesCard } from "@/components/settings/reception-rules-card";
 import { SettingsMetric } from "@/components/settings/settings-hub";
 import { PageHeader } from "@/components/ui/page-header";
 import { CLUB_DAY_SHORT_LABELS } from "@/lib/club-working-days";
 import { getClubSettings } from "@/lib/club-settings";
+import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function SettingsClubPage() {
-  const h = await headers();
-  const role = h.get("x-user-role");
+  const authUser = await getAuthUser();
 
-  if (role !== "ADMIN") {
+  if (!authUser || authUser.role !== "ADMIN") {
     return (
       <main className="app-shell py-4 md:py-8">
         <PageHeader

@@ -1,18 +1,17 @@
-import { headers } from "next/headers";
-
 import { DataImportWizard } from "@/components/settings/data-import-wizard";
 import { SettingsMetric } from "@/components/settings/settings-hub";
 import { PageHeader } from "@/components/ui/page-header";
 import { ReceptionInfoCard } from "@/components/ui/reception-info-card";
 import { getWeekRangeUtc } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
+import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function DataImportPage() {
-  const requestHeaders = await headers();
-  if (requestHeaders.get("x-user-role") !== "ADMIN") {
+  const authUser = await getAuthUser();
+  if (!authUser || authUser.role !== "ADMIN") {
     return (
       <main className="app-shell py-4 md:py-8">
         <PageHeader
@@ -29,7 +28,7 @@ export default async function DataImportPage() {
   const { start } = getWeekRangeUtc(now);
   const [groups, plans, sessions] = await Promise.all([
     prisma.group.findMany({
-      where: { isActive: true },
+      where: { tenantId: authUser.tenantId, isActive: true },
       orderBy: { name: "asc" },
       select: {
         id: true,
@@ -40,7 +39,7 @@ export default async function DataImportPage() {
       },
     }),
     prisma.subscriptionPlan.findMany({
-      where: { isActive: true },
+      where: { tenantId: authUser.tenantId, isActive: true },
       orderBy: { name: "asc" },
       select: {
         id: true,
@@ -53,6 +52,7 @@ export default async function DataImportPage() {
     }),
     prisma.session.findMany({
       where: {
+        tenantId: authUser.tenantId,
         sessionDate: { gte: start, lte: now },
         status: { not: "CANCELLED" },
       },

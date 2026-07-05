@@ -1,4 +1,3 @@
-import { headers } from "next/headers";
 import Link from "next/link";
 import {
   CalendarClock,
@@ -16,15 +15,15 @@ import { CLUB_DAY_SHORT_LABELS } from "@/lib/club-working-days";
 import { getClubSettings } from "@/lib/club-settings";
 import { formatMoney } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
+import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function SettingsHomePage() {
-  const h = await headers();
-  const role = h.get("x-user-role");
+  const authUser = await getAuthUser();
 
-  if (role !== "ADMIN") {
+  if (!authUser || authUser.role !== "ADMIN") {
     return (
       <main className="app-shell py-4 md:py-8">
         <PageHeader
@@ -45,12 +44,12 @@ export default async function SettingsHomePage() {
   const [settings, activeGroups, activeSports, activePlans, activeOffers, users, templates] =
     await Promise.all([
       getClubSettings(),
-      prisma.group.count({ where: { isActive: true } }),
-      prisma.sport.count({ where: { isActive: true } }),
-      prisma.subscriptionPlan.count({ where: { isActive: true } }),
-      prisma.offer.count({ where: { isActive: true } }),
-      prisma.user.count({ where: { isActive: true } }),
-      prisma.scheduleTemplate.count({ where: { isActive: true } }),
+      prisma.group.count({ where: { tenantId: authUser.tenantId, isActive: true } }),
+      prisma.sport.count({ where: { tenantId: authUser.tenantId, isActive: true } }),
+      prisma.subscriptionPlan.count({ where: { tenantId: authUser.tenantId, isActive: true } }),
+      prisma.offer.count({ where: { tenantId: authUser.tenantId, isActive: true } }),
+      prisma.user.count({ where: { tenantId: authUser.tenantId, isActive: true } }),
+      prisma.scheduleTemplate.count({ where: { tenantId: authUser.tenantId, isActive: true } }),
     ]);
 
   const workingDaysLabel = settings.workingDays

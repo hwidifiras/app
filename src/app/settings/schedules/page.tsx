@@ -5,19 +5,36 @@ import { CLUB_DAY_SHORT_LABELS } from "@/lib/club-working-days";
 import { getClubSettings } from "@/lib/club-settings";
 import { toScheduleTemplateDto } from "@/lib/schedule-template-utils";
 import { prisma } from "@/lib/prisma";
+import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function SettingsSchedulesPage() {
+  const authUser = await getAuthUser();
+  if (!authUser || authUser.role !== "ADMIN") {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Horaires"
+          title="Horaires & saisons"
+          description="Seul un administrateur peut gérer les modèles horaires."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
+
   const [templates, groups, sports, settings] = await Promise.all([
     prisma.scheduleTemplate.findMany({
-      where: { isActive: true },
+      where: { tenantId: authUser.tenantId, isActive: true },
       include: { slots: true },
       orderBy: [{ createdAt: "desc" }],
     }),
     prisma.group.findMany({
-      where: { isActive: true },
+      where: { tenantId: authUser.tenantId, isActive: true },
       select: {
         id: true,
         name: true,
@@ -28,7 +45,7 @@ export default async function SettingsSchedulesPage() {
       orderBy: [{ name: "asc" }],
     }),
     prisma.sport.findMany({
-      where: { isActive: true },
+      where: { tenantId: authUser.tenantId, isActive: true },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
