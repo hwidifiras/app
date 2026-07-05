@@ -5,107 +5,23 @@ import { ChevronDown } from "lucide-react";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormActions, FormSectionNav } from "@/components/ui/form-layout";
-
-type DayOfWeekValue =
-  | "MONDAY"
-  | "TUESDAY"
-  | "WEDNESDAY"
-  | "THURSDAY"
-  | "FRIDAY"
-  | "SATURDAY"
-  | "SUNDAY";
-
-const dayOrder: DayOfWeekValue[] = [
-  "MONDAY",
-  "TUESDAY",
-  "WEDNESDAY",
-  "THURSDAY",
-  "FRIDAY",
-  "SATURDAY",
-  "SUNDAY",
-];
-
-const dayLabels: Record<DayOfWeekValue, string> = {
-  MONDAY: "Lundi",
-  TUESDAY: "Mardi",
-  WEDNESDAY: "Mercredi",
-  THURSDAY: "Jeudi",
-  FRIDAY: "Vendredi",
-  SATURDAY: "Samedi",
-  SUNDAY: "Dimanche",
-};
-
-type ScheduleRow = {
-  id: string;
-  dayOfWeek: string;
-  startTime: string;
-  durationMinutes: number;
-  effectiveFrom: string;
-  effectiveTo: string | null;
-  createdAt: string;
-};
-
-type DaySelection = {
-  day: DayOfWeekValue;
-  checked: boolean;
-  startTime: string;
-};
-
-type ScheduleStatus = "ACTIVE" | "FUTURE" | "PAST";
-
-function todayInputValue() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function toDateInput(value: string | null | undefined) {
-  return value ? new Date(value).toISOString().slice(0, 10) : "";
-}
-
-function inputDateToIso(value: string) {
-  return new Date(`${value}T00:00:00.000Z`).toISOString();
-}
-
-function formatDate(value: string | null | undefined) {
-  return value ? new Date(value).toLocaleDateString("fr-FR") : "Sans date de fin";
-}
-
-function daySortIndex(day: string) {
-  const index = dayOrder.indexOf(day as DayOfWeekValue);
-  return index === -1 ? 99 : index;
-}
-
-function getScheduleStatus(row: ScheduleRow, today = todayInputValue()): ScheduleStatus {
-  const from = toDateInput(row.effectiveFrom);
-  const to = toDateInput(row.effectiveTo);
-  if (from && to && to < from) return "PAST";
-  if (from && today < from) return "FUTURE";
-  if (to && today > to) return "PAST";
-  return "ACTIVE";
-}
-
-function statusLabel(status: ScheduleStatus) {
-  if (status === "ACTIVE") return "Actuelle";
-  if (status === "FUTURE") return "À venir";
-  return "Terminée";
-}
-
-function statusClass(status: ScheduleStatus) {
-  if (status === "ACTIVE") return "bg-[var(--success)]/10 text-[var(--success)]";
-  if (status === "FUTURE") return "bg-[var(--primary)]/10 text-[var(--primary)]";
-  return "bg-[var(--surface-soft)] text-[var(--muted-foreground)]";
-}
-
-function formatPeriod(from: string, to: string | null) {
-  return `Du ${formatDate(from)} au ${formatDate(to)}`;
-}
-
-function emptyDaySelections(): DaySelection[] {
-  return dayOrder.map((day) => ({
-    day,
-    checked: false,
-    startTime: "18:00",
-  }));
-}
+import {
+  dayLabels,
+  dayOrder,
+  daySortIndex,
+  emptyDaySelections,
+  formatPeriod,
+  getScheduleStatus,
+  inputDateToIso,
+  statusClass,
+  statusLabel,
+  todayInputValue,
+  toDateInput,
+  type DayOfWeekValue,
+  type DaySelection,
+  type ScheduleRow,
+  type ScheduleStatus,
+} from "@/components/groups/group-schedule-model";
 
 export function GroupSchedulesManager({
   groupId,
