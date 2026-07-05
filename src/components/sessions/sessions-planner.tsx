@@ -1,11 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
-import {
-  CalendarDays,
-  RotateCcw,
-} from "lucide-react";
+import { CalendarDays } from "lucide-react";
 
 import { SessionDto, SessionStatusDto } from "@/types/session";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -32,11 +28,10 @@ import {
   type SessionGenerationPreview,
 } from "@/components/sessions/session-generation-panel";
 import { PlanningWeekBoard } from "@/components/sessions/session-planner-board";
+import { PlanningFiltersToolbar } from "@/components/sessions/session-planner-filters";
 import {
   FilterField,
-  ListSearch,
   MobileFilterSheet,
-  MobileFiltersButton,
 } from "@/components/ui/list-controls";
 import { useActionHistory } from "@/hooks/use-action-history";
 import {
@@ -751,68 +746,23 @@ export function SessionsPlanner({
         <PlanningSummaryStrip summary={weekSummary} onFocusFirstConflict={focusFirstConflict} />
         <PlanningViewSwitcher viewMode={viewMode} onViewModeChange={setViewMode} />
 
-        <div className="list-toolbar sticky top-[57px] z-20 -mx-2 mt-3 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[3.5rem]">
-          <div className="flex flex-col gap-2 md:flex-row md:items-end">
-            <div className="min-w-0 flex-1">
-              <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Recherche</label>
-              <ListSearch
-                value={searchTerm}
-                onChange={setSearchTerm}
-                placeholder="Groupe, coach ou salle..."
-              />
-            </div>
-            <MobileFiltersButton onClick={() => setFiltersOpen(true)} count={activeFilterCount} />
-            <div className="hidden grid-cols-[minmax(11rem,1fr)_minmax(9rem,0.7fr)_minmax(10rem,0.8fr)_auto] items-end gap-2 md:grid">
-              <FilterField label="Groupe">
-                <select value={groupId} onChange={(event) => { void onGroupChange(event.target.value); }} className="field text-xs">
-                  <option value="">Tous les groupes</option>
-                  {groupsOptions.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
-                </select>
-              </FilterField>
-              <FilterField label="Jour">
-                <select value={dayFilter} onChange={(event) => setDayFilter(event.target.value)} className="field text-xs">
-                  <option value="ALL">Tous les jours</option>
-                  <option value="1">Lundi</option><option value="2">Mardi</option><option value="3">Mercredi</option>
-                  <option value="4">Jeudi</option><option value="5">Vendredi</option><option value="6">Samedi</option><option value="0">Dimanche</option>
-                </select>
-              </FilterField>
-              <FilterField label="Statut">
-                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "ALL" | SessionStatusDto)} className="field text-xs">
-                  <option value="ALL">Tous les statuts</option>
-                  <option value="PLANNED">Planifiées</option><option value="RESCHEDULED">Reportées</option>
-                  <option value="CANCELLED">Annulées</option><option value="COMPLETED">Terminées</option>
-                </select>
-              </FilterField>
-              {activeFilterCount > 0 ? (
-                <button type="button" onClick={() => { void resetFilters(); }} className="btn btn-ghost px-3" title="Réinitialiser">
-                  <RotateCcw className="size-4" />
-                </button>
-              ) : <span />}
-            </div>
-          </div>
-          <p className="mt-2 text-xs text-[var(--muted-foreground)]">
-            {filteredSessions.length} séance{filteredSessions.length > 1 ? "s" : ""} affichée{filteredSessions.length > 1 ? "s" : ""}
-          </p>
-          {dayFilter === "ALL" && (hiddenClosedDays.length > 0 || closedDaysWithSessions.length > 0) ? (
-            <div className="mt-2 flex flex-col gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-900 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                {hiddenClosedDays.length > 0 ? (
-                  <span className="font-semibold">
-                    {hiddenClosedDays.length} jour{hiddenClosedDays.length > 1 ? "s" : ""} fermé{hiddenClosedDays.length > 1 ? "s" : ""} sans cours masqué{hiddenClosedDays.length > 1 ? "s" : ""}.
-                  </span>
-                ) : null}
-                {closedDaysWithSessions.length > 0 ? (
-                  <span className={hiddenClosedDays.length > 0 ? "ml-1" : "font-semibold"}>
-                    {closedDaysWithSessions.length} jour{closedDaysWithSessions.length > 1 ? "s" : ""} fermé{closedDaysWithSessions.length > 1 ? "s" : ""} reste{closedDaysWithSessions.length > 1 ? "nt" : ""} visible{closedDaysWithSessions.length > 1 ? "s" : ""} car des séances existent dessus.
-                  </span>
-                ) : null}
-              </div>
-              <Link href="/settings/club" prefetch={false} className="shrink-0 font-bold text-[var(--primary)] hover:underline">
-                Régler les jours
-              </Link>
-            </div>
-          ) : null}
-        </div>
+        <PlanningFiltersToolbar
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          groupId={groupId}
+          groupsOptions={groupsOptions}
+          onGroupChange={(nextGroupId) => { void onGroupChange(nextGroupId); }}
+          dayFilter={dayFilter}
+          onDayFilterChange={setDayFilter}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          activeFilterCount={activeFilterCount}
+          resultCount={filteredSessions.length}
+          hiddenClosedDaysCount={hiddenClosedDays.length}
+          closedDaysWithSessionsCount={closedDaysWithSessions.length}
+          onOpenMobileFilters={() => setFiltersOpen(true)}
+          onResetFilters={() => { void resetFilters(); }}
+        />
 
         {loading ? <p className="mt-4 text-sm text-[var(--muted-foreground)]">Chargement du planning...</p> : null}
         <FeedbackMessage message={message} className="mt-4" />
