@@ -26,6 +26,10 @@ import {
   sessionDateKey,
 } from "@/components/sessions/session-planner-ui";
 import {
+  SessionGenerationPanel,
+  type SessionGenerationPreview,
+} from "@/components/sessions/session-generation-panel";
+import {
   FilterField,
   ListSearch,
   MobileFilterSheet,
@@ -70,19 +74,6 @@ type SessionsPlannerProps = {
 };
 
 type PlanningViewMode = "week" | "day" | "coach" | "room";
-
-type SessionGenerationPreview = {
-  horizonDays: number;
-  dryRun: boolean;
-  groupId: string | null;
-  startDate: string;
-  endDate: string;
-  groupCount: number;
-  activeScheduleCount: number;
-  candidatesCount: number;
-  createdCount: number;
-  skippedCount: number;
-};
 
 function getWeekDays(weekStartIso: string) {
   const start = new Date(`${weekStartIso}T12:00:00.000Z`);
@@ -788,54 +779,13 @@ export function SessionsPlanner({
         </div>
 
         {generationPreview ? (
-          <div className="mt-4 rounded-lg border border-[var(--primary)]/25 bg-[var(--primary)]/5 p-4 shadow-[var(--shadow-panel)]">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="min-w-0">
-                <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-[var(--primary)]">
-                  Aperçu de génération
-                </p>
-                <h3 className="mt-1 text-base font-black text-[var(--foreground)]">
-                  {generationPreview.createdCount > 0
-                    ? `${generationPreview.createdCount} séance${generationPreview.createdCount > 1 ? "s" : ""} manquante${generationPreview.createdCount > 1 ? "s" : ""} à créer`
-                    : "Aucune séance manquante à créer"}
-                </h3>
-                <p className="mt-1 text-sm leading-relaxed text-[var(--muted-foreground)]">
-                  Cette action crée uniquement les séances manquantes à partir des horaires hebdomadaires actifs.
-                  Cible: {generationTargetLabel}. Période du {formatDateFr(generationPreview.startDate)} au{" "}
-                  {formatDateFr(generationPreview.endDate)}. Les séances déjà existantes seront ignorées.
-                </p>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-2 lg:min-w-[20rem]">
-                <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
-                  <p className="text-[0.62rem] font-bold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
-                    Horaires actifs
-                  </p>
-                  <p className="mt-1 text-lg font-black text-[var(--foreground)]">{generationPreview.activeScheduleCount}</p>
-                </div>
-                <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
-                  <p className="text-[0.62rem] font-bold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
-                    Déjà existantes
-                  </p>
-                  <p className="mt-1 text-lg font-black text-[var(--foreground)]">{generationPreview.skippedCount}</p>
-                </div>
-              </div>
-            </div>
-            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <button type="button" className="btn btn-ghost btn-block-mobile" onClick={() => setGenerationPreview(null)}>
-                Annuler
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary btn-block-mobile"
-                disabled={generating || generationPreview.createdCount === 0}
-                onClick={() => { void generateSessions(); }}
-              >
-                {generating
-                  ? "Création..."
-                  : `Générer ${generationPreview.createdCount} séance${generationPreview.createdCount > 1 ? "s" : ""} manquante${generationPreview.createdCount > 1 ? "s" : ""}`}
-              </button>
-            </div>
-          </div>
+          <SessionGenerationPanel
+            preview={generationPreview}
+            targetLabel={generationTargetLabel}
+            generating={generating}
+            onCancel={() => setGenerationPreview(null)}
+            onGenerate={() => { void generateSessions(); }}
+          />
         ) : null}
 
         <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">

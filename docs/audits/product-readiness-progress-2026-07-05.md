@@ -69,6 +69,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - `data-import-wizard.tsx` now delegates the bulk preview metrics/table UI to `data-import-bulk-ui.tsx`, reducing duplicated embedded table markup without changing behavior.
 - `data-import-wizard.tsx` now delegates the import mode and recent rollback list UI to `data-import-status-ui.tsx`, keeping import actions in the wizard while reducing presentation markup.
 - `sessions-planner.tsx` now delegates session tiles, selected-session detail panel, legend, and session display helpers to `session-planner-ui.tsx`; a dead hidden legacy session-list block was removed.
+- `sessions-planner.tsx` now delegates the horaires-based session generation preview to `session-generation-panel.tsx`, continuing the controlled split of the largest planning component.
 - `club-settings-form.tsx` now delegates receipt settings and receipt preview UI to `club-receipt-settings.tsx`, and shared settings toggles to `settings-toggle-row.tsx`.
 - Planning session generation now uses a dry-run preview before creating sessions, shows the target/date range/active horaires/existing sessions, and writes `SESSIONS_GENERATED` audit logs after confirmed generation.
 - The planning generation action is now labelled as generation from active weekly schedules, not generic manual creation, and the preview states that only missing sessions are created while existing sessions are ignored.
@@ -136,7 +137,7 @@ The new `/settings` hub is the entry point. Next UI pass should make these pages
 
 Large files to split carefully:
 
-- `src/components/sessions/sessions-planner.tsx` (started: cards/detail panel/legend extracted and dead hidden list removed)
+- `src/components/sessions/sessions-planner.tsx` (started: cards/detail panel/legend/generation preview extracted and dead hidden list removed)
 - `src/app/page.tsx`
 - `src/components/enrollment/enrollment-wizard.tsx`
 - `src/components/settings/data-import-wizard.tsx` (started: bulk import preview and status/rollback UI extracted)
@@ -255,6 +256,7 @@ Latest UI settings checkpoint:
 - Subscription correction summary pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Data-import rollback visibility pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Users role guide pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
+- Session generation panel extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
 
 Start a disposable local PostgreSQL test database, or set `TEST_DATABASE_URL`, before relying on `npm.cmd test`.
