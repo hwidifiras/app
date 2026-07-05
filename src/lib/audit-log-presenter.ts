@@ -1,4 +1,5 @@
 import { formatMoney } from "@/lib/money";
+import { policyForAuditAction } from "@/lib/recovery-policy";
 
 export type AuditLogRow = {
   id: string;
@@ -34,6 +35,24 @@ export type AuditPresentation = {
 };
 
 const ACTION_LABELS: Record<string, string> = {
+  ENROLLMENT_VOIDED: "Inscription annulee",
+  ENROLLMENT_REVERTED: "Inscription annulee",
+  DATA_IMPORT_APPLIED: "Import applique",
+  DATA_IMPORT_ROLLED_BACK: "Import annule",
+  GROUP_MEMBER_CLOSED: "Affectation groupe fermee",
+  GROUP_MEMBERS_CLOSED: "Affectations groupe fermees",
+  GROUP_SCHEDULE_UPDATED: "Horaire de groupe modifie",
+  GROUP_SCHEDULE_CLOSED: "Horaire de groupe ferme",
+  GROUP_DEACTIVATED: "Groupe desactive",
+  GROUP_COACH_PROPAGATED: "Coach propage aux seances",
+  SCHEDULE_TEMPLATE_CREATED: "Modele horaire cree",
+  SCHEDULE_TEMPLATE_UPDATED: "Modele horaire modifie",
+  SCHEDULE_TEMPLATE_APPLIED: "Modele horaire applique",
+  SCHEDULE_TEMPLATE_ARCHIVED: "Modele horaire archive",
+  SPORT_DEACTIVATED: "Discipline desactivee",
+  COACH_DEACTIVATED: "Coach desactive",
+  SUBSCRIPTION_PLAN_DEACTIVATED: "Formule desactivee",
+  PAYMENT_REMINDER_SENT: "Relance paiement envoyee",
   OFFER_CREATED: "Offre promotionnelle créée",
   OFFER_DEACTIVATED: "Offre promotionnelle désactivée",
   ENROLLMENT_APPLIED: "Inscription enregistrée",
@@ -73,6 +92,16 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 const CLUB_FIELD_LABELS: Record<string, string> = {
+  absentConsumesSession: "Absence consomme une seance",
+  allowSameRoomConcurrentGroups: "Deux groupes dans la meme salle",
+  allowCoachConcurrentSameRoomQualified: "Coach multi-groupes meme salle",
+  allowPublicRegister: "Inscription publique",
+  workingDays: "Jours d'ouverture",
+  receiptPrefix: "Prefixe recu",
+  nextReceiptSequence: "Prochain numero recu",
+  receiptFooter: "Texte bas de recu",
+  receiptEmailDefault: "Email recu automatique",
+  receiptPrintDefault: "Impression recu proposee",
   clubName: "Nom du club",
   clubLogoUrl: "Logo",
   clubAddress: "Adresse",
@@ -109,6 +138,7 @@ function formatBool(value: unknown): string {
 function formatClubValue(key: string, value: unknown): string {
   if (key === "debtAlertThresholdCents") return formatMoneyFromCents(value) ?? formatMoney(0);
   if (typeof value === "boolean") return formatBool(value);
+  if (Array.isArray(value)) return value.join(", ");
   if (value === "" || value === null || value === undefined) return "—";
   return String(value);
 }
@@ -267,7 +297,8 @@ function buildContext(action: string, details: Record<string, unknown> | null): 
 
 export function presentAuditLog(log: AuditLogRow): AuditPresentation {
   const details = parseDetails(log.details);
-  const summary = ACTION_LABELS[log.action] ?? log.action.replaceAll("_", " ").toLowerCase();
+  const recoveryPolicy = policyForAuditAction(log.action);
+  const summary = ACTION_LABELS[log.action] ?? recoveryPolicy?.normalUserCopy ?? log.action.replaceAll("_", " ").toLowerCase();
   const context = buildContext(log.action, details);
 
   let detailSections: AuditDetailSection[] = [];
@@ -280,7 +311,7 @@ export function presentAuditLog(log: AuditLogRow): AuditPresentation {
     detailSections = buildGenericSections(details);
   }
 
-  const hasDetailPage = log.action in ACTION_LABELS;
+  const hasDetailPage = log.action in ACTION_LABELS || Boolean(recoveryPolicy);
 
   const searchText = [summary, context, log.action, log.entityType, log.entityId].filter(Boolean).join(" ");
 
