@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { SubscriptionAddForm } from "@/components/subscriptions/subscription-add-form";
+import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -13,6 +14,23 @@ export default async function NewSubscriptionPage({
   searchParams: Promise<{ memberId?: string }>;
 }) {
   const { memberId: requestedMemberId } = await searchParams;
+  const authUser = await getAuthUser();
+
+  if (!authUser) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Ventes"
+          title="Renouveler"
+          description="Connectez-vous pour créer un abonnement."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
+
   let hasError = false;
   let membersOptions: Array<{ id: string; firstName: string; lastName: string; phone: string }> = [];
   let plansOptions: Array<{ id: string; name: string; price: number; totalSessions: number; validityDays: number }> = [];
@@ -20,12 +38,12 @@ export default async function NewSubscriptionPage({
   try {
     const [members, plans] = await Promise.all([
       prisma.member.findMany({
-        where: { status: "ACTIVE" },
+        where: { tenantId: authUser.tenantId, status: "ACTIVE" },
         orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
         select: { id: true, firstName: true, lastName: true, phone: true },
       }),
       prisma.subscriptionPlan.findMany({
-        where: { isActive: true },
+        where: { tenantId: authUser.tenantId, isActive: true },
         orderBy: { name: "asc" },
         select: { id: true, name: true, price: true, totalSessions: true, validityDays: true },
       }),

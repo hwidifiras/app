@@ -4,11 +4,29 @@ import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { SubscriptionsListClient } from "@/components/subscriptions/subscriptions-list-client";
 import type { SubscriptionStatus } from "@prisma/client";
+import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function SubscriptionsPage() {
+  const authUser = await getAuthUser();
+
+  if (!authUser) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Ventes"
+          title="Abonnements"
+          description="Connectez-vous pour consulter les abonnements."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
+
   let hasError = false;
   let subscriptions: Array<{
     id: string;
@@ -30,11 +48,12 @@ export default async function SubscriptionsPage() {
 
   try {
     const rows = await prisma.memberSubscription.findMany({
+      where: { tenantId: authUser.tenantId },
       orderBy: { createdAt: "desc" },
       include: {
         member: { select: { firstName: true, lastName: true, phone: true } },
         plan: { select: { name: true, totalSessions: true } },
-        payments: { select: { amount: true } },
+        payments: { where: { tenantId: authUser.tenantId }, select: { amount: true } },
       },
     });
 

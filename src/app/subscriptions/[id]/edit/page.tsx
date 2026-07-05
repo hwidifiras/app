@@ -5,23 +5,40 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { SubscriptionEditForm } from "@/components/subscriptions/subscription-edit-form";
 import { sumLedgerRows } from "@/lib/payment-ledger";
+import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function EditSubscriptionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const authUser = await getAuthUser();
+
+  if (!authUser) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Ventes"
+          title="Corriger l'abonnement"
+          description="Connectez-vous pour corriger un abonnement."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
 
   const [subscription, plans] = await Promise.all([
-    prisma.memberSubscription.findUnique({
-      where: { id },
+    prisma.memberSubscription.findFirst({
+      where: { id, tenantId: authUser.tenantId },
       include: {
         member: { select: { firstName: true, lastName: true } },
-        payments: { select: { amount: true } },
+        payments: { where: { tenantId: authUser.tenantId }, select: { amount: true } },
       },
     }),
     prisma.subscriptionPlan.findMany({
-      where: { isActive: true },
+      where: { tenantId: authUser.tenantId, isActive: true },
       orderBy: { name: "asc" },
       select: { id: true, name: true, price: true, totalSessions: true, validityDays: true },
     }),
@@ -35,8 +52,8 @@ export default async function EditSubscriptionPage({ params }: { params: Promise
     ? plans
     : [
         ...plans,
-        await prisma.subscriptionPlan.findUniqueOrThrow({
-          where: { id: subscription.planId },
+        await prisma.subscriptionPlan.findFirstOrThrow({
+          where: { id: subscription.planId, tenantId: authUser.tenantId },
           select: { id: true, name: true, price: true, totalSessions: true, validityDays: true },
         }),
       ];
