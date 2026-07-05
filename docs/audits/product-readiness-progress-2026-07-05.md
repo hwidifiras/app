@@ -49,6 +49,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Non-admin users see only account settings in the configuration drawer, reducing sidebar confusion.
 - `/settings/users` now shows Admin / Reception / Coach access posture, role-first account creation, clearer permission labels, and safer deactivation copy.
 - `/settings/club` now starts with an operational summary for club identity, working days, pointage, and receipts, with reception rules separated from the long preferences form.
+- `/settings/schedules` now starts with schedule summary metrics, keeps template creation collapsed by default, shows the selected template before applying, and clears stale previews when targets or dates change.
 
 ## Current Product Fingerprint To Reuse
 
@@ -89,7 +90,7 @@ Highest-risk routes to re-check next:
 The new `/settings` hub is the entry point. Next UI pass should make these pages match it:
 
 - `/settings/club`: summary and guidance pass is implemented; remaining improvement is browser QA and any form-section copy tightening found there.
-- `/settings/schedules`: improve templates with stronger preview, selected target summary, and safer apply confirmation.
+- `/settings/schedules`: template/apply clarity pass is implemented; remaining improvement is browser QA with real groups and mobile layout.
 - `/settings/users`: role intent and permission clarity pass is implemented; browser QA still needed on desktop and mobile.
 - `/settings/data-import`: make import steps more visual and make rollback limits explicit.
 - `/logs`: keep business actions first and system noise visually secondary.
@@ -166,6 +167,7 @@ Latest UI settings checkpoint:
 
 - `/settings/users` role-intent polish passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `/settings/club` hierarchy polish passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
+- `/settings/schedules` clarity and stale-preview safety pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
 
 Start a disposable local PostgreSQL test database, or set `TEST_DATABASE_URL`, before relying on `npm.cmd test`.

@@ -93,6 +93,7 @@ export function ScheduleTemplatesManager({
   workingDays: ClubDay[];
 }) {
   const [templates, setTemplates] = useState(initialTemplates);
+  const [showCreateForm, setShowCreateForm] = useState(initialTemplates.length === 0);
   const [selectedTemplateId, setSelectedTemplateId] = useState(initialTemplates[0]?.id ?? "");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -120,13 +121,17 @@ export function ScheduleTemplatesManager({
     () => selectedTemplate?.slots.filter((slot) => !workingDaySet.has(slot.dayOfWeek)).map(slotLabel) ?? [],
     [selectedTemplate, workingDaySet],
   );
-
   const targetGroups = useMemo(() => {
     if (targetMode === "ALL_ACTIVE") return groups;
     if (targetMode === "SPORT") return groups.filter((group) => group.sportId === sportId);
     if (targetMode === "GROUP_TYPE") return groups.filter((group) => group.groupType === groupType);
     return groups.filter((group) => selectedGroupIds.includes(group.id));
   }, [groupType, groups, selectedGroupIds, sportId, targetMode]);
+
+  function clearApplyPreview() {
+    setPreview(null);
+    setConfirmFutureSessions(false);
+  }
 
   function updateSlot(index: number, patch: Partial<SlotInput>) {
     setSlots((current) => current.map((slot, slotIndex) => (slotIndex === index ? { ...slot, ...patch } : slot)));
@@ -137,6 +142,7 @@ export function ScheduleTemplatesManager({
   }
 
   function toggleGroup(groupId: string) {
+    clearApplyPreview();
     setSelectedGroupIds((current) =>
       current.includes(groupId) ? current.filter((id) => id !== groupId) : [...current, groupId],
     );
@@ -156,20 +162,22 @@ export function ScheduleTemplatesManager({
     setLoading(false);
 
     if (!response.ok || !json.data) {
-      setMessage(json.error ?? "Impossible de creer le modele");
+      setMessage(json.error ?? "Impossible de créer le modèle");
       return;
     }
 
     setTemplates((current) => [json.data!, ...current]);
+    clearApplyPreview();
     setSelectedTemplateId(json.data.id);
     setName("");
     setDescription("");
     setSlots([emptySlot()]);
-    setMessage("Modele cree");
+    setShowCreateForm(false);
+    setMessage("Modèle créé");
   }
 
   async function archiveTemplate(templateId: string) {
-    if (!window.confirm("Archiver ce modele ? Les horaires deja appliques aux groupes ne seront pas modifies.")) return;
+    if (!window.confirm("Archiver ce modèle ? Les horaires déjà appliqués aux groupes ne seront pas modifiés.")) return;
     setLoading(true);
     setMessage(null);
 
@@ -178,15 +186,16 @@ export function ScheduleTemplatesManager({
     setLoading(false);
 
     if (!response.ok) {
-      setMessage(json.error ?? "Impossible d'archiver le modele");
+      setMessage(json.error ?? "Impossible d'archiver le modèle");
       return;
     }
 
     setTemplates((current) => current.filter((template) => template.id !== templateId));
     if (selectedTemplateId === templateId) {
+      clearApplyPreview();
       setSelectedTemplateId(templates.find((template) => template.id !== templateId)?.id ?? "");
     }
-    setMessage("Modele archive");
+    setMessage("Modèle archivé");
   }
 
   function buildApplyPayload(dryRun: boolean) {
@@ -205,7 +214,7 @@ export function ScheduleTemplatesManager({
 
   async function previewApply() {
     if (!selectedTemplate) {
-      setMessage("Selectionnez un modele");
+      setMessage("Sélectionnez un modèle");
       return;
     }
     setLoading(true);
@@ -221,7 +230,7 @@ export function ScheduleTemplatesManager({
     setLoading(false);
 
     if (!response.ok || !json.data) {
-      setMessage(json.error ?? "Impossible de preparer l'application");
+      setMessage(json.error ?? "Impossible de préparer l'application");
       return;
     }
 
@@ -244,7 +253,7 @@ export function ScheduleTemplatesManager({
     if (!response.ok || !json.data?.applied) {
       setLoading(false);
       if (json.data?.summary) setPreview(json.data.summary);
-      setMessage(json.error ?? "Impossible d'appliquer le modele");
+      setMessage(json.error ?? "Impossible d'appliquer le modèle");
       return;
     }
 
@@ -264,7 +273,7 @@ export function ScheduleTemplatesManager({
     setLoading(false);
     setPreview(json.data.summary);
     setMessage(
-      `Modele applique a ${json.data.summary.groupCount} groupe${json.data.summary.groupCount > 1 ? "s" : ""}. ${generatedCount} seance${generatedCount > 1 ? "s" : ""} generee${generatedCount > 1 ? "s" : ""}.`,
+      `Modèle appliqué à ${json.data.summary.groupCount} groupe${json.data.summary.groupCount > 1 ? "s" : ""}. ${generatedCount} séance${generatedCount > 1 ? "s" : ""} générée${generatedCount > 1 ? "s" : ""}.`,
     );
   }
 
@@ -273,21 +282,23 @@ export function ScheduleTemplatesManager({
       <section className="panel p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--primary)]">Modeles</p>
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--primary)]">Modèles</p>
             <h2 className="mt-1 text-lg font-semibold text-[var(--foreground)]">Horaires types</h2>
             <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-              Creez des semaines reutilisables pour saison normale, Ramadan, ete ou stages.
+              Créez des semaines réutilisables pour saison normale, Ramadan, été ou stages.
             </p>
           </div>
-          <span className="rounded-full bg-[var(--surface-soft)] px-3 py-1 text-xs font-semibold text-[var(--muted-foreground)]">
-            {templates.length}
-          </span>
+          <button type="button" onClick={() => setShowCreateForm((current) => !current)} className="btn btn-primary btn-sm">
+            <Plus className="size-4" />
+            {showCreateForm ? "Fermer" : "Créer"}
+          </button>
         </div>
 
+        {showCreateForm ? (
         <form onSubmit={createTemplate} className="mt-4 space-y-3 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
           <div className="grid gap-3 md:grid-cols-2">
             <label className="block">
-              <span className="mb-1 block text-xs font-semibold">Nom du modele</span>
+              <span className="mb-1 block text-xs font-semibold">Nom du modèle</span>
               <input className="field" value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex. Ramadan 18h" required />
             </label>
             <label className="block">
@@ -327,29 +338,35 @@ export function ScheduleTemplatesManager({
               Ajouter un horaire
             </button>
             <button type="submit" disabled={loading} className="btn btn-primary">
-              Creer le modele
+              Créer le modèle
             </button>
           </div>
         </form>
+        ) : null}
 
         <div className="mt-4 grid gap-2">
           {templates.length === 0 ? (
             <div className="rounded-lg border border-dashed border-[var(--border)] p-4 text-sm text-[var(--muted-foreground)]">
-              Aucun modele pour le moment.
+              Aucun modèle pour le moment.
             </div>
           ) : templates.map((template) => (
-            <button
+            <article
               key={template.id}
-              type="button"
-              onClick={() => setSelectedTemplateId(template.id)}
               className={cn(
-                "rounded-lg border p-3 text-left transition",
+                "flex items-start justify-between gap-3 rounded-lg border p-3 text-left transition",
                 selectedTemplate?.id === template.id
                   ? "border-[var(--primary)] bg-[var(--primary)]/5"
                   : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)]/40",
               )}
             >
-              <div className="flex items-start justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  clearApplyPreview();
+                  setSelectedTemplateId(template.id);
+                }}
+                className="min-w-0 flex-1 text-left"
+              >
                 <div className="min-w-0">
                   <p className="font-semibold text-[var(--foreground)]">{template.name}</p>
                   {template.description ? <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">{template.description}</p> : null}
@@ -357,27 +374,19 @@ export function ScheduleTemplatesManager({
                     {template.slots.map(slotLabel).join(" · ")}
                   </p>
                 </div>
-                <span
-                  role="button"
-                  tabIndex={0}
+              </button>
+                <button
+                  type="button"
                   onClick={(event) => {
                     event.stopPropagation();
                     void archiveTemplate(template.id);
                   }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      void archiveTemplate(template.id);
-                    }
-                  }}
                   className="inline-flex rounded-md border border-[var(--border)] p-2 text-[var(--muted-foreground)] hover:text-[var(--danger)]"
-                  aria-label="Archiver le modele"
+                  aria-label="Archiver le modèle"
                 >
                   <Trash2 className="size-4" />
-                </span>
-              </div>
-            </button>
+                </button>
+            </article>
           ))}
         </div>
       </section>
@@ -385,9 +394,9 @@ export function ScheduleTemplatesManager({
       <section className="panel p-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--primary)]">Application</p>
-          <h2 className="mt-1 text-lg font-semibold text-[var(--foreground)]">Appliquer aux groupes</h2>
+          <h2 className="mt-1 text-lg font-semibold text-[var(--foreground)]">Appliquer une saison</h2>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-            Fermez les anciens horaires a une date, puis ouvrez les nouveaux horaires du modele.
+            Prévisualisez l&apos;impact, fermez les anciens horaires si besoin, puis ouvrez les nouveaux créneaux.
           </p>
         </div>
 
@@ -399,17 +408,50 @@ export function ScheduleTemplatesManager({
 
         <div className="mt-4 grid gap-3">
           <label className="block">
-            <span className="mb-1 block text-xs font-semibold">Modele a appliquer</span>
-            <select value={selectedTemplate?.id ?? ""} onChange={(event) => setSelectedTemplateId(event.target.value)} className="field">
+            <span className="mb-1 block text-xs font-semibold">Modèle à appliquer</span>
+            <select
+              value={selectedTemplate?.id ?? ""}
+              onChange={(event) => {
+                clearApplyPreview();
+                setSelectedTemplateId(event.target.value);
+              }}
+              className="field"
+            >
               {templates.map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}
             </select>
           </label>
 
+          {selectedTemplate ? (
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--primary)]">
+                Modèle sélectionné
+              </p>
+              <p className="mt-1 font-semibold text-[var(--foreground)]">{selectedTemplate.name}</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {selectedTemplate.slots.map((slot) => (
+                  <span
+                    key={slot.id}
+                    className="rounded-full bg-[var(--surface)] px-2.5 py-1 text-xs font-semibold text-[var(--muted-foreground)]"
+                  >
+                    {slotLabel(slot)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <div className="grid gap-3 md:grid-cols-2">
             <label className="block">
               <span className="mb-1 block text-xs font-semibold">Cible</span>
-              <select value={targetMode} onChange={(event) => setTargetMode(event.target.value as typeof targetMode)} className="field">
-                <option value="SELECTED_GROUPS">Groupes selectionnes</option>
+              <select
+                value={targetMode}
+                onChange={(event) => {
+                  clearApplyPreview();
+                  setTargetMode(event.target.value as typeof targetMode);
+                }}
+                className="field"
+              >
+                <option value="SELECTED_GROUPS">Groupes sélectionnés</option>
                 <option value="SPORT">Une discipline</option>
                 <option value="GROUP_TYPE">Enfants ou adultes</option>
                 <option value="ALL_ACTIVE">Tous les groupes actifs</option>
@@ -418,7 +460,14 @@ export function ScheduleTemplatesManager({
             {targetMode === "SPORT" ? (
               <label className="block">
                 <span className="mb-1 block text-xs font-semibold">Discipline</span>
-                <select value={sportId} onChange={(event) => setSportId(event.target.value)} className="field">
+                <select
+                  value={sportId}
+                  onChange={(event) => {
+                    clearApplyPreview();
+                    setSportId(event.target.value);
+                  }}
+                  className="field"
+                >
                   {sports.map((sport) => <option key={sport.id} value={sport.id}>{sport.name}</option>)}
                 </select>
               </label>
@@ -426,10 +475,17 @@ export function ScheduleTemplatesManager({
             {targetMode === "GROUP_TYPE" ? (
               <label className="block">
                 <span className="mb-1 block text-xs font-semibold">Type</span>
-                <select value={groupType} onChange={(event) => setGroupType(event.target.value as GroupTypeValue)} className="field">
+                <select
+                  value={groupType}
+                  onChange={(event) => {
+                    clearApplyPreview();
+                    setGroupType(event.target.value as GroupTypeValue);
+                  }}
+                  className="field"
+                >
                   <option value="ADULTS">Adultes</option>
                   <option value="KIDS">Enfants</option>
-                  <option value="MIXED">Mixte age</option>
+                  <option value="MIXED">Mixte âge</option>
                 </select>
               </label>
             ) : null}
@@ -451,35 +507,60 @@ export function ScheduleTemplatesManager({
             {targetGroups.length} groupe{targetGroups.length > 1 ? "s" : ""} cible{targetGroups.length > 1 ? "s" : ""}.
             {selectedTemplateClosedSlots.length > 0 ? (
               <span className="ml-1 font-semibold text-[var(--warning)]">
-                Attention: {selectedTemplateClosedSlots.join(", ")} tombe{selectedTemplateClosedSlots.length > 1 ? "nt" : ""} sur un jour ferme.
+                Attention: {selectedTemplateClosedSlots.join(", ")} tombe{selectedTemplateClosedSlots.length > 1 ? "nt" : ""} sur un jour fermé.
               </span>
             ) : null}
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
             <label className="block">
-              <span className="mb-1 block text-xs font-semibold">Appliquer a partir du</span>
-              <input type="date" value={effectiveFrom} onChange={(event) => setEffectiveFrom(event.target.value)} className="field" />
+              <span className="mb-1 block text-xs font-semibold">Appliquer à partir du</span>
+              <input
+                type="date"
+                value={effectiveFrom}
+                onChange={(event) => {
+                  clearApplyPreview();
+                  setEffectiveFrom(event.target.value);
+                }}
+                className="field"
+              />
             </label>
             <label className="block">
               <span className="mb-1 block text-xs font-semibold">Fin optionnelle</span>
-              <input type="date" value={effectiveTo} min={effectiveFrom} onChange={(event) => setEffectiveTo(event.target.value)} className="field" />
+              <input
+                type="date"
+                value={effectiveTo}
+                min={effectiveFrom}
+                onChange={(event) => {
+                  clearApplyPreview();
+                  setEffectiveTo(event.target.value);
+                }}
+                className="field"
+              />
             </label>
           </div>
 
           <div className="grid gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 text-sm">
             <label className="flex items-start gap-2">
-              <input type="checkbox" checked={replaceExisting} onChange={(event) => setReplaceExisting(event.target.checked)} className="mt-0.5 size-4 accent-[var(--primary)]" />
-              <span>Fermer les horaires actifs/futurs des groupes cibles avant de creer les nouveaux.</span>
+              <input
+                type="checkbox"
+                checked={replaceExisting}
+                onChange={(event) => {
+                  clearApplyPreview();
+                  setReplaceExisting(event.target.checked);
+                }}
+                className="mt-0.5 size-4 accent-[var(--primary)]"
+              />
+              <span>Fermer les horaires actifs/futurs des groupes cibles avant de créer les nouveaux.</span>
             </label>
             <label className="flex items-start gap-2">
               <input type="checkbox" checked={autoGenerate} onChange={(event) => setAutoGenerate(event.target.checked)} className="mt-0.5 size-4 accent-[var(--primary)]" />
-              <span>Generer les seances apres application.</span>
+              <span>Générer les séances après application.</span>
             </label>
             {preview?.futureSessionsCount ? (
               <label className="flex items-start gap-2 text-[var(--warning)]">
                 <input type="checkbox" checked={confirmFutureSessions} onChange={(event) => setConfirmFutureSessions(event.target.checked)} className="mt-0.5 size-4 accent-[var(--warning)]" />
-                <span>Je confirme: {preview.futureSessionsCount} seances futures existent deja et resteront visibles.</span>
+                <span>Je confirme: {preview.futureSessionsCount} séances futures existent déjà et resteront visibles.</span>
               </label>
             ) : null}
           </div>
@@ -487,29 +568,34 @@ export function ScheduleTemplatesManager({
           <div className="flex flex-col gap-2 sm:flex-row">
             <button type="button" onClick={() => void previewApply()} disabled={loading || !selectedTemplate} className="btn btn-ghost btn-block-mobile">
               <Eye className="size-4" />
-              Previsualiser
+              Prévisualiser
             </button>
-            <button type="button" onClick={() => void applyTemplate()} disabled={loading || !selectedTemplate || !preview} className="btn btn-primary btn-block-mobile">
+            <button
+              type="button"
+              onClick={() => void applyTemplate()}
+              disabled={loading || !selectedTemplate || !preview || (preview.futureSessionsCount > 0 && !confirmFutureSessions)}
+              className="btn btn-primary btn-block-mobile"
+            >
               <CalendarPlus className="size-4" />
-              Appliquer le modele
+              Appliquer le modèle
             </button>
           </div>
 
           {preview ? (
             <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--primary)]">Apercu avant application</p>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--primary)]">Aperçu avant application</p>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 <PreviewMetric label="Groupes" value={preview.groupCount} />
                 <PreviewMetric label="Nouveaux horaires" value={preview.newScheduleCount} />
-                <PreviewMetric label="Horaires fermes" value={preview.closedScheduleCount} />
-                <PreviewMetric label="Seances futures existantes" value={preview.futureSessionsCount} warning={preview.futureSessionsCount > 0} />
+                <PreviewMetric label="Horaires fermés" value={preview.closedScheduleCount} />
+                <PreviewMetric label="Séances futures existantes" value={preview.futureSessionsCount} warning={preview.futureSessionsCount > 0} />
               </div>
               <p className="mt-3 text-xs text-[var(--muted-foreground)]">
                 Periode: du {formatDate(preview.effectiveFrom)} au {formatDate(preview.effectiveTo)}.
               </p>
               {preview.closedDayWarnings.length > 0 ? (
                 <div className="mt-3 rounded-lg border border-[var(--warning)]/25 bg-[var(--warning)]/10 px-3 py-2 text-xs font-semibold text-[var(--warning)]">
-                  Jours fermes dans les reglages: {preview.closedDayWarnings.join(", ")}.
+                  Jours fermés dans les réglages: {preview.closedDayWarnings.join(", ")}.
                 </div>
               ) : null}
               <div className="mt-3 max-h-32 overflow-auto rounded-lg border border-[var(--border)] p-2">
