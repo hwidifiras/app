@@ -69,12 +69,28 @@ async function ensureNoAttendanceForSnapshot(
   }
 }
 
+export async function getEnrollmentRevertBlockReason(
+  tx: Prisma.TransactionClient,
+  snapshot: EnrollmentUndoSnapshot,
+): Promise<string | null> {
+  try {
+    await ensureNoAttendanceForSnapshot(tx, snapshot);
+    return null;
+  } catch (error) {
+    if (error instanceof EnrollmentRevertBlockedError) {
+      return error.message;
+    }
+    throw error;
+  }
+}
+
 async function reverseCreatedPayments(
   tx: Prisma.TransactionClient,
   snapshot: EnrollmentUndoSnapshot,
   actorId: string,
   now: Date,
   reason: string,
+  tenantId?: string | null,
 ) {
   if (snapshot.createdPaymentIds.length === 0) return;
 
@@ -110,6 +126,7 @@ async function reverseCreatedPayments(
 
     await tx.auditLog.create({
       data: {
+        tenantId: tenantId ?? undefined,
         action: "PAYMENT_REVERSED",
         entityType: "Payment",
         entityId: reversal.id,
@@ -127,6 +144,7 @@ async function reverseCreatedPayments(
     if (voidedReceipt) {
       await tx.auditLog.create({
         data: {
+          tenantId: tenantId ?? undefined,
           action: "RECEIPT_VOIDED",
           entityType: "Receipt",
           entityId: voidedReceipt.id,
@@ -147,11 +165,12 @@ export async function revertEnrollmentUndoSnapshot(
   snapshot: EnrollmentUndoSnapshot,
   actorId: string,
   reason = "Annulation inscription",
+  options: { tenantId?: string | null; recoveryKey?: string | null; memberIds?: string[] } = {},
 ): Promise<void> {
   const now = new Date();
 
   await ensureNoAttendanceForSnapshot(tx, snapshot);
-  await reverseCreatedPayments(tx, snapshot, actorId, now, reason);
+  await reverseCreatedPayments(tx, snapshot, actorId, now, reason, options.tenantId);
 
   if (snapshot.offerApplicationId) {
     await tx.memberSubscription.updateMany({
@@ -201,12 +220,15 @@ export async function revertEnrollmentUndoSnapshot(
 
   await tx.auditLog.create({
     data: {
+      tenantId: options.tenantId ?? undefined,
       action: "ENROLLMENT_VOIDED",
       entityType: "Enrollment",
       entityId: snapshot.offerApplicationId ?? snapshot.createdMemberIds[0] ?? "batch",
       userId: actorId,
       details: JSON.stringify({
         ...snapshot,
+        memberIds: options.memberIds ?? snapshot.createdMemberIds,
+        recoveryKey: options.recoveryKey ?? null,
         reason,
         voidedAt: now.toISOString(),
         mode: "traceable-void",

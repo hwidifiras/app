@@ -2,10 +2,14 @@ import Link from "next/link";
 import type { ComponentType } from "react";
 import { Banknote, CalendarCheck2, CreditCard, PencilLine, ShieldCheck, UsersRound } from "lucide-react";
 
+import { MemberEnrollmentRecoveryPanel } from "@/components/members/member-enrollment-recovery-panel";
+import type { EnrollmentRecoveryCandidate } from "@/lib/enrollment-recovery";
+
 type MemberRecoveryGuideProps = {
   memberId: string;
   hasSubscriptions: boolean;
   hasAttendances: boolean;
+  enrollmentRecoveryCandidates: EnrollmentRecoveryCandidate[];
 };
 
 type RecoveryItem = {
@@ -20,6 +24,7 @@ export function MemberRecoveryGuide({
   memberId,
   hasSubscriptions,
   hasAttendances,
+  enrollmentRecoveryCandidates,
 }: MemberRecoveryGuideProps) {
   const items: RecoveryItem[] = [
     {
@@ -101,6 +106,17 @@ export function MemberRecoveryGuide({
             </Link>
           );
         })}
+      </div>
+
+      <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/50 p-3">
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--primary)]">
+          Annulation inscription
+        </p>
+        <p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">
+          Une inscription récente peut être annulée seulement si aucune présence n&apos;a déjà utilisé ses abonnements ou
+          élèves. Le système inverse les paiements, annule les reçus, résilie les abonnements et garde le motif.
+        </p>
+        <MemberEnrollmentRecoveryPanel candidates={enrollmentRecoveryCandidates} />
       </div>
     </section>
   );

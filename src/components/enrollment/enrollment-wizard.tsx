@@ -96,6 +96,7 @@ type QuoteData = {
 type EnrollmentCompletion = {
   memberIds: string[];
   undoSnapshot: EnrollmentUndoSnapshot;
+  recoveryKey?: string | null;
 };
 
 function lineMemberProfile(line: LineState, members: MemberOption[]): { memberType: MemberType; gender: Gender } | null {
@@ -310,6 +311,7 @@ export function EnrollmentWizard({
       data?: {
         memberIds: string[];
         undoSnapshot: EnrollmentUndoSnapshot;
+        recoveryKey?: string | null;
       };
       error?: string;
     };
@@ -322,7 +324,7 @@ export function EnrollmentWizard({
     const memberIds = data.data?.memberIds ?? [];
     const undoSnapshot = data.data?.undoSnapshot;
     setCompleted(true);
-    setCompletion(undoSnapshot ? { memberIds, undoSnapshot } : null);
+    setCompletion(undoSnapshot ? { memberIds, undoSnapshot, recoveryKey: data.data?.recoveryKey ?? null } : null);
     setVoidReason("");
     setMessage("Inscription confirmée.");
     router.refresh();
@@ -343,6 +345,7 @@ export function EnrollmentWizard({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         undoSnapshot: completion.undoSnapshot,
+        recoveryKey: completion.recoveryKey,
         reason,
       }),
     });

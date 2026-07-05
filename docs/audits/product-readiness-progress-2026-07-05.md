@@ -17,6 +17,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Payments use an append-only ledger for normal payments, corrections, and reversals.
 - Payment correction/reversal requires admin and a reason.
 - Enrollment recovery now reverses payments, voids receipts, cancels subscriptions, closes assignments, and archives newly created members where applicable.
+- New enrollments now persist a recovery key and undo snapshot in the enrollment audit log. Member detail can surface recent recoverable inscriptions and void them later with a required reason when no attendance has consumed the affected rows.
 - Catalog records for disciplines, coaches, and formulas are deactivated instead of physically deleted in normal flows.
 - Receipts are created for original payment entries and voided when the original payment is corrected or reversed.
 - Group schedules are closed with an end date and audit trail instead of being physically deleted.
@@ -76,6 +77,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Planning session generation now uses a dry-run preview before creating sessions, shows the target/date range/active horaires/existing sessions, and writes `SESSIONS_GENERATED` audit logs after confirmed generation.
 - The planning generation action is now labelled as generation from active weekly schedules, not generic manual creation, and the preview states that only missing sessions are created while existing sessions are ignored.
 - Enrollment success now keeps staff on the confirmation screen, shows a direct member-profile link, and exposes the safe traced `Annuler cette inscription` recovery action with a required reason.
+- Member detail now extends inscription recovery beyond the success screen: recent recoverable inscriptions are shown in `Corriger une erreur`, blocked cases explain why, and safe voids reuse the same traceable recovery endpoint.
 - A broader product-readiness roadmap now exists at `docs/audits/product-readiness-roadmap-2026-07-05.md`, covering recoverability, receipts, UI/UX consistency, settings polish, group/coach/enrollment rules, and code organization.
 - A master SaaS execution map now exists at `docs/audits/saas-product-execution-map-2026-07-05.md`, covering recoverability, page-by-page UX audit scope, settings redesign, receipts, group rules, planning/working days, code organization, and future gym-module strategy.
 - A product-owner priority register now exists at `docs/audits/product-owner-priority-register-2026-07-05.md`, mapping the latest concerns to current code evidence, decisions, priorities, and implementation order.
@@ -222,6 +224,7 @@ Latest UI settings checkpoint:
 - `/logs` summary pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Receipt legal/fiscal identity field pass added DB fields and receipt snapshot/rendering support; it passed `npx.cmd prisma generate`, `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`. `npm.cmd test` remains blocked by the missing local PostgreSQL server at `localhost:5432`.
 - Payment receipt delivery badge pass passed `npm.cmd run lint -- --no-cache` and `npm.cmd run build`. `npm.cmd test` remains blocked by the missing local PostgreSQL server at `localhost:5432`.
+- Member-page enrollment recovery pass passed `npm.cmd run lint -- --no-cache` and `npm.cmd run build`. `npm.cmd test` remains blocked by the missing local PostgreSQL server at `localhost:5432`.
 - `schedule-templates-manager.tsx` UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `data-import-wizard.tsx` bulk preview UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `data-import-wizard.tsx` status/rollback UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/responsive-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatRoomLabel } from "@/lib/group-room";
+import { getEnrollmentRecoveryCandidatesForMember } from "@/lib/enrollment-recovery";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -108,6 +109,10 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
     const totalPaid = subscription.payments.reduce((acc, payment) => acc + payment.amount, 0);
     return sum + Math.max(0, subscription.amount - totalPaid);
   }, 0);
+  const enrollmentRecoveryCandidates = await getEnrollmentRecoveryCandidatesForMember(
+    member.id,
+    member.tenantId,
+  );
 
   const subscriptionCards = member.subscriptions.map((subscription) => ({
     id: subscription.id,
@@ -341,6 +346,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
               memberId={member.id}
               hasSubscriptions={member.subscriptions.length > 0}
               hasAttendances={member.attendances.length > 0}
+              enrollmentRecoveryCandidates={enrollmentRecoveryCandidates}
             />
             <div id="member-edit" className="scroll-mt-24">
               <MemberEditCard

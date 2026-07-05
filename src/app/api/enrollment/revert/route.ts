@@ -4,7 +4,9 @@ import {
   EnrollmentRevertBlockedError,
   enrollmentUndoSnapshotSchema,
   revertEnrollmentUndoSnapshot,
+  type EnrollmentUndoSnapshot,
 } from "@/lib/enrollment-undo";
+import { getEnrollmentRecoveryByKey, isEnrollmentRecoveryVoided } from "@/lib/enrollment-recovery";
 import { prisma } from "@/lib/prisma";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 
@@ -34,22 +36,48 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Motif obligatoire pour annuler une inscription" }, { status: 400 });
   }
 
-  const parsed = enrollmentUndoSnapshotSchema.safeParse(
-    typeof body === "object" && body !== null && "undoSnapshot" in body
-      ? (body as { undoSnapshot: unknown }).undoSnapshot
-      : body,
-  );
+  let snapshot: EnrollmentUndoSnapshot | null = null;
+  let recoveryKey: string | null = null;
+  let memberIds: string[] | undefined;
 
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Validation échouée", details: parsed.error.flatten() },
-      { status: 400 },
+  const payload = typeof body === "object" && body !== null ? body as { undoSnapshot?: unknown; recoveryKey?: unknown } : {};
+  if (typeof payload.recoveryKey === "string" && payload.recoveryKey.trim()) {
+    recoveryKey = payload.recoveryKey.trim();
+    const recovery = await getEnrollmentRecoveryByKey(recoveryKey, actor.tenantId);
+    if (!recovery) {
+      return NextResponse.json({ error: "Inscription récupérable introuvable" }, { status: 404 });
+    }
+    if (await isEnrollmentRecoveryVoided(recoveryKey, actor.tenantId)) {
+      return NextResponse.json({ error: "Cette inscription a déjà été annulée avec trace" }, { status: 409 });
+    }
+    snapshot = recovery.undoSnapshot;
+    memberIds = recovery.memberIds;
+  } else {
+    const parsed = enrollmentUndoSnapshotSchema.safeParse(
+      "undoSnapshot" in payload ? payload.undoSnapshot : body,
     );
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation échouée", details: parsed.error.flatten() },
+        { status: 400 },
+      );
+    }
+    snapshot = parsed.data;
   }
+
+  if (!snapshot) {
+    return NextResponse.json({ error: "Inscription récupérable introuvable" }, { status: 404 });
+  }
+  const undoSnapshot = snapshot;
 
   try {
     await prisma.$transaction(async (tx) => {
-      await revertEnrollmentUndoSnapshot(tx, parsed.data, actor.id, reason);
+      await revertEnrollmentUndoSnapshot(tx, undoSnapshot, actor.id, reason, {
+        tenantId: actor.tenantId,
+        recoveryKey,
+        memberIds,
+      });
     });
 
     return NextResponse.json({ data: { voided: true } });

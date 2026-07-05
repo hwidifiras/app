@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "node:crypto";
 
 import { prisma } from "@/lib/prisma";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
@@ -66,6 +67,7 @@ export async function POST(request: Request) {
           const subscriptionIds: string[] = [];
           const memberIds: string[] = [];
           const undoSnapshot = emptyEnrollmentUndoSnapshot();
+          const recoveryKey = randomUUID();
 
           for (let i = 0; i < parsed.data.lines.length; i++) {
             const line = parsed.data.lines[i];
@@ -352,6 +354,8 @@ export async function POST(request: Request) {
                 offerId: parsed.data.offerId ?? null,
                 offerName: quote.offerName,
                 totalFinalCents: quote.totalFinalCents,
+                recoveryKey,
+                undoSnapshot,
                 lines: quote.lines.map((l) => ({
                   memberName: l.memberName,
                   groupName: l.groupName,
@@ -371,6 +375,7 @@ export async function POST(request: Request) {
             offerApplicationId,
             quote,
             undoSnapshot,
+            recoveryKey,
           };
         });
 
