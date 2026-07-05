@@ -113,11 +113,12 @@ export function MemberSubscriptionCards({ subscriptions }: { subscriptions: Subs
               <Link
                 href={`/subscriptions/${sub.id}/edit`}
                 prefetch={false}
+                title="Corriger l'abonnement avec historique conservé"
                 className={`btn btn-ghost btn-sm inline-flex w-full justify-center text-xs ${
                   isPaid ? "sm:col-span-2" : ""
                 }`}
               >
-                Voir
+                Corriger
               </Link>
             </div>
           </article>

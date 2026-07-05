@@ -234,10 +234,10 @@ export function SubscriptionEditForm({ subscription, plansOptions }: Subscriptio
           Annuler
         </button>
         <button type="button" onClick={() => setStatus("CANCELLED")} className="btn btn-danger btn-block-mobile">
-          Marquer résilié
+          Préparer résiliation
         </button>
         <button type="submit" disabled={loading || amountBelowPaid} className="btn btn-primary btn-block-mobile">
-          {loading ? "Enregistrement..." : "Enregistrer"}
+          {loading ? "Enregistrement..." : "Enregistrer la correction"}
         </button>
       </FormActions>
     </form>

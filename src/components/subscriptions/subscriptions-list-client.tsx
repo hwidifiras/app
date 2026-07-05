@@ -352,8 +352,9 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
                   href={`/subscriptions/${sub.id}/edit`}
                   prefetch={false}
                   className="btn btn-ghost btn-block-mobile min-h-11 sm:w-auto"
+                  title="Corriger l'abonnement avec historique conservé"
                 >
-                  Modifier
+                  Corriger
                 </Link>
               </TableActionsCell>
               <MobileRowToggle expanded={isExpanded} onToggle={() => toggle(sub.id)} />

@@ -85,7 +85,7 @@ export default async function SubscriptionsPage() {
       <PageHeader
         overline="Ventes"
         title="Abonnements"
-        description="Suivre les statuts, soldes, dates et séances restantes."
+        description="Encaisser, renouveler ou corriger une formule avec motif sans perdre l'historique."
         actions={
           <Link
             href="/subscriptions/new"

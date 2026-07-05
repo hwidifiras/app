@@ -52,8 +52,8 @@ export default async function EditSubscriptionPage({ params }: { params: Promise
 
       <PageHeader
         overline="Ventes"
-        title="Modifier l'abonnement"
-        description="Ajuster dates, séances et statut avec un suivi clair du solde."
+        title="Corriger l'abonnement"
+        description="Ajuster dates, formule, séances ou statut avec motif quand une valeur sensible change."
       />
 
       <section className="panel p-4 sm:p-6">
