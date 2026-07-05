@@ -2,10 +2,11 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Banknote, ChevronDown, ChevronRight, Plus, ReceiptText, RotateCcw } from "lucide-react";
+import { Banknote, ChevronDown, ChevronRight, Plus, RotateCcw } from "lucide-react";
 
 import { buildSubscriptionBillingView, formatMoney } from "@/lib/subscription-billing";
 import { cn } from "@/lib/utils";
+import { PaymentReceiptActions } from "@/components/payments/payment-receipt-actions";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
   FilterField,
@@ -31,11 +32,13 @@ type PaymentGroup = {
     paymentDate: string;
     createdAt: string;
     paymentMethod: string | null;
+    memberEmail: string | null;
     entryType: "PAYMENT" | "CORRECTION" | "REVERSAL";
     correctionReason: string | null;
     receipt: {
       id: string;
       receiptNumber: string;
+      verificationCode: string;
       status: "ISSUED" | "VOIDED";
     } | null;
     sequence: number;
@@ -195,10 +198,6 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
     router.push(`/payments/${paymentId}/edit`);
   }
 
-  function goToReceipt(receiptId: string) {
-    router.push(`/receipts/${receiptId}`);
-  }
-
   return (
     <>
       <div className="list-toolbar sticky top-[57px] z-20 -mx-2 mb-4 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[3.5rem]">
@@ -351,14 +350,7 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
                           </p>
                         ) : null}
                         {p.receipt ? (
-                          <button
-                            type="button"
-                            className="mt-1 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[0.65rem] font-semibold text-[var(--primary)] hover:bg-[var(--primary)]/8"
-                            onClick={() => goToReceipt(p.receipt!.id)}
-                          >
-                            <ReceiptText className="size-3" />
-                            Recu {p.receipt.receiptNumber}
-                          </button>
+                          <PaymentReceiptActions receipt={p.receipt} defaultEmail={p.memberEmail} />
                         ) : null}
                       </li>
                     ))}
@@ -495,17 +487,7 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
                               <span className="mt-0.5 block">Motif: {p.correctionReason}</span>
                             ) : null}
                             {p.receipt ? (
-                              <button
-                                type="button"
-                                className="mt-1 inline-flex items-center gap-1 rounded-md text-[var(--primary)] hover:underline"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  goToReceipt(p.receipt!.id);
-                                }}
-                              >
-                                <ReceiptText className="size-3" />
-                                Recu {p.receipt.receiptNumber}
-                              </button>
+                              <PaymentReceiptActions receipt={p.receipt} defaultEmail={p.memberEmail} />
                             ) : null}
                           </td>
                           <td className="px-4 py-2 font-medium text-[var(--foreground)]">{formatMoney(p.amount)}</td>

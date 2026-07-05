@@ -16,6 +16,7 @@ type PaymentRow = {
   offerName: string | null;
   memberName: string;
   planName: string;
+  memberEmail: string | null;
   amount: number;
   paymentDate: string;
   createdAt: string;
@@ -25,6 +26,7 @@ type PaymentRow = {
   receipt: {
     id: string;
     receiptNumber: string;
+    verificationCode: string;
     status: "ISSUED" | "VOIDED";
   } | null;
 };
@@ -45,11 +47,13 @@ type PaymentGroup = {
     paymentDate: string;
     createdAt: string;
     paymentMethod: string | null;
+    memberEmail: string | null;
     entryType: "PAYMENT" | "CORRECTION" | "REVERSAL";
     correctionReason: string | null;
     receipt: {
       id: string;
       receiptNumber: string;
+      verificationCode: string;
       status: "ISSUED" | "VOIDED";
     } | null;
     sequence: number;
@@ -72,7 +76,7 @@ export default async function PaymentsPage() {
             listPriceCents: true,
             discountCents: true,
             offerName: true,
-            member: { select: { firstName: true, lastName: true } },
+            member: { select: { firstName: true, lastName: true, email: true } },
             plan: { select: { name: true } },
           },
         },
@@ -80,6 +84,7 @@ export default async function PaymentsPage() {
           select: {
             id: true,
             receiptNumber: true,
+            verificationCode: true,
             status: true,
           },
         },
@@ -96,6 +101,7 @@ export default async function PaymentsPage() {
       memberName: p.memberSubscription.member
         ? `${p.memberSubscription.member.firstName} ${p.memberSubscription.member.lastName}`
         : "—",
+      memberEmail: p.memberSubscription.member?.email ?? null,
       planName: p.memberSubscription.plan?.name ?? "—",
       amount: p.amount,
       paymentDate: p.paymentDate.toISOString(),
@@ -157,6 +163,7 @@ export default async function PaymentsPage() {
           paymentDate: p.paymentDate,
           createdAt: p.createdAt,
           paymentMethod: p.paymentMethod,
+          memberEmail: p.memberEmail,
           entryType: p.entryType,
           correctionReason: p.correctionReason,
           receipt: p.receipt,

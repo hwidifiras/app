@@ -110,13 +110,13 @@ Domain-specific logic should live in small policy/helper modules, not scattered 
 - Receipt can be sent by email.
 - Printed/verified receipts include a QR code pointing to public verification.
 - Staff can copy the public verification link for manual sending.
+- Payment history exposes receipt actions directly: open, resend email, and copy verification link.
 - Club settings control receipt prefix, sequence, footer, print default, and email default.
 - Payment reversals/corrections void related original receipts.
 
 ### Next To Make It Sales-Grade
 
 - Add receipt delivery history on payment detail.
-- Add resend receipt action directly from payment history.
 - Add optional fiscal/company fields in club settings.
 - Add receipt template preview inside settings.
 - Add "copy verification link" where staff can send by WhatsApp if email is missing.

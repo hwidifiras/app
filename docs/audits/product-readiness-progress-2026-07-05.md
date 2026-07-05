@@ -31,6 +31,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Receipt actions now support print, public verification, and manual email send.
 - Printed/verified receipts now include a QR code pointing to public verification.
 - Receipt actions now support copying the public verification link for manual sending.
+- Payment history now shows compact receipt actions for each issued receipt: open receipt, resend email when a member email exists, and copy verification link.
 - Receipt email sending uses the existing Resend email infrastructure and writes audit logs.
 - Club settings now control receipt prefix, next sequence, footer, default print, and default email behavior.
 - Payment creation honors `receiptEmailDefault`: if enabled and the member has an email, the receipt is sent automatically after the payment transaction commits.
@@ -187,6 +188,7 @@ Latest UI settings checkpoint:
 - `data-import-wizard.tsx` status/rollback UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Attendance undo audit enrichment passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Receipt QR/copy-link pass passed `npm.cmd run lint`, `npm.cmd run build`, `npx.cmd prisma validate`, and `npm.cmd audit --omit=dev`.
+- Payment history receipt actions pass passed `npm.cmd run lint`, `npm.cmd run build`, `npx.cmd prisma validate`, and `npm.cmd audit --omit=dev`.
 - Group policy picker pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Planning UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
