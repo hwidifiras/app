@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { PaymentAddForm } from "@/components/payments/payment-add-form";
 import { getClubSettings } from "@/lib/club-settings";
+import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -14,6 +15,23 @@ export default async function NewPaymentPage({
   searchParams: Promise<{ memberSubscriptionId?: string; memberId?: string }>;
 }) {
   const { memberSubscriptionId, memberId } = await searchParams;
+  const authUser = await getAuthUser();
+
+  if (!authUser) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Ventes"
+          title="Encaisser"
+          description="Connectez-vous pour enregistrer un paiement."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
+
   let hasError = false;
   let subscriptions: Array<{
     id: string;
@@ -29,17 +47,20 @@ export default async function NewPaymentPage({
     const settings = await getClubSettings();
     receiptPrintDefault = settings.receiptPrintDefault;
     const rows = await prisma.memberSubscription.findMany({
-      where: { status: "ACTIVE" },
+      where: {
+        tenantId: authUser.tenantId,
+        status: "ACTIVE",
+        ...(memberId ? { memberId } : {}),
+      },
       orderBy: { createdAt: "desc" },
       include: {
         member: { select: { id: true, firstName: true, lastName: true } },
         plan: { select: { name: true } },
-        payments: { select: { amount: true } },
+        payments: { where: { tenantId: authUser.tenantId }, select: { amount: true } },
       },
     });
 
     subscriptions = rows
-      .filter((s) => !memberId || s.member.id === memberId)
       .map((s) => ({
         id: s.id,
         memberId: s.member.id,

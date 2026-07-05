@@ -8,6 +8,7 @@ import {
   RECEIPT_EMAIL_AUDIT_ACTIONS,
   type ReceiptDeliveryStatus,
 } from "@/lib/receipt-delivery-status";
+import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -69,11 +70,29 @@ type PaymentGroup = {
 };
 
 export default async function PaymentsPage() {
+  const authUser = await getAuthUser();
+
+  if (!authUser) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Ventes"
+          title="Historique caisse"
+          description="Connectez-vous pour consulter les encaissements."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
+
   let hasError = false;
   let paymentGroups: PaymentGroup[] = [];
 
   try {
     const rows = await prisma.payment.findMany({
+      where: { tenantId: authUser.tenantId },
       orderBy: [{ paymentDate: "desc" }, { createdAt: "desc" }],
       include: {
         memberSubscription: {
@@ -101,6 +120,7 @@ export default async function PaymentsPage() {
     const deliveryLogs = receiptIds.length
       ? await prisma.auditLog.findMany({
           where: {
+            tenantId: authUser.tenantId,
             entityType: "Receipt",
             entityId: { in: receiptIds },
             action: { in: [...RECEIPT_EMAIL_AUDIT_ACTIONS] },
