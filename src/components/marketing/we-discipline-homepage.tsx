@@ -1,20 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion, useInView, type Variants } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import {
   ArrowRight,
   BarChart3,
-  Building2,
   CalendarCheck,
   Check,
   CheckCircle2,
   ChevronDown,
   CircleDollarSign,
   CreditCard,
-  Globe2,
   Mail,
   Medal,
   Menu,
@@ -22,7 +20,6 @@ import {
   ShieldCheck,
   Star,
   Target,
-  Trophy,
   Users,
   X,
   type LucideIcon,
@@ -38,13 +35,21 @@ type Feature = {
   title: string;
   description: string;
   icon: LucideIcon;
+  tag?: string;
 };
 
-type Stat = {
-  value: number;
-  suffix: string;
-  label: string;
-  icon: LucideIcon;
+type PricingPlan = {
+  name: string;
+  price: string;
+  limit: string;
+  badge?: string;
+  beltImage: string;
+  beltColor: string;
+  description: string;
+  features: string[];
+  note?: string;
+  cta: string;
+  highlighted: boolean;
 };
 
 const assets = {
@@ -76,73 +81,169 @@ const footerGroups = [
     title: "Produit",
     links: [
       { label: "Tableau de bord", href: "#tableau-de-bord" },
-      { label: "Progression", href: "#progression" },
-      { label: "Communauté", href: "#demo" },
+      { label: "Modules par ceinture", href: "#progression" },
+      { label: "Modules intelligents", href: "#modules" },
       { label: "FAQ", href: "#faq" },
     ],
   },
   {
     title: "Contact",
     links: [
-      { label: "Réserver une démo", href: "#demo" },
-      { label: "Démarrer l'essai", href: "#tarifs" },
+      { label: "Demander une démo", href: "#demo" },
+      { label: "Voir les tarifs", href: "#tarifs" },
       { label: "Nous écrire", href: "mailto:contact@wediscipline.com" },
       { label: "Connexion", href: "/login" },
     ],
   },
 ];
 
-const trustItems = ["Sans carte bancaire", "Configuration en quelques minutes", "Annulation à tout moment"];
+const trustItems = [
+  "Tarifs en TND TTC",
+  "Pointage manuel ou QR",
+  "Adapté aux clubs d'arts martiaux",
+  "Caisse, reçus et abonnements",
+];
 
-const beltJourney = [
-  { name: "Ceinture blanche", image: "/we-discipline/white-belt.webp", color: "#F8FAFC", count: "28 élèves" },
-  { name: "Ceinture jaune", image: "/we-discipline/yellow-belt.webp", color: "#FACC15", count: "34 élèves" },
-  { name: "Ceinture orange", image: "/we-discipline/orange-belt.webp", color: "#FB923C", count: "26 élèves" },
-  { name: "Ceinture verte", image: "/we-discipline/green-belt.webp", color: "#22C55E", count: "30 élèves" },
-  { name: "Ceinture bleue", image: "/we-discipline/blue-belt.webp", color: "#2563EB", count: "24 élèves" },
-  { name: "Ceinture marron", image: "/we-discipline/brown-belt.webp", color: "#7C4A2D", count: "17 élèves" },
-  { name: "Ceinture noire", image: "/we-discipline/black-belt.webp", color: "#111827", count: "28 élèves" },
+const beltFeatures = [
+  {
+    belt: "Ceinture blanche",
+    title: "Dossiers élèves",
+    description: "Centralisez les informations des membres, responsables, contacts, niveaux, certificats et historiques.",
+    image: "/we-discipline/white-belt.webp",
+    color: "#F8FAFC",
+    label: "Inclus",
+  },
+  {
+    belt: "Ceinture jaune",
+    title: "Groupes & horaires",
+    description: "Organisez les groupes par âge, discipline, niveau, coach et créneau.",
+    image: "/we-discipline/yellow-belt.webp",
+    color: "#FACC15",
+    label: "Inclus",
+  },
+  {
+    belt: "Ceinture orange",
+    title: "Pointage manuel",
+    description: "Pointez rapidement les présences par séance, groupe ou coach, même sans matériel.",
+    image: "/we-discipline/orange-belt.webp",
+    color: "#FB923C",
+    label: "Inclus",
+  },
+  {
+    belt: "Ceinture verte",
+    title: "Caisse & abonnements",
+    description: "Suivez les paiements, échéances, impayés, reçus et mouvements de caisse.",
+    image: "/we-discipline/green-belt.webp",
+    color: "#22C55E",
+    label: "Pro",
+  },
+  {
+    belt: "Ceinture bleue",
+    title: "Pointage QR",
+    description: "Accélérez l'accueil avec cartes QR, scan mobile, mode kiosque et contrôle d'abonnement.",
+    image: "/we-discipline/blue-belt.webp",
+    color: "#2563EB",
+    label: "Avancé",
+  },
+  {
+    belt: "Ceinture marron",
+    title: "Comptes coachs",
+    description: "Donnez aux coachs un accès limité pour gérer présences, groupes et progression.",
+    image: "/we-discipline/brown-belt.webp",
+    color: "#7C4A2D",
+    label: "Premium",
+  },
+  {
+    belt: "Ceinture noire",
+    title: "Parents & notifications",
+    description: "Informez les parents, relancez les impayés et suivez la présence des enfants.",
+    image: "/we-discipline/black-belt.webp",
+    color: "#111827",
+    label: "Sur mesure",
+  },
 ];
 
 const features: Feature[] = [
   {
-    title: "Dossiers membres",
-    description: "Fiches élèves, responsables, contacts, abonnements et historique accessibles en quelques secondes.",
+    title: "Élèves & membres",
+    description: "Fiches élèves, responsables, contacts d'urgence, certificats, niveaux et historiques au même endroit.",
     icon: Users,
+    tag: "Membres",
   },
   {
-    title: "Séances & présences",
-    description: "Planifiez les cours, pointez les présences et suivez l'assiduité par groupe ou discipline.",
+    title: "Parents & contacts",
+    description: "Gardez les responsables, téléphones, autorisations et contacts familiaux prêts quand le club en a besoin.",
+    icon: ShieldCheck,
+    tag: "Familles",
+  },
+  {
+    title: "Groupes & planning",
+    description: "Organisez les groupes par âge, niveau, discipline, coach et créneau de séance.",
     icon: CalendarCheck,
+    tag: "Planning",
   },
   {
-    title: "Cotisations & impayés",
-    description: "Pilotez les abonnements, encaissements, échéances et relances depuis une vue financière claire.",
+    title: "Pointage manuel",
+    description: "Pointez les présences par séance, groupe ou coach, sans matériel et sans ralentir l'accueil.",
+    icon: CheckCircle2,
+    tag: "Pointage",
+  },
+  {
+    title: "Pointage QR",
+    description: "Cartes membres QR, scan mobile, tablette ou webcam, mode kiosque et alerte d'abonnement expiré.",
+    icon: Target,
+    tag: "QR",
+  },
+  {
+    title: "Abonnements & caisse",
+    description: "Suivez les formules mensuelles, trimestrielles ou personnalisées, les échéances et la caisse journalière.",
     icon: CreditCard,
+    tag: "Caisse",
   },
   {
-    title: "Groupes & familles",
-    description: "Structurez enfants, adultes, familles, niveaux et groupes de travail sans perdre le lien humain.",
+    title: "Reçus imprimables",
+    description: "Générez et imprimez les reçus avec les informations du club pour garder une trace claire.",
     icon: Medal,
+    tag: "Reçus",
   },
   {
-    title: "Relances & messages",
-    description: "Gardez le contact avec les élèves, parents et coachs pour les absences, paiements et annonces.",
+    title: "Impayés & historique",
+    description: "Retrouvez les paiements, les retards, les relances et l'historique financier de chaque membre.",
+    icon: CircleDollarSign,
+    tag: "Suivi",
+  },
+  {
+    title: "Coachs & permissions",
+    description: "Créez des accès coachs limités aux groupes, séances et informations autorisées.",
+    icon: Users,
+    tag: "Équipe",
+  },
+  {
+    title: "Ceintures & examens",
+    description: "Suivez les grades, préparez les passages de ceinture et gardez l'historique de progression.",
+    icon: Star,
+    tag: "Grades",
+  },
+  {
+    title: "Notifications & relances",
+    description: "Informez parents, élèves et coachs pour absences, annonces, échéances et impayés selon l'offre.",
     icon: MessageCircle,
+    tag: "Messages",
   },
   {
-    title: "Pilotage du club",
-    description: "Suivez membres actifs, chiffre d'affaires, recouvrement, séances du jour et priorités à traiter.",
+    title: "Rapports simples",
+    description: "Lisez membres actifs, présences, paiements, impayés et priorités sans ouvrir dix fichiers.",
     icon: BarChart3,
+    tag: "Rapports",
   },
 ];
 
 const dashboardStats = [
-  { label: "Membres actifs", value: "187", icon: Users, change: "+12 ce mois" },
-  { label: "Présences", value: "92%", icon: CalendarCheck, change: "+4% cette semaine" },
-  { label: "CA du mois", value: "18 450€", icon: CircleDollarSign, change: "+14% ce mois" },
-  { label: "Séances", value: "48", icon: CalendarCheck, change: "Cette semaine" },
-  { label: "Impayés", value: "12", icon: CreditCard, change: "À traiter" },
+  { label: "Membres actifs", value: "128", icon: Users },
+  { label: "Séances ce mois", value: "24", icon: CalendarCheck },
+  { label: "Abonnements à renouveler", value: "17", icon: CreditCard },
+  { label: "Impayés à relancer", value: "9", icon: MessageCircle },
+  { label: "Encaissements du mois", value: "4 850 TND", icon: CircleDollarSign },
 ];
 
 const values = [
@@ -163,74 +264,218 @@ const values = [
   },
 ];
 
-const socialStats: Stat[] = [
-  { value: 18450, suffix: "+", label: "Élèves gérés", icon: Users },
-  { value: 320, suffix: "+", label: "Académies", icon: Building2 },
-  { value: 98, suffix: "%", label: "Satisfaction client", icon: Trophy },
-  { value: 25, suffix: "+", label: "Pays", icon: Globe2 },
+const trustCards: Feature[] = [
+  {
+    title: "Moins de cahiers et d'Excel",
+    description: "Les dossiers, groupes, paiements et présences restent propres, même pendant les heures chargées.",
+    icon: CheckCircle2,
+  },
+  {
+    title: "Une caisse plus claire",
+    description: "Chaque encaissement, reçu, échéance et impayé garde une trace exploitable.",
+    icon: CircleDollarSign,
+  },
+  {
+    title: "Des présences mieux suivies",
+    description: "Le bureau et les coachs voient rapidement qui est présent, absent ou en retard.",
+    icon: CalendarCheck,
+  },
+  {
+    title: "Des parents mieux informés",
+    description: "Les informations importantes ne se perdent plus entre groupes, horaires et paiements.",
+    icon: MessageCircle,
+  },
+  {
+    title: "Des coachs mieux organisés",
+    description: "Les accès coachs restent cadrés, utiles et alignés avec les responsabilités de chacun.",
+    icon: Users,
+  },
+  {
+    title: "Des reçus prêts à imprimer",
+    description: "Le club peut remettre des justificatifs propres sans refaire le travail à la main.",
+    icon: Medal,
+  },
 ];
 
-const pricingPlans = [
+const pricingPlans: PricingPlan[] = [
   {
     name: "Ceinture Blanche",
-    price: "29€",
+    price: "49 TND TTC / mois",
+    limit: "Jusqu'à 60 élèves",
     beltImage: "/we-discipline/white-belt.webp",
     beltColor: "#F8FAFC",
-    description: "Pour poser les bases d'un dojo organisé.",
-    features: ["Jusqu'à 100 élèves", "Dossiers membres", "Présences du jour", "Abonnements simples", "Support par email"],
+    description: "Pour commencer à organiser le club sans Excel.",
+    features: [
+      "Dossiers élèves et membres",
+      "Groupes simples",
+      "Pointage manuel",
+      "Suivi des abonnements",
+      "Suivi caisse basique",
+      "Génération et impression des reçus",
+      "Liste des impayés",
+      "1 utilisateur administrateur",
+      "Export simple PDF / Excel",
+    ],
+    cta: "Choisir l'offre Blanche",
     highlighted: false,
   },
   {
-    name: "Ceinture Marron",
-    price: "79€",
-    beltImage: "/we-discipline/brown-belt.webp",
-    beltColor: "#7C4A2D",
-    description: "Pour les académies en croissance qui veulent piloter avec rigueur.",
+    name: "Ceinture Jaune",
+    price: "79 TND TTC / mois",
+    limit: "Jusqu'à 120 élèves",
+    beltImage: "/we-discipline/yellow-belt.webp",
+    beltColor: "#FACC15",
+    description: "Pour les clubs qui veulent mieux structurer groupes, paiements et séances.",
     features: [
-      "Élèves illimités",
-      "Groupes & familles",
-      "Relances d'impayés",
-      "Tableau de bord avancé",
-      "Communication ciblée",
+      "Tout dans Ceinture Blanche",
+      "Groupes illimités",
+      "Gestion des coachs",
+      "Planning des séances",
+      "Historique complet des présences",
+      "Abonnements mensuels / trimestriels / personnalisés",
+      "Caisse journalière plus détaillée",
+      "Reçus personnalisés avec logo du club",
+      "2 utilisateurs",
     ],
+    cta: "Choisir l'offre Jaune",
+    highlighted: false,
+  },
+  {
+    name: "Ceinture Orange",
+    price: "119 TND TTC / mois",
+    limit: "Jusqu'à 250 élèves",
+    badge: "Pointage QR",
+    beltImage: "/we-discipline/orange-belt.webp",
+    beltColor: "#FB923C",
+    description: "Pour les clubs qui veulent accélérer l'accueil et moderniser le pointage.",
+    features: [
+      "Tout dans Ceinture Jaune",
+      "Pointage par QR code",
+      "Cartes membres QR imprimables",
+      "Scan par téléphone, tablette ou webcam",
+      "Mode kiosque réception",
+      "Alertes abonnement expiré au scan",
+      "Détection double pointage",
+      "Statistiques de présence par groupe",
+      "3 utilisateurs",
+    ],
+    cta: "Activer le QR",
+    highlighted: false,
+  },
+  {
+    name: "Ceinture Verte",
+    price: "169 TND TTC / mois",
+    limit: "Jusqu'à 400 élèves",
+    badge: "Le plus recommandé",
+    beltImage: "/we-discipline/green-belt.webp",
+    beltColor: "#22C55E",
+    description: "Pour les clubs en croissance qui veulent déléguer aux coachs.",
+    features: [
+      "Tout dans Ceinture Orange",
+      "Comptes coachs",
+      "Rôles et permissions",
+      "Accès coach limité aux groupes",
+      "Suivi progression / ceintures / grades",
+      "Préparation passages de grade",
+      "Notes internes sur les élèves",
+      "Rapports paiements, présences et impayés",
+      "5 utilisateurs",
+    ],
+    cta: "Choisir l'offre Verte",
     highlighted: true,
   },
   {
-    name: "Ceinture Noire",
-    price: "Sur mesure",
-    beltImage: "/we-discipline/black-belt.webp",
-    beltColor: "#111827",
-    description: "Pour les réseaux, fédérations et clubs multisites.",
-    features: ["Multi-académies", "Rôles avancés", "Accompagnement dédié", "Pilotage réseau", "Priorité support"],
+    name: "Ceinture Marron",
+    price: "239 TND TTC / mois",
+    limit: "Jusqu'à 700 élèves",
+    beltImage: "/we-discipline/brown-belt.webp",
+    beltColor: "#7C4A2D",
+    description: "Pour les clubs qui veulent impliquer parents et élèves.",
+    features: [
+      "Tout dans Ceinture Verte",
+      "Comptes élèves",
+      "Portail parents / élèves",
+      "Consultation présence et abonnement",
+      "Notifications absences",
+      "Relances automatiques des impayés",
+      "Annonces par groupe",
+      "Documents élèves",
+      "Support prioritaire",
+      "10 utilisateurs",
+    ],
+    note: "Les coûts SMS/WhatsApp, si utilisés, sont facturés séparément.",
+    cta: "Choisir l'offre Marron",
     highlighted: false,
   },
+  {
+    name: "Ceinture Noire",
+    price: "À partir de 349 TND TTC / mois",
+    limit: "Illimité ou sur mesure",
+    beltImage: "/we-discipline/black-belt.webp",
+    beltColor: "#111827",
+    description: "Pour grands clubs, réseaux, académies multi-salles ou besoins avancés.",
+    features: [
+      "Tout dans Ceinture Marron",
+      "Multi-salles / multi-branches",
+      "Tableaux de bord avancés",
+      "Assistant intelligent pour priorités, impayés et absences",
+      "Intégration scanner QR / code-barres",
+      "Connecteur matériel RFID ou machine de pointage selon faisabilité",
+      "Accompagnement configuration",
+      "Formation équipe",
+      "Support prioritaire",
+      "Fonctionnalités sur mesure",
+    ],
+    note: "Matériel, installation, connecteurs spécifiques et SMS/WhatsApp peuvent être facturés séparément.",
+    cta: "Demander une offre sur mesure",
+    highlighted: false,
+  },
+];
+
+const smartModules: Feature[] = [
+  { title: "Pointage QR Pro", description: "Scan rapide avec contrôle d'abonnement et détection double pointage.", icon: Target },
+  { title: "Mode kiosque réception", description: "Un écran simple à l'accueil pour fluidifier les arrivées.", icon: CalendarCheck },
+  { title: "Cartes membres QR", description: "Cartes imprimables pour les élèves et membres du club.", icon: Medal },
+  { title: "Scanner code-barres / QR", description: "Compatibilité matériel selon étude du modèle et des contraintes de confidentialité.", icon: ShieldCheck },
+  { title: "Comptes coachs", description: "Accès limités par coach, groupe et responsabilité.", icon: Users },
+  { title: "Portail parents & élèves", description: "Présence, abonnement, documents et informations utiles au même endroit.", icon: Users },
+  { title: "Notifications et relances", description: "Absences, annonces, échéances et impayés selon l'offre choisie.", icon: MessageCircle },
+  { title: "Progression ceintures & examens", description: "Suivi des grades, notes internes et passages de ceinture.", icon: Star },
+  { title: "Caisse Pro", description: "Suivi caisse, reçus, impayés et historique des paiements.", icon: CircleDollarSign },
+  { title: "Rapports avancés", description: "Présences, paiements, impayés et activité du club en lecture claire.", icon: BarChart3 },
+  { title: "Connecteur matériel de pointage", description: "Étude possible pour scanner, QR, code-barres ou matériel compatible.", icon: CreditCard },
+  { title: "Assistant intelligent club", description: "Priorités, absences et impayés à surveiller pour mieux organiser la semaine.", icon: ShieldCheck },
 ];
 
 const faqs = [
   {
-    question: "We Discipline convient-il à toutes les disciplines martiales ?",
+    question: "Est-ce que je peux commencer sans QR code ?",
     answer:
-      "Oui. Karaté, judo, taekwondo, jiu-jitsu, MMA, boxe ou disciplines hybrides: la structure s'adapte aux groupes, grades, cours, familles et compétitions de votre académie.",
+      "Oui. L'offre de base permet le pointage manuel par groupe et par séance. Le QR code peut être activé plus tard avec une offre supérieure.",
   },
   {
-    question: "Puis-je suivre les passages de ceinture ?",
-    answer:
-      "Oui. Vous pouvez organiser les ceintures, préparer les examens, repérer les élèves prêts et garder l'historique de progression de chaque pratiquant.",
+    question: "Les prix sont-ils en dinar tunisien ?",
+    answer: "Oui. Les prix affichés sont en TND TTC par mois.",
   },
   {
-    question: "Les parents peuvent-ils recevoir des communications ?",
+    question: "Est-ce que le logiciel gère la caisse et les reçus ?",
     answer:
-      "Oui. La plateforme centralise les contacts et permet de communiquer avec les élèves, les parents, les coachs ou des groupes précis.",
+      "Oui. We Discipline permet de suivre les encaissements, les abonnements, les impayés et de générer ou imprimer les reçus selon l'offre choisie.",
   },
   {
-    question: "Combien de temps faut-il pour démarrer ?",
+    question: "Les coachs peuvent-ils avoir leurs propres comptes ?",
     answer:
-      "La configuration initiale prend quelques minutes. Vous pouvez ensuite importer vos élèves, créer vos groupes et commencer à pointer les cours.",
+      "Oui, à partir des offres avancées. Les coachs peuvent accéder uniquement aux groupes, séances et informations autorisées.",
   },
   {
-    question: "Puis-je demander une démonstration ?",
+    question: "Les parents peuvent-ils recevoir des notifications ?",
     answer:
-      "Oui. La démo montre comment gérer une vraie semaine de dojo: inscriptions, présences, paiements, grades et suivi de la progression.",
+      "Oui, les offres avancées peuvent inclure un portail parents / élèves et des notifications pour absences, annonces ou relances.",
+  },
+  {
+    question: "Peut-on connecter une machine de pointage ?",
+    answer:
+      "C'est possible selon le modèle de matériel. Le connecteur matériel est réservé aux offres avancées ou sur mesure.",
   },
 ];
 
@@ -341,37 +586,6 @@ function SectionHeading({
   );
 }
 
-function AnimatedCounter({ value, suffix }: { value: number; suffix: string }) {
-  const ref = useRef<HTMLSpanElement | null>(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    if (!inView) return;
-
-    let frame = 0;
-    const totalFrames = 72;
-    const timer = window.setInterval(() => {
-      frame += 1;
-      const progress = 1 - Math.pow(1 - frame / totalFrames, 3);
-      setCount(Math.round(value * progress));
-      if (frame >= totalFrames) {
-        window.clearInterval(timer);
-        setCount(value);
-      }
-    }, 18);
-
-    return () => window.clearInterval(timer);
-  }, [inView, value]);
-
-  return (
-    <span ref={ref}>
-      {new Intl.NumberFormat("fr-FR").format(count)}
-      {suffix}
-    </span>
-  );
-}
-
 function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
@@ -403,8 +617,8 @@ function Navbar() {
           <Link href="/login" className="text-sm font-bold text-[#111827] transition hover:text-[#2563EB]">
             Connexion
           </Link>
-          <CtaButton href="#tarifs" icon={ArrowRight}>
-            Démarrer l’essai gratuit
+          <CtaButton href="#demo" icon={ArrowRight}>
+            Demander une démo
           </CtaButton>
         </div>
         <button
@@ -434,8 +648,8 @@ function Navbar() {
             <Link href="/login" className="rounded-md px-3 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50">
               Connexion
             </Link>
-            <CtaButton href="#tarifs" icon={ArrowRight}>
-              Démarrer l’essai gratuit
+            <CtaButton href="#demo" icon={ArrowRight}>
+              Demander une démo
             </CtaButton>
           </div>
         </div>
@@ -452,24 +666,24 @@ function HeroSection() {
         <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-w-2xl">
           <motion.div variants={itemVariants} className="inline-flex max-w-full items-center gap-2 rounded-full border border-[#2563EB]/15 bg-[#2563EB]/8 px-3 py-2 text-[0.62rem] font-black uppercase tracking-[0.12em] text-[#2563EB] sm:text-xs sm:tracking-[0.16em]">
             <ShieldCheck className="size-4" aria-hidden="true" />
-            Plateforme de gestion pour arts martiaux
+            Plateforme de gestion pour clubs d&apos;arts martiaux
           </motion.div>
           <motion.h1 variants={itemVariants} className="mt-7 text-4xl font-black leading-[0.96] tracking-tight text-[#111827] sm:text-6xl lg:text-[4.3rem] xl:text-[4.85rem]">
-            Bâtissez des champions.
-            <span className="block text-[#2563EB]">Gérez votre académie.</span>
+            Gérez votre club d&apos;arts martiaux
+            <span className="block text-[#2563EB]">avec discipline.</span>
           </motion.h1>
           <motion.p variants={itemVariants} className="mt-7 max-w-2xl text-base leading-8 text-slate-600 sm:text-xl">
-            De la ceinture blanche à la ceinture noire, gérez élèves, coachs, abonnements, présences, compétitions et paiements depuis une seule plateforme puissante.
+            Pointage, abonnements, caisse, groupes, coachs, élèves et reçus dans une seule plateforme simple, claire et adaptée aux clubs tunisiens.
           </motion.p>
           <motion.div variants={itemVariants} className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <CtaButton href="#tarifs" icon={ArrowRight}>
-              Démarrer l’essai gratuit
+            <CtaButton href="#demo" icon={ArrowRight}>
+              Demander une démo
             </CtaButton>
-            <CtaButton href="#demo" variant="secondary" icon={CalendarCheck}>
-              Réserver une démo
+            <CtaButton href="#tarifs" variant="secondary" icon={CalendarCheck}>
+              Voir les tarifs
             </CtaButton>
           </motion.div>
-          <motion.div variants={itemVariants} className="mt-8 grid gap-3 text-sm font-semibold text-slate-600 sm:grid-cols-3">
+          <motion.div variants={itemVariants} className="mt-8 grid gap-3 text-sm font-semibold text-slate-600 sm:grid-cols-2 xl:grid-cols-4">
             {trustItems.map((item) => (
               <div key={item} className="flex items-center gap-2">
                 <CheckCircle2 className="size-4 text-[#2563EB]" aria-hidden="true" />
@@ -548,9 +762,9 @@ function DojoAtmosphere() {
           className="max-w-2xl"
         >
           <p className="text-xs font-black uppercase tracking-[0.2em] text-[#38BDF8]">Pensé pour le dojo</p>
-          <h2 className="mt-4 text-4xl font-black tracking-tight text-white sm:text-5xl">Chaque cours, chaque grade, chaque progrès mérite un système à la hauteur.</h2>
+          <h2 className="mt-4 text-4xl font-black tracking-tight text-white sm:text-5xl">Un club bien organisé laisse plus de place à l&apos;enseignement.</h2>
           <p className="mt-5 text-lg leading-8 text-slate-300">
-            We Discipline respecte la logique d’une académie: transmission, assiduité, familles, compétitions et progression sur le long terme.
+            We Discipline respecte le rythme réel d&apos;un club: accueil, pointage, caisse, parents, coachs, groupes et progression.
           </p>
         </motion.div>
       </div>
@@ -566,40 +780,50 @@ function BeltProgression() {
       <div className="relative mx-auto max-w-7xl px-5 lg:px-8">
         <SectionHeading
           eyebrow="Progression"
-          title="Chaque champion commence quelque part"
-          description="Visualisez le parcours complet de vos pratiquants, du premier salut à la maîtrise."
+          title="Une progression claire, module par module."
+          description="Les ceintures deviennent un repère simple pour comprendre ce que le club gagne à chaque niveau d'organisation."
           align="center"
           dark
         />
         <div className="relative mt-14">
-          <div className="absolute left-12 right-12 top-[4.7rem] hidden h-px bg-white/16 lg:block" />
-          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-7">
-            {beltJourney.map((belt, index) => (
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {beltFeatures.map((belt, index) => (
               <motion.div
-                key={belt.name}
+                key={belt.belt}
                 initial={{ opacity: 0, y: 18 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.06, duration: 0.45 }}
-                className="group relative overflow-hidden rounded-md border border-white/8 bg-white/[0.025] p-3 text-center transition duration-300 hover:border-white/18 hover:bg-white/[0.045]"
+                className={cn(
+                  "group relative overflow-hidden rounded-md border p-4 transition duration-300 hover:-translate-y-1",
+                  belt.belt === "Ceinture noire"
+                    ? "border-white/24 bg-white/[0.08] shadow-[0_24px_70px_rgba(0,0,0,0.32)]"
+                    : "border-white/10 bg-white/[0.035] hover:border-white/20 hover:bg-white/[0.055]",
+                )}
               >
-                <div className={cn("relative z-10 flex h-28 items-center justify-center rounded-md", belt.name === "Ceinture noire" ? "bg-white/[0.08]" : "bg-white/[0.025]")}>
+                <div className={cn("relative z-10 flex h-24 items-center justify-center rounded-md", belt.belt === "Ceinture noire" ? "bg-white/[0.10]" : "bg-white/[0.035]")}>
                   <Image
                     src={belt.image}
-                    alt={belt.name}
+                    alt={belt.belt}
                     width={220}
                     height={140}
                     sizes="(min-width: 1024px) 150px, (min-width: 768px) 45vw, 90vw"
                     className="h-auto max-h-24 w-full object-contain drop-shadow-[0_18px_22px_rgba(0,0,0,0.35)] transition duration-300 group-hover:scale-105"
                   />
                 </div>
-                <span
-                  className="mx-auto mt-4 block h-1.5 w-16 rounded-full"
-                  style={{ backgroundColor: belt.name === "Ceinture noire" ? "#F8FAFC" : belt.color }}
-                  aria-hidden="true"
-                />
-                <p className="mt-4 text-sm font-black uppercase tracking-[0.08em]">{belt.name}</p>
-                <p className="mt-1 text-xs font-semibold text-slate-400">{belt.count}</p>
+                <div className="mt-5 flex items-center justify-between gap-3">
+                  <span
+                    className="block h-1.5 w-12 rounded-full"
+                    style={{ backgroundColor: belt.belt === "Ceinture noire" ? "#F8FAFC" : belt.color }}
+                    aria-hidden="true"
+                  />
+                  <span className="rounded-full border border-white/10 bg-white/8 px-2.5 py-1 text-[0.62rem] font-black uppercase tracking-[0.12em] text-slate-200">
+                    {belt.label}
+                  </span>
+                </div>
+                <p className="mt-4 text-xs font-black uppercase tracking-[0.1em] text-slate-400">{belt.belt}</p>
+                <h3 className="mt-2 text-lg font-black leading-tight">{belt.title}</h3>
+                <p className="mt-3 text-sm leading-6 text-slate-300">{belt.description}</p>
               </motion.div>
             ))}
           </div>
@@ -615,8 +839,8 @@ function FeaturesSection() {
       <div className="mx-auto max-w-7xl px-5 lg:px-8">
         <SectionHeading
           eyebrow="Fonctionnalités puissantes"
-          title="Les opérations réelles d'un club, sans friction."
-          description="We Discipline reprend le rythme d'une journée de dojo: inscriptions, séances, familles, paiements et priorités du bureau."
+          title="Les modules essentiels pour gérer un club au quotidien."
+          description="We Discipline est une plateforme de gestion pour clubs d'arts martiaux: pointage, abonnements, caisse, groupes, coachs, élèves, reçus, progression et communication."
           align="center"
         />
         <motion.div
@@ -624,7 +848,7 @@ function FeaturesSection() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-120px" }}
-          className="mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-3"
+          className="mt-14 grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
         >
           {features.map((feature) => {
             const Icon = feature.icon;
@@ -632,12 +856,19 @@ function FeaturesSection() {
               <motion.article
                 key={feature.title}
                 variants={itemVariants}
-                className="group rounded-md border border-slate-200 bg-white p-7 shadow-[0_18px_45px_rgba(15,23,42,0.05)] transition hover:-translate-y-1 hover:border-[#2563EB]/35 hover:shadow-[0_24px_60px_rgba(37,99,235,0.12)]"
+                className="group rounded-md border border-slate-200 bg-white p-6 shadow-[0_18px_45px_rgba(15,23,42,0.05)] transition hover:-translate-y-1 hover:border-[#2563EB]/35 hover:shadow-[0_24px_60px_rgba(37,99,235,0.12)]"
               >
-                <div className="flex size-12 items-center justify-center rounded-md border border-[#2563EB]/10 bg-[#2563EB]/8 text-[#2563EB] transition group-hover:bg-[#2563EB] group-hover:text-white">
-                  <Icon className="size-6" aria-hidden="true" />
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex size-11 items-center justify-center rounded-md border border-[#2563EB]/10 bg-[#2563EB]/8 text-[#2563EB] transition group-hover:bg-[#2563EB] group-hover:text-white">
+                    <Icon className="size-5" aria-hidden="true" />
+                  </div>
+                  {feature.tag ? (
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[0.65rem] font-black uppercase tracking-[0.12em] text-slate-500">
+                      {feature.tag}
+                    </span>
+                  ) : null}
                 </div>
-                <h3 className="mt-6 text-xl font-black text-[#111827]">{feature.title}</h3>
+                <h3 className="mt-5 text-lg font-black text-[#111827]">{feature.title}</h3>
                 <p className="mt-3 leading-7 text-slate-600">{feature.description}</p>
               </motion.article>
             );
@@ -661,15 +892,15 @@ function AcademyDashboard() {
           >
             <SectionHeading
               eyebrow="Votre académie en un coup d'oeil"
-              title="Toutes vos données. Un seul tableau de bord."
-              description="Gardez le contrôle sur l'énergie du club: élèves, cours, finances, compétitions et examens."
+              title="Toutes vos données utiles. Un seul tableau de bord."
+              description="Gardez le contrôle sur la semaine du club: membres actifs, séances, abonnements à renouveler, impayés et encaissements du mois."
             />
             <div className="mt-8 grid gap-3">
               {[
-                "Vue temps réel de l'activité de votre académie",
-                "Suivi des élèves, groupes, coachs et familles",
-                "Pilotage des paiements, renouvellements et relances",
-                "Mesure de la performance et de la progression",
+                "Pointage manuel ou QR par séance, groupe et coach",
+                "Caisse, reçus, paiements et impayés au même endroit",
+                "Groupes, coachs, parents et rôles mieux structurés",
+                "Rapports simples pour décider quoi traiter en premier",
               ].map((item) => (
                 <div key={item} className="flex items-center gap-3 text-sm font-bold text-slate-700">
                   <CheckCircle2 className="size-5 text-[#2563EB]" aria-hidden="true" />
@@ -698,7 +929,7 @@ function AcademyDashboard() {
             </div>
           </motion.div>
         </div>
-        <div className="mt-12 grid gap-4 md:grid-cols-5">
+        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {dashboardStats.map((stat) => {
             const Icon = stat.icon;
             return (
@@ -842,24 +1073,71 @@ function ValuesSection() {
 
 function SocialProofSection() {
   return (
-    <section className="bg-[#0B1220] py-14 text-white">
-      <div className="mx-auto grid max-w-7xl gap-5 px-5 sm:grid-cols-2 lg:grid-cols-4 lg:px-8">
-        {socialStats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div key={stat.label} className="flex items-center gap-5 border-white/10 py-5 lg:border-r last:border-r-0">
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/[0.06]">
-                <Icon className="size-6 text-[#38BDF8]" aria-hidden="true" />
-              </div>
-              <div>
-                <p className="text-4xl font-black tracking-tight">
-                  <AnimatedCounter value={stat.value} suffix={stat.suffix} />
-                </p>
-                <p className="mt-1 text-sm font-semibold text-slate-300">{stat.label}</p>
-              </div>
-            </div>
-          );
-        })}
+    <section className="bg-[#0B1220] py-20 text-white">
+      <div className="mx-auto max-w-7xl px-5 lg:px-8">
+        <SectionHeading
+          eyebrow="Confiance opérationnelle"
+          title="Pensé pour la réalité quotidienne d'un club."
+          description="Pas de chiffres inventés. Le produit doit surtout résoudre les vrais irritants du bureau, de l'accueil et du tatami."
+          align="center"
+          dark
+        />
+        <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {trustCards.map((card) => {
+            const Icon = card.icon;
+            return (
+              <motion.article
+                key={card.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="rounded-md border border-white/10 bg-white/[0.055] p-6 shadow-[0_22px_70px_rgba(0,0,0,0.18)]"
+              >
+                <div className="flex size-11 items-center justify-center rounded-md border border-white/10 bg-white/[0.08] text-[#38BDF8]">
+                  <Icon className="size-5" aria-hidden="true" />
+                </div>
+                <h3 className="mt-5 text-xl font-black">{card.title}</h3>
+                <p className="mt-3 leading-7 text-slate-300">{card.description}</p>
+              </motion.article>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SmartModulesSection() {
+  return (
+    <section id="modules" className="bg-[#F6F9FF] py-24">
+      <div className="mx-auto max-w-7xl px-5 lg:px-8">
+        <SectionHeading
+          eyebrow="Modules avancés"
+          title="Modules intelligents disponibles"
+          description="Activez les modules utiles au moment où votre club en a vraiment besoin: QR, portail parents, coachs, caisse avancée, rapports et matériel étudié au cas par cas."
+          align="center"
+        />
+        <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {smartModules.map((module) => {
+            const Icon = module.icon;
+            return (
+              <motion.article
+                key={module.title}
+                initial={{ opacity: 0, y: 18 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="rounded-md border border-slate-200 bg-white p-6 shadow-[0_18px_45px_rgba(15,23,42,0.05)]"
+              >
+                <Icon className="size-6 text-[#2563EB]" aria-hidden="true" />
+                <h3 className="mt-4 text-lg font-black text-[#111827]">{module.title}</h3>
+                <p className="mt-3 text-sm leading-6 text-slate-600">{module.description}</p>
+              </motion.article>
+            );
+          })}
+        </div>
+        <p className="mx-auto mt-8 max-w-3xl text-center text-sm font-semibold leading-6 text-slate-500">
+          Compatibilité matériel selon étude du modèle et des contraintes de confidentialité.
+        </p>
       </div>
     </section>
   );
@@ -872,13 +1150,16 @@ function PricingSection() {
       <div className="absolute inset-0 bg-gradient-to-b from-[#070B12] via-[#111827]/96 to-[#070B12]" />
       <div className="relative mx-auto max-w-7xl px-5 lg:px-8">
         <SectionHeading
-          eyebrow="Tarifs"
-          title="Choisissez votre ceinture de gestion."
-          description="Commencez avec les bases, puis montez en puissance à mesure que votre académie grandit."
+          eyebrow="Tarifs de lancement en TND TTC"
+          title="Des offres simples, adaptées à la taille de votre club."
+          description="Commencez avec l'essentiel, puis ajoutez le QR, les comptes coachs, le portail parents, les notifications et les modules avancés quand votre club grandit."
           align="center"
           dark
         />
-        <div className="mt-14 grid gap-6 lg:grid-cols-3">
+        <p className="mx-auto mt-6 max-w-4xl text-center text-sm font-semibold leading-6 text-slate-400">
+          Tous les prix sont affichés en TND TTC / mois. Les options matériel, SMS, WhatsApp ou intégrations spécifiques peuvent être facturées séparément.
+        </p>
+        <div className="mt-14 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {pricingPlans.map((plan) => (
             <motion.article
               key={plan.name}
@@ -888,14 +1169,19 @@ function PricingSection() {
               className={cn(
                 "relative overflow-hidden rounded-md border p-7 shadow-[0_30px_90px_rgba(0,0,0,0.22)]",
                 plan.highlighted
-                  ? "border-[#38BDF8]/70 bg-white text-[#111827]"
+                  ? "border-[#38BDF8]/70 bg-white text-[#111827] shadow-[0_34px_100px_rgba(56,189,248,0.18)]"
                   : "border-white/10 bg-white/[0.055] text-white backdrop-blur",
               )}
             >
               <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: plan.name === "Ceinture Noire" ? "#F8FAFC" : plan.beltColor }} aria-hidden="true" />
-              {plan.highlighted ? (
-                <span className="absolute right-5 top-5 rounded-full bg-[#38BDF8] px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-[#111827]">
-                  Recommandé
+              {plan.badge ? (
+                <span
+                  className={cn(
+                    "absolute right-5 top-5 rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.12em]",
+                    plan.highlighted ? "bg-[#38BDF8] text-[#111827]" : "bg-white/10 text-slate-200",
+                  )}
+                >
+                  {plan.badge}
                 </span>
               ) : null}
               <div className={cn("flex h-24 items-center", plan.highlighted ? "justify-start" : "justify-center")}>
@@ -909,14 +1195,12 @@ function PricingSection() {
                 />
               </div>
               <h3 className="mt-5 text-2xl font-black">{plan.name}</h3>
-              <p className={cn("mt-3 min-h-14 leading-7", plan.highlighted ? "text-slate-600" : "text-slate-300")}>{plan.description}</p>
-              <div className="mt-8 flex items-end gap-2">
-                <span className="text-5xl font-black tracking-tight">{plan.price}</span>
-                {plan.price !== "Sur mesure" ? (
-                  <span className={cn("pb-2 text-sm font-bold", plan.highlighted ? "text-slate-500" : "text-slate-400")}>/mois</span>
-                ) : null}
+              <p className={cn("mt-2 text-sm font-black uppercase tracking-[0.12em]", plan.highlighted ? "text-[#2563EB]" : "text-[#38BDF8]")}>{plan.limit}</p>
+              <p className={cn("mt-4 min-h-14 leading-7", plan.highlighted ? "text-slate-600" : "text-slate-300")}>{plan.description}</p>
+              <div className="mt-7">
+                <span className="text-3xl font-black tracking-tight sm:text-4xl">{plan.price}</span>
               </div>
-              <ul className="mt-8 space-y-3">
+              <ul className="mt-7 space-y-3">
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex gap-3 text-sm font-semibold">
                     <CheckCircle2 className={cn("mt-0.5 size-5 shrink-0", plan.highlighted ? "text-[#38BDF8]" : "text-[#10B981]")} aria-hidden="true" />
@@ -924,9 +1208,14 @@ function PricingSection() {
                   </li>
                 ))}
               </ul>
+              {plan.note ? (
+                <p className={cn("mt-6 rounded-md p-3 text-xs font-semibold leading-5", plan.highlighted ? "bg-slate-100 text-slate-600" : "bg-white/[0.07] text-slate-300")}>
+                  {plan.note}
+                </p>
+              ) : null}
               <div className="mt-8">
                 <CtaButton href="#demo" variant={plan.highlighted ? "primary" : "dark"} icon={ArrowRight}>
-                  {plan.name === "Ceinture Noire" ? "Contacter l'équipe" : plan.highlighted ? "Démarrer Ceinture Marron" : "Choisir Ceinture Blanche"}
+                  {plan.cta}
                 </CtaButton>
               </div>
             </motion.article>
@@ -984,20 +1273,20 @@ function FinalCta() {
       </div>
       <div className="relative mx-auto max-w-7xl px-5 lg:px-8">
         <div className="max-w-4xl">
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-[#38BDF8]">Passez au niveau supérieur</p>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-[#38BDF8]">Organisation du club</p>
           <h2 className="mt-4 text-4xl font-black tracking-tight sm:text-6xl">
-            Concentrez-vous sur l’enseignement.
-            <span className="block text-[#38BDF8]">We Discipline gère le reste.</span>
+            Prêt à organiser votre club
+            <span className="block text-[#38BDF8]">avec plus de discipline ?</span>
           </h2>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-            Rejoignez les académies qui structurent leur croissance sans perdre leur exigence, leur culture et leur esprit de communauté.
+            Découvrez comment We Discipline peut simplifier le pointage, les abonnements, la caisse, les groupes et le suivi des élèves.
           </p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-            <CtaButton href="#tarifs" icon={ArrowRight}>
-              Démarrer l’essai gratuit
+            <CtaButton href="#demo" icon={ArrowRight}>
+              Demander une démo
             </CtaButton>
-            <CtaButton href="#demo" variant="dark" icon={CalendarCheck}>
-              Planifier une démo
+            <CtaButton href="#tarifs" variant="dark" icon={CalendarCheck}>
+              Voir les tarifs
             </CtaButton>
           </div>
         </div>
@@ -1014,7 +1303,7 @@ function Footer() {
           <div>
             <LogoLockup dark variant="footer" />
             <p className="mt-5 max-w-sm text-sm leading-7 text-slate-400">
-              Plateforme de gestion premium pour les clubs d’arts martiaux qui veulent bâtir des champions et piloter avec excellence.
+              Plateforme de gestion pour clubs d&apos;arts martiaux: pointage, abonnements, caisse, groupes, coachs, élèves, reçus et communication.
             </p>
           </div>
           {footerGroups.map((group) => (
@@ -1041,7 +1330,7 @@ function Footer() {
             </a>
             <a href="#demo" className="inline-flex items-center gap-2 transition hover:text-white">
               <Star className="size-4" aria-hidden="true" />
-              Réserver une démo
+              Demander une démo
             </a>
           </div>
         </div>
@@ -1062,6 +1351,7 @@ export function WeDisciplineHomepage({ fontClassName }: HomepageProps) {
       <ValuesSection key="values" />,
       <SocialProofSection key="proof" />,
       <PricingSection key="pricing" />,
+      <SmartModulesSection key="modules" />,
       <FaqSection key="faq" />,
       <FinalCta key="cta" />,
     ],
