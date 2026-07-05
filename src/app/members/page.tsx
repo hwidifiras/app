@@ -2,11 +2,29 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { MemberListClient } from "@/components/members/member-list-client";
 import { PageHeader } from "@/components/ui/page-header";
+import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function MembersPage() {
+  const authUser = await getAuthUser();
+
+  if (!authUser) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Élèves"
+          title="Membres"
+          description="Connectez-vous pour consulter les dossiers membres."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
+
   let hasMemberDataError = false;
   let initialMembers: Array<{
     id: string;
@@ -36,30 +54,31 @@ export default async function MembersPage() {
   try {
     const [members, groups, sports] = await Promise.all([
       prisma.member.findMany({
+        where: { tenantId: authUser.tenantId },
         orderBy: { createdAt: "desc" },
         include: {
           groups: {
-            where: { status: "ACTIVE" },
+            where: { tenantId: authUser.tenantId, status: "ACTIVE" },
             select: { groupId: true },
           },
           subscriptions: {
-            where: { status: "ACTIVE" },
+            where: { tenantId: authUser.tenantId, status: "ACTIVE" },
             orderBy: { createdAt: "desc" },
             take: 1,
             select: {
               amount: true,
-              payments: { select: { amount: true } },
+              payments: { where: { tenantId: authUser.tenantId }, select: { amount: true } },
             },
           },
         },
       }),
       prisma.group.findMany({
-        where: { isActive: true },
+        where: { tenantId: authUser.tenantId, isActive: true },
         select: { id: true, name: true, sportId: true },
         orderBy: { name: "asc" },
       }),
       prisma.sport.findMany({
-        where: { isActive: true },
+        where: { tenantId: authUser.tenantId, isActive: true },
         select: { id: true, name: true },
         orderBy: { name: "asc" },
       }),

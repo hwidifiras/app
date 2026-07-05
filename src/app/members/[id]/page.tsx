@@ -22,6 +22,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { formatRoomLabel } from "@/lib/group-room";
 import { getEnrollmentRecoveryCandidatesForMember } from "@/lib/enrollment-recovery";
 import { prisma } from "@/lib/prisma";
+import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -38,11 +39,24 @@ function attendanceStatus(status: string) {
 
 export default async function MemberDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const authUser = await getAuthUser();
 
-  const member = await prisma.member.findUnique({
-    where: { id },
+  if (!authUser) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <section className="panel panel-soft p-5">
+          <p className="text-sm font-semibold text-[var(--foreground)]">Fiche membre indisponible</p>
+          <p className="mt-1 text-sm text-[var(--muted-foreground)]">Connectez-vous pour consulter ce dossier.</p>
+        </section>
+      </main>
+    );
+  }
+
+  const member = await prisma.member.findFirst({
+    where: { id, tenantId: authUser.tenantId },
     include: {
       groups: {
+        where: { tenantId: authUser.tenantId },
         include: {
           group: {
             select: {
@@ -51,22 +65,29 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
               sport: { select: { name: true } },
               coach: { select: { firstName: true, lastName: true } },
               room: true,
-              schedules: { orderBy: { createdAt: "asc" }, take: 1 },
+              schedules: { where: { tenantId: authUser.tenantId }, orderBy: { createdAt: "asc" }, take: 1 },
             },
           },
         },
         orderBy: { createdAt: "desc" },
       },
       subscriptions: {
+        where: { tenantId: authUser.tenantId },
         orderBy: { createdAt: "desc" },
         take: 20,
         include: {
           sport: { select: { id: true, name: true } },
           plan: { select: { name: true, price: true, totalSessions: true } },
-          payments: { select: { amount: true, paymentDate: true }, orderBy: { paymentDate: "desc" }, take: 10 },
+          payments: {
+            where: { tenantId: authUser.tenantId },
+            select: { amount: true, paymentDate: true },
+            orderBy: { paymentDate: "desc" },
+            take: 10,
+          },
         },
       },
       attendances: {
+        where: { tenantId: authUser.tenantId },
         orderBy: { checkedAt: "desc" },
         take: 20,
         include: {
@@ -111,7 +132,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
   }, 0);
   const enrollmentRecoveryCandidates = await getEnrollmentRecoveryCandidatesForMember(
     member.id,
-    member.tenantId,
+    authUser.tenantId,
   );
 
   const subscriptionCards = member.subscriptions.map((subscription) => ({

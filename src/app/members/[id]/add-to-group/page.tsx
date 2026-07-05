@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { AddMemberToGroupForm } from "@/components/members/add-member-to-group-form";
+import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -14,9 +15,25 @@ export default async function AddMemberToGroupPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const authUser = await getAuthUser();
 
-  const member = await prisma.member.findUnique({
-    where: { id },
+  if (!authUser) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Gestion du membre"
+          title="Affecter à un groupe"
+          description="Connectez-vous pour gérer les affectations."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
+
+  const member = await prisma.member.findFirst({
+    where: { id, tenantId: authUser.tenantId },
     select: {
       id: true,
       firstName: true,
@@ -25,7 +42,7 @@ export default async function AddMemberToGroupPage({
       gender: true,
       status: true,
       subscriptions: {
-        where: { status: "ACTIVE" },
+        where: { tenantId: authUser.tenantId, status: "ACTIVE" },
         select: {
           id: true,
           status: true,
@@ -42,12 +59,12 @@ export default async function AddMemberToGroupPage({
               totalSessions: true,
             },
           },
-          payments: { select: { amount: true } },
+          payments: { where: { tenantId: authUser.tenantId }, select: { amount: true } },
         },
         orderBy: { createdAt: "desc" },
       },
       groups: {
-        where: { status: "ACTIVE" },
+        where: { tenantId: authUser.tenantId, status: "ACTIVE" },
         select: { groupId: true },
       },
     },
@@ -81,7 +98,7 @@ export default async function AddMemberToGroupPage({
   }
 
   const groups = await prisma.group.findMany({
-    where: { isActive: true },
+    where: { tenantId: authUser.tenantId, isActive: true },
     select: {
       id: true,
       name: true,
@@ -94,10 +111,11 @@ export default async function AddMemberToGroupPage({
       genderPolicy: true,
       _count: {
         select: {
-          members: { where: { status: "ACTIVE" } },
+          members: { where: { tenantId: authUser.tenantId, status: "ACTIVE" } },
         },
       },
       schedules: {
+        where: { tenantId: authUser.tenantId },
         orderBy: { createdAt: "asc" },
         select: {
           dayOfWeek: true,
@@ -114,7 +132,7 @@ export default async function AddMemberToGroupPage({
   );
 
   const plans = await prisma.subscriptionPlan.findMany({
-    where: { isActive: true },
+    where: { tenantId: authUser.tenantId, isActive: true },
     orderBy: { name: "asc" },
     select: {
       id: true,
