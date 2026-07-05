@@ -1,6 +1,7 @@
 import type { AttendanceStatus, MemberType } from "@prisma/client";
 
 import { getClubSettings } from "@/lib/club-settings";
+import { checkGroupMemberCompatibility, type GroupGenderPolicyValue, type GroupTypeValue } from "@/lib/demographics";
 import { getWeekRangeUtc } from "@/lib/dates";
 import { resolveMemberPhone } from "@/lib/member-phone";
 import { prisma } from "@/lib/prisma";
@@ -30,7 +31,8 @@ type ImportContext = {
   group: {
     id: string;
     name: string;
-    groupType: "KIDS" | "ADULTS";
+    groupType: GroupTypeValue;
+    genderPolicy: GroupGenderPolicyValue;
     sportId: string;
     capacity: number;
     activeMembers: number;
@@ -65,6 +67,7 @@ export async function inspectDataImport(payload: DataImportPayload): Promise<Imp
         id: true,
         name: true,
         groupType: true,
+        genderPolicy: true,
         sportId: true,
         capacity: true,
         isActive: true,
@@ -98,10 +101,13 @@ export async function inspectDataImport(payload: DataImportPayload): Promise<Imp
   if (group.sportId !== plan.sportId) throw new Error("PLAN_GROUP_MISMATCH");
   if (group._count.members >= group.capacity) throw new Error("GROUP_CAPACITY_REACHED");
   if (payload.remainingSessions > plan.totalSessions) throw new Error("REMAINING_ABOVE_PLAN");
-  if (group.groupType === "KIDS" && payload.member.memberType === "ADULT") {
-    throw new Error("MEMBER_GROUP_MISMATCH");
-  }
-  if (group.groupType === "ADULTS" && payload.member.memberType === "KID") {
+  const compatibility = checkGroupMemberCompatibility({
+    groupType: group.groupType,
+    genderPolicy: group.genderPolicy,
+    memberType: payload.member.memberType,
+    gender: payload.member.gender,
+  });
+  if (!compatibility.ok) {
     throw new Error("MEMBER_GROUP_MISMATCH");
   }
   if (sessions.length !== payload.attendances.length) throw new Error("SESSION_NOT_FOUND");
@@ -148,6 +154,7 @@ export async function inspectDataImport(payload: DataImportPayload): Promise<Imp
       id: group.id,
       name: group.name,
       groupType: group.groupType,
+      genderPolicy: group.genderPolicy,
       sportId: group.sportId,
       capacity: group.capacity,
       activeMembers: group._count.members,
@@ -200,6 +207,7 @@ export async function applyDataImport(
         phone: context.memberPhone,
         email: payload.member.email || null,
         memberType: payload.member.memberType as MemberType,
+        gender: payload.member.gender,
         birthDate: payload.member.birthDate ? new Date(payload.member.birthDate) : null,
         address: payload.member.address || null,
         parentName: payload.member.parentName || null,

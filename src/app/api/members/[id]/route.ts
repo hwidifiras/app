@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { updateMemberSchema } from "@/lib/schemas/member";
 import { expireStaleSubscriptions } from "@/lib/membership-rules";
+import { checkGroupMemberCompatibility } from "@/lib/demographics";
 
 export const runtime = "nodejs";
 
@@ -56,6 +57,7 @@ export async function GET(
         phone: member.phone,
         email: member.email,
         memberType: member.memberType,
+        gender: member.gender,
         birthDate: member.birthDate?.toISOString() ?? null,
         address: member.address ?? null,
         parentName: member.parentName ?? null,
@@ -209,8 +211,9 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  let actor;
   try {
-    await requirePermission(request, "members.manage");
+    actor = await requirePermission(request, "members.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -243,6 +246,7 @@ export async function PATCH(
   if (payload.lastName !== undefined) updateData.lastName = payload.lastName.trim();
   if (payload.phone !== undefined) updateData.phone = payload.phone.trim();
   if (payload.memberType !== undefined) updateData.memberType = payload.memberType;
+  if (payload.gender !== undefined) updateData.gender = payload.gender;
   if (payload.birthDate !== undefined) updateData.birthDate = new Date(payload.birthDate);
   if (payload.email !== undefined) updateData.email = payload.email ? payload.email.trim() : null;
   if (payload.address !== undefined) updateData.address = payload.address ? payload.address.trim() : null;
@@ -258,6 +262,46 @@ export async function PATCH(
 
   try {
     const updated = await prisma.$transaction(async (tx) => {
+      if (payload.memberType !== undefined || payload.gender !== undefined) {
+        const existing = await tx.member.findUnique({
+          where: { id },
+          select: {
+            memberType: true,
+            gender: true,
+            groups: {
+              where: { status: "ACTIVE" },
+              select: {
+                group: {
+                  select: {
+                    name: true,
+                    groupType: true,
+                    genderPolicy: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (!existing) throw new Error("MEMBER_NOT_FOUND");
+
+        const targetMemberType = payload.memberType ?? existing.memberType;
+        const targetGender = payload.gender ?? existing.gender;
+        const incompatibleAssignment = existing.groups.find(
+          (assignment) =>
+            !checkGroupMemberCompatibility({
+              groupType: assignment.group.groupType,
+              genderPolicy: assignment.group.genderPolicy,
+              memberType: targetMemberType,
+              gender: targetGender,
+            }).ok,
+        );
+
+        if (incompatibleAssignment) {
+          throw new Error(`MEMBER_POLICY_MISMATCH:${incompatibleAssignment.group.name}`);
+        }
+      }
+
       const member = await tx.member.update({
         where: { id },
         data: updateData,
@@ -268,6 +312,7 @@ export async function PATCH(
           action: "MEMBER_UPDATED",
           entityType: "Member",
           entityId: member.id,
+          userId: actor.id,
           details: JSON.stringify({
             fields: Object.keys(updateData),
           }),
@@ -285,6 +330,7 @@ export async function PATCH(
         phone: updated.phone,
         email: updated.email,
         memberType: updated.memberType,
+        gender: updated.gender,
         birthDate: updated.birthDate?.toISOString() ?? null,
         address: updated.address ?? null,
         parentName: updated.parentName ?? null,
@@ -296,6 +342,18 @@ export async function PATCH(
       },
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "MEMBER_NOT_FOUND") {
+      return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
+    }
+
+    if (error instanceof Error && error.message.startsWith("MEMBER_POLICY_MISMATCH:")) {
+      const groupName = error.message.split(":").slice(1).join(":");
+      return NextResponse.json(
+        { error: `Modification impossible: l'eleve resterait incompatible avec le cours "${groupName}".` },
+        { status: 409 },
+      );
+    }
+
     console.error("PATCH /api/members/[id] error:", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }

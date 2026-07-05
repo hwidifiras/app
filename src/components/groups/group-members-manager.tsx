@@ -12,6 +12,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListSearch } from "@/components/ui/list-controls";
 import { FormField } from "@/components/ui/form-layout";
+import { isMemberAllowedInGroupPolicy } from "@/lib/demographics";
 
 type GroupMembersManagerProps = {
   groups: GroupDto[];
@@ -42,23 +43,20 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
   );
 
   const availableMembers = useMemo(() => {
-    const groupType = selectedGroup?.groupType;
     const query = membersSearch.trim().toLowerCase();
     return members.filter((member) => {
       if (activeAssignedMemberIds.has(member.id)) {
         return false;
       }
 
-      if (groupType === "KIDS") {
-        if (member.memberType !== "KID" && member.memberType !== "NOT_SPECIFIED") {
-          return false;
-        }
-      }
-
-      if (groupType === "ADULTS") {
-        if (member.memberType !== "ADULT" && member.memberType !== "NOT_SPECIFIED") {
-          return false;
-        }
+      if (selectedGroup) {
+        const allowed = isMemberAllowedInGroupPolicy({
+          groupType: selectedGroup.groupType,
+          genderPolicy: selectedGroup.genderPolicy,
+          memberType: member.memberType,
+          gender: member.gender,
+        });
+        if (!allowed) return false;
       }
 
       if (!query) {
@@ -67,7 +65,7 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
 
       return `${member.firstName} ${member.lastName}`.toLowerCase().includes(query) || member.phone.toLowerCase().includes(query);
     });
-  }, [activeAssignedMemberIds, members, membersSearch, selectedGroup?.groupType]);
+  }, [activeAssignedMemberIds, members, membersSearch, selectedGroup]);
 
   const displayedAssignments = useMemo(() => {
     const query = assignedSearch.trim().toLowerCase();

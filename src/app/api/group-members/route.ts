@@ -5,15 +5,9 @@ import { createGroupMemberSchema, updateGroupMemberSchema } from "@/lib/schemas/
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { resolveActiveSubscription } from "@/lib/membership-rules";
 import { checkScheduleConflictForAssignmentWindow, ensureGroupCapacityOnDate } from "@/lib/assignment-policy";
+import { checkGroupMemberCompatibility } from "@/lib/demographics";
 
 export const runtime = "nodejs";
-
-function isMemberAllowed(groupType: "KIDS" | "ADULTS", memberType: "KID" | "ADULT" | "NOT_SPECIFIED") {
-  if (groupType === "KIDS") {
-    return memberType === "KID" || memberType === "NOT_SPECIFIED";
-  }
-  return memberType === "ADULT" || memberType === "NOT_SPECIFIED";
-}
 
 function toGroupMemberDto(item: {
   id: string;
@@ -98,7 +92,7 @@ export async function POST(request: Request) {
 
   const group = await prisma.group.findUnique({
     where: { id: parsed.data.groupId },
-    select: { id: true, isActive: true, groupType: true, sportId: true },
+    select: { id: true, isActive: true, groupType: true, genderPolicy: true, sportId: true },
   });
   if (!group) {
     return NextResponse.json({ error: "Groupe introuvable" }, { status: 404 });
@@ -110,7 +104,7 @@ export async function POST(request: Request) {
 
   const member = await prisma.member.findUnique({
     where: { id: parsed.data.memberId },
-    select: { id: true, status: true, memberType: true },
+    select: { id: true, status: true, memberType: true, gender: true },
   });
   if (!member) {
     return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
@@ -120,8 +114,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Impossible d'affecter un membre résilié" }, { status: 409 });
   }
 
-  if (!isMemberAllowed(group.groupType, member.memberType)) {
-    return NextResponse.json({ error: "Type de membre incompatible avec ce groupe" }, { status: 409 });
+  const compatibility = checkGroupMemberCompatibility({
+    groupType: group.groupType,
+    genderPolicy: group.genderPolicy,
+    memberType: member.memberType,
+    gender: member.gender,
+  });
+
+  if (!compatibility.ok) {
+    return NextResponse.json({ error: compatibility.message }, { status: 409 });
   }
 
   const selectedPlanId = parsed.data.planId?.trim() ?? "";

@@ -9,6 +9,7 @@ import {
   WORKING_DAY_ORDER,
   type ClubDay,
 } from "@/lib/club-working-days";
+import type { GroupTypeValue } from "@/lib/demographics";
 import { cn } from "@/lib/utils";
 
 type SlotInput = {
@@ -30,7 +31,7 @@ type GroupOption = {
   name: string;
   sportId: string;
   sportName: string;
-  groupType: "KIDS" | "ADULTS";
+  groupType: GroupTypeValue;
 };
 
 type SportOption = {
@@ -40,7 +41,7 @@ type SportOption = {
 
 type ApplySummary = {
   templateName: string;
-  targetGroups: Array<{ id: string; name: string; sportName: string; groupType: "KIDS" | "ADULTS" }>;
+  targetGroups: Array<{ id: string; name: string; sportName: string; groupType: GroupTypeValue }>;
   groupCount: number;
   slotCount: number;
   newScheduleCount: number;
@@ -99,7 +100,7 @@ export function ScheduleTemplatesManager({
   const [targetMode, setTargetMode] = useState<"SELECTED_GROUPS" | "SPORT" | "GROUP_TYPE" | "ALL_ACTIVE">("SELECTED_GROUPS");
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [sportId, setSportId] = useState(sports[0]?.id ?? "");
-  const [groupType, setGroupType] = useState<"KIDS" | "ADULTS">("ADULTS");
+  const [groupType, setGroupType] = useState<GroupTypeValue>("ADULTS");
   const [effectiveFrom, setEffectiveFrom] = useState(todayInputValue);
   const [effectiveTo, setEffectiveTo] = useState("");
   const [replaceExisting, setReplaceExisting] = useState(true);
@@ -425,9 +426,10 @@ export function ScheduleTemplatesManager({
             {targetMode === "GROUP_TYPE" ? (
               <label className="block">
                 <span className="mb-1 block text-xs font-semibold">Type</span>
-                <select value={groupType} onChange={(event) => setGroupType(event.target.value as "KIDS" | "ADULTS")} className="field">
+                <select value={groupType} onChange={(event) => setGroupType(event.target.value as GroupTypeValue)} className="field">
                   <option value="ADULTS">Adultes</option>
                   <option value="KIDS">Enfants</option>
+                  <option value="MIXED">Mixte age</option>
                 </select>
               </label>
             ) : null}

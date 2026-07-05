@@ -16,17 +16,31 @@ import {
 } from "@/lib/offer-display";
 import { formatMoney, MONEY_INPUT_SUFFIX } from "@/lib/money";
 import { formatPaymentPrefill } from "@/lib/subscription-billing";
+import {
+  checkGroupMemberCompatibility,
+  genderLabel,
+  groupGenderPolicyLabel,
+  groupTypeLabel,
+  memberTypeLabel,
+  type GenderValue,
+  type GroupGenderPolicyValue,
+  type GroupTypeValue,
+  type MemberTypeValue,
+} from "@/lib/demographics";
 import type { OfferKind } from "@prisma/client";
 
-type MemberType = "ADULT" | "KID" | "NOT_SPECIFIED";
-type GroupType = "KIDS" | "ADULTS";
-type MemberOption = { id: string; firstName: string; lastName: string; phone: string; memberType: MemberType };
+type MemberType = MemberTypeValue;
+type GroupType = GroupTypeValue;
+type Gender = GenderValue;
+type GroupGenderPolicy = GroupGenderPolicyValue;
+type MemberOption = { id: string; firstName: string; lastName: string; phone: string; memberType: MemberType; gender: Gender };
 type GroupOption = {
   id: string;
   name: string;
   sportId: string;
   sportName: string;
   groupType: GroupType;
+  genderPolicy: GroupGenderPolicy;
   capacity: number;
   activeMembers: number;
 };
@@ -47,6 +61,7 @@ type LineState = {
   newLastName: string;
   newPhone: string;
   memberType: MemberType;
+  gender: Gender;
   parentName: string;
   parentPhone: string;
   parentAddress: string;
@@ -77,35 +92,28 @@ type QuoteData = {
   warnings: string[];
 };
 
-function isMemberAllowedInGroupType(groupType: GroupType, memberType: MemberType) {
-  if (memberType === "NOT_SPECIFIED") return true;
-  return groupType === "KIDS" ? memberType === "KID" : memberType === "ADULT";
-}
-
-function memberTypeLabel(memberType: MemberType) {
-  if (memberType === "KID") return "enfant";
-  if (memberType === "ADULT") return "adulte";
-  return "non precise";
-}
-
-function groupTypeLabel(groupType: GroupType) {
-  return groupType === "KIDS" ? "enfants" : "adultes";
-}
-
-function lineMemberType(line: LineState, members: MemberOption[]): MemberType | null {
-  if (line.mode === "new") return line.memberType;
+function lineMemberProfile(line: LineState, members: MemberOption[]): { memberType: MemberType; gender: Gender } | null {
+  if (line.mode === "new") return { memberType: line.memberType, gender: line.gender };
   if (!line.memberId) return null;
-  return members.find((member) => member.id === line.memberId)?.memberType ?? null;
+  const member = members.find((item) => item.id === line.memberId);
+  return member ? { memberType: member.memberType, gender: member.gender } : null;
 }
 
 function lineCompatibilityIssue(line: LineState, members: MemberOption[], groups: GroupOption[]) {
   if (!line.groupId) return null;
   const group = groups.find((item) => item.id === line.groupId);
-  const memberType = lineMemberType(line, members);
-  if (!group || !memberType || isMemberAllowedInGroupType(group.groupType, memberType)) {
+  const memberProfile = lineMemberProfile(line, members);
+  if (!group || !memberProfile) {
     return null;
   }
-  return `Type incompatible: membre ${memberTypeLabel(memberType)} avec groupe ${groupTypeLabel(group.groupType)}.`;
+  const compatibility = checkGroupMemberCompatibility({
+    groupType: group.groupType,
+    genderPolicy: group.genderPolicy,
+    memberType: memberProfile.memberType,
+    gender: memberProfile.gender,
+  });
+  if (compatibility.ok) return null;
+  return `Profil incompatible: membre ${memberTypeLabel(memberProfile.memberType)} / ${genderLabel(memberProfile.gender)} avec cours ${groupTypeLabel(group.groupType)} / ${groupGenderPolicyLabel(group.genderPolicy)}.`;
 }
 
 function newLine(memberId = ""): LineState {
@@ -117,6 +125,7 @@ function newLine(memberId = ""): LineState {
     newLastName: "",
     newPhone: "",
     memberType: "NOT_SPECIFIED",
+    gender: "NOT_SPECIFIED",
     parentName: "",
     parentPhone: "",
     parentAddress: "",
@@ -163,6 +172,7 @@ export function EnrollmentWizard({
           lastName: x.lastName as string,
           phone: x.phone as string,
           memberType: (x.memberType as MemberType | undefined) ?? "NOT_SPECIFIED",
+          gender: (x.gender as Gender | undefined) ?? "NOT_SPECIFIED",
         })),
       );
       setGroups(
@@ -172,6 +182,7 @@ export function EnrollmentWizard({
           sportId: x.sportId as string,
           sportName: (x.sport as { name: string })?.name ?? "",
           groupType: (x.groupType as GroupType | undefined) ?? "ADULTS",
+          genderPolicy: (x.genderPolicy as GroupGenderPolicy | undefined) ?? "MIXED",
           capacity: x.capacity as number,
           activeMembers: (x.activeMembers as number) ?? (x._count as { members: number })?.members ?? 0,
         })),
@@ -210,6 +221,7 @@ export function EnrollmentWizard({
                 lastName: line.newLastName,
                 phone: line.newPhone,
                 memberType: line.memberType,
+                gender: line.gender,
                 parentName: line.memberType === "KID" ? line.parentName : "",
                 parentPhone: line.memberType === "KID" ? line.parentPhone : "",
                 parentAddress: line.memberType === "KID" ? line.parentAddress : "",
@@ -344,6 +356,7 @@ export function EnrollmentWizard({
           l.newFirstName &&
           l.newLastName &&
           l.newPhone &&
+          l.gender !== "NOT_SPECIFIED" &&
           (l.memberType !== "KID" || (l.parentName && l.parentPhone)))),
   );
   const linesValid = linesComplete && lineIssues.every((issue) => !issue);
@@ -358,6 +371,7 @@ export function EnrollmentWizard({
         if (line.mode === "existing" && !line.memberId) missing.push("membre");
         if (line.mode === "new") {
           if (!line.newFirstName || !line.newLastName || !line.newPhone) missing.push("identité");
+          if (line.gender === "NOT_SPECIFIED") missing.push("genre");
           if (line.memberType === "KID" && (!line.parentName || !line.parentPhone)) missing.push("parent");
         }
         if (!line.groupId) missing.push("groupe");
@@ -848,6 +862,33 @@ function LineEditor({
               <option value="ADULT">Adulte</option>
               <option value="KID">Enfant</option>
             </select>
+          </FormField>
+          <FormField label="Genre" htmlFor={`${line.key}-gender`} className="sm:col-span-3">
+            <div id={`${line.key}-gender`} className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Genre">
+              {[
+                { value: "MALE", label: "Garcon / homme" },
+                { value: "FEMALE", label: "Fille / femme" },
+              ].map((option) => (
+                <label
+                  key={option.value}
+                  className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                    line.gender === option.value
+                      ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
+                      : "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-soft)]"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name={`${line.key}-gender`}
+                    value={option.value}
+                    checked={line.gender === option.value}
+                    onChange={() => onChange({ ...line, gender: option.value as LineState["gender"] })}
+                    required
+                  />
+                  {option.label}
+                </label>
+              ))}
+            </div>
           </FormField>
           {line.memberType === "KID" && (
             <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3 sm:col-span-3">

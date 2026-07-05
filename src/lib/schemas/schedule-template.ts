@@ -46,7 +46,7 @@ export const applyScheduleTemplateSchema = z
     targetMode: z.enum(["SELECTED_GROUPS", "SPORT", "GROUP_TYPE", "ALL_ACTIVE"]),
     groupIds: z.array(z.string().trim().min(1)).optional(),
     sportId: z.string().trim().min(1).optional(),
-    groupType: z.enum(["KIDS", "ADULTS"]).optional(),
+    groupType: z.enum(["KIDS", "ADULTS", "MIXED"]).optional(),
     effectiveFrom: z.string().datetime("Date de debut invalide"),
     effectiveTo: z.string().datetime("Date de fin invalide").nullable().optional(),
     replaceExisting: z.boolean().default(true),
@@ -61,7 +61,7 @@ export const applyScheduleTemplateSchema = z
       ctx.addIssue({ code: "custom", path: ["sportId"], message: "Selectionnez une discipline" });
     }
     if (data.targetMode === "GROUP_TYPE" && !data.groupType) {
-      ctx.addIssue({ code: "custom", path: ["groupType"], message: "Selectionnez enfants ou adultes" });
+      ctx.addIssue({ code: "custom", path: ["groupType"], message: "Selectionnez enfants, adultes ou mixte" });
     }
     if (data.effectiveTo && new Date(data.effectiveTo).getTime() < new Date(data.effectiveFrom).getTime()) {
       ctx.addIssue({ code: "custom", path: ["effectiveTo"], message: "La date de fin doit etre apres la date de debut" });

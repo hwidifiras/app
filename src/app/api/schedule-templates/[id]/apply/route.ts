@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getClubSettings } from "@/lib/club-settings";
 import { CLUB_DAY_LABELS, type ClubDay } from "@/lib/club-working-days";
+import type { GroupTypeValue } from "@/lib/demographics";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/request-user";
 import { applyScheduleTemplateSchema } from "@/lib/schemas/schedule-template";
@@ -21,7 +22,7 @@ function groupWhereFromTarget(data: {
   targetMode: "SELECTED_GROUPS" | "SPORT" | "GROUP_TYPE" | "ALL_ACTIVE";
   groupIds?: string[];
   sportId?: string;
-  groupType?: "KIDS" | "ADULTS";
+  groupType?: GroupTypeValue;
 }) {
   if (data.targetMode === "SELECTED_GROUPS") {
     return { id: { in: data.groupIds ?? [] }, isActive: true };

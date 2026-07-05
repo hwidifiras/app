@@ -15,6 +15,7 @@ export default async function MembersPage() {
     phone: string;
     email: string | null;
     memberType: "ADULT" | "KID" | "NOT_SPECIFIED";
+    gender: "MALE" | "FEMALE" | "NOT_SPECIFIED";
     birthDate: string | null;
     address: string | null;
     parentName: string | null;
@@ -84,6 +85,7 @@ export default async function MembersPage() {
       phone: member.phone,
       email: member.email,
       memberType: member.memberType,
+      gender: member.gender,
       birthDate: member.birthDate?.toISOString() ?? null,
       address: member.address ?? null,
       parentName: member.parentName ?? null,

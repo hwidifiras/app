@@ -92,6 +92,7 @@ export async function POST(request: Request) {
                   phone: memberPhone,
                   email: line.newMember.email?.trim() || null,
                   memberType: line.newMember.memberType,
+                  gender: line.newMember.gender,
                   birthDate: line.newMember.birthDate
                     ? new Date(line.newMember.birthDate)
                     : null,
@@ -111,7 +112,7 @@ export async function POST(request: Request) {
 
             const member = await tx.member.findUnique({
               where: { id: memberId },
-              select: { id: true, status: true, memberType: true },
+              select: { id: true, status: true, memberType: true, gender: true },
             });
             if (!member || member.status === "ARCHIVED")
               throw new Error(`LINE_MEMBER_INVALID_${i}`);
@@ -131,7 +132,7 @@ export async function POST(request: Request) {
             if (!group.isActive) throw new Error(`LINE_GROUP_INACTIVE_${i}`);
             if (plan.sportId !== group.sportId)
               throw new Error(`LINE_SPORT_${i}`);
-            if (!isMemberAllowedInGroup(group.groupType, member.memberType)) {
+            if (!isMemberAllowedInGroup(group.groupType, member.memberType, group.genderPolicy, member.gender)) {
               throw new Error(`LINE_MEMBER_TYPE_${i}`);
             }
 

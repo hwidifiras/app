@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getWeekRangeUtc } from "@/lib/dates";
+import type { GroupTypeValue } from "@/lib/demographics";
 
 export const RECOVERY_OVERRIDE_PREFIX = "Récupération";
 
@@ -31,7 +32,7 @@ export async function findRecoveryEligibleAbsences(params: {
   targetSessionId: string;
   targetGroupId: string;
   targetSportId: string;
-  targetGroupType: "KIDS" | "ADULTS";
+  targetGroupType: GroupTypeValue;
   targetSessionDate: Date;
 }) {
   const { start, end } = getWeekRangeUtc(params.targetSessionDate);
@@ -89,7 +90,7 @@ export async function validateRecoveryCheckIn(params: {
   targetSessionId: string;
   targetGroupId: string;
   targetSportId: string;
-  targetGroupType: "KIDS" | "ADULTS";
+  targetGroupType: GroupTypeValue;
   targetSessionDate: Date;
 }): Promise<{ ok: true } | { ok: false; error: string; code: string }> {
   const eligible = await findRecoveryEligibleAbsences(params);

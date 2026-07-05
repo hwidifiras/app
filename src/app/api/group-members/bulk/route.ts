@@ -4,15 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { bulkCreateGroupMembersSchema, bulkDeleteGroupMembersSchema } from "@/lib/schemas/group-member";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { activeAssignmentWindow, checkScheduleConflictForAssignmentWindow } from "@/lib/assignment-policy";
+import { checkGroupMemberCompatibility } from "@/lib/demographics";
 
 export const runtime = "nodejs";
-
-function isMemberAllowed(groupType: "KIDS" | "ADULTS", memberType: "KID" | "ADULT" | "NOT_SPECIFIED") {
-  if (groupType === "KIDS") {
-    return memberType === "KID" || memberType === "NOT_SPECIFIED";
-  }
-  return memberType === "ADULT" || memberType === "NOT_SPECIFIED";
-}
 
 export async function POST(request: Request) {
   try {
@@ -47,7 +41,7 @@ export async function POST(request: Request) {
 
   const group = await prisma.group.findUnique({
     where: { id: payload.groupId },
-    select: { id: true, isActive: true, capacity: true, groupType: true, sportId: true },
+    select: { id: true, isActive: true, capacity: true, groupType: true, genderPolicy: true, sportId: true },
   });
 
   if (!group) {
@@ -60,7 +54,7 @@ export async function POST(request: Request) {
 
   const members = await prisma.member.findMany({
     where: { id: { in: uniqueMemberIds } },
-    select: { id: true, status: true, memberType: true },
+    select: { id: true, status: true, memberType: true, gender: true },
   });
 
   const membersMap = new Map(members.map((item) => [item.id, item]));
@@ -92,6 +86,7 @@ export async function POST(request: Request) {
   let skippedCapacityCount = 0;
   let skippedScheduleConflictCount = 0;
   let skippedTypeMismatchCount = 0;
+  let skippedGenderMismatchCount = 0;
   let skippedNoSubscriptionCount = 0;
   let skippedUnpaidSubscriptionCount = 0;
   let skippedSportMismatchCount = 0;
@@ -108,8 +103,19 @@ export async function POST(request: Request) {
       continue;
     }
 
-    if (!isMemberAllowed(group.groupType, member.memberType)) {
-      skippedTypeMismatchCount += 1;
+    const compatibility = checkGroupMemberCompatibility({
+      groupType: group.groupType,
+      genderPolicy: group.genderPolicy,
+      memberType: member.memberType,
+      gender: member.gender,
+    });
+
+    if (!compatibility.ok) {
+      if (compatibility.code === "GENDER_POLICY_MISMATCH") {
+        skippedGenderMismatchCount += 1;
+      } else {
+        skippedTypeMismatchCount += 1;
+      }
       continue;
     }
 
@@ -209,6 +215,7 @@ export async function POST(request: Request) {
       skippedCapacityCount,
       skippedScheduleConflictCount,
       skippedTypeMismatchCount,
+      skippedGenderMismatchCount,
       skippedNoSubscriptionCount,
       skippedUnpaidSubscriptionCount,
       skippedSportMismatchCount,

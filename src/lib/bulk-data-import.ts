@@ -50,6 +50,7 @@ type HeaderKey =
   | "firstName"
   | "lastName"
   | "memberType"
+  | "gender"
   | "phone"
   | "email"
   | "birthDate"
@@ -97,6 +98,7 @@ const HEADER_ALIASES: Record<HeaderKey, string[]> = {
   firstName: ["firstname", "prenom"],
   lastName: ["lastname", "nom"],
   memberType: ["membertype", "type", "typemembre", "typeadherent"],
+  gender: ["gender", "genre", "sexe", "civilite"],
   phone: ["phone", "telephone", "tel"],
   email: ["email", "mail"],
   birthDate: ["birthdate", "datenaissance", "naissance"],
@@ -207,6 +209,15 @@ function normalizeMemberType(value: string): "ADULT" | "KID" | "NOT_SPECIFIED" |
   if (!normalized) return null;
   if (["adult", "adulte", "adults"].includes(normalized)) return "ADULT";
   if (["kid", "kids", "enfant", "enfants"].includes(normalized)) return "KID";
+  if (["notspecified", "nonprecise"].includes(normalized)) return "NOT_SPECIFIED";
+  return null;
+}
+
+function normalizeGender(value: string): "MALE" | "FEMALE" | "NOT_SPECIFIED" | null {
+  const normalized = normalizeLookup(value);
+  if (!normalized) return "NOT_SPECIFIED";
+  if (["male", "masculin", "homme", "garcon", "h", "m"].includes(normalized)) return "MALE";
+  if (["female", "feminin", "femme", "fille", "f"].includes(normalized)) return "FEMALE";
   if (["notspecified", "nonprecise"].includes(normalized)) return "NOT_SPECIFIED";
   return null;
 }
@@ -372,10 +383,12 @@ async function prepareBulkImport(buffer: Buffer, fileName: string, fallbackCutov
     const groupName = readText(row, headerIndex, "groupName");
     const planName = readText(row, headerIndex, "planName");
     const memberType = normalizeMemberType(readText(row, headerIndex, "memberType"));
+    const gender = normalizeGender(readText(row, headerIndex, "gender"));
     const groupMatch = findUniqueByName(groupLookup, groupName, "Groupe");
     const planMatch = findUniqueByName(planLookup, planName, "Formule");
 
     if (!memberType) errors.push("Type membre invalide (ADULT ou KID)");
+    if (!gender) errors.push("Genre invalide (MALE ou FEMALE)");
     if (typeof groupMatch === "string") errors.push(groupMatch);
     if (typeof planMatch === "string") errors.push(planMatch);
 
@@ -407,6 +420,7 @@ async function prepareBulkImport(buffer: Buffer, fileName: string, fallbackCutov
       phone,
       email: readText(row, headerIndex, "email"),
       memberType: memberType ?? "NOT_SPECIFIED",
+      gender: gender ?? "NOT_SPECIFIED",
       birthDate: parseDate(readCell(row, headerIndex, "birthDate")) ?? "",
       address: readText(row, headerIndex, "address"),
       parentName: readText(row, headerIndex, "parentName"),

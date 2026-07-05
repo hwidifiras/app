@@ -13,6 +13,7 @@ type MemberProfileHeroProps = {
     phone: string;
     email: string | null;
     memberType: "ADULT" | "KID" | "NOT_SPECIFIED";
+    gender: "MALE" | "FEMALE" | "NOT_SPECIFIED";
     status: "ACTIVE" | "ARCHIVED";
     joinedAt: Date;
     parentName: string | null;
@@ -30,6 +31,12 @@ function memberTypeLabel(value: MemberProfileHeroProps["member"]["memberType"]) 
   if (value === "KID") return "Enfant";
   if (value === "ADULT") return "Adulte";
   return "Non spécifié";
+}
+
+function genderLabel(value: MemberProfileHeroProps["member"]["gender"]) {
+  if (value === "MALE") return "Garcon / homme";
+  if (value === "FEMALE") return "Fille / femme";
+  return "Non specifie";
 }
 
 export function MemberProfileHero({
@@ -69,7 +76,7 @@ export function MemberProfileHero({
               </StatusBadge>
             </div>
             <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-              {memberTypeLabel(member.memberType)} · Inscrit le{" "}
+              {memberTypeLabel(member.memberType)} · {genderLabel(member.gender)} · Inscrit le{" "}
               {member.joinedAt.toLocaleDateString("fr-FR")}
             </p>
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-[var(--muted-foreground)]">

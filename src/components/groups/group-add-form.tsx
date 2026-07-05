@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import { GroupMemberSelector } from "@/components/groups/group-member-selector";
+import { isMemberAllowedInGroupPolicy, type GroupGenderPolicyValue, type GroupTypeValue } from "@/lib/demographics";
 import { CoachDto } from "@/types/coach";
 import { MemberDto } from "@/types/member";
 import { SportDto } from "@/types/sport";
@@ -32,7 +33,8 @@ export function GroupAddForm({
   const router = useRouter();
   const [name, setName] = useState("");
   const [sports, setSports] = useState<SportDto[]>(sportsOptions);
-  const [groupType, setGroupType] = useState<"KIDS" | "ADULTS">("ADULTS");
+  const [groupType, setGroupType] = useState<GroupTypeValue>("ADULTS");
+  const [genderPolicy, setGenderPolicy] = useState<GroupGenderPolicyValue>("MIXED");
   const [sportId, setSportId] = useState("");
   const [coachId, setCoachId] = useState("");
   const [coachSportOverrideReason, setCoachSportOverrideReason] = useState("");
@@ -51,11 +53,13 @@ export function GroupAddForm({
     }
   }
 
-  function isMemberAllowed(memberType: MemberDto["memberType"]) {
-    if (groupType === "KIDS") {
-      return memberType === "KID" || memberType === "NOT_SPECIFIED";
-    }
-    return memberType === "ADULT" || memberType === "NOT_SPECIFIED";
+  function isMemberAllowed(member: MemberDto) {
+    return isMemberAllowedInGroupPolicy({
+      groupType,
+      genderPolicy,
+      memberType: member.memberType,
+      gender: member.gender,
+    });
   }
 
   const filteredMembers = membersOptions.filter((member) => {
@@ -63,7 +67,7 @@ export function GroupAddForm({
     if (!query) return true;
     const matchesQuery = `${member.firstName} ${member.lastName}`.toLowerCase().includes(query) || member.phone.toLowerCase().includes(query);
     return matchesQuery;
-  }).filter((member) => isMemberAllowed(member.memberType));
+  }).filter((member) => isMemberAllowed(member));
   const selectedCoach = coachesOptions.find((coach) => coach.id === coachId);
   const needsCoachSportOverride = !coachIsQualifiedForSport(selectedCoach, sportId);
 
@@ -78,6 +82,7 @@ export function GroupAddForm({
       body: JSON.stringify({
         name,
         groupType,
+        genderPolicy,
         sportId,
         coachId,
         capacity,
@@ -158,7 +163,7 @@ export function GroupAddForm({
             <select
               value={groupType}
               onChange={(e) => {
-                setGroupType(e.target.value as "KIDS" | "ADULTS");
+                setGroupType(e.target.value as GroupTypeValue);
                 setSelectedMemberIds([]);
               }}
               className="field text-sm"
@@ -166,6 +171,23 @@ export function GroupAddForm({
             >
               <option value="ADULTS">Adultes</option>
               <option value="KIDS">Enfants</option>
+              <option value="MIXED">Mixte age</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Genre du groupe</label>
+            <select
+              value={genderPolicy}
+              onChange={(e) => {
+                setGenderPolicy(e.target.value as GroupGenderPolicyValue);
+                setSelectedMemberIds([]);
+              }}
+              className="field text-sm"
+              required
+            >
+              <option value="MIXED">Mixte</option>
+              <option value="MALE_ONLY">Garcons / hommes</option>
+              <option value="FEMALE_ONLY">Filles / femmes</option>
             </select>
           </div>
           <div>

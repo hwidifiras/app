@@ -2,6 +2,13 @@ import type { Offer, OfferKind, Prisma, SubscriptionPlan } from "@prisma/client"
 
 import { getAppTimeZone } from "@/lib/dates";
 import { getClubSettings } from "@/lib/club-settings";
+import {
+  checkGroupMemberCompatibility,
+  type GenderValue,
+  type GroupGenderPolicyValue,
+  type GroupTypeValue,
+  type MemberTypeValue,
+} from "@/lib/demographics";
 import { businessDayWindow, schedulesForGroupWindow } from "@/lib/assignment-policy";
 import { resolveOfferRules } from "@/lib/offer-rules";
 import type { EnrollmentLineInput } from "@/lib/schemas/enrollment";
@@ -33,9 +40,6 @@ const activeSubWhere = (memberId: string, sportId: string, now = new Date()) => 
   remainingSessions: { gt: 0 },
 });
 
-type MemberTypeValue = "ADULT" | "KID" | "NOT_SPECIFIED";
-type GroupTypeValue = "KIDS" | "ADULTS";
-
 function timeToMinutes(time: string): number {
   const [h, m] = time.split(":").map(Number);
   return h * 60 + m;
@@ -48,11 +52,10 @@ function intervalsOverlap(start1: number, end1: number, start2: number, end2: nu
 export function isMemberAllowedInGroup(
   groupType: GroupTypeValue,
   memberType: MemberTypeValue,
+  genderPolicy: GroupGenderPolicyValue = "MIXED",
+  gender: GenderValue = "NOT_SPECIFIED",
 ): boolean {
-  if (groupType === "KIDS") {
-    return memberType === "KID" || memberType === "NOT_SPECIFIED";
-  }
-  return memberType === "ADULT" || memberType === "NOT_SPECIFIED";
+  return checkGroupMemberCompatibility({ groupType, memberType, genderPolicy, gender }).ok;
 }
 
 async function groupsOverlap(
@@ -286,7 +289,8 @@ type ResolvedLine = {
   memberId: string;
   memberName: string;
   memberType: MemberTypeValue;
-  group: { id: string; name: string; sportId: string; sport: { name: string }; capacity: number; groupType: GroupTypeValue; isActive: boolean; _count: { members: number } };
+  memberGender: GenderValue;
+  group: { id: string; name: string; sportId: string; sport: { name: string }; capacity: number; groupType: GroupTypeValue; genderPolicy: GroupGenderPolicyValue; isActive: boolean; _count: { members: number } };
   plan: SubscriptionPlan & { sport: { name: string } };
   startDate: Date;
   endDate: Date;
@@ -303,18 +307,20 @@ async function resolveEnrollmentLines(lines: EnrollmentLineInput[], startDateInp
     const memberId = line.memberId;
     let memberName = "";
     let memberType: MemberTypeValue = line.newMember?.memberType ?? "NOT_SPECIFIED";
+    let memberGender: GenderValue = line.newMember?.gender ?? "NOT_SPECIFIED";
 
     if (!memberId && line.newMember) {
       memberName = `${line.newMember.firstName} ${line.newMember.lastName}`;
     } else if (memberId) {
       const m = await prisma.member.findUnique({
         where: { id: memberId },
-        select: { firstName: true, lastName: true, status: true, memberType: true },
+        select: { firstName: true, lastName: true, status: true, memberType: true, gender: true },
       });
       if (!m) throw new Error(`LINE_${i}:MEMBER_NOT_FOUND`);
       if (m.status === "ARCHIVED") throw new Error(`LINE_${i}:MEMBER_ARCHIVED`);
       memberName = `${m.firstName} ${m.lastName}`;
       memberType = m.memberType;
+      memberGender = m.gender;
     } else {
       throw new Error(`LINE_${i}:MEMBER_REQUIRED`);
     }
@@ -327,7 +333,7 @@ async function resolveEnrollmentLines(lines: EnrollmentLineInput[], startDateInp
       },
     });
     if (!group || !group.isActive) throw new Error(`LINE_${i}:GROUP_INVALID`);
-    if (!isMemberAllowedInGroup(group.groupType, memberType)) {
+    if (!isMemberAllowedInGroup(group.groupType, memberType, group.genderPolicy, memberGender)) {
       throw new Error(`LINE_${i}:MEMBER_TYPE_MISMATCH`);
     }
 
@@ -356,6 +362,7 @@ async function resolveEnrollmentLines(lines: EnrollmentLineInput[], startDateInp
       memberId: memberId ?? "",
       memberName,
       memberType,
+      memberGender,
       group,
       plan: plan as ResolvedLine["plan"],
       startDate,

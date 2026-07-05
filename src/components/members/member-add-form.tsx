@@ -21,6 +21,7 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [memberType, setMemberType] = useState<"ADULT" | "KID" | "NOT_SPECIFIED">("ADULT");
+  const [gender, setGender] = useState<"MALE" | "FEMALE" | "NOT_SPECIFIED">("NOT_SPECIFIED");
   const [birthDate, setBirthDate] = useState("");
   const [address, setAddress] = useState("");
   const [parentName, setParentName] = useState("");
@@ -54,6 +55,7 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
       phone,
       email,
       memberType,
+      gender,
       birthDate: new Date(`${birthDate}T00:00:00`).toISOString(),
       address,
       parentName: memberType === "KID" ? parentName : "",
@@ -155,6 +157,35 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
           {computedAge !== null ? (
             <p className="mt-1 text-[0.7rem] text-[var(--muted-foreground)]">Âge estimé: {computedAge} ans</p>
           ) : null}
+        </div>
+      </div>
+
+      <div>
+        <label className="mb-2 block text-xs font-medium text-[var(--muted-foreground)]">Genre *</label>
+        <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Genre">
+          {[
+            { value: "MALE", label: "Garcon / homme" },
+            { value: "FEMALE", label: "Fille / femme" },
+          ].map((option) => (
+            <label
+              key={option.value}
+              className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                gender === option.value
+                  ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
+                  : "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-soft)]"
+              }`}
+            >
+              <input
+                type="radio"
+                name="member-gender"
+                value={option.value}
+                checked={gender === option.value}
+                onChange={() => setGender(option.value as typeof gender)}
+                required
+              />
+              {option.label}
+            </label>
+          ))}
         </div>
       </div>
 

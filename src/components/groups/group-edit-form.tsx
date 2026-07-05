@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import { GroupMemberSelector } from "@/components/groups/group-member-selector";
+import { isMemberAllowedInGroupPolicy, type GroupGenderPolicyValue, type GroupTypeValue } from "@/lib/demographics";
 import { CoachDto } from "@/types/coach";
 import { MemberDto } from "@/types/member";
 import { SportDto } from "@/types/sport";
@@ -31,7 +32,8 @@ export function GroupEditForm({
   groupId: string;
   initialData: {
     name: string;
-    groupType: "KIDS" | "ADULTS";
+    groupType: GroupTypeValue;
+    genderPolicy: GroupGenderPolicyValue;
     sportId: string;
     coachId: string;
     capacity: number;
@@ -45,7 +47,8 @@ export function GroupEditForm({
 }) {
   const router = useRouter();
   const [name, setName] = useState(initialData.name);
-  const [groupType, setGroupType] = useState<"KIDS" | "ADULTS">(initialData.groupType);
+  const [groupType, setGroupType] = useState<GroupTypeValue>(initialData.groupType);
+  const [genderPolicy, setGenderPolicy] = useState<GroupGenderPolicyValue>(initialData.genderPolicy);
   const [sportId, setSportId] = useState(initialData.sportId);
   const [coachId, setCoachId] = useState(initialData.coachId);
   const [applyCoachToFutureSessions, setApplyCoachToFutureSessions] = useState(false);
@@ -58,18 +61,20 @@ export function GroupEditForm({
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  function isMemberAllowed(memberType: MemberDto["memberType"]) {
-    if (groupType === "KIDS") {
-      return memberType === "KID" || memberType === "NOT_SPECIFIED";
-    }
-    return memberType === "ADULT" || memberType === "NOT_SPECIFIED";
+  function isMemberAllowed(member: MemberDto, nextGroupType = groupType, nextGenderPolicy = genderPolicy) {
+    return isMemberAllowedInGroupPolicy({
+      groupType: nextGroupType,
+      genderPolicy: nextGenderPolicy,
+      memberType: member.memberType,
+      gender: member.gender,
+    });
   }
 
   const filteredMembers = membersOptions.filter((member) => {
     const query = membersSearch.trim().toLowerCase();
     if (!query) return true;
     return `${member.firstName} ${member.lastName}`.toLowerCase().includes(query) || member.phone.toLowerCase().includes(query);
-  }).filter((member) => isMemberAllowed(member.memberType));
+  }).filter((member) => isMemberAllowed(member));
   const selectedCoach = coachesOptions.find((coach) => coach.id === coachId);
   const coachChanged = coachId !== initialData.coachId;
   const coachSportPairChanged = sportId !== initialData.sportId || coachId !== initialData.coachId;
@@ -88,6 +93,7 @@ export function GroupEditForm({
         payload: {
           name,
           groupType,
+          genderPolicy,
           sportId,
           coachId,
           capacity,
@@ -178,16 +184,11 @@ export function GroupEditForm({
             <select
               value={groupType}
               onChange={(e) => {
-                const nextType = e.target.value as "KIDS" | "ADULTS";
+                const nextType = e.target.value as GroupTypeValue;
                 setGroupType(nextType);
                 const allowedIds = new Set(
                   membersOptions
-                    .filter((member) => {
-                      if (nextType === "KIDS") {
-                        return member.memberType === "KID" || member.memberType === "NOT_SPECIFIED";
-                      }
-                      return member.memberType === "ADULT" || member.memberType === "NOT_SPECIFIED";
-                    })
+                    .filter((member) => isMemberAllowed(member, nextType, genderPolicy))
                     .map((member) => member.id)
                 );
                 setSelectedMemberIds((current) => current.filter((id) => allowedIds.has(id)));
@@ -197,6 +198,29 @@ export function GroupEditForm({
             >
               <option value="ADULTS">Adultes</option>
               <option value="KIDS">Enfants</option>
+              <option value="MIXED">Mixte age</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Genre du groupe</label>
+            <select
+              value={genderPolicy}
+              onChange={(e) => {
+                const nextPolicy = e.target.value as GroupGenderPolicyValue;
+                setGenderPolicy(nextPolicy);
+                const allowedIds = new Set(
+                  membersOptions
+                    .filter((member) => isMemberAllowed(member, groupType, nextPolicy))
+                    .map((member) => member.id),
+                );
+                setSelectedMemberIds((current) => current.filter((id) => allowedIds.has(id)));
+              }}
+              className="field text-sm"
+              required
+            >
+              <option value="MIXED">Mixte</option>
+              <option value="MALE_ONLY">Garcons / hommes</option>
+              <option value="FEMALE_ONLY">Filles / femmes</option>
             </select>
           </div>
           <div>

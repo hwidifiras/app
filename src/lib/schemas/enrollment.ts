@@ -6,6 +6,7 @@ const newMemberBaseSchema = z.object({
   phone: z.string().trim().max(20).optional().or(z.literal("")),
   email: z.string().trim().email().optional().or(z.literal("")),
   memberType: z.enum(["ADULT", "KID", "NOT_SPECIFIED"]).default("NOT_SPECIFIED"),
+  gender: z.enum(["MALE", "FEMALE", "NOT_SPECIFIED"]).default("NOT_SPECIFIED"),
   birthDate: z.string().optional(),
   address: z.string().optional(),
   parentName: z.string().optional(),
@@ -17,6 +18,14 @@ export const enrollmentLineSchema = z.object({
   memberId: z.string().trim().min(1).optional(),
   newMember: newMemberBaseSchema
     .superRefine((member, ctx) => {
+      if (member.gender === "NOT_SPECIFIED") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Genre requis",
+          path: ["gender"],
+        });
+      }
+
       const phone = member.phone?.trim() ?? "";
       if (member.memberType !== "KID" && phone.length < 6) {
         ctx.addIssue({

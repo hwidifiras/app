@@ -15,6 +15,7 @@ export const dataImportMemberSchema = z
     phone: z.string().trim().max(20).optional().or(z.literal("")),
     email: z.string().trim().email("Email invalide").optional().or(z.literal("")),
     memberType: z.enum(["ADULT", "KID", "NOT_SPECIFIED"]),
+    gender: z.enum(["MALE", "FEMALE", "NOT_SPECIFIED"]).default("NOT_SPECIFIED"),
     birthDate: optionalDate,
     address: optionalText,
     parentName: optionalText,

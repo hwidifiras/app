@@ -7,6 +7,7 @@ import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { utcDateOnlyForTimeZone } from "@/lib/dates";
 import { findCoachSessionConflict, formatSessionSlotLabel } from "@/lib/session-slot-conflict";
 import { getClubSettings } from "@/lib/club-settings";
+import { checkGroupMemberCompatibility } from "@/lib/demographics";
 import {
   coachSportOverrideAuditDetails,
   validateCoachSportEligibility,
@@ -27,7 +28,8 @@ type DayOfWeekValue =
 function toGroupDto(group: {
   id: string;
   name: string;
-  groupType: "KIDS" | "ADULTS";
+  groupType: "KIDS" | "ADULTS" | "MIXED";
+  genderPolicy: "MALE_ONLY" | "FEMALE_ONLY" | "MIXED";
   sportId: string;
   coachId: string;
   capacity: number;
@@ -53,6 +55,7 @@ function toGroupDto(group: {
     name: group.name,
     activeMembers: group._count?.members ?? 0,
     groupType: group.groupType,
+    genderPolicy: group.genderPolicy,
     sportId: group.sportId,
     sportName: group.sport.name,
     coachId: group.coachId,
@@ -166,6 +169,7 @@ export async function POST(request: Request) {
       data: {
         name: parsed.data.name,
         groupType: parsed.data.groupType,
+        genderPolicy: parsed.data.genderPolicy,
         sportId: parsed.data.sportId,
         coachId: parsed.data.coachId,
         capacity: parsed.data.capacity,
@@ -243,11 +247,52 @@ export async function PATCH(request: Request) {
   const payload = updatePayload.data;
   const existingGroup = await prisma.group.findUnique({
     where: { id: groupId },
-    select: { id: true, name: true, sportId: true, coachId: true, room: true },
+    select: {
+      id: true,
+      name: true,
+      sportId: true,
+      coachId: true,
+      room: true,
+      groupType: true,
+      genderPolicy: true,
+      members: {
+        where: { status: "ACTIVE" },
+        select: {
+          member: {
+            select: {
+              firstName: true,
+              lastName: true,
+              memberType: true,
+              gender: true,
+            },
+          },
+        },
+      },
+    },
   });
 
   if (!existingGroup) {
     return NextResponse.json({ error: "Groupe introuvable" }, { status: 404 });
+  }
+
+  const targetGroupType = payload.groupType ?? existingGroup.groupType;
+  const targetGenderPolicy = payload.genderPolicy ?? existingGroup.genderPolicy;
+  const incompatibleMember = existingGroup.members.find((assignment) => {
+    return !checkGroupMemberCompatibility({
+      groupType: targetGroupType,
+      genderPolicy: targetGenderPolicy,
+      memberType: assignment.member.memberType,
+      gender: assignment.member.gender,
+    }).ok;
+  });
+
+  if (incompatibleMember) {
+    return NextResponse.json(
+      {
+        error: `Modification impossible: ${incompatibleMember.member.firstName} ${incompatibleMember.member.lastName} est deja affecte(e) et ne correspond pas a cette politique.`,
+      },
+      { status: 409 },
+    );
   }
 
   if (payload.sportId) {
@@ -344,6 +389,7 @@ export async function PATCH(request: Request) {
         data: {
           name: payload.name,
           groupType: payload.groupType,
+          genderPolicy: payload.genderPolicy,
           sportId: payload.sportId,
           coachId: payload.coachId,
           capacity: payload.capacity,

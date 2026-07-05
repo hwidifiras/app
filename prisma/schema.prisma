@@ -21,6 +21,12 @@ enum MemberType {
   NOT_SPECIFIED
 }
 
+enum Gender {
+  MALE
+  FEMALE
+  NOT_SPECIFIED
+}
+
 enum DayOfWeek {
   MONDAY
   TUESDAY
@@ -39,6 +45,13 @@ enum GroupMemberStatus {
 enum GroupType {
   KIDS
   ADULTS
+  MIXED
+}
+
+enum GroupGenderPolicy {
+  MALE_ONLY
+  FEMALE_ONLY
+  MIXED
 }
 
 enum SessionStatus {
@@ -231,6 +244,7 @@ model Member {
   phone         String
   email         String?
   memberType    MemberType           @default(NOT_SPECIFIED)
+  gender        Gender               @default(NOT_SPECIFIED)
   birthDate     DateTime?
   address       String?
   parentName    String?
@@ -343,6 +357,7 @@ model Group {
   tenant    Tenant?         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name      String
   groupType GroupType       @default(ADULTS)
+  genderPolicy GroupGenderPolicy @default(MIXED)
   sportId   String
   sport     Sport           @relation(fields: [sportId], references: [id], onDelete: Restrict)
   coachId   String

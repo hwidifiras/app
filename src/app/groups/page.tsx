@@ -25,6 +25,7 @@ export default async function GroupsPage() {
       id: group.id,
       name: group.name,
       groupType: group.groupType,
+      genderPolicy: group.genderPolicy,
       sportId: group.sportId,
       sportName: group.sport.name,
       coachId: group.coachId,

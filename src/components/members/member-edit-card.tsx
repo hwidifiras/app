@@ -14,6 +14,7 @@ type MemberEditCardProps = {
     phone: string;
     email: string | null;
     memberType: "ADULT" | "KID" | "NOT_SPECIFIED";
+    gender: "MALE" | "FEMALE" | "NOT_SPECIFIED";
     birthDate: string | null;
     address: string | null;
     parentName: string | null;
@@ -51,6 +52,12 @@ function memberTypeLabel(value: MemberEditCardProps["member"]["memberType"]) {
   return "Non spécifié";
 }
 
+function genderLabel(value: MemberEditCardProps["member"]["gender"]) {
+  if (value === "MALE") return "Garcon / homme";
+  if (value === "FEMALE") return "Fille / femme";
+  return "Non specifie";
+}
+
 export function MemberEditCard({ member }: MemberEditCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [firstName, setFirstName] = useState(member.firstName);
@@ -58,6 +65,7 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
   const [phone, setPhone] = useState(member.phone);
   const [email, setEmail] = useState(member.email ?? "");
   const [memberType, setMemberType] = useState(member.memberType);
+  const [gender, setGender] = useState(member.gender);
   const [birthDate, setBirthDate] = useState(
     member.birthDate ? member.birthDate.split("T")[0] : "",
   );
@@ -77,6 +85,7 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
     setPhone(member.phone);
     setEmail(member.email ?? "");
     setMemberType(member.memberType);
+    setGender(member.gender);
     setBirthDate(member.birthDate ? member.birthDate.split("T")[0] : "");
     setAddress(member.address ?? "");
     setParentName(member.parentName ?? "");
@@ -95,6 +104,7 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
       phone,
       email,
       memberType,
+      gender,
       birthDate: birthDate ? new Date(`${birthDate}T00:00:00`).toISOString() : undefined,
       address,
       parentName: memberType === "KID" ? parentName : "",
@@ -173,6 +183,34 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
               </div>
             </div>
             <div>
+              <label className="mb-2 block text-xs font-semibold text-[var(--foreground)]">Genre</label>
+              <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Genre">
+                {[
+                  { value: "MALE", label: "Garcon / homme" },
+                  { value: "FEMALE", label: "Fille / femme" },
+                ].map((option) => (
+                  <label
+                    key={option.value}
+                    className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                      gender === option.value
+                        ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
+                        : "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-soft)]"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name={`member-${member.id}-gender`}
+                      value={option.value}
+                      checked={gender === option.value}
+                      onChange={() => setGender(option.value as typeof gender)}
+                      required
+                    />
+                    {option.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div>
               <label className="mb-1 block text-xs font-semibold text-[var(--foreground)]">Adresse</label>
               <input value={address} onChange={(e) => setAddress(e.target.value)} className="field" />
             </div>
@@ -236,6 +274,10 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
           <div className="flex min-w-0 justify-between gap-3">
             <dt className="text-[var(--muted-foreground)]">Type</dt>
             <dd className="font-medium">{memberTypeLabel(member.memberType)}</dd>
+          </div>
+          <div className="flex min-w-0 justify-between gap-3">
+            <dt className="text-[var(--muted-foreground)]">Genre</dt>
+            <dd className="font-medium">{genderLabel(member.gender)}</dd>
           </div>
           <div className="flex min-w-0 justify-between gap-3">
             <dt className="text-[var(--muted-foreground)]">Date de naissance</dt>

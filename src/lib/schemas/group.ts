@@ -10,6 +10,9 @@ const dayOfWeekEnum = z.enum([
   "SUNDAY",
 ]);
 
+const groupTypeEnum = z.enum(["KIDS", "ADULTS", "MIXED"]);
+const groupGenderPolicyEnum = z.enum(["MALE_ONLY", "FEMALE_ONLY", "MIXED"]);
+
 const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 export const scheduleSchema = z.object({
@@ -32,7 +35,8 @@ export const updateGroupScheduleSchema = z.object({
 
 export const createGroupSchema = z.object({
   name: z.string().trim().min(2, "Nom du groupe invalide").max(100),
-  groupType: z.enum(["KIDS", "ADULTS"]),
+  groupType: groupTypeEnum,
+  genderPolicy: groupGenderPolicyEnum.default("MIXED"),
   sportId: z.string().trim().min(1, "Sport requis"),
   coachId: z.string().trim().min(1, "Coach requis"),
   capacity: z.number().int().min(1, "Capacité invalide").max(200, "Capacité invalide"),
@@ -45,7 +49,8 @@ export type CreateGroupInput = z.infer<typeof createGroupSchema>;
 export const updateGroupSchema = z
   .object({
     name: z.string().trim().min(2, "Nom du groupe invalide").max(100).optional(),
-    groupType: z.enum(["KIDS", "ADULTS"]).optional(),
+    groupType: groupTypeEnum.optional(),
+    genderPolicy: groupGenderPolicyEnum.optional(),
     sportId: z.string().trim().min(1, "Sport requis").optional(),
     coachId: z.string().trim().min(1, "Coach requis").optional(),
     capacity: z.number().int().min(1, "Capacité invalide").max(200, "Capacité invalide").optional(),
@@ -58,6 +63,7 @@ export const updateGroupSchema = z
     (payload) =>
       payload.name !== undefined ||
       payload.groupType !== undefined ||
+      payload.genderPolicy !== undefined ||
       payload.sportId !== undefined ||
       payload.coachId !== undefined ||
       payload.capacity !== undefined ||

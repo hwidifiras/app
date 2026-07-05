@@ -6,6 +6,7 @@ import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { expireStaleSubscriptions } from "@/lib/membership-rules";
 import { resolveMemberPhone } from "@/lib/member-phone";
 import { issueReceiptForPayment } from "@/lib/receipts";
+import { checkGroupMemberCompatibility } from "@/lib/demographics";
 
 export const runtime = "nodejs";
 
@@ -88,6 +89,7 @@ export async function GET(request: Request) {
       phone: member.phone,
       email: member.email,
       memberType: member.memberType,
+      gender: member.gender,
       birthDate: member.birthDate?.toISOString() ?? null,
       address: member.address ?? null,
       parentName: member.parentName ?? null,
@@ -181,8 +183,13 @@ export async function POST(request: Request) {
       if (!group.isActive) throw new Error("GROUP_INACTIVE");
       if (!plan) throw new Error("PLAN_NOT_FOUND");
       if (!plan.isActive) throw new Error("PLAN_INACTIVE");
-      if (group.groupType === "KIDS" && parsed.data.memberType === "ADULT") throw new Error("MEMBER_TYPE_MISMATCH");
-      if (group.groupType === "ADULTS" && parsed.data.memberType === "KID") throw new Error("MEMBER_TYPE_MISMATCH");
+      const compatibility = checkGroupMemberCompatibility({
+        groupType: group.groupType,
+        genderPolicy: group.genderPolicy,
+        memberType: parsed.data.memberType,
+        gender: parsed.data.gender,
+      });
+      if (!compatibility.ok) throw new Error(compatibility.code);
       if (plan.sportId && plan.sportId !== group.sportId) throw new Error("PLAN_SPORT_MISMATCH");
       if (group._count.members >= group.capacity) throw new Error("GROUP_CAPACITY_REACHED");
       if (paymentCents > plan.price) throw new Error("PAYMENT_EXCEEDS_DUE");
@@ -202,6 +209,7 @@ export async function POST(request: Request) {
           phone: memberPhone,
           email: emailValue,
           memberType: parsed.data.memberType,
+          gender: parsed.data.gender,
           birthDate: birthDateValue,
           address: addressValue,
           parentName: parentNameValue,
@@ -329,8 +337,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Impossible d'utiliser un plan inactif" }, { status: 409 });
     }
 
-    if (error instanceof Error && error.message === "MEMBER_TYPE_MISMATCH") {
-      return NextResponse.json({ error: "Type de membre incompatible avec ce groupe" }, { status: 409 });
+    if (error instanceof Error && error.message === "AGE_POLICY_MISMATCH") {
+      return NextResponse.json({ error: "Age de l'eleve incompatible avec ce groupe" }, { status: 409 });
+    }
+
+    if (error instanceof Error && error.message === "GENDER_POLICY_MISMATCH") {
+      return NextResponse.json({ error: "Genre de l'eleve incompatible avec ce groupe" }, { status: 409 });
     }
 
     if (error instanceof Error && error.message === "PLAN_SPORT_MISMATCH") {
@@ -391,6 +403,52 @@ export async function PATCH(request: Request) {
   const payload = updatePayload.data;
 
   try {
+    if (payload.memberType !== undefined || payload.gender !== undefined) {
+      const existing = await prisma.member.findUnique({
+        where: { id: memberId },
+        select: {
+          memberType: true,
+          gender: true,
+          groups: {
+            where: { status: "ACTIVE" },
+            select: {
+              group: {
+                select: {
+                  name: true,
+                  groupType: true,
+                  genderPolicy: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!existing) {
+        return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
+      }
+
+      const targetMemberType = payload.memberType ?? existing.memberType;
+      const targetGender = payload.gender ?? existing.gender;
+      const incompatibleAssignment = existing.groups.find((assignment) => {
+        return !checkGroupMemberCompatibility({
+          groupType: assignment.group.groupType,
+          genderPolicy: assignment.group.genderPolicy,
+          memberType: targetMemberType,
+          gender: targetGender,
+        }).ok;
+      });
+
+      if (incompatibleAssignment) {
+        return NextResponse.json(
+          {
+            error: `Modification impossible: l'eleve resterait incompatible avec le cours "${incompatibleAssignment.group.name}".`,
+          },
+          { status: 409 },
+        );
+      }
+    }
+
     const updated = await prisma.member.update({
       where: { id: memberId },
       data: {
@@ -404,6 +462,7 @@ export async function PATCH(request: Request) {
               ? null
               : payload.email,
         memberType: payload.memberType,
+        gender: payload.gender,
         birthDate: payload.birthDate === undefined ? undefined : new Date(payload.birthDate),
         address: payload.address === undefined ? undefined : payload.address?.trim() || null,
         parentName: payload.parentName === undefined ? undefined : payload.parentName?.trim() || null,

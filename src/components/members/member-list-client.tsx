@@ -28,6 +28,7 @@ type MemberWithGroups = {
   phone: string;
   email: string | null;
   memberType: "ADULT" | "KID" | "NOT_SPECIFIED";
+  gender: "MALE" | "FEMALE" | "NOT_SPECIFIED";
   birthDate: string | null;
   address: string | null;
   parentName: string | null;

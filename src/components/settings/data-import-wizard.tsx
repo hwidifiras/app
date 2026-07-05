@@ -6,12 +6,13 @@ import { useRouter } from "next/navigation";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormSectionNav } from "@/components/ui/form-layout";
+import type { GroupTypeValue } from "@/lib/demographics";
 import { formatMoney } from "@/lib/money";
 
 type GroupOption = {
   id: string;
   name: string;
-  groupType: "KIDS" | "ADULTS";
+  groupType: GroupTypeValue;
   sportId: string;
   sportName: string;
 };
@@ -131,6 +132,7 @@ export function DataImportWizard({
     phone: "",
     email: "",
     memberType: "ADULT" as "ADULT" | "KID" | "NOT_SPECIFIED",
+    gender: "NOT_SPECIFIED" as "MALE" | "FEMALE" | "NOT_SPECIFIED",
     birthDate: "",
     address: "",
     parentName: "",
@@ -546,6 +548,13 @@ export function DataImportWizard({
                   <option value="ADULT">Adulte</option>
                   <option value="KID">Enfant</option>
                   <option value="NOT_SPECIFIED">Non précisé</option>
+                </select>
+              </label>
+              <label className="text-sm font-medium">Genre *
+                <select className="field mt-1" value={member.gender} onChange={(event) => updateMember("gender", event.target.value as typeof member.gender)} required>
+                  <option value="NOT_SPECIFIED">Non précisé</option>
+                  <option value="MALE">Garçon / homme</option>
+                  <option value="FEMALE">Fille / femme</option>
                 </select>
               </label>
               <label className="text-sm font-medium">Téléphone

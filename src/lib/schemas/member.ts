@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+const genderEnum = z.enum(["MALE", "FEMALE", "NOT_SPECIFIED"]);
+
 export const createMemberSchema = z
   .object({
     firstName: z.string().trim().min(1, "Le prénom est requis").max(60),
@@ -12,6 +14,7 @@ export const createMemberSchema = z
       .optional()
       .or(z.literal("")),
     memberType: z.enum(["ADULT", "KID", "NOT_SPECIFIED"]),
+    gender: genderEnum.default("NOT_SPECIFIED"),
     birthDate: z.string().datetime({ message: "Date de naissance invalide" }),
     address: z.string().trim().max(200).optional(),
     parentName: z.string().trim().max(120).optional(),
@@ -19,6 +22,14 @@ export const createMemberSchema = z
     parentAddress: z.string().trim().max(200).optional(),
   })
   .superRefine((data, ctx) => {
+    if (data.gender === "NOT_SPECIFIED") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Genre requis",
+        path: ["gender"],
+      });
+    }
+
     const phone = data.phone?.trim() ?? "";
     if (data.memberType !== "KID" && phone.length < 6) {
       ctx.addIssue({
@@ -61,6 +72,7 @@ export const updateMemberSchema = z
       .union([z.string().trim().email("Email invalide"), z.literal(""), z.null()])
       .optional(),
     memberType: z.enum(["ADULT", "KID", "NOT_SPECIFIED"]).optional(),
+    gender: genderEnum.optional(),
     birthDate: z.string().datetime({ message: "Date de naissance invalide" }).optional(),
     address: z.string().trim().max(200).optional(),
     parentName: z.string().trim().max(120).optional(),
@@ -74,6 +86,7 @@ export const updateMemberSchema = z
       payload.phone !== undefined ||
       payload.email !== undefined ||
       payload.memberType !== undefined ||
+      payload.gender !== undefined ||
       payload.birthDate !== undefined ||
       payload.address !== undefined ||
       payload.parentName !== undefined ||

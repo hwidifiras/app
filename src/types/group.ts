@@ -19,7 +19,8 @@ export type GroupScheduleDto = {
 export type GroupDto = {
   id: string;
   name: string;
-  groupType: "KIDS" | "ADULTS";
+  groupType: "KIDS" | "ADULTS" | "MIXED";
+  genderPolicy: "MALE_ONLY" | "FEMALE_ONLY" | "MIXED";
   sportId: string;
   sportName: string;
   coachId: string;

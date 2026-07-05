@@ -22,6 +22,7 @@ export default async function AddMemberToGroupPage({
       firstName: true,
       lastName: true,
       memberType: true,
+      gender: true,
       status: true,
       subscriptions: {
         where: { status: "ACTIVE" },
@@ -90,6 +91,7 @@ export default async function AddMemberToGroupPage({
       room: true,
       capacity: true,
       groupType: true,
+      genderPolicy: true,
       _count: {
         select: {
           members: { where: { status: "ACTIVE" } },
@@ -146,6 +148,7 @@ export default async function AddMemberToGroupPage({
           memberId={id}
           memberName={`${member.firstName} ${member.lastName}`}
           memberType={member.memberType}
+          gender={member.gender}
           plans={plans.map((plan) => ({
             id: plan.id,
             planName: plan.name,
@@ -165,6 +168,7 @@ export default async function AddMemberToGroupPage({
             capacity: g.capacity,
             activeMembers: g._count.members,
             groupType: g.groupType,
+            genderPolicy: g.genderPolicy,
             schedules: g.schedules,
           }))}
         />

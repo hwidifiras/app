@@ -4,6 +4,13 @@ import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions } from "@/components/ui/form-layout";
+import {
+  isMemberAllowedInGroupPolicy,
+  type GenderValue,
+  type GroupGenderPolicyValue,
+  type GroupTypeValue,
+  type MemberTypeValue,
+} from "@/lib/demographics";
 import { formatGroupRoomLabel } from "@/lib/group-room";
 import { formatMoney } from "@/lib/money";
 
@@ -32,14 +39,16 @@ type Group = {
   room: string | null;
   capacity: number;
   activeMembers: number;
-  groupType: "KIDS" | "ADULTS";
+  groupType: GroupTypeValue;
+  genderPolicy: GroupGenderPolicyValue;
   schedules: Schedule[];
 };
 
 type AddMemberToGroupFormProps = {
   memberId: string;
   memberName: string;
-  memberType: "ADULT" | "KID" | "NOT_SPECIFIED";
+  memberType: MemberTypeValue;
+  gender: GenderValue;
   plans: Plan[];
   availableGroups: Group[];
 };
@@ -54,17 +63,11 @@ const DAY_LABELS: Record<string, string> = {
   SUNDAY: "Dimanche",
 };
 
-function isMemberAllowed(groupType: "KIDS" | "ADULTS", memberType: string) {
-  if (groupType === "KIDS") {
-    return memberType === "KID" || memberType === "NOT_SPECIFIED";
-  }
-  return memberType === "ADULT" || memberType === "NOT_SPECIFIED";
-}
-
 export function AddMemberToGroupForm({
   memberId,
   memberName,
   memberType,
+  gender,
   plans,
   availableGroups,
 }: AddMemberToGroupFormProps) {
@@ -102,7 +105,12 @@ export function AddMemberToGroupForm({
     selectedGroup && selectedGroup.activeMembers >= selectedGroup.capacity;
 
   const isGroupAllowed = selectedGroup
-    ? isMemberAllowed(selectedGroup.groupType, memberType)
+    ? isMemberAllowedInGroupPolicy({
+        groupType: selectedGroup.groupType,
+        genderPolicy: selectedGroup.genderPolicy,
+        memberType,
+        gender,
+      })
     : true;
 
   const canSubmit = selectedGroupId && selectedPlanId && !isFull && isGroupAllowed;
@@ -176,7 +184,12 @@ export function AddMemberToGroupForm({
         >
           <option value="">Sélectionner un groupe</option>
           {availableGroups.map((group) => {
-            const allowed = isMemberAllowed(group.groupType, memberType);
+            const allowed = isMemberAllowedInGroupPolicy({
+              groupType: group.groupType,
+              genderPolicy: group.genderPolicy,
+              memberType,
+              gender,
+            });
             const full = group.activeMembers >= group.capacity;
 
             return (

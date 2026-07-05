@@ -99,6 +99,7 @@ export default async function EditGroupPage({ params }: { params: Promise<{ id: 
     phone: m.phone,
     email: m.email,
     memberType: m.memberType,
+    gender: m.gender,
     birthDate: m.birthDate?.toISOString() ?? null,
     address: m.address ?? null,
     parentName: m.parentName ?? null,
@@ -135,6 +136,7 @@ export default async function EditGroupPage({ params }: { params: Promise<{ id: 
         initialData={{
           name: group.name,
           groupType: group.groupType,
+          genderPolicy: group.genderPolicy,
           sportId: group.sportId,
           coachId: group.coachId,
           capacity: group.capacity,
