@@ -9,6 +9,7 @@ import {
   expectedMemberIdsAtSession,
 } from "@/lib/session-lifecycle";
 import { getClubSettings } from "@/lib/club-settings";
+import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -18,6 +19,24 @@ export default async function SessionsPage({
 }: {
   searchParams: Promise<{ week?: string; groupId?: string; sessionId?: string }>;
 }) {
+  const authUser = await getAuthUser();
+
+  if (!authUser) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Planning"
+          title="Planning"
+          description="Connectez-vous pour consulter le planning."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
+
+  const tenantId = authUser.tenantId;
   let hasSessionsDataError = false;
 
   const { week: weekParam, groupId: groupIdParam, sessionId: sessionIdParam } = await searchParams;
@@ -71,6 +90,7 @@ export default async function SessionsPage({
     const [sessions, groups, coaches, settings] = await Promise.all([
       prisma.session.findMany({
         where: {
+          tenantId,
           sessionDate: {
             gte: weekStart,
             lt: weekEndExclusive,
@@ -83,24 +103,24 @@ export default async function SessionsPage({
               name: true,
               sportId: true,
               members: {
+                where: { tenantId },
                 select: { memberId: true, startDate: true, endDate: true },
               },
             },
           },
           coach: { select: { firstName: true, lastName: true } },
-          attendances: { select: { memberId: true } },
-          _count: { select: { attendances: true } },
+          attendances: { where: { tenantId }, select: { memberId: true } },
         },
         orderBy: [{ sessionDate: "asc" }, { startTime: "asc" }],
         take: 300,
       }),
       prisma.group.findMany({
-        where: { isActive: true },
+        where: { tenantId, isActive: true },
         select: { id: true, name: true, sportId: true },
         orderBy: { name: "asc" },
       }),
       prisma.coach.findMany({
-        where: { isActive: true },
+        where: { tenantId, isActive: true },
         select: {
           id: true,
           firstName: true,
@@ -108,6 +128,7 @@ export default async function SessionsPage({
           sportId: true,
           sport: { select: { id: true, name: true } },
           qualifications: {
+            where: { tenantId },
             include: { sport: { select: { id: true, name: true } } },
             orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
           },
@@ -142,7 +163,7 @@ export default async function SessionsPage({
         postponedTo: session.postponedTo ? session.postponedTo.toISOString() : null,
         postponementReason: session.postponementReason,
         postponementDetails: session.postponementDetails,
-        attendanceCount: session._count.attendances,
+        attendanceCount: session.attendances.length,
         ...lifecycle,
         createdAt: session.createdAt.toISOString(),
         updatedAt: session.updatedAt.toISOString(),
