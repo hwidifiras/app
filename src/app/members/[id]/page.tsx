@@ -6,6 +6,7 @@ import { MemberDangerActions } from "@/components/members/member-danger-actions"
 import { MemberEditCard } from "@/components/members/member-edit-card";
 import { MemberOffersSection } from "@/components/members/member-offers-section";
 import { MemberProfileHero } from "@/components/members/member-profile-hero";
+import { MemberRecoveryGuide } from "@/components/members/member-recovery-guide";
 import { MemberSubscriptionCards } from "@/components/members/member-subscription-cards";
 import { HouseholdCard } from "@/components/members/household-card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -70,6 +71,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
         include: {
           session: {
             select: {
+              id: true,
               sessionDate: true,
               startTime: true,
               group: { select: { name: true } },
@@ -154,7 +156,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
 
         <div className="grid min-w-0 items-start gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
           <div className="grid min-w-0 gap-4 sm:gap-5">
-            <section className="panel min-w-0 p-4 sm:p-5">
+            <section id="member-subscriptions" className="panel min-w-0 scroll-mt-24 p-4 sm:p-5">
               <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-[var(--primary)]">
@@ -231,7 +233,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
               )}
             </section>
 
-            <section className="panel min-w-0 p-4 sm:p-5">
+            <section id="member-attendance" className="panel min-w-0 scroll-mt-24 p-4 sm:p-5">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-[var(--primary)]">
@@ -274,6 +276,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                       <Th>Cours</Th>
                       <Th>Statut</Th>
                       <Th className="hidden sm:table-cell">Pointage</Th>
+                      <Th>Action</Th>
                     </tr>
                   </DataTableHead>
                   <DataTableBody>
@@ -290,6 +293,15 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                           </Td>
                           <Td label="Pointage" className="hidden text-xs text-[var(--muted-foreground)] sm:table-cell">
                             {formatDate(attendance.checkedAt)}
+                          </Td>
+                          <Td label="Action">
+                            <Link
+                              href={`/attendance/sessions/${attendance.session.id}`}
+                              prefetch={false}
+                              className="btn btn-ghost btn-sm w-full sm:w-auto"
+                            >
+                              Ouvrir
+                            </Link>
                           </Td>
                         </DataTableRow>
                       );
@@ -325,25 +337,32 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
           </div>
 
           <aside className="grid min-w-0 gap-4 sm:gap-5">
-            <MemberEditCard
-              member={{
-                id: member.id,
-                firstName: member.firstName,
-                lastName: member.lastName,
-                phone: member.phone,
-                email: member.email,
-                memberType: member.memberType,
-                gender: member.gender,
-                birthDate: member.birthDate?.toISOString() ?? null,
-                address: member.address,
-                parentName: member.parentName,
-                parentPhone: member.parentPhone,
-                parentAddress: member.parentAddress,
-                status: member.status,
-                joinedAt: member.joinedAt.toISOString(),
-                archivedAt: member.archivedAt?.toISOString() ?? null,
-              }}
+            <MemberRecoveryGuide
+              memberId={member.id}
+              hasSubscriptions={member.subscriptions.length > 0}
+              hasAttendances={member.attendances.length > 0}
             />
+            <div id="member-edit" className="scroll-mt-24">
+              <MemberEditCard
+                member={{
+                  id: member.id,
+                  firstName: member.firstName,
+                  lastName: member.lastName,
+                  phone: member.phone,
+                  email: member.email,
+                  memberType: member.memberType,
+                  gender: member.gender,
+                  birthDate: member.birthDate?.toISOString() ?? null,
+                  address: member.address,
+                  parentName: member.parentName,
+                  parentPhone: member.parentPhone,
+                  parentAddress: member.parentAddress,
+                  status: member.status,
+                  joinedAt: member.joinedAt.toISOString(),
+                  archivedAt: member.archivedAt?.toISOString() ?? null,
+                }}
+              />
+            </div>
             <HouseholdCard memberId={member.id} />
             <div className="panel panel-soft p-4">
               <div className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
