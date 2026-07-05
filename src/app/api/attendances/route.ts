@@ -29,6 +29,12 @@ import {
   sessionMutationFailure,
   type AttendancePolicyFailure,
 } from "@/lib/attendance-policy";
+import {
+  attendanceAuditSnapshot,
+  attendanceCreatedAuditDetails,
+  attendanceDeletedAuditDetails,
+  attendanceUpdatedAuditDetails,
+} from "@/lib/attendance-audit-details";
 
 export const runtime = "nodejs";
 
@@ -53,28 +59,6 @@ async function countOverrides(memberId: string, tenantId: string): Promise<numbe
 
 function policyResponse(failure: AttendancePolicyFailure) {
   return NextResponse.json(failure.body, { status: failure.status });
-}
-
-type AttendanceAuditSnapshotInput = {
-  id?: string;
-  memberId: string;
-  status: string;
-  overrideReason: string | null;
-  checkedBy: string | null;
-  checkedAt: Date;
-  memberSubscriptionId: string | null;
-};
-
-function attendanceAuditSnapshot(attendance: AttendanceAuditSnapshotInput) {
-  return {
-    id: attendance.id ?? null,
-    memberId: attendance.memberId,
-    status: attendance.status,
-    overrideReason: attendance.overrideReason,
-    checkedBy: attendance.checkedBy,
-    checkedAt: attendance.checkedAt.toISOString(),
-    memberSubscriptionId: attendance.memberSubscriptionId,
-  };
 }
 
 export async function GET(request: Request) {
@@ -375,17 +359,19 @@ export async function POST(request: Request) {
           entityType: "Attendance",
           entityId: attendance.id,
           userId: actor.id,
-          details: JSON.stringify({
-            sessionId,
-            memberId,
-            tenantId: actor.tenantId,
-            status,
-            sportId,
-            overrideReason: normalizedOverrideReason,
-            subscriptionActive: isSubActive,
-            overrideKind: isRecoveryOverride ? "RECOVERY" : overrideKind ?? "STANDARD",
-            remainingSessionsBefore,
-          }),
+          details: JSON.stringify(
+            attendanceCreatedAuditDetails({
+              sessionId,
+              memberId,
+              tenantId: actor.tenantId,
+              status,
+              sportId,
+              overrideReason: normalizedOverrideReason,
+              subscriptionActive: isSubActive,
+              overrideKind: isRecoveryOverride ? "RECOVERY" : overrideKind ?? "STANDARD",
+              remainingSessionsBefore,
+            }),
+          ),
         },
       });
 
@@ -653,15 +639,17 @@ export async function PATCH(request: Request) {
           entityType: "Attendance",
           entityId: attendanceId,
           userId: actor.id,
-          details: JSON.stringify({
-            tenantId: actor.tenantId,
-            oldStatus: existing.status,
-            newStatus: payload.status ?? existing.status,
-            overrideReason: payload.overrideReason || null,
-            sessionBalanceDelta: delta,
-            before: beforeSnapshot,
-            after: afterSnapshot,
-          }),
+          details: JSON.stringify(
+            attendanceUpdatedAuditDetails({
+              tenantId: actor.tenantId,
+              oldStatus: existing.status,
+              newStatus: payload.status ?? existing.status,
+              overrideReason: payload.overrideReason || null,
+              sessionBalanceDelta: delta,
+              before: beforeSnapshot,
+              after: afterSnapshot,
+            }),
+          ),
         },
       });
 
@@ -798,23 +786,24 @@ export async function DELETE(request: Request) {
           entityType: "Attendance",
           entityId: attendanceId,
           userId: actor.id,
-          details: JSON.stringify({
-            tenantId: actor.tenantId,
-            deletedAt: new Date().toISOString(),
-            reason: "Annulation du pointage",
-            previousStatus: existing.status,
-            previous: {
-              status: existing.status,
-              overrideReason: existing.overrideReason,
-              checkedBy: existing.checkedBy,
-              checkedAt: existing.checkedAt.toISOString(),
+          details: JSON.stringify(
+            attendanceDeletedAuditDetails({
+              tenantId: actor.tenantId,
+              deletedAt: new Date(),
+              previousStatus: existing.status,
+              previous: {
+                status: existing.status,
+                overrideReason: existing.overrideReason,
+                checkedBy: existing.checkedBy,
+                checkedAt: existing.checkedAt,
+                memberSubscriptionId: existing.memberSubscriptionId,
+              },
+              memberId: existing.memberId,
+              sessionId: existing.session.id,
               memberSubscriptionId: existing.memberSubscriptionId,
-            },
-            memberId: existing.memberId,
-            sessionId: existing.session.id,
-            memberSubscriptionId: existing.memberSubscriptionId,
-            sessionBalanceDelta: creditDelta,
-          }),
+              sessionBalanceDelta: creditDelta,
+            }),
+          ),
         },
       });
     });
