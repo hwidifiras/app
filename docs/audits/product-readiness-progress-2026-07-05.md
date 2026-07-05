@@ -17,6 +17,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Payments use an append-only ledger for normal payments, corrections, and reversals.
 - Payment correction/reversal requires admin and a reason.
 - Initial payments created while adding a subscription now emit `PAYMENT_CREATED`, not only receipt/subscription logs.
+- Payments created inside enrollment now emit `PAYMENT_CREATED` before receipt issuance for both new and reused subscriptions.
 - Enrollment recovery now reverses payments, voids receipts, cancels subscriptions, closes assignments, and archives newly created members where applicable.
 - New enrollments now persist a recovery key and undo snapshot in the enrollment audit log. Member detail can surface recent recoverable inscriptions and void them later with a required reason when no attendance has consumed the affected rows.
 - Direct member inscription now logs the created student and group assignment, not only the subscription/payment side effects.
@@ -285,6 +286,7 @@ Latest UI settings checkpoint:
 - Group schedule creation audit pass now logs `GROUP_SCHEDULE_CREATED` and optional auto-generated sessions with actor-linked details; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Direct member inscription audit pass now logs `MEMBER_CREATED` and `GROUP_MEMBER_CREATED` in the legacy member-create route; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Subscription initial-payment audit pass now logs `PAYMENT_CREATED` before issuing receipts in `/api/member-subscriptions`; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
+- Enrollment payment audit pass now logs `PAYMENT_CREATED` before receipt issuance for new subscriptions and reused active subscriptions; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
 
 Start a disposable local PostgreSQL test database, or set `TEST_DATABASE_URL`, before relying on `npm.cmd test`.

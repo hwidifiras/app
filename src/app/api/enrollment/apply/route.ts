@@ -215,6 +215,21 @@ export async function POST(request: Request) {
                   },
                 });
                 undoSnapshot.createdPaymentIds.push(payment.id);
+                await tx.auditLog.create({
+                  data: {
+                    tenantId: actor.tenantId,
+                    action: "PAYMENT_CREATED",
+                    entityType: "Payment",
+                    entityId: payment.id,
+                    userId: actor.id,
+                    details: JSON.stringify({
+                      source: "enrollment",
+                      amount: payCents,
+                      memberId,
+                      subscriptionId: sub.id,
+                    }),
+                  },
+                });
                 const receipt = await issueReceiptForPayment(tx, payment.id, actor.id);
                 await tx.auditLog.create({
                   data: {
@@ -262,6 +277,21 @@ export async function POST(request: Request) {
                   },
                 });
                 undoSnapshot.createdPaymentIds.push(payment.id);
+                await tx.auditLog.create({
+                  data: {
+                    tenantId: actor.tenantId,
+                    action: "PAYMENT_CREATED",
+                    entityType: "Payment",
+                    entityId: payment.id,
+                    userId: actor.id,
+                    details: JSON.stringify({
+                      source: "enrollment-existing-subscription",
+                      amount: payCents,
+                      memberId,
+                      subscriptionId: existing.id,
+                    }),
+                  },
+                });
                 const receipt = await issueReceiptForPayment(tx, payment.id, actor.id);
                 await tx.auditLog.create({
                   data: {
