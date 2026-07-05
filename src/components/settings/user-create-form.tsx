@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ClipboardList, Dumbbell, ShieldCheck } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions } from "@/components/ui/form-layout";
 import { PERMISSION_LABELS, PERMISSIONS, type PermissionKey } from "@/lib/permission-definitions";
+import { cn } from "@/lib/utils";
 
 const RECEPTION_PERMISSIONS: PermissionKey[] = [
   "members.manage",
@@ -15,6 +17,36 @@ const RECEPTION_PERMISSIONS: PermissionKey[] = [
 ];
 
 const COACH_PERMISSIONS: PermissionKey[] = ["attendance.manage"];
+
+const ROLE_PRESETS = [
+  {
+    id: "RECEPTION",
+    title: "Réception",
+    description: "Inscriptions, caisse, élèves et pointage quotidien.",
+    icon: ClipboardList,
+    role: "STAFF" as const,
+    accessMode: "LIMITED" as const,
+    permissions: RECEPTION_PERMISSIONS,
+  },
+  {
+    id: "COACH",
+    title: "Coach",
+    description: "Pointage et consultation des cours utiles au terrain.",
+    icon: Dumbbell,
+    role: "STAFF" as const,
+    accessMode: "LIMITED" as const,
+    permissions: COACH_PERMISSIONS,
+  },
+  {
+    id: "ADMIN",
+    title: "Admin",
+    description: "Tout le club: configuration, utilisateurs et journal.",
+    icon: ShieldCheck,
+    role: "ADMIN" as const,
+    accessMode: "FULL" as const,
+    permissions: [] as PermissionKey[],
+  },
+];
 
 export function UserCreateForm() {
   const router = useRouter();
@@ -41,6 +73,22 @@ export function UserCreateForm() {
     setRole("STAFF");
     setAccessMode("LIMITED");
     setPermissions(nextPermissions);
+  }
+
+  function applyPreset(preset: (typeof ROLE_PRESETS)[number]) {
+    setRole(preset.role);
+    setAccessMode(preset.accessMode);
+    setPermissions(preset.permissions);
+  }
+
+  function isPresetSelected(preset: (typeof ROLE_PRESETS)[number]) {
+    if (preset.role !== role) return false;
+    if (preset.role === "ADMIN") return true;
+    if (accessMode !== preset.accessMode) return false;
+    return (
+      preset.permissions.length === permissions.length &&
+      preset.permissions.every((permission) => permissions.includes(permission))
+    );
   }
 
   async function submit(e: React.FormEvent) {
@@ -77,6 +125,43 @@ export function UserCreateForm() {
       <div className="md:col-span-2">
         <FeedbackMessage message={message} />
       </div>
+
+      <fieldset className="md:col-span-2">
+        <legend className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
+          Profil de départ
+        </legend>
+        <div className="mt-2 grid gap-2 sm:grid-cols-3">
+          {ROLE_PRESETS.map((preset) => {
+            const Icon = preset.icon;
+            const selected = isPresetSelected(preset);
+
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => applyPreset(preset)}
+                className={cn(
+                  "min-h-28 rounded-lg border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2",
+                  selected
+                    ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
+                    : "border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)] hover:border-[var(--primary)]/35",
+                )}
+                aria-pressed={selected}
+              >
+                <span className="flex items-center gap-2 text-sm font-black">
+                  <span className="flex size-8 items-center justify-center rounded-lg bg-[var(--surface)] shadow-[var(--shadow-panel)]">
+                    <Icon className="size-4" />
+                  </span>
+                  {preset.title}
+                </span>
+                <span className="mt-2 block text-xs leading-relaxed text-[var(--muted-foreground)]">
+                  {preset.description}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
 
       <div className="space-y-1.5">
         <label className="text-sm font-semibold text-[var(--foreground)]" htmlFor="name">Nom</label>

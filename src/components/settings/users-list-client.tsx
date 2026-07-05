@@ -7,8 +7,8 @@ import { Mail, Pencil } from "lucide-react";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormField } from "@/components/ui/form-layout";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { FULL_STAFF_PERMISSIONS, PERMISSION_LABELS, parsePermissions } from "@/lib/permission-definitions";
 import { Pagination, usePagination } from "@/components/ui/pagination";
+import { deriveUserRoleIntent, describeUserRights, userRoleIntentLabel } from "@/lib/user-role-intent";
 
 export type UserRow = {
   id: string;
@@ -19,17 +19,6 @@ export type UserRow = {
   createdAt: string;
   permissions: { key: string }[];
 };
-
-function roleIntentLabel(user: UserRow) {
-  if (user.role === "ADMIN") return "Admin";
-  const permissions = parsePermissions(user.permissions.map((permission) => permission.key));
-  const hasReceptionWork =
-    permissions.includes("members.manage") ||
-    permissions.includes("enrollment.manage") ||
-    permissions.includes("payments.manage");
-
-  return hasReceptionWork ? "Réception" : "Coach";
-}
 
 export function UsersListClient({
   users,
@@ -112,15 +101,8 @@ export function UsersListClient({
         const isEditing = editingId === u.id;
         const isSelf = u.id === currentUserId;
         const permKeys = u.permissions.map((p) => p.key);
-        const roleIntent = roleIntentLabel(u);
-        const rightsLabel =
-          u.role === "ADMIN"
-            ? "Tous les droits"
-            : parsePermissions(permKeys).length === FULL_STAFF_PERMISSIONS.length
-              ? "Accès complet staff"
-              : parsePermissions(permKeys)
-                  .map((key) => PERMISSION_LABELS[key])
-                  .join(", ") || "Aucun droit";
+        const roleIntent = deriveUserRoleIntent(u.role, permKeys);
+        const rightsLabel = describeUserRights(u.role, permKeys);
 
         return (
           <article key={u.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
@@ -147,6 +129,9 @@ export function UsersListClient({
                   Compte actif
                   {isSelf ? <span className="text-xs text-[var(--muted-foreground)]">(vous)</span> : null}
                 </label>
+                <p className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-xs leading-relaxed text-[var(--muted-foreground)]">
+                  Désactiver coupe l&apos;accès au prochain chargement, sans supprimer les actions déjà tracées.
+                </p>
                 <div className="list-card-actions mt-3">
                   <button
                     type="button"
@@ -154,7 +139,7 @@ export function UsersListClient({
                     disabled={loadingId === u.id}
                     onClick={() => saveEdit(u.id)}
                   >
-                    {loadingId === u.id ? "…" : "Enregistrer"}
+                    {loadingId === u.id ? "..." : "Enregistrer"}
                   </button>
                   <button type="button" className="btn btn-ghost btn-block-mobile" onClick={() => setEditingId(null)}>
                     Annuler
@@ -170,14 +155,14 @@ export function UsersListClient({
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     <StatusBadge variant={u.role === "ADMIN" ? "info" : "muted"}>
-                      {roleIntent}
+                      {userRoleIntentLabel(roleIntent)}
                     </StatusBadge>
                     <StatusBadge variant={u.isActive ? "success" : "warning"}>
                       {u.isActive ? "Actif" : "Désactivé"}
                     </StatusBadge>
                   </div>
                 </div>
-                <p className="mt-2 text-xs text-[var(--muted-foreground)]">{rightsLabel}</p>
+                <p className="mt-2 text-xs leading-relaxed text-[var(--muted-foreground)]">{rightsLabel}</p>
                 <div className="list-card-actions mt-3">
                   <button type="button" className="btn btn-ghost btn-block-mobile" onClick={() => startEdit(u)}>
                     <Pencil className="size-3.5" />
@@ -190,7 +175,7 @@ export function UsersListClient({
                     onClick={() => sendReset(u.id)}
                   >
                     <Mail className="size-3.5" />
-                    {loadingId === u.id ? "Envoi…" : "Envoyer un lien"}
+                    {loadingId === u.id ? "Envoi..." : "Lien mot de passe"}
                   </button>
                 </div>
               </>

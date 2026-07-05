@@ -10,12 +10,12 @@ export const PERMISSIONS = [
 export type PermissionKey = (typeof PERMISSIONS)[number];
 
 export const PERMISSION_LABELS: Record<PermissionKey, string> = {
-  "members.manage": "Gérer les élèves et foyers",
-  "enrollment.manage": "Faire les inscriptions",
-  "attendance.manage": "Gérer les présences",
-  "payments.manage": "Gérer les paiements",
-  "catalog.manage": "Gérer disciplines, cours et formules",
-  "offers.manage": "Gérer les offres",
+  "members.manage": "Élèves et foyers",
+  "enrollment.manage": "Inscriptions",
+  "attendance.manage": "Pointage",
+  "payments.manage": "Encaissements",
+  "catalog.manage": "Catalogue club",
+  "offers.manage": "Offres",
 };
 
 export const FULL_STAFF_PERMISSIONS: PermissionKey[] = [...PERMISSIONS];
