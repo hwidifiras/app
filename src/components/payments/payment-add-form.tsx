@@ -13,16 +13,16 @@ import {
 } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
-import { FieldControl } from "@/components/ui/field-control";
 import { FormActions, FormField, FormGrid, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import { UndoButton } from "@/components/ui/undo-button";
+import { PaymentAmountSection } from "@/components/payments/payment-amount-section";
 import { PaymentSummaryPanel } from "@/components/payments/payment-summary-panel";
 import {
   PaymentSubscriptionSelector,
   type PaymentSubscriptionRow,
 } from "@/components/payments/payment-subscription-selector";
 import { useActionHistory } from "@/hooks/use-action-history";
-import { formatMoney, MONEY_INPUT_SUFFIX } from "@/lib/money";
+import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
 const METHODS = [
@@ -311,71 +311,18 @@ export function PaymentAddForm({
               onSubscriptionChange={selectSubscription}
             />
 
-            <FormSection
-              id="payment-amount"
-              title="2. Montant reçu"
-              description="Saisissez ce que la réception vient réellement d'encaisser."
-            >
-              <FormField label="Montant encaissé (TND) *" htmlFor="amount">
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <FieldControl suffix={MONEY_INPUT_SUFFIX} className="flex-1">
-                    <input
-                      id="amount"
-                      type="number"
-                      inputMode="decimal"
-                      step="0.01"
-                      min="0.01"
-                      max={selected ? (remaining / 100).toFixed(2) : undefined}
-                      required
-                      value={amount}
-                      onChange={(event) => setAmount(event.target.value)}
-                      className={`field pr-10 text-lg font-semibold tabular-nums ${wouldExceed ? "border-[var(--danger)] ring-1 ring-[var(--danger)]" : ""}`}
-                      placeholder="0,00"
-                    />
-                  </FieldControl>
-                  <div className="grid grid-cols-3 gap-2 sm:w-auto sm:min-w-72">
-                    <button
-                      type="button"
-                      onClick={fillRemainingBalance}
-                      disabled={!selected || remaining <= 0}
-                      className="btn btn-secondary whitespace-nowrap px-3"
-                    >
-                      Solder
-                    </button>
-                    <button
-                      type="button"
-                      onClick={fillHalfBalance}
-                      disabled={!selected || remaining <= 0}
-                      className="btn btn-ghost whitespace-nowrap px-3"
-                    >
-                      Moitié
-                    </button>
-                    <button
-                      type="button"
-                      onClick={clearAmount}
-                      disabled={!amount}
-                      className="btn btn-ghost whitespace-nowrap px-3"
-                    >
-                      Effacer
-                    </button>
-                  </div>
-                </div>
-                {selected ? (
-                  <div className="mt-2 flex flex-wrap items-center justify-between gap-1 text-xs">
-                    <span className="text-[var(--muted-foreground)]">
-                      Maximum autorisé: <strong className="text-[var(--foreground)]">{formatMoney(remaining)}</strong>
-                    </span>
-                    {wouldExceed ? (
-                      <span className="font-semibold text-[var(--danger)]">Le montant dépasse le reste dû.</span>
-                    ) : amountNum > 0 ? (
-                      <span className="font-medium text-[var(--success)]">
-                        Solde après paiement: {formatMoney(displayBalanceAfter)}
-                      </span>
-                    ) : null}
-                  </div>
-                ) : null}
-              </FormField>
-            </FormSection>
+            <PaymentAmountSection
+              hasSelectedSubscription={Boolean(selected)}
+              remaining={remaining}
+              amount={amount}
+              amountNum={amountNum}
+              wouldExceed={wouldExceed}
+              displayBalanceAfter={displayBalanceAfter}
+              onAmountChange={setAmount}
+              onFillRemainingBalance={fillRemainingBalance}
+              onFillHalfBalance={fillHalfBalance}
+              onClearAmount={clearAmount}
+            />
 
             <FormSection
               id="payment-method"
