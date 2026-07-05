@@ -79,6 +79,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - `data-import-wizard.tsx` now delegates the bulk preview metrics/table UI to `data-import-bulk-ui.tsx`, reducing duplicated embedded table markup without changing behavior.
 - `data-import-wizard.tsx` now delegates the import mode and recent rollback list UI to `data-import-status-ui.tsx`, keeping import actions in the wizard while reducing presentation markup.
 - `enrollment-wizard.tsx` now delegates the post-inscription recovery panel to `enrollment-completion-panel.tsx`, keeping the traceable cancellation UI isolated from the step state machine.
+- `enrollment-wizard.tsx` now delegates the student/group/formula line editor to `enrollment-line-editor.tsx`, with shared line types and compatibility helpers in `enrollment-types.ts`.
 - `sessions-planner.tsx` now delegates session tiles, selected-session detail panel, legend, and session display helpers to `session-planner-ui.tsx`; a dead hidden legacy session-list block was removed.
 - `sessions-planner.tsx` now delegates the horaires-based session generation preview to `session-generation-panel.tsx`, continuing the controlled split of the largest planning component.
 - `club-settings-form.tsx` now delegates receipt settings and receipt preview UI to `club-receipt-settings.tsx`, and shared settings toggles to `settings-toggle-row.tsx`.
@@ -276,6 +277,7 @@ Latest UI settings checkpoint:
 - Users role guide pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Session generation panel extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Enrollment completion panel extraction passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
+- Enrollment line editor extraction reduced `enrollment-wizard.tsx` from 1,147 to 709 lines and passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Coach assignment clarity pass passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Group coach eligibility panel pass passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Planning conflict explanation pass passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
