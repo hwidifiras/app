@@ -782,7 +782,7 @@ export function SessionsPlanner({
             </button>
             <button type="button" onClick={() => { void previewSessionsGeneration(); }} disabled={generating || loading} className="btn btn-primary">
               <CalendarPlus className="size-4" />
-              {generating ? "Analyse..." : "Préparer séances"}
+              {generating ? "Analyse..." : "Générer depuis horaires"}
             </button>
           </div>
         </div>
@@ -792,16 +792,17 @@ export function SessionsPlanner({
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
                 <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-[var(--primary)]">
-                  Apercu generation
+                  Aperçu de génération
                 </p>
                 <h3 className="mt-1 text-base font-black text-[var(--foreground)]">
                   {generationPreview.createdCount > 0
-                    ? `${generationPreview.createdCount} seance${generationPreview.createdCount > 1 ? "s" : ""} a creer`
-                    : "Aucune nouvelle seance a creer"}
+                    ? `${generationPreview.createdCount} séance${generationPreview.createdCount > 1 ? "s" : ""} manquante${generationPreview.createdCount > 1 ? "s" : ""} à créer`
+                    : "Aucune séance manquante à créer"}
                 </h3>
                 <p className="mt-1 text-sm leading-relaxed text-[var(--muted-foreground)]">
-                  Cible: {generationTargetLabel}. Periode du {formatDateFr(generationPreview.startDate)} au{" "}
-                  {formatDateFr(generationPreview.endDate)}. Les seances deja existantes seront ignorees.
+                  Cette action crée uniquement les séances manquantes à partir des horaires hebdomadaires actifs.
+                  Cible: {generationTargetLabel}. Période du {formatDateFr(generationPreview.startDate)} au{" "}
+                  {formatDateFr(generationPreview.endDate)}. Les séances déjà existantes seront ignorées.
                 </p>
               </div>
               <div className="grid gap-2 sm:grid-cols-2 lg:min-w-[20rem]">
@@ -813,7 +814,7 @@ export function SessionsPlanner({
                 </div>
                 <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
                   <p className="text-[0.62rem] font-bold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
-                    Deja existantes
+                    Déjà existantes
                   </p>
                   <p className="mt-1 text-lg font-black text-[var(--foreground)]">{generationPreview.skippedCount}</p>
                 </div>
@@ -829,7 +830,9 @@ export function SessionsPlanner({
                 disabled={generating || generationPreview.createdCount === 0}
                 onClick={() => { void generateSessions(); }}
               >
-                {generating ? "Creation..." : `Generer ${generationPreview.createdCount} seance${generationPreview.createdCount > 1 ? "s" : ""}`}
+                {generating
+                  ? "Création..."
+                  : `Générer ${generationPreview.createdCount} séance${generationPreview.createdCount > 1 ? "s" : ""} manquante${generationPreview.createdCount > 1 ? "s" : ""}`}
               </button>
             </div>
           </div>

@@ -68,6 +68,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - `sessions-planner.tsx` now delegates session tiles, selected-session detail panel, legend, and session display helpers to `session-planner-ui.tsx`; a dead hidden legacy session-list block was removed.
 - `club-settings-form.tsx` now delegates receipt settings and receipt preview UI to `club-receipt-settings.tsx`, and shared settings toggles to `settings-toggle-row.tsx`.
 - Planning session generation now uses a dry-run preview before creating sessions, shows the target/date range/active horaires/existing sessions, and writes `SESSIONS_GENERATED` audit logs after confirmed generation.
+- The planning generation action is now labelled as generation from active weekly schedules, not generic manual creation, and the preview states that only missing sessions are created while existing sessions are ignored.
 - Enrollment success now keeps staff on the confirmation screen, shows a direct member-profile link, and exposes the safe traced `Annuler cette inscription` recovery action with a required reason.
 - A broader product-readiness roadmap now exists at `docs/audits/product-readiness-roadmap-2026-07-05.md`, covering recoverability, receipts, UI/UX consistency, settings polish, group/coach/enrollment rules, and code organization.
 - A master SaaS execution map now exists at `docs/audits/saas-product-execution-map-2026-07-05.md`, covering recoverability, page-by-page UX audit scope, settings redesign, receipts, group rules, planning/working days, code organization, and future gym-module strategy.
@@ -156,6 +157,17 @@ Suggested component targets:
 - `SessionWeekColumn`
 - `SessionCompactCard`
 
+### P1 - Current Product-Owner Focus
+
+The latest product-owner concerns should be treated as one connected execution stream, not scattered feature requests:
+
+- recoverability: payment, inscription, subscription, pointage, planning, import, and settings changes must either be editable safely, corrected with reason, reversed, voided, archived, or closed with audit;
+- consistency: every private page needs desktop/mobile QA against the strongest existing fingerprint: dashboard, planning, payments/new, enrollment, subscriptions, receipts, and the settings hub;
+- settings quality: configuration pages must explain the business effect before showing fields, especially club rules, working days, conflicts, receipts, users, schedules, imports, and logs;
+- code health: split oversized managers only by stable product boundaries, and keep rules in policy helpers instead of hiding them in UI components;
+- martial-arts fit: discipline suggestions stay generic, group creation should express public/gender/level/room/coach/schedule policies directly, and kids must keep parent phone as a required safety field;
+- future modules: a gym-management add-on should reuse members, subscriptions, payments, receipts, attendance/check-in, schedules, notifications, and audit logs instead of duplicating the dojo app.
+
 ### P2 - Receipt Enhancements
 
 Current receipt system is functional. Excellent version should add:
@@ -230,6 +242,7 @@ Latest UI settings checkpoint:
 - Member demographic safety pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Group policy picker pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Planning UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
+- Planning generation wording pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
 
 Start a disposable local PostgreSQL test database, or set `TEST_DATABASE_URL`, before relying on `npm.cmd test`.

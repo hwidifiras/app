@@ -177,6 +177,10 @@ Audit each at `1440x900` and `390x844`:
 - Configuration forms that start with fields instead of an explanation and summary.
 - Duplicate action buttons on the same page with different labels for the same intent.
 
+Latest checkpoint:
+
+- The planning broad action is now labelled `Générer depuis horaires` and the preview explains that it creates only missing sessions from active weekly schedules, while existing sessions are ignored.
+
 ## Workstream D - Settings And Configuration Upgrade
 
 ### Highest-Impact Settings Pages
@@ -298,6 +302,15 @@ Coach conflict logic must be understandable:
 3. Prepare module boundaries for future gym management without duplicating core member/payment logic.
 4. Add stricter tests for policies after local PostgreSQL is available.
 
+### Practical Execution Order From The Latest Owner Review
+
+1. **Recoverability audit first**: confirm every money, inscription, subscription, pointage, planning, import, and settings mutation has an edit/correct/reverse/void/archive/close path with audit details.
+2. **Settings redesign next**: make `/settings/club`, `/settings/schedules`, `/settings/users`, `/settings/data-import`, and `/logs` read like guided club operations, not raw technical forms.
+3. **Full UI sweep**: capture and score desktop/mobile for all private pages, using the best current pages as the fingerprint.
+4. **Martial-arts fit**: continue improving discipline suggestions, group public/gender/level language, parent contact requirements, and coach/schedule clarity.
+5. **Code organization**: split large managers only after the product rule is stable, beginning with planning, enrollment, dashboard, and data import.
+6. **Future module readiness**: keep the shared business primitives generic before adding a gym-management module or template.
+
 ## Current Implementation Checkpoint
 
 Already started in this pass:
@@ -309,9 +322,9 @@ These are intentionally small refactors: behavior stays unchanged while reducing
 
 ## Next Implementation Queue
 
-1. Commit the data-import bulk UI extraction after verification.
-2. Extract the data-import rollback/status panel.
-3. Extract session planning card/detail components.
-4. Add working-day-aware planning display and safe settings validation.
-5. Add receipt QR code and payment-history resend entry point.
-6. Run current-branch browser QA when deploy/local DB allows it.
+1. Continue the recoverability audit with attendance row preservation, import rollback boundaries, and settings mutations.
+2. Run current-branch browser QA when deploy/local DB allows it.
+3. Redesign the remaining settings/configuration surfaces around operational summaries and previews.
+4. Extract the next planning view-model/week-column helpers from `sessions-planner.tsx`.
+5. Extract enrollment step components after the group compatibility flow is fully stable.
+6. Add future gym-module boundaries only after the shared primitives remain clean.
