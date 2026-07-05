@@ -9,8 +9,9 @@ import { checkGroupMemberCompatibility } from "@/lib/demographics";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "enrollment.manage");
+    actor = await requirePermission(request, "enrollment.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -90,6 +91,8 @@ export async function POST(request: Request) {
   let skippedNoSubscriptionCount = 0;
   let skippedUnpaidSubscriptionCount = 0;
   let skippedSportMismatchCount = 0;
+  const createdAssignmentIds: string[] = [];
+  const reactivatedAssignmentIds: string[] = [];
 
   for (const memberId of uniqueMemberIds) {
     const member = membersMap.get(memberId);
@@ -177,7 +180,7 @@ export async function POST(request: Request) {
     }
 
     if (existing) {
-      await prisma.groupMember.update({
+      const updated = await prisma.groupMember.update({
         where: { id: existing.id },
         data: {
           status: "ACTIVE",
@@ -186,11 +189,12 @@ export async function POST(request: Request) {
         },
       });
       reactivatedCount += 1;
+      reactivatedAssignmentIds.push(updated.id);
       availableSlots -= 1;
       continue;
     }
 
-    await prisma.groupMember.create({
+    const created = await prisma.groupMember.create({
       data: {
         groupId: payload.groupId,
         memberId,
@@ -200,7 +204,40 @@ export async function POST(request: Request) {
       },
     });
     createdCount += 1;
+    createdAssignmentIds.push(created.id);
     availableSlots -= 1;
+  }
+
+  if (createdCount > 0 || reactivatedCount > 0) {
+    await prisma.auditLog.create({
+      data: {
+        tenantId: actor.tenantId,
+        action: "GROUP_MEMBERS_ASSIGNED",
+        entityType: "GroupMember",
+        entityId: payload.groupId,
+        userId: actor.id,
+        details: JSON.stringify({
+          groupId: payload.groupId,
+          requestedMemberIds: uniqueMemberIds,
+          createdAssignmentIds,
+          reactivatedAssignmentIds,
+          startDate: assignmentStartDate.toISOString(),
+          endDate: payload.endDate ? new Date(payload.endDate).toISOString() : null,
+          skipped: {
+            notFound: skippedNotFoundCount,
+            archived: skippedArchivedCount,
+            alreadyActive: skippedAlreadyActiveCount,
+            capacity: skippedCapacityCount,
+            scheduleConflict: skippedScheduleConflictCount,
+            typeMismatch: skippedTypeMismatchCount,
+            genderMismatch: skippedGenderMismatchCount,
+            noSubscription: skippedNoSubscriptionCount,
+            unpaidSubscription: skippedUnpaidSubscriptionCount,
+            sportMismatch: skippedSportMismatchCount,
+          },
+        }),
+      },
+    });
   }
 
   return NextResponse.json({
@@ -270,6 +307,7 @@ export async function DELETE(request: Request) {
 
     await tx.auditLog.create({
       data: {
+        tenantId: actor.tenantId,
         action: "GROUP_MEMBERS_CLOSED",
         entityType: "GroupMember",
         entityId: payload.groupId,
