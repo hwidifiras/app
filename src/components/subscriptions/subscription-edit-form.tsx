@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { SubscriptionCorrectionSummary } from "@/components/subscriptions/subscription-correction-summary";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormSectionNav } from "@/components/ui/form-layout";
 import { ReceptionInfoCard } from "@/components/ui/reception-info-card";
@@ -117,6 +118,18 @@ export function SubscriptionEditForm({ subscription, plansOptions }: Subscriptio
       <ReceptionInfoCard variant="warning" title="Correction admin">
         Toute modification de formule, statut, montant ou séances exige un motif traçable dans le journal.
       </ReceptionInfoCard>
+
+      <SubscriptionCorrectionSummary
+        totalPaidCents={subscription.totalPaid}
+        originalAmountCents={subscription.amount}
+        proposedAmountCents={amountNum}
+        originalRemainingSessions={subscription.remainingSessions}
+        proposedRemainingSessions={sessionsNum}
+        formulaChanged={formulaChanged}
+        statusChanged={statusChanged}
+        needsAdjustmentReason={needsAdjustmentReason}
+        amountBelowPaid={amountBelowPaid}
+      />
 
       <FormSectionNav
         items={[
