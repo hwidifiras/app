@@ -112,18 +112,18 @@ export async function POST(request: Request) {
 
             memberIds.push(memberId);
 
-            const member = await tx.member.findUnique({
-              where: { id: memberId },
+            const member = await tx.member.findFirst({
+              where: { id: memberId, tenantId: actor.tenantId },
               select: { id: true, status: true, memberType: true, gender: true },
             });
             if (!member || member.status === "ARCHIVED")
               throw new Error(`LINE_MEMBER_INVALID_${i}`);
 
-            const plan = await tx.subscriptionPlan.findUnique({
-              where: { id: line.planId },
+            const plan = await tx.subscriptionPlan.findFirst({
+              where: { id: line.planId, tenantId: actor.tenantId },
             });
-            const group = await tx.group.findUnique({
-              where: { id: line.groupId },
+            const group = await tx.group.findFirst({
+              where: { id: line.groupId, tenantId: actor.tenantId },
               include: {
                 _count: {
                   select: { members: { where: { status: "ACTIVE" } } },
@@ -166,12 +166,12 @@ export async function POST(request: Request) {
 
             if (mustCreateFreshSub) {
               const expiredActive = await tx.memberSubscription.findMany({
-                where: { memberId, sportId: plan.sportId, status: "ACTIVE" },
+                where: { tenantId: actor.tenantId, memberId, sportId: plan.sportId, status: "ACTIVE" },
                 select: { id: true },
               });
               if (expiredActive.length > 0) {
                 await tx.memberSubscription.updateMany({
-                  where: { id: { in: expiredActive.map((row) => row.id) } },
+                  where: { tenantId: actor.tenantId, id: { in: expiredActive.map((row) => row.id) } },
                   data: { status: "EXPIRED" },
                 });
                 undoSnapshot.expiredSubscriptionIds.push(
@@ -223,6 +223,7 @@ export async function POST(request: Request) {
                     entityId: payment.id,
                     userId: actor.id,
                     details: JSON.stringify({
+                      tenantId: actor.tenantId,
                       source: "enrollment",
                       amount: payCents,
                       memberId,
@@ -250,6 +251,7 @@ export async function POST(request: Request) {
             } else {
               const existing = await tx.memberSubscription.findFirst({
                 where: {
+                  tenantId: actor.tenantId,
                   memberId,
                   sportId: plan.sportId,
                   status: "ACTIVE",
@@ -287,6 +289,7 @@ export async function POST(request: Request) {
                     entityId: payment.id,
                     userId: actor.id,
                     details: JSON.stringify({
+                      tenantId: actor.tenantId,
                       source: "enrollment-existing-subscription",
                       amount: payCents,
                       memberId,
@@ -339,8 +342,8 @@ export async function POST(request: Request) {
           }
 
           if (parsed.data.offerId) {
-            const offer = await tx.offer.findUnique({
-              where: { id: parsed.data.offerId },
+            const offer = await tx.offer.findFirst({
+              where: { id: parsed.data.offerId, tenantId: actor.tenantId },
             });
             if (offer?.kind === "FAMILY_BUNDLE" && offer.isActive) {
               const rules = familyBundleRulesSchema.parse(
@@ -369,7 +372,7 @@ export async function POST(request: Request) {
 
             if (subscriptionIds.length > 0) {
               await tx.memberSubscription.updateMany({
-                where: { id: { in: subscriptionIds } },
+                where: { tenantId: actor.tenantId, id: { in: subscriptionIds } },
                 data: { offerApplicationId: app.id },
               });
             }
@@ -383,6 +386,7 @@ export async function POST(request: Request) {
               entityId: offerApplicationId ?? memberIds[0] ?? "batch",
               userId: actor.id,
               details: JSON.stringify({
+                tenantId: actor.tenantId,
                 memberIds,
                 subscriptionIds,
                 offerId: parsed.data.offerId ?? null,

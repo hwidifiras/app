@@ -129,7 +129,7 @@ export async function getEnrollmentRecoveryCandidatesForMember(
     const alreadyVoided = await isEnrollmentRecoveryVoided(details.recoveryKey, tenantId);
     const blockedReason = alreadyVoided
       ? "Inscription déjà annulée avec trace."
-      : await prisma.$transaction((tx) => getEnrollmentRevertBlockReason(tx, details.undoSnapshot));
+      : await prisma.$transaction((tx) => getEnrollmentRevertBlockReason(tx, details.undoSnapshot, tenantId));
 
     candidates.push({
       auditLogId: log.id,

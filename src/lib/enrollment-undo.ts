@@ -45,10 +45,14 @@ export function emptyEnrollmentUndoSnapshot(): EnrollmentUndoSnapshot {
 async function ensureNoAttendanceForSnapshot(
   tx: Prisma.TransactionClient,
   snapshot: EnrollmentUndoSnapshot,
+  tenantId?: string | null,
 ) {
   if (snapshot.createdSubscriptionIds.length > 0) {
     const attendanceCount = await tx.attendance.count({
-      where: { memberSubscriptionId: { in: snapshot.createdSubscriptionIds } },
+      where: {
+        ...(tenantId ? { tenantId } : {}),
+        memberSubscriptionId: { in: snapshot.createdSubscriptionIds },
+      },
     });
     if (attendanceCount > 0) {
       throw new EnrollmentRevertBlockedError(
@@ -59,7 +63,10 @@ async function ensureNoAttendanceForSnapshot(
 
   if (snapshot.createdMemberIds.length > 0) {
     const attendanceCount = await tx.attendance.count({
-      where: { memberId: { in: snapshot.createdMemberIds } },
+      where: {
+        ...(tenantId ? { tenantId } : {}),
+        memberId: { in: snapshot.createdMemberIds },
+      },
     });
     if (attendanceCount > 0) {
       throw new EnrollmentRevertBlockedError(
@@ -72,9 +79,10 @@ async function ensureNoAttendanceForSnapshot(
 export async function getEnrollmentRevertBlockReason(
   tx: Prisma.TransactionClient,
   snapshot: EnrollmentUndoSnapshot,
+  tenantId?: string | null,
 ): Promise<string | null> {
   try {
-    await ensureNoAttendanceForSnapshot(tx, snapshot);
+    await ensureNoAttendanceForSnapshot(tx, snapshot, tenantId);
     return null;
   } catch (error) {
     if (error instanceof EnrollmentRevertBlockedError) {
@@ -95,7 +103,7 @@ async function reverseCreatedPayments(
   if (snapshot.createdPaymentIds.length === 0) return;
 
   const payments = await tx.payment.findMany({
-    where: { id: { in: snapshot.createdPaymentIds } },
+    where: { ...(tenantId ? { tenantId } : {}), id: { in: snapshot.createdPaymentIds } },
     select: {
       id: true,
       memberSubscriptionId: true,
@@ -112,6 +120,7 @@ async function reverseCreatedPayments(
 
     const reversal = await tx.payment.create({
       data: {
+        tenantId: tenantId ?? undefined,
         memberSubscriptionId: payment.memberSubscriptionId,
         amount: -effectiveAmount,
         entryType: "REVERSAL",
@@ -132,6 +141,7 @@ async function reverseCreatedPayments(
         entityId: reversal.id,
         userId: actorId,
         details: JSON.stringify({
+          tenantId: tenantId ?? null,
           originalPaymentId: payment.id,
           reason,
           reversedAmount: effectiveAmount,
@@ -150,6 +160,7 @@ async function reverseCreatedPayments(
           entityId: voidedReceipt.id,
           userId: actorId,
           details: JSON.stringify({
+            tenantId: tenantId ?? null,
             paymentId: payment.id,
             reason,
             source: "enrollment-void",
@@ -169,40 +180,53 @@ export async function revertEnrollmentUndoSnapshot(
 ): Promise<void> {
   const now = new Date();
 
-  await ensureNoAttendanceForSnapshot(tx, snapshot);
+  await ensureNoAttendanceForSnapshot(tx, snapshot, options.tenantId);
   await reverseCreatedPayments(tx, snapshot, actorId, now, reason, options.tenantId);
 
   if (snapshot.offerApplicationId) {
     await tx.memberSubscription.updateMany({
-      where: { offerApplicationId: snapshot.offerApplicationId },
+      where: {
+        ...(options.tenantId ? { tenantId: options.tenantId } : {}),
+        offerApplicationId: snapshot.offerApplicationId,
+      },
       data: { offerApplicationId: null },
     });
   }
 
   if (snapshot.createdSubscriptionIds.length > 0) {
     await tx.memberSubscription.updateMany({
-      where: { id: { in: snapshot.createdSubscriptionIds } },
+      where: {
+        ...(options.tenantId ? { tenantId: options.tenantId } : {}),
+        id: { in: snapshot.createdSubscriptionIds },
+      },
       data: { status: "CANCELLED" },
     });
   }
 
   if (snapshot.expiredSubscriptionIds.length > 0) {
     await tx.memberSubscription.updateMany({
-      where: { id: { in: snapshot.expiredSubscriptionIds }, status: "EXPIRED" },
+      where: {
+        ...(options.tenantId ? { tenantId: options.tenantId } : {}),
+        id: { in: snapshot.expiredSubscriptionIds },
+        status: "EXPIRED",
+      },
       data: { status: "ACTIVE" },
     });
   }
 
   if (snapshot.createdGroupMemberIds.length > 0) {
     await tx.groupMember.updateMany({
-      where: { id: { in: snapshot.createdGroupMemberIds } },
+      where: {
+        ...(options.tenantId ? { tenantId: options.tenantId } : {}),
+        id: { in: snapshot.createdGroupMemberIds },
+      },
       data: { status: "INACTIVE", endDate: now },
     });
   }
 
   for (const item of snapshot.reactivatedGroupMembers) {
-    await tx.groupMember.update({
-      where: { id: item.id },
+    await tx.groupMember.updateMany({
+      where: { ...(options.tenantId ? { tenantId: options.tenantId } : {}), id: item.id },
       data: {
         status: item.previousStatus,
         startDate: new Date(item.previousStartDate),
@@ -213,7 +237,10 @@ export async function revertEnrollmentUndoSnapshot(
 
   if (snapshot.createdMemberIds.length > 0) {
     await tx.member.updateMany({
-      where: { id: { in: snapshot.createdMemberIds } },
+      where: {
+        ...(options.tenantId ? { tenantId: options.tenantId } : {}),
+        id: { in: snapshot.createdMemberIds },
+      },
       data: { status: "ARCHIVED", archivedAt: now },
     });
   }
@@ -226,6 +253,7 @@ export async function revertEnrollmentUndoSnapshot(
       entityId: snapshot.offerApplicationId ?? snapshot.createdMemberIds[0] ?? "batch",
       userId: actorId,
       details: JSON.stringify({
+        tenantId: options.tenantId ?? null,
         ...snapshot,
         memberIds: options.memberIds ?? snapshot.createdMemberIds,
         recoveryKey: options.recoveryKey ?? null,
