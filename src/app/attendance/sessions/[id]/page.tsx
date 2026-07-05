@@ -10,6 +10,7 @@ import {
 } from "@/lib/session-lifecycle";
 import { formatAttendanceOperator, isLikelyInternalId } from "@/lib/attendance-display";
 import { formatRoomLabel } from "@/lib/group-room";
+import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -51,17 +52,34 @@ export default async function SessionAttendanceDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const authUser = await getAuthUser();
 
-  const session = await prisma.session.findUnique({
-    where: { id },
+  if (!authUser) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Détail séance"
+          title="Séance indisponible"
+          description="Connectez-vous pour consulter le détail du pointage."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
+
+  const session = await prisma.session.findFirst({
+    where: { id, tenantId: authUser.tenantId },
     include: {
       group: {
         select: {
           name: true,
           members: {
             where: {
+              tenantId: authUser.tenantId,
               status: "ACTIVE",
-              member: { status: "ACTIVE" },
+              member: { tenantId: authUser.tenantId, status: "ACTIVE" },
             },
             include: {
               member: { select: { id: true, firstName: true, lastName: true } },
@@ -72,6 +90,7 @@ export default async function SessionAttendanceDetailPage({
       },
       coach: { select: { firstName: true, lastName: true } },
       attendances: {
+        where: { tenantId: authUser.tenantId },
         include: {
           member: { select: { id: true, firstName: true, lastName: true } },
         },
@@ -91,7 +110,7 @@ export default async function SessionAttendanceDetailPage({
   );
   const operators = operatorIds.length
     ? await prisma.user.findMany({
-        where: { id: { in: operatorIds } },
+        where: { tenantId: authUser.tenantId, id: { in: operatorIds } },
         select: { id: true, name: true },
       })
     : [];

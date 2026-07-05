@@ -12,6 +12,7 @@ import {
 } from "@/lib/session-lifecycle";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -22,6 +23,24 @@ export default async function AttendanceTodayPage({
   searchParams: Promise<{ sessionId?: string }>;
 }) {
   const { sessionId: requestedSessionId } = await searchParams;
+  const authUser = await getAuthUser();
+
+  if (!authUser) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Aujourd'hui"
+          title="Pointage"
+          description="Connectez-vous pour effectuer le pointage."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
+
+  const tenantId = authUser.tenantId;
   const today = utcDateOnlyForTimeZone(new Date());
   const tomorrow = new Date(today);
   tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
@@ -69,6 +88,7 @@ export default async function AttendanceTodayPage({
   try {
     const rawSessions = await prisma.session.findMany({
       where: {
+        tenantId,
         sessionDate: { gte: overdueSince, lt: tomorrow },
         status: { in: ["PLANNED", "RESCHEDULED", "COMPLETED"] },
       },
@@ -78,8 +98,9 @@ export default async function AttendanceTodayPage({
             sport: { select: { id: true } },
             members: {
               where: {
+                tenantId,
                 status: "ACTIVE",
-                member: { status: "ACTIVE" },
+                member: { tenantId, status: "ACTIVE" },
               },
               include: {
                 member: { select: { id: true, firstName: true, lastName: true } },
@@ -89,6 +110,7 @@ export default async function AttendanceTodayPage({
         },
         coach: { select: { firstName: true, lastName: true } },
         attendances: {
+          where: { tenantId },
           select: { id: true, memberId: true, status: true, overrideReason: true, checkedAt: true },
           orderBy: { checkedAt: "asc" },
         },
@@ -142,6 +164,7 @@ export default async function AttendanceTodayPage({
     if (memberIds.length > 0) {
       const subs = await prisma.memberSubscription.findMany({
         where: {
+          tenantId,
           memberId: { in: memberIds },
           status: { in: ["ACTIVE", "EXPIRED"] },
           remainingSessions: { gt: 0 },
@@ -153,7 +176,7 @@ export default async function AttendanceTodayPage({
           endDate: true,
           amount: true,
           remainingSessions: true,
-          payments: { select: { amount: true } },
+          payments: { where: { tenantId }, select: { amount: true } },
           plan: { select: { sportId: true, sessionsPerWeek: true, name: true } }
         },
       });
