@@ -59,7 +59,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   const template = await prisma.scheduleTemplate.findFirst({
-    where: { id, isActive: true },
+    where: { id, tenantId: admin.tenantId, isActive: true },
     include: { slots: true },
   });
 
@@ -78,7 +78,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const groupWhere = groupWhereFromTarget(data);
 
   const groups = await prisma.group.findMany({
-    where: groupWhere,
+    where: { tenantId: admin.tenantId, ...groupWhere },
     select: {
       id: true,
       name: true,
@@ -96,12 +96,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const [existingSchedulesToClose, futureSessionsCount, settings] = await Promise.all([
     prisma.groupSchedule.count({
       where: {
+        tenantId: admin.tenantId,
         groupId: { in: groupIds },
         OR: [{ effectiveTo: null }, { effectiveTo: { gte: effectiveFrom } }],
       },
     }),
     prisma.session.count({
       where: {
+        tenantId: admin.tenantId,
         groupId: { in: groupIds },
         sessionDate: { gte: effectiveFrom },
         status: { not: "CANCELLED" },
@@ -152,6 +154,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (data.replaceExisting) {
       await tx.groupSchedule.updateMany({
         where: {
+          tenantId: admin.tenantId,
           groupId: { in: groupIds },
           OR: [{ effectiveTo: null }, { effectiveTo: { gte: effectiveFrom } }],
         },
@@ -182,6 +185,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         entityId: template.id,
         userId: admin.id,
         details: JSON.stringify({
+          tenantId: admin.tenantId,
           templateName: template.name,
           groupCount: groups.length,
           slotCount: template.slots.length,

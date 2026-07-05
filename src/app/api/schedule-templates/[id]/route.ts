@@ -38,7 +38,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   const existing = await prisma.scheduleTemplate.findFirst({
-    where: { id },
+    where: { id, tenantId: admin.tenantId },
     select: { id: true },
   });
 
@@ -57,7 +57,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     });
 
     if (parsed.data.slots) {
-      await tx.scheduleTemplateSlot.deleteMany({ where: { templateId: id } });
+      await tx.scheduleTemplateSlot.deleteMany({ where: { tenantId: admin.tenantId, templateId: id } });
       await tx.scheduleTemplateSlot.createMany({
         data: parsed.data.slots.map((slot) => ({
           tenantId: admin.tenantId,
@@ -69,19 +69,25 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       });
     }
 
-    return tx.scheduleTemplate.findUniqueOrThrow({
-      where: { id },
+    return tx.scheduleTemplate.findFirstOrThrow({
+      where: { id, tenantId: admin.tenantId },
       include: { slots: true },
     });
   });
 
   await prisma.auditLog.create({
     data: {
+      tenantId: admin.tenantId,
       action: "SCHEDULE_TEMPLATE_UPDATED",
       entityType: "ScheduleTemplate",
       entityId: id,
       userId: admin.id,
-      details: JSON.stringify({ name: updated.name, slots: updated.slots.length, isActive: updated.isActive }),
+      details: JSON.stringify({
+        tenantId: admin.tenantId,
+        name: updated.name,
+        slots: updated.slots.length,
+        isActive: updated.isActive,
+      }),
     },
   });
 
@@ -99,7 +105,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const { id } = await params;
 
   const existing = await prisma.scheduleTemplate.findFirst({
-    where: { id },
+    where: { id, tenantId: admin.tenantId },
     select: { id: true },
   });
 
@@ -114,10 +120,12 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
   await prisma.auditLog.create({
     data: {
+      tenantId: admin.tenantId,
       action: "SCHEDULE_TEMPLATE_ARCHIVED",
       entityType: "ScheduleTemplate",
       entityId: id,
       userId: admin.id,
+      details: JSON.stringify({ tenantId: admin.tenantId }),
     },
   });
 

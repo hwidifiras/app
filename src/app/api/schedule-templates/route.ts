@@ -8,8 +8,9 @@ import { toScheduleTemplateDto } from "@/lib/schedule-template-utils";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
+  let admin;
   try {
-    await requireAdmin(request);
+    admin = await requireAdmin(request);
   } catch (error) {
     const code = error instanceof Error ? error.message : "FORBIDDEN";
     return NextResponse.json(
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
   }
 
   const templates = await prisma.scheduleTemplate.findMany({
-    where: { isActive: true },
+    where: { tenantId: admin.tenantId, isActive: true },
     include: { slots: true },
     orderBy: [{ createdAt: "desc" }],
   });
@@ -71,11 +72,12 @@ export async function POST(request: Request) {
 
     await prisma.auditLog.create({
       data: {
+        tenantId: admin.tenantId,
         action: "SCHEDULE_TEMPLATE_CREATED",
         entityType: "ScheduleTemplate",
         entityId: created.id,
         userId: admin.id,
-        details: JSON.stringify({ name: created.name, slots: created.slots.length }),
+        details: JSON.stringify({ tenantId: admin.tenantId, name: created.name, slots: created.slots.length }),
       },
     });
 
