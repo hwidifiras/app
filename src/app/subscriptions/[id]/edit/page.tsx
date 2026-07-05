@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { SubscriptionEditForm } from "@/components/subscriptions/subscription-edit-form";
+import { sumLedgerRows } from "@/lib/payment-ledger";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -16,6 +17,7 @@ export default async function EditSubscriptionPage({ params }: { params: Promise
       where: { id },
       include: {
         member: { select: { firstName: true, lastName: true } },
+        payments: { select: { amount: true } },
       },
     }),
     prisma.subscriptionPlan.findMany({
@@ -63,6 +65,7 @@ export default async function EditSubscriptionPage({ params }: { params: Promise
             startDate: subscription.startDate.toISOString(),
             endDate: subscription.endDate?.toISOString() ?? null,
             amount: subscription.amount,
+            totalPaid: sumLedgerRows(subscription.payments),
             remainingSessions: subscription.remainingSessions,
             status: subscription.status,
           }}

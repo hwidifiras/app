@@ -18,6 +18,7 @@ type SubscriptionEditFormProps = {
     startDate: string;
     endDate: string | null;
     amount: number;
+    totalPaid: number;
     remainingSessions: number;
     status: StatusValue;
   };
@@ -43,8 +44,14 @@ export function SubscriptionEditForm({ subscription, plansOptions }: Subscriptio
 
   const amountNum = Math.round(parseFloat(amount || "0") * 100);
   const sessionsNum = Math.max(0, Math.round(Number(remainingSessions || 0)));
+  const formulaChanged = planId !== subscription.planId;
+  const statusChanged = status !== subscription.status;
   const needsAdjustmentReason =
-    amountNum !== subscription.amount || sessionsNum !== subscription.remainingSessions;
+    formulaChanged ||
+    statusChanged ||
+    amountNum !== subscription.amount ||
+    sessionsNum !== subscription.remainingSessions;
+  const amountBelowPaid = amountNum < subscription.totalPaid;
 
   function handlePlanChange(nextPlanId: string) {
     setPlanId(nextPlanId);
@@ -65,7 +72,13 @@ export function SubscriptionEditForm({ subscription, plansOptions }: Subscriptio
     setMessage(null);
 
     if (needsAdjustmentReason && adjustmentReason.trim().length < 3) {
-      setMessage("Indiquez un motif pour ajuster le montant ou les séances.");
+      setMessage("Indiquez un motif pour modifier la formule, le statut, le montant ou les séances.");
+      setLoading(false);
+      return;
+    }
+
+    if (amountBelowPaid) {
+      setMessage("Le montant ne peut pas être inférieur au total déjà encaissé.");
       setLoading(false);
       return;
     }
@@ -102,7 +115,7 @@ export function SubscriptionEditForm({ subscription, plansOptions }: Subscriptio
   return (
     <form onSubmit={onSubmit} className="space-y-5 pb-4 lg:pb-0">
       <ReceptionInfoCard variant="warning" title="Correction admin">
-        Toute modification du montant ou des séances exige un motif traçable dans le journal.
+        Toute modification de formule, statut, montant ou séances exige un motif traçable dans le journal.
       </ReceptionInfoCard>
 
       <FormSectionNav
@@ -117,6 +130,20 @@ export function SubscriptionEditForm({ subscription, plansOptions }: Subscriptio
       <div id="subscription-member" className="form-section-anchor rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
         <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Membre</p>
         <p className="mt-1 text-sm font-semibold text-[var(--foreground)]">{subscription.memberName}</p>
+        <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2">
+            <span className="block font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
+              Déjà encaissé
+            </span>
+            <span className="mt-1 block text-sm font-bold text-[var(--foreground)]">{formatMoney(subscription.totalPaid)}</span>
+          </div>
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2">
+            <span className="block font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
+              Montant minimum
+            </span>
+            <span className="mt-1 block text-sm font-bold text-[var(--foreground)]">{formatMoney(subscription.totalPaid)}</span>
+          </div>
+        </div>
       </div>
 
       <div id="subscription-plan" className="form-section-anchor">
@@ -144,7 +171,20 @@ export function SubscriptionEditForm({ subscription, plansOptions }: Subscriptio
       <div id="subscription-values" className="form-section-anchor grid gap-4 sm:grid-cols-3">
         <div>
           <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Montant (TND) *</label>
-          <input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className="field" required />
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className={`field ${amountBelowPaid ? "border-[var(--danger)] ring-1 ring-[var(--danger)]" : ""}`}
+            required
+          />
+          {amountBelowPaid ? (
+            <p className="mt-1 text-xs font-medium text-[var(--danger)]">
+              Minimum: {formatMoney(subscription.totalPaid)} déjà encaissé.
+            </p>
+          ) : null}
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Séances restantes *</label>
@@ -183,7 +223,7 @@ export function SubscriptionEditForm({ subscription, plansOptions }: Subscriptio
         <button type="button" onClick={() => setStatus("CANCELLED")} className="btn btn-danger btn-block-mobile">
           Marquer résilié
         </button>
-        <button type="submit" disabled={loading} className="btn btn-primary btn-block-mobile">
+        <button type="submit" disabled={loading || amountBelowPaid} className="btn btn-primary btn-block-mobile">
           {loading ? "Enregistrement..." : "Enregistrer"}
         </button>
       </FormActions>

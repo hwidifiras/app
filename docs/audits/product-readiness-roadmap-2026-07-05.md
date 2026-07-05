@@ -96,7 +96,7 @@ Domain-specific logic should live in small policy/helper modules, not scattered 
 | Enrollment details after apply | Some details can be edited from member/subscription pages, but the original enrollment action needs clear recovery language. | Keep enrollment recovery visible and make the correction path obvious from member/subscription/payment views. | P0 |
 | Attendance after finalization | Staff may need to correct a real mistake after finalization. | Allow only admin correction with reason, preserving old state and financial/session effects. | P0 |
 | Session edit | Schedule/session edits can affect pointage and conflict history. Completed/pointed sessions are blocked, and edits now write audit snapshots. | Add staff-entered reason UX for broad permanent edits, not only cancellations/exceptions. | P1 |
-| Subscription edit | Amount/date/plan edits can affect payments and active assignments. | Continue blocking unsafe edits; add clearer UI copy explaining why. | P1 |
+| Subscription edit | Amount/date/plan/status edits can affect payments and active assignments. Current guard blocks unsafe edits, shows already-paid amount, requires reason for formula/status/value changes, and writes before/after audit. | Browser QA and copy polish on the edit page. | P1 |
 | Offers after use | Editing an offer after it was used can rewrite business meaning. | Deactivate/version used offers instead of mutating historical meaning. | P1 |
 | Import rollback | Bulk import needs very clear rollback boundary. | Show which imported rows are still reversible and which now have business history. | P1 |
 

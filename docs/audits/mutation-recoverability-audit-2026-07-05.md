@@ -38,7 +38,8 @@ The codebase already has `src/lib/recovery-policy.ts` with this shared vocabular
 | Enrollment | `POST /api/enrollment/apply` | Creates member/subscription/assignment/payment with audit logs and recovery snapshot. | Good, but UI should keep the recovery path visible. |
 | Enrollment recovery | `POST /api/enrollment/revert` + `src/lib/enrollment-undo.ts` | Reverses created payments, voids receipts, cancels subscription, closes assignment, archives new member. | Good. |
 | Members | `DELETE /api/members` and `DELETE /api/members/[id]` | Archives member with audit instead of hard deleting. | Good. |
-| Subscriptions | `DELETE /api/member-subscriptions` | Cancels subscription in transaction with audit. | Good. |
+| Subscription edits | `PATCH /api/member-subscriptions` | Blocks archived members, invalid date windows, amount below paid total, and discipline conflicts with active assignments. Formula/status/value changes require admin + reason and now write before/after audit snapshots. | Good. |
+| Subscription cancellation | `DELETE /api/member-subscriptions` | Cancels subscription in transaction and now writes before/after audit details with cancellation reason/default. | Good. |
 | Group assignment | `DELETE /api/group-members` | Sets `status=INACTIVE` and `endDate=now`, writes audit. | Good. |
 | Bulk assignment removal | `DELETE /api/group-members/bulk` | Closes selected assignments with audit. | Good. |
 | Groups | `DELETE /api/groups` | Sets `isActive=false`, writes `GROUP_DEACTIVATED`. | Good. |

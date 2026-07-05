@@ -43,6 +43,7 @@ const ACTION_LABELS: Record<string, string> = {
   PASSWORD_RESET_SENT_BY_ADMIN: "Lien de réinitialisation envoyé par un admin",
   MEMBER_SUBSCRIPTION_CREATED: "Abonnement créé",
   MEMBER_SUBSCRIPTION_UPDATED: "Abonnement modifié",
+  MEMBER_SUBSCRIPTION_CANCELLED: "Abonnement résilié",
   PAYMENT_CREATED: "Paiement enregistré",
   PAYMENT_UPDATED: "Paiement modifié",
   PAYMENT_CORRECTED: "Correction de paiement",
@@ -227,6 +228,10 @@ function buildContext(action: string, details: Record<string, unknown> | null): 
 
   if (action === "SESSION_UPDATED" && typeof details.mode === "string") {
     return details.mode === "permanent" ? "Permanent" : "Exception";
+  }
+
+  if (action === "MEMBER_SUBSCRIPTION_UPDATED" && Array.isArray(details.changedFields)) {
+    return `${details.changedFields.length} champ(s) modifié(s)`;
   }
 
   if ((action === "RECEIPT_EMAIL_SENT" || action === "RECEIPT_EMAIL_FAILED") && typeof details.email === "string") {

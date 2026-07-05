@@ -22,6 +22,8 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Group schedules are closed with an end date and audit trail instead of being physically deleted.
 - Session cancellation keeps the session row and now writes an actor-linked audit entry.
 - Session edits now write actor-linked audit entries: exception edits include before/after snapshots, and permanent edits include affected future session IDs plus requested values.
+- Subscription edits now require admin + reason for formula/status/value changes, block amount below paid total, and write before/after audit snapshots.
+- Subscription cancellation now preserves before/after audit details.
 - Attendance undo keeps its balance adjustment and audit entry inside the same transaction.
 
 ### Receipts
@@ -97,7 +99,7 @@ Highest-risk routes to re-check next:
 - attendance delete is guarded and now records a detailed previous-state audit snapshot, but still physically removes the attendance row; decide whether to preserve a voided/corrected row in a future schema pass;
 - session edit reason UX for broad permanent changes;
 - group schedule generation preview and future-session effects;
-- subscription edit/cancel with existing payments and assignments;
+- subscription browser QA and copy polish after the latest edit/cancel audit pass;
 - offer edits after use;
 - data import rollback boundaries.
 
@@ -193,6 +195,7 @@ Latest UI settings checkpoint:
 - Payment history receipt actions pass passed `npm.cmd run lint`, `npm.cmd run build`, `npx.cmd prisma validate`, and `npm.cmd audit --omit=dev`.
 - Payment receipt delivery history pass passed `npm.cmd run lint`, `npm.cmd run build`, `npx.cmd prisma validate`, and `npm.cmd audit --omit=dev`.
 - Session edit audit pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
+- Subscription edit audit pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Group policy picker pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Planning UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.

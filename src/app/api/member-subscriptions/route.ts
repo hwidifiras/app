@@ -19,6 +19,42 @@ export const runtime = "nodejs";
 
 const VALID_STATUSES: string[] = ["ACTIVE", "EXPIRED", "CANCELLED", "DRAFT"];
 
+type SubscriptionAuditSnapshotInput = {
+  id: string;
+  memberId: string;
+  planId: string;
+  sportId: string;
+  startDate: Date;
+  endDate: Date | null;
+  amount: number;
+  remainingSessions: number;
+  status: string;
+};
+
+function subscriptionAuditSnapshot(subscription: SubscriptionAuditSnapshotInput) {
+  return {
+    id: subscription.id,
+    memberId: subscription.memberId,
+    planId: subscription.planId,
+    sportId: subscription.sportId,
+    startDate: subscription.startDate.toISOString(),
+    endDate: subscription.endDate ? subscription.endDate.toISOString() : null,
+    amount: subscription.amount,
+    remainingSessions: subscription.remainingSessions,
+    status: subscription.status,
+  };
+}
+
+function changedSubscriptionFields(
+  before: ReturnType<typeof subscriptionAuditSnapshot>,
+  after: ReturnType<typeof subscriptionAuditSnapshot>,
+) {
+  return Object.keys(after).filter((key) => {
+    if (key === "id" || key === "memberId") return false;
+    return before[key as keyof typeof before] !== after[key as keyof typeof after];
+  });
+}
+
 export async function GET(request: Request) {
   try {
     await requirePermission(request, "catalog.manage");
@@ -243,6 +279,7 @@ export async function PATCH(request: Request) {
 
   const payload = updatePayload.data;
   const sensitive =
+    payload.planId !== undefined ||
     payload.amount !== undefined ||
     payload.remainingSessions !== undefined ||
     payload.status !== undefined;
@@ -296,20 +333,24 @@ export async function PATCH(request: Request) {
       );
     }
 
+    const planChanged = payload.planId !== undefined && payload.planId !== existing.planId;
+    const statusChanged = payload.status !== undefined && payload.status !== existing.status;
     const sensitiveChange =
+      planChanged ||
+      statusChanged ||
       (payload.amount !== undefined && payload.amount !== existing.amount) ||
       (payload.remainingSessions !== undefined && payload.remainingSessions !== existing.remainingSessions);
 
     if (sensitiveChange && actor.role !== "ADMIN") {
       return NextResponse.json(
-        { error: "Seul un administrateur peut modifier le montant ou les séances" },
+        { error: "Seul un administrateur peut modifier la formule, le statut, le montant ou les séances" },
         { status: 403 },
       );
     }
 
     if (sensitiveChange && !payload.adjustmentReason?.trim()) {
       return NextResponse.json(
-        { error: "Motif obligatoire pour ajuster le montant ou les séances restantes" },
+        { error: "Motif obligatoire pour modifier la formule, le statut, le montant ou les séances restantes" },
         { status: 400 },
       );
     }
@@ -344,32 +385,44 @@ export async function PATCH(request: Request) {
       }
     }
 
-    const updated = await prisma.memberSubscription.update({
-      where: { id: subscriptionId },
-      data: {
-        planId: payload.planId,
-        startDate: payload.startDate ? nextStartDate : undefined,
-        endDate: payload.endDate === undefined ? undefined : nextEndDate,
-        amount: payload.amount,
-        remainingSessions: payload.remainingSessions,
-        status: payload.status,
-        ...(payload.planId ? { sportId: nextSportId } : {}),
-      },
-      include: {
-        member: { select: { id: true, firstName: true, lastName: true } },
-        plan: { select: { id: true, name: true } },
-        sport: { select: { id: true, name: true } },
-      },
-    });
+    const beforeSnapshot = subscriptionAuditSnapshot(existing);
+    const updated = await prisma.$transaction(async (tx) => {
+      const updatedSubscription = await tx.memberSubscription.update({
+        where: { id: subscriptionId },
+        data: {
+          planId: payload.planId,
+          startDate: payload.startDate ? nextStartDate : undefined,
+          endDate: payload.endDate === undefined ? undefined : nextEndDate,
+          amount: payload.amount,
+          remainingSessions: payload.remainingSessions,
+          status: payload.status,
+          ...(payload.planId ? { sportId: nextSportId } : {}),
+        },
+        include: {
+          member: { select: { id: true, firstName: true, lastName: true } },
+          plan: { select: { id: true, name: true } },
+          sport: { select: { id: true, name: true } },
+        },
+      });
+      const afterSnapshot = subscriptionAuditSnapshot(updatedSubscription);
 
-    await prisma.auditLog.create({
-      data: {
-        action: "MEMBER_SUBSCRIPTION_UPDATED",
-        entityType: "MemberSubscription",
-        entityId: subscriptionId,
-        userId: actor.id,
-        details: JSON.stringify({ payload }),
-      },
+      await tx.auditLog.create({
+        data: {
+          action: "MEMBER_SUBSCRIPTION_UPDATED",
+          entityType: "MemberSubscription",
+          entityId: subscriptionId,
+          userId: actor.id,
+          details: JSON.stringify({
+            changedFields: changedSubscriptionFields(beforeSnapshot, afterSnapshot),
+            before: beforeSnapshot,
+            after: afterSnapshot,
+            reason: payload.adjustmentReason?.trim() || null,
+            totalPaid,
+          }),
+        },
+      });
+
+      return updatedSubscription;
     });
 
     return NextResponse.json({ data: updated });
@@ -420,11 +473,35 @@ export async function DELETE(request: Request) {
 
   try {
     const now = new Date();
+    const reasonValue = (body as { reason?: unknown }).reason;
+    const rawReason = typeof reasonValue === "string" ? reasonValue.trim() : "";
+    const reason = rawReason || "Résiliation admin";
+    const existing = await prisma.memberSubscription.findUnique({
+      where: { id: subscriptionId },
+      select: {
+        id: true,
+        memberId: true,
+        planId: true,
+        sportId: true,
+        startDate: true,
+        endDate: true,
+        status: true,
+        amount: true,
+        remainingSessions: true,
+      },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Abonnement introuvable" }, { status: 404 });
+    }
+
+    const beforeSnapshot = subscriptionAuditSnapshot(existing);
     const cancelled = await prisma.$transaction(async (tx) => {
       const subscription = await tx.memberSubscription.update({
         where: { id: subscriptionId },
         data: { status: "CANCELLED" },
       });
+      const afterSnapshot = subscriptionAuditSnapshot(subscription);
 
       await tx.auditLog.create({
         data: {
@@ -432,7 +509,13 @@ export async function DELETE(request: Request) {
           entityType: "MemberSubscription",
           entityId: subscriptionId,
           userId: actor.id,
-          details: JSON.stringify({ cancelledAt: now.toISOString() }),
+          details: JSON.stringify({
+            cancelledAt: now.toISOString(),
+            reason,
+            changedFields: changedSubscriptionFields(beforeSnapshot, afterSnapshot),
+            before: beforeSnapshot,
+            after: afterSnapshot,
+          }),
         },
       });
 
