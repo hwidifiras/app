@@ -4,12 +4,30 @@ import { prisma } from "@/lib/prisma";
 import { GroupAddForm } from "@/components/groups/group-add-form";
 import { PageHeader } from "@/components/ui/page-header";
 import { buildCoachDto } from "@/lib/coach-view-model";
+import { getAuthUser } from "@/lib/request-user";
 import type { CoachDto } from "@/types/coach";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function NewGroupPage() {
+  const authUser = await getAuthUser();
+
+  if (!authUser) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Club"
+          title="Nouveau groupe"
+          description="Connectez-vous pour créer un groupe."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
+
   let hasError = false;
   let sportsOptions: Array<{ id: string; name: string; description: string | null; isActive: boolean; createdAt: string; updatedAt: string }> = [];
   let coachesOptions: CoachDto[] = [];
@@ -17,12 +35,13 @@ export default async function NewGroupPage() {
 
   try {
     const [sports, coaches, members] = await Promise.all([
-      prisma.sport.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
+      prisma.sport.findMany({ where: { tenantId: authUser.tenantId, isActive: true }, orderBy: { name: "asc" } }),
       prisma.coach.findMany({
-        where: { isActive: true },
+        where: { tenantId: authUser.tenantId, isActive: true },
         include: {
           sport: { select: { id: true, name: true } },
           qualifications: {
+            where: { tenantId: authUser.tenantId },
             include: { sport: { select: { id: true, name: true } } },
             orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
           },
@@ -30,7 +49,7 @@ export default async function NewGroupPage() {
         orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
       }),
       prisma.member.findMany({
-        where: { status: "ACTIVE" },
+        where: { tenantId: authUser.tenantId, status: "ACTIVE" },
         orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
       }),
     ]);

@@ -6,12 +6,29 @@ import { notFound } from "next/navigation";
 import { GroupSchedulesManager } from "@/components/groups/group-schedules-manager";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatRoomLabel } from "@/lib/group-room";
+import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function GroupSchedulesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const authUser = await getAuthUser();
+
+  if (!authUser) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Planning"
+          title="Horaires du groupe"
+          description="Connectez-vous pour gérer les horaires."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
 
   let group: {
     id: string;
@@ -34,12 +51,13 @@ export default async function GroupSchedulesPage({ params }: { params: Promise<{
   } | null = null;
 
   try {
-    group = await prisma.group.findUnique({
-      where: { id },
+    group = await prisma.group.findFirst({
+      where: { id, tenantId: authUser.tenantId },
       include: {
         sport: { select: { name: true } },
         coach: { select: { firstName: true, lastName: true } },
         schedules: {
+          where: { tenantId: authUser.tenantId },
           orderBy: { createdAt: "asc" },
         },
       },

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { GroupEditForm } from "@/components/groups/group-edit-form";
 import { PageHeader } from "@/components/ui/page-header";
 import { buildCoachDto } from "@/lib/coach-view-model";
+import { getAuthUser } from "@/lib/request-user";
 import type { CoachDto } from "@/types/coach";
 
 export const dynamic = "force-dynamic";
@@ -12,14 +13,30 @@ export const revalidate = 0;
 
 export default async function EditGroupPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const authUser = await getAuthUser();
 
-  const group = await prisma.group.findUnique({
-    where: { id },
+  if (!authUser) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Club"
+          title="Modifier le cours"
+          description="Connectez-vous pour modifier un groupe."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
+
+  const group = await prisma.group.findFirst({
+    where: { id, tenantId: authUser.tenantId },
     include: {
       sport: { select: { name: true } },
       coach: { select: { firstName: true, lastName: true } },
       members: {
-        where: { status: "ACTIVE" },
+        where: { tenantId: authUser.tenantId, status: "ACTIVE" },
         include: {
           member: { select: { id: true, firstName: true, lastName: true, phone: true } },
         },
@@ -32,12 +49,13 @@ export default async function EditGroupPage({ params }: { params: Promise<{ id: 
   }
 
   const [sports, coaches, members] = await Promise.all([
-    prisma.sport.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
+    prisma.sport.findMany({ where: { tenantId: authUser.tenantId, isActive: true }, orderBy: { name: "asc" } }),
     prisma.coach.findMany({
-      where: { isActive: true },
+      where: { tenantId: authUser.tenantId, isActive: true },
       include: {
         sport: { select: { id: true, name: true } },
         qualifications: {
+          where: { tenantId: authUser.tenantId },
           include: { sport: { select: { id: true, name: true } } },
           orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
         },
@@ -45,7 +63,7 @@ export default async function EditGroupPage({ params }: { params: Promise<{ id: 
       orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
     }),
     prisma.member.findMany({
-      where: { status: "ACTIVE" },
+      where: { tenantId: authUser.tenantId, status: "ACTIVE" },
       orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
     }),
   ]);
