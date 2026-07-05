@@ -73,8 +73,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     );
   }
 
-  const existing = await prisma.session.findUnique({
-    where: { id },
+  const existing = await prisma.session.findFirst({
+    where: { id, tenantId: actor.tenantId },
     select: {
       id: true,
       groupId: true,
@@ -107,7 +107,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     );
   }
 
-  const attendanceCount = await prisma.attendance.count({ where: { sessionId: id } });
+  const attendanceCount = await prisma.attendance.count({
+    where: { tenantId: actor.tenantId, sessionId: id },
+  });
   if (attendanceCount > 0) {
     return NextResponse.json(
       {
@@ -191,11 +193,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   await prisma.auditLog.create({
     data: {
+      tenantId: actor.tenantId,
       action: "SESSION_POSTPONED",
       entityType: "Session",
       entityId: updated.id,
-      userId: actor?.id ?? null,
+      userId: actor.id,
       details: JSON.stringify({
+        tenantId: actor.tenantId,
         fromDate: originalInfo.date,
         fromTime: originalInfo.startTime,
         toDate: updated.sessionDate.toISOString(),

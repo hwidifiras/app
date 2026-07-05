@@ -36,16 +36,17 @@ function addMinutesToTime(startTime: string, durationMinutes: number) {
 }
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  let actor;
   try {
-    await requirePermission(_request, "catalog.manage");
+    actor = await requirePermission(_request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
 
   const { id } = await params;
 
-  const session = await prisma.session.findUnique({
-    where: { id },
+  const session = await prisma.session.findFirst({
+    where: { id, tenantId: actor.tenantId },
     include: {
       group: { select: { name: true, sportId: true } },
       coach: { select: { firstName: true, lastName: true } },
@@ -62,7 +63,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Séance introuvable" }, { status: 404 });
   }
 
-  const attendanceCount = await getSessionAttendanceCount(id);
+  const attendanceCount = await getSessionAttendanceCount(id, actor.tenantId);
 
   return NextResponse.json({
     data: {
@@ -213,8 +214,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     );
   }
 
-  const existing = await prisma.session.findUnique({
-    where: { id },
+  const existing = await prisma.session.findFirst({
+    where: { id, tenantId: actor.tenantId },
     select: {
       id: true,
       groupId: true,
@@ -344,8 +345,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   try {
     // Permanent: same weekday + time on this session and every following week of the recurring slot
     if (isPermanent && existing.scheduleId) {
-      const schedule = await prisma.groupSchedule.findUnique({
-        where: { id: existing.scheduleId },
+      const schedule = await prisma.groupSchedule.findFirst({
+        where: { id: existing.scheduleId, tenantId: actor.tenantId },
         select: { durationMinutes: true, startTime: true },
       });
 
@@ -367,6 +368,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
       const affectedSessions = await prisma.session.findMany({
         where: {
+          tenantId: actor.tenantId,
           scheduleId: existing.scheduleId,
           sessionDate: { gte: existing.sessionDate },
         },
@@ -377,7 +379,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       const affectedIds = affectedSessions.map((s) => s.id);
 
       try {
-        await assertNoAttendancesForSessionIds(affectedIds);
+        await assertNoAttendancesForSessionIds(affectedIds, actor.tenantId);
       } catch (error) {
         if (error instanceof SessionEditBlockedError) {
           return NextResponse.json({ error: error.message }, { status: 409 });
@@ -492,11 +494,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       ops.push(
         prisma.auditLog.create({
           data: {
+            tenantId: actor.tenantId,
             action: "SESSION_UPDATED",
             entityType: "Session",
             entityId: id,
             userId: actor.id,
             details: JSON.stringify({
+              tenantId: actor.tenantId,
               mode: "permanent",
               affectedSessionIds: affectedIds,
               affectedCount: affectedIds.length,
@@ -514,6 +518,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         ops.push(
           prisma.auditLog.create({
             data: {
+              tenantId: actor.tenantId,
               action: "COACH_SPORT_OVERRIDE_USED",
               entityType: "Session",
               entityId: id,
@@ -526,8 +531,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
       await prisma.$transaction(ops);
 
-      const updated = await prisma.session.findUnique({
-        where: { id },
+      const updated = await prisma.session.findFirst({
+        where: { id, tenantId: actor.tenantId },
         include: {
           group: { select: { name: true, sportId: true } },
           coach: { select: { firstName: true, lastName: true } },
@@ -543,7 +548,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     // Exception mode or no schedule — just update this session
     try {
-      await assertNoAttendancesForSessionEdit(id);
+      await assertNoAttendancesForSessionEdit(id, actor.tenantId);
     } catch (error) {
       if (error instanceof SessionEditBlockedError) {
         return NextResponse.json({ error: error.message }, { status: 409 });
@@ -574,11 +579,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
       await tx.auditLog.create({
         data: {
+          tenantId: actor.tenantId,
           action: "SESSION_UPDATED",
           entityType: "Session",
           entityId: id,
           userId: actor.id,
           details: JSON.stringify({
+            tenantId: actor.tenantId,
             mode: "exception",
             changedFields: changedSessionFields(beforeSnapshot, afterSnapshot),
             before: beforeSnapshot,
@@ -590,6 +597,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       if (details) {
         await tx.auditLog.create({
           data: {
+            tenantId: actor.tenantId,
             action: "COACH_SPORT_OVERRIDE_USED",
             entityType: "Session",
             entityId: id,
@@ -631,8 +639,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
   const { id } = await params;
 
-  const existing = await prisma.session.findUnique({
-    where: { id },
+  const existing = await prisma.session.findFirst({
+    where: { id, tenantId: actor.tenantId },
     select: { id: true, status: true },
   });
 
@@ -648,7 +656,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   }
 
   try {
-    await assertNoAttendancesForSessionEdit(id);
+    await assertNoAttendancesForSessionEdit(id, actor.tenantId);
   } catch (error) {
     if (error instanceof SessionEditBlockedError) {
       return NextResponse.json({ error: error.message }, { status: 409 });
@@ -671,11 +679,13 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
     await tx.auditLog.create({
       data: {
+        tenantId: actor.tenantId,
         action: "SESSION_CANCELLED",
         entityType: "Session",
         entityId: id,
         userId: actor.id,
         details: JSON.stringify({
+          tenantId: actor.tenantId,
           previous: existing,
           next: updated,
           reason: "Annulation depuis le planning",
