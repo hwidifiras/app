@@ -42,9 +42,10 @@ function planAuditSnapshot(plan: SubscriptionPlanAuditSnapshot) {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q")?.trim();
+  let actor;
 
   try {
-    await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -52,9 +53,10 @@ export async function GET(request: Request) {
   const plans = await prisma.subscriptionPlan.findMany({
     where: query
       ? {
+          tenantId: actor.tenantId,
           OR: [{ name: { contains: query } }, { description: { contains: query } }],
         }
-      : undefined,
+      : { tenantId: actor.tenantId },
     orderBy: { createdAt: "desc" },
     take: 50,
     include: { sport: { select: { id: true, name: true } } },
@@ -94,6 +96,15 @@ export async function POST(request: Request) {
   const descriptionValue = parsed.data.description?.trim() || null;
 
   const sportId = parsed.data.sportId;
+  const sport = await prisma.sport.findFirst({
+    where: { id: sportId, tenantId: actor.tenantId, isActive: true },
+    select: { id: true },
+  });
+
+  if (!sport) {
+    return NextResponse.json({ error: "Discipline introuvable ou inactive" }, { status: 400 });
+  }
+
   const planCapError = await validatePlanSessionsPerWeekForSport(sportId, parsed.data.sessionsPerWeek);
   if (planCapError) {
     return NextResponse.json({ error: planCapError, code: "PLAN_EXCEEDS_SPORT_STANDARD" }, { status: 409 });
@@ -103,6 +114,7 @@ export async function POST(request: Request) {
     const plan = await prisma.$transaction(async (tx) => {
       const created = await tx.subscriptionPlan.create({
         data: {
+          tenantId: actor.tenantId,
           name: parsed.data.name,
           description: descriptionValue,
           price: parsed.data.price,
@@ -185,13 +197,24 @@ export async function PATCH(request: Request) {
   const payload = updatePayload.data;
 
   try {
-    const currentPlan = await prisma.subscriptionPlan.findUnique({
-      where: { id: planId },
+    const currentPlan = await prisma.subscriptionPlan.findFirst({
+      where: { id: planId, tenantId: actor.tenantId },
       include: { sport: { select: { name: true } } },
     });
 
     if (!currentPlan) {
       return NextResponse.json({ error: "Plan introuvable" }, { status: 404 });
+    }
+
+    if (payload.sportId) {
+      const sport = await prisma.sport.findFirst({
+        where: { id: payload.sportId, tenantId: actor.tenantId, isActive: true },
+        select: { id: true },
+      });
+
+      if (!sport) {
+        return NextResponse.json({ error: "Discipline introuvable ou inactive" }, { status: 400 });
+      }
     }
 
     if (payload.sessionsPerWeek !== undefined) {
@@ -296,7 +319,7 @@ export async function DELETE(request: Request) {
   }
 
   const linkedSubscriptions = await prisma.memberSubscription.findMany({
-    where: { planId },
+    where: { tenantId: actor.tenantId, planId },
     select: {
       id: true,
       member: { select: { firstName: true, lastName: true } },

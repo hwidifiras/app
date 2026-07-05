@@ -79,6 +79,7 @@ export async function POST(request: Request) {
     const sport = await prisma.$transaction(async (tx) => {
       const created = await tx.sport.create({
         data: {
+          tenantId: actor.tenantId,
           name: parsed.data.name,
           description: descriptionValue,
         },
@@ -155,7 +156,7 @@ export async function PATCH(request: Request) {
   const payload = updatePayload.data;
 
   try {
-    const current = await prisma.sport.findUnique({ where: { id: sportId } });
+    const current = await prisma.sport.findFirst({ where: { id: sportId, tenantId: actor.tenantId } });
     if (!current) {
       return NextResponse.json({ error: "Sport introuvable" }, { status: 404 });
     }
@@ -246,17 +247,17 @@ export async function DELETE(request: Request) {
 
   const [linkedGroups, linkedPlans, linkedSubscriptions] = await Promise.all([
     prisma.group.findMany({
-      where: { sportId },
+      where: { tenantId: actor.tenantId, sportId },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
     prisma.subscriptionPlan.findMany({
-      where: { sportId },
+      where: { tenantId: actor.tenantId, sportId },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
     prisma.memberSubscription.findMany({
-      where: { sportId },
+      where: { tenantId: actor.tenantId, sportId },
       select: {
         id: true,
         member: { select: { firstName: true, lastName: true } },

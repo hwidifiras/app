@@ -14,14 +14,15 @@ import { validateStaffOfferDiscount } from "@/lib/membership-rules";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "offers.manage");
+    actor = await requirePermission(request, "offers.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
 
   const offers = await prisma.offer.findMany({
-    where: { isActive: true },
+    where: { tenantId: actor.tenantId, isActive: true },
     orderBy: { createdAt: "desc" },
     include: {
       sport: { select: { id: true, name: true } },
@@ -81,7 +82,7 @@ export async function POST(request: Request) {
 
   if (structured.sportId) {
     const sport = await prisma.sport.findFirst({
-      where: { id: structured.sportId, isActive: true },
+      where: { id: structured.sportId, tenantId: actor.tenantId, isActive: true },
       select: { id: true },
     });
     if (!sport) {
@@ -92,6 +93,7 @@ export async function POST(request: Request) {
   try {
     const offer = await prisma.offer.create({
       data: {
+        tenantId: actor.tenantId,
         name: parsed.data.name,
         description: parsed.data.description?.trim() || null,
         kind: parsed.data.kind,
@@ -104,11 +106,12 @@ export async function POST(request: Request) {
 
     await prisma.auditLog.create({
       data: {
+        tenantId: actor.tenantId,
         action: "OFFER_CREATED",
         entityType: "Offer",
         entityId: offer.id,
         userId: actor.id,
-        details: JSON.stringify({ kind: offer.kind, name: offer.name }),
+        details: JSON.stringify({ tenantId: actor.tenantId, kind: offer.kind, name: offer.name }),
       },
     });
 
@@ -118,8 +121,8 @@ export async function POST(request: Request) {
           ...offer,
           sportName: structured.sportId
             ? (
-                await prisma.sport.findUnique({
-                  where: { id: structured.sportId },
+                await prisma.sport.findFirst({
+                  where: { id: structured.sportId, tenantId: actor.tenantId },
                   select: { name: true },
                 })
               )?.name ?? null
@@ -158,8 +161,8 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Offre requise" }, { status: 400 });
   }
 
-  const offer = await prisma.offer.findUnique({
-    where: { id: offerId },
+  const offer = await prisma.offer.findFirst({
+    where: { id: offerId, tenantId: actor.tenantId },
     select: {
       id: true,
       name: true,
@@ -184,11 +187,13 @@ export async function DELETE(request: Request) {
 
   await prisma.auditLog.create({
     data: {
+      tenantId: actor.tenantId,
       action: "OFFER_DEACTIVATED",
       entityType: "Offer",
       entityId: offer.id,
       userId: actor.id,
       details: JSON.stringify({
+        tenantId: actor.tenantId,
         kind: offer.kind,
         name: offer.name,
         applicationsCount: offer._count.applications,
