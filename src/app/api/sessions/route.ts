@@ -94,8 +94,9 @@ function toSessionDto(session: {
 }
 
 export async function GET(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -110,6 +111,7 @@ export async function GET(request: Request) {
 
   const sessions = await prisma.session.findMany({
     where: {
+      tenantId: actor.tenantId,
       ...(groupId ? { groupId } : {}),
       ...(fromDate || toDate
         ? {
@@ -180,12 +182,14 @@ export async function POST(request: Request) {
 
   const groups = await prisma.group.findMany({
     where: {
+      tenantId: actor.tenantId,
       isActive: true,
       ...(bodyGroupId ? { id: bodyGroupId } : {}),
     },
     include: {
       schedules: {
         where: {
+          tenantId: actor.tenantId,
           effectiveFrom: { lte: endDate },
           OR: [{ effectiveTo: null }, { effectiveTo: { gte: startDate } }],
         },
@@ -195,6 +199,7 @@ export async function POST(request: Request) {
   const activeScheduleCount = groups.reduce((sum, group) => sum + group.schedules.length, 0);
 
   const candidates: Array<{
+    tenantId: string;
     groupId: string;
     scheduleId: string;
     sessionDate: Date;
@@ -227,6 +232,7 @@ export async function POST(request: Request) {
         }
 
         candidates.push({
+          tenantId: actor.tenantId,
           groupId: group.id,
           scheduleId: schedule.id,
           sessionDate: toUtcDateOnly(cursorDate),
@@ -269,6 +275,7 @@ export async function POST(request: Request) {
 
   const existingSessions = await prisma.session.findMany({
     where: {
+      tenantId: actor.tenantId,
       groupId: { in: Array.from(new Set(uniqueCandidates.map((item) => item.groupId))) },
       sessionDate: {
         gte: toUtcDateOnly(startDate),
@@ -331,11 +338,13 @@ export async function POST(request: Request) {
 
   await prisma.auditLog.create({
     data: {
+      tenantId: actor.tenantId,
       action: "SESSIONS_GENERATED",
       entityType: bodyGroupId ? "Group" : "Session",
       entityId: bodyGroupId ?? "bulk",
       userId: actor.id,
       details: JSON.stringify({
+        tenantId: actor.tenantId,
         horizonDays,
         groupId: bodyGroupId ?? null,
         startDate: startDate.toISOString(),
