@@ -119,6 +119,11 @@ export function PaymentAddForm({
         amount: number;
         memberSubscriptionId: string;
         receipt?: { id: string; receiptNumber: string } | null;
+        receiptEmailDelivery?: {
+          delivered: boolean;
+          email?: string;
+          error?: string;
+        } | null;
       };
       error?: string;
     };
@@ -174,7 +179,16 @@ export function PaymentAddForm({
     setAmount("");
     setNotes("");
     setLastReceipt(json.data?.receipt ?? null);
-    setMessage("Paiement enregistré avec succès.");
+    const emailDelivery = json.data?.receiptEmailDelivery;
+    if (emailDelivery?.delivered) {
+      setMessage(`Paiement enregistré avec succès. Recu envoye a ${emailDelivery.email}.`);
+    } else if (emailDelivery && !emailDelivery.delivered) {
+      setMessage(
+        `Paiement enregistré avec succès. Recu cree, email non envoye: ${emailDelivery.error ?? "erreur email"}.`,
+      );
+    } else {
+      setMessage("Paiement enregistré avec succès.");
+    }
   }
 
   function selectMember(nextMemberId: string) {

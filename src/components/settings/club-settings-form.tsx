@@ -592,7 +592,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
           <ToggleRow
             id="receiptEmailDefault"
             label="Envoi email par defaut"
-            description="Reserve pour le prochain passage email: le recu pourra etre envoye automatiquement."
+            description="Apres un encaissement, le recu est envoye automatiquement si le membre possede un email."
             checked={receiptEmailDefault}
             onChange={setReceiptEmailDefault}
           />

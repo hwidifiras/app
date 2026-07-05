@@ -9,6 +9,8 @@ import {
   validateLedgerTotal,
 } from "@/lib/payment-ledger";
 import { issueReceiptForPayment, voidReceiptForPayment } from "@/lib/receipts";
+import { getClubSettings } from "@/lib/club-settings";
+import { sendReceiptEmailForReceipt, type ReceiptEmailDeliveryResult } from "@/lib/receipt-email-delivery";
 
 export const runtime = "nodejs";
 
@@ -161,7 +163,27 @@ export async function POST(request: Request) {
       return { ...created, receipt };
     });
 
-    return NextResponse.json({ data: payment }, { status: 201 });
+    let receiptEmailDelivery: ReceiptEmailDeliveryResult | null = null;
+    try {
+      const settings = await getClubSettings();
+      if (settings.receiptEmailDefault && payment.receipt?.id) {
+        receiptEmailDelivery = await sendReceiptEmailForReceipt({
+          receiptId: payment.receipt.id,
+          requestUrl: request.url,
+          actorId: actor.id,
+        });
+      }
+    } catch (emailError) {
+      console.error("[POST /api/payments] receipt email error:", emailError);
+      receiptEmailDelivery = {
+        delivered: false,
+        code: "EMAIL_SEND_FAILED",
+        error: "Echec d'envoi email",
+        status: 503,
+      };
+    }
+
+    return NextResponse.json({ data: { ...payment, receiptEmailDelivery } }, { status: 201 });
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === "SUB_NOT_FOUND") {
