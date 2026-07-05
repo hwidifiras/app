@@ -40,8 +40,8 @@ export async function POST(request: Request) {
   const uniqueMemberIds = Array.from(new Set(payload.memberIds));
   const assignmentStartDate = new Date(payload.startDate);
 
-  const group = await prisma.group.findUnique({
-    where: { id: payload.groupId },
+  const group = await prisma.group.findFirst({
+    where: { id: payload.groupId, tenantId: actor.tenantId },
     select: { id: true, isActive: true, capacity: true, groupType: true, genderPolicy: true, sportId: true },
   });
 
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
   }
 
   const members = await prisma.member.findMany({
-    where: { id: { in: uniqueMemberIds } },
+    where: { tenantId: actor.tenantId, id: { in: uniqueMemberIds } },
     select: { id: true, status: true, memberType: true, gender: true },
   });
 
@@ -62,6 +62,7 @@ export async function POST(request: Request) {
 
   const existingAssignments = await prisma.groupMember.findMany({
     where: {
+      tenantId: actor.tenantId,
       groupId: payload.groupId,
       memberId: { in: uniqueMemberIds },
     },
@@ -72,6 +73,7 @@ export async function POST(request: Request) {
 
   const activeCount = await prisma.groupMember.count({
     where: {
+      tenantId: actor.tenantId,
       groupId: payload.groupId,
       ...activeAssignmentWindow(assignmentStartDate),
     },
@@ -125,6 +127,7 @@ export async function POST(request: Request) {
     const now = new Date();
     const activeSub = await prisma.memberSubscription.findFirst({
       where: {
+        tenantId: actor.tenantId,
         memberId,
         sportId: group.sportId,
         status: "ACTIVE",
@@ -196,6 +199,7 @@ export async function POST(request: Request) {
 
     const created = await prisma.groupMember.create({
       data: {
+        tenantId: actor.tenantId,
         groupId: payload.groupId,
         memberId,
         startDate: new Date(payload.startDate),
@@ -218,6 +222,7 @@ export async function POST(request: Request) {
         userId: actor.id,
         details: JSON.stringify({
           groupId: payload.groupId,
+          tenantId: actor.tenantId,
           requestedMemberIds: uniqueMemberIds,
           createdAssignmentIds,
           reactivatedAssignmentIds,
@@ -295,6 +300,7 @@ export async function DELETE(request: Request) {
   const closed = await prisma.$transaction(async (tx) => {
     const result = await tx.groupMember.updateMany({
       where: {
+        tenantId: actor.tenantId,
         groupId: payload.groupId,
         memberId: { in: uniqueMemberIds },
         status: "ACTIVE",
@@ -313,6 +319,7 @@ export async function DELETE(request: Request) {
         entityId: payload.groupId,
         userId: actor.id,
         details: JSON.stringify({
+          tenantId: actor.tenantId,
           memberIds: uniqueMemberIds,
           closedAt: now.toISOString(),
           closedCount: result.count,

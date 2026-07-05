@@ -37,8 +37,9 @@ function toGroupMemberDto(item: {
 }
 
 export async function GET(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "enrollment.manage");
+    actor = await requirePermission(request, "enrollment.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -49,6 +50,7 @@ export async function GET(request: Request) {
 
   const assignments = await prisma.groupMember.findMany({
     where: {
+      tenantId: actor.tenantId,
       ...(groupId ? { groupId } : {}),
       ...(memberId ? { memberId } : {}),
     },
@@ -91,8 +93,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const group = await prisma.group.findUnique({
-    where: { id: parsed.data.groupId },
+  const group = await prisma.group.findFirst({
+    where: { id: parsed.data.groupId, tenantId: actor.tenantId },
     select: { id: true, isActive: true, groupType: true, genderPolicy: true, sportId: true },
   });
   if (!group) {
@@ -103,8 +105,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Impossible d'affecter un groupe inactif" }, { status: 409 });
   }
 
-  const member = await prisma.member.findUnique({
-    where: { id: parsed.data.memberId },
+  const member = await prisma.member.findFirst({
+    where: { id: parsed.data.memberId, tenantId: actor.tenantId },
     select: { id: true, status: true, memberType: true, gender: true },
   });
   if (!member) {
@@ -131,8 +133,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "planId requis pour créer l'abonnement automatiquement" }, { status: 400 });
   }
 
-  const selectedPlan = await prisma.subscriptionPlan.findUnique({
-    where: { id: selectedPlanId },
+  const selectedPlan = await prisma.subscriptionPlan.findFirst({
+    where: { id: selectedPlanId, tenantId: actor.tenantId },
     select: { id: true, name: true, price: true, totalSessions: true, validityDays: true, sportId: true, isActive: true },
   });
 
@@ -169,8 +171,8 @@ export async function POST(request: Request) {
     const created = await prisma.$transaction(async (tx) => {
       const now = new Date();
       let createdSubscriptionId: string | null = null;
-      const groupCapacity = await tx.group.findUnique({
-        where: { id: parsed.data.groupId },
+      const groupCapacity = await tx.group.findFirst({
+        where: { id: parsed.data.groupId, tenantId: actor.tenantId },
         select: {
           capacity: true,
           _count: {
@@ -194,6 +196,7 @@ export async function POST(request: Request) {
 
       const activeCompatibleSubscription = await tx.memberSubscription.findFirst({
         where: {
+          tenantId: actor.tenantId,
           memberId: parsed.data.memberId,
           sportId: group.sportId,
           status: "ACTIVE",
@@ -216,6 +219,7 @@ export async function POST(request: Request) {
 
         await tx.memberSubscription.updateMany({
           where: {
+            tenantId: actor.tenantId,
             memberId: parsed.data.memberId,
             sportId: group.sportId,
             status: "ACTIVE",
@@ -225,6 +229,7 @@ export async function POST(request: Request) {
 
         const subscription = await tx.memberSubscription.create({
           data: {
+            tenantId: actor.tenantId,
             memberId: parsed.data.memberId,
             planId: selectedPlan.id,
             sportId: group.sportId,
@@ -240,6 +245,7 @@ export async function POST(request: Request) {
 
       const createdAssignment = await tx.groupMember.create({
         data: {
+          tenantId: actor.tenantId,
           groupId: parsed.data.groupId,
           memberId: parsed.data.memberId,
           startDate: new Date(parsed.data.startDate),
@@ -260,6 +266,7 @@ export async function POST(request: Request) {
           entityId: createdAssignment.id,
           userId: actor.id,
           details: JSON.stringify({
+            tenantId: actor.tenantId,
             after: toGroupMemberDto(createdAssignment),
             createdSubscriptionId,
             planId: selectedPlan.id,
@@ -335,8 +342,8 @@ export async function PATCH(request: Request) {
   const payload = updatePayload.data;
 
   try {
-    const existing = await prisma.groupMember.findUnique({
-      where: { id: groupMemberId },
+    const existing = await prisma.groupMember.findFirst({
+      where: { id: groupMemberId, tenantId: actor.tenantId },
       include: {
         group: { select: { name: true, sportId: true } },
         member: { select: { firstName: true, lastName: true, phone: true } },
@@ -412,6 +419,7 @@ export async function PATCH(request: Request) {
           entityId: groupMemberId,
           userId: actor.id,
           details: JSON.stringify({
+            tenantId: actor.tenantId,
             before: toGroupMemberDto(existing),
             after: toGroupMemberDto(next),
           }),
@@ -456,8 +464,17 @@ export async function DELETE(request: Request) {
   try {
     const now = new Date();
     const closed = await prisma.$transaction(async (tx) => {
+      const existing = await tx.groupMember.findFirst({
+        where: { id: groupMemberId, tenantId: actor.tenantId },
+        select: { id: true },
+      });
+
+      if (!existing) {
+        throw new Error("GROUP_MEMBER_NOT_FOUND");
+      }
+
       const assignment = await tx.groupMember.update({
-        where: { id: groupMemberId },
+        where: { id: existing.id },
         data: {
           status: "INACTIVE",
           endDate: now,
@@ -471,7 +488,7 @@ export async function DELETE(request: Request) {
           entityType: "GroupMember",
           entityId: groupMemberId,
           userId: actor.id,
-          details: JSON.stringify({ closedAt: now.toISOString() }),
+          details: JSON.stringify({ tenantId: actor.tenantId, closedAt: now.toISOString() }),
         },
       });
 
@@ -479,7 +496,11 @@ export async function DELETE(request: Request) {
     });
 
     return NextResponse.json({ data: { id: closed.id, status: closed.status, endDate: closed.endDate?.toISOString() ?? null } });
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === "GROUP_MEMBER_NOT_FOUND") {
+      return NextResponse.json({ error: "Affectation introuvable" }, { status: 404 });
+    }
+
     return NextResponse.json({ error: "Erreur serveur lors du retrait" }, { status: 500 });
   }
 }
