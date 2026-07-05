@@ -22,6 +22,14 @@ export const createMemberSchema = z
     parentAddress: z.string().trim().max(200).optional(),
   })
   .superRefine((data, ctx) => {
+    if (data.memberType === "NOT_SPECIFIED") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Type adulte/enfant requis",
+        path: ["memberType"],
+      });
+    }
+
     if (data.gender === "NOT_SPECIFIED") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -96,6 +104,40 @@ export const updateMemberSchema = z
       message: "Aucun champ à mettre à jour",
       path: ["_root"],
     },
-  );
+  )
+  .superRefine((payload, ctx) => {
+    if (payload.memberType === "NOT_SPECIFIED") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Type adulte/enfant requis",
+        path: ["memberType"],
+      });
+    }
+
+    if (payload.gender === "NOT_SPECIFIED") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Genre requis",
+        path: ["gender"],
+      });
+    }
+
+    if (payload.memberType === "KID") {
+      if ((payload.parentName?.trim().length ?? 0) === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Nom du parent requis pour un enfant",
+          path: ["parentName"],
+        });
+      }
+      if ((payload.parentPhone?.trim().length ?? 0) < 6) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Téléphone du parent requis pour un enfant",
+          path: ["parentPhone"],
+        });
+      }
+    }
+  });
 
 export type UpdateMemberInput = z.infer<typeof updateMemberSchema>;

@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { MemberDemographicsFields } from "@/components/members/member-demographics-fields";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions } from "@/components/ui/form-layout";
 import { formatMoney } from "@/lib/money";
@@ -29,24 +30,29 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
   const [parentAddress, setParentAddress] = useState("");
   const [groupId, setGroupId] = useState("");
   const [planId, setPlanId] = useState("");
-    const [paymentAmount, setPaymentAmount] = useState("");
-    const [paymentMethod, setPaymentMethod] = useState("CASH");
-    const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().split("T")[0]);
-    const [paymentNotes, setPaymentNotes] = useState("");
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("CASH");
+  const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [paymentNotes, setPaymentNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const computedAge = birthDate
-    ? Math.max(0, new Date().getFullYear() - new Date(birthDate).getFullYear())
-    : null;
-
   const selectedPlan = plansOptions.find((p) => p.id === planId);
+  const profileIncomplete =
+    memberType === "NOT_SPECIFIED" ||
+    gender === "NOT_SPECIFIED" ||
+    (memberType === "KID" && (!parentName.trim() || parentPhone.trim().length < 6));
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setLoading(true);
     setMessage(null);
 
+    if (profileIncomplete) {
+      setMessage("Complétez adulte/enfant, genre et téléphone parent pour un enfant avant d'inscrire.");
+      return;
+    }
+
+    setLoading(true);
     const paymentCents = Math.round(parseFloat(paymentAmount.replace(",", ".")) * 100) || 0;
 
     const payload: Record<string, unknown> = {
@@ -116,14 +122,21 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Téléphone *</label>
+          <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">
+            {memberType === "KID" ? "Téléphone élève" : "Téléphone *"}
+          </label>
           <input
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="06 00 00 00 00"
             className="field"
-            required
+            required={memberType !== "KID"}
           />
+          {memberType === "KID" ? (
+            <p className="mt-1 text-[0.7rem] text-[var(--muted-foreground)]">
+              Optionnel pour un enfant: le téléphone parent devient le contact principal.
+            </p>
+          ) : null}
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Email</label>
@@ -136,58 +149,15 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Type de membre *</label>
-          <select value={memberType} onChange={(e) => setMemberType(e.target.value as typeof memberType)} className="field" required>
-            <option value="ADULT">Adulte</option>
-            <option value="KID">Enfant</option>
-            <option value="NOT_SPECIFIED">Non spécifié</option>
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Date de naissance *</label>
-          <input
-            type="date"
-            value={birthDate}
-            onChange={(e) => setBirthDate(e.target.value)}
-            className="field"
-            required
-          />
-          {computedAge !== null ? (
-            <p className="mt-1 text-[0.7rem] text-[var(--muted-foreground)]">Âge estimé: {computedAge} ans</p>
-          ) : null}
-        </div>
-      </div>
-
-      <div>
-        <label className="mb-2 block text-xs font-medium text-[var(--muted-foreground)]">Genre *</label>
-        <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Genre">
-          {[
-            { value: "MALE", label: "Garcon / homme" },
-            { value: "FEMALE", label: "Fille / femme" },
-          ].map((option) => (
-            <label
-              key={option.value}
-              className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
-                gender === option.value
-                  ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
-                  : "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-soft)]"
-              }`}
-            >
-              <input
-                type="radio"
-                name="member-gender"
-                value={option.value}
-                checked={gender === option.value}
-                onChange={() => setGender(option.value as typeof gender)}
-                required
-              />
-              {option.label}
-            </label>
-          ))}
-        </div>
-      </div>
+      <MemberDemographicsFields
+        memberType={memberType}
+        gender={gender}
+        birthDate={birthDate}
+        onMemberTypeChange={setMemberType}
+        onGenderChange={setGender}
+        onBirthDateChange={setBirthDate}
+        birthDateRequired
+      />
 
       <div>
         <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Adresse</label>
@@ -216,7 +186,7 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Téléphone du parent</label>
+              <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Téléphone du parent *</label>
               <input
                 value={parentPhone}
                 onChange={(e) => setParentPhone(e.target.value)}
@@ -233,7 +203,6 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
               onChange={(e) => setParentAddress(e.target.value)}
               placeholder="Adresse"
               className="field"
-              required
             />
           </div>
         </div>
@@ -347,7 +316,7 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
         <button type="button" onClick={() => router.push("/members")} className="btn btn-ghost btn-block-mobile">
           Annuler
         </button>
-        <button type="submit" disabled={loading} className="btn btn-primary btn-block-mobile">
+        <button type="submit" disabled={loading || profileIncomplete} className="btn btn-primary btn-block-mobile">
           {loading ? "Enregistrement..." : "Inscrire membre"}
         </button>
       </FormActions>

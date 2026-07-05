@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 
+import { MemberDemographicsFields } from "@/components/members/member-demographics-fields";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions } from "@/components/ui/form-layout";
@@ -77,7 +78,10 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
   const [message, setMessage] = useState<string | null>(null);
 
   const age = useMemo(() => computeAge(member.birthDate), [member.birthDate]);
-  const editAge = useMemo(() => computeAge(birthDate ? `${birthDate}T00:00:00` : null), [birthDate]);
+  const profileIncomplete =
+    memberType === "NOT_SPECIFIED" ||
+    gender === "NOT_SPECIFIED" ||
+    (memberType === "KID" && (!parentName.trim() || parentPhone.trim().length < 6));
 
   function resetForm() {
     setFirstName(member.firstName);
@@ -95,9 +99,14 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setLoading(true);
     setMessage(null);
 
+    if (profileIncomplete) {
+      setMessage("Complétez adulte/enfant, genre et téléphone parent pour un enfant avant d'enregistrer.");
+      return;
+    }
+
+    setLoading(true);
     const payload: Record<string, unknown> = {
       firstName,
       lastName,
@@ -165,51 +174,14 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
                 <input value={email} onChange={(e) => setEmail(e.target.value)} className="field" />
               </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-[var(--foreground)]">Type de membre</label>
-                <select value={memberType} onChange={(e) => setMemberType(e.target.value as typeof memberType)} className="field">
-                  <option value="ADULT">Adulte</option>
-                  <option value="KID">Enfant</option>
-                  <option value="NOT_SPECIFIED">Non spécifié</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-[var(--foreground)]">Date de naissance</label>
-                <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className="field" />
-                {editAge !== null ? (
-                  <p className="mt-1 text-[0.7rem] text-[var(--muted-foreground)]">Âge estimé: {editAge} ans</p>
-                ) : null}
-              </div>
-            </div>
-            <div>
-              <label className="mb-2 block text-xs font-semibold text-[var(--foreground)]">Genre</label>
-              <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Genre">
-                {[
-                  { value: "MALE", label: "Garcon / homme" },
-                  { value: "FEMALE", label: "Fille / femme" },
-                ].map((option) => (
-                  <label
-                    key={option.value}
-                    className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
-                      gender === option.value
-                        ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
-                        : "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-soft)]"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name={`member-${member.id}-gender`}
-                      value={option.value}
-                      checked={gender === option.value}
-                      onChange={() => setGender(option.value as typeof gender)}
-                      required
-                    />
-                    {option.label}
-                  </label>
-                ))}
-              </div>
-            </div>
+            <MemberDemographicsFields
+              memberType={memberType}
+              gender={gender}
+              birthDate={birthDate}
+              onMemberTypeChange={setMemberType}
+              onGenderChange={setGender}
+              onBirthDateChange={setBirthDate}
+            />
             <div>
               <label className="mb-1 block text-xs font-semibold text-[var(--foreground)]">Adresse</label>
               <input value={address} onChange={(e) => setAddress(e.target.value)} className="field" />
@@ -241,7 +213,7 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
           <FeedbackMessage message={message} />
 
           <FormActions sticky>
-            <button type="submit" className="btn btn-primary btn-block-mobile min-h-11" disabled={loading}>
+            <button type="submit" className="btn btn-primary btn-block-mobile min-h-11" disabled={loading || profileIncomplete}>
               {loading ? "Enregistrement..." : "Enregistrer"}
             </button>
             <button

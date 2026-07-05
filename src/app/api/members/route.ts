@@ -7,6 +7,7 @@ import { expireStaleSubscriptions } from "@/lib/membership-rules";
 import { resolveMemberPhone } from "@/lib/member-phone";
 import { issueReceiptForPayment } from "@/lib/receipts";
 import { checkGroupMemberCompatibility } from "@/lib/demographics";
+import { memberProfileCompletionError } from "@/lib/member-profile-policy";
 
 export const runtime = "nodejs";
 
@@ -403,12 +404,20 @@ export async function PATCH(request: Request) {
   const payload = updatePayload.data;
 
   try {
-    if (payload.memberType !== undefined || payload.gender !== undefined) {
+    const profileTouched =
+      payload.memberType !== undefined ||
+      payload.gender !== undefined ||
+      payload.parentName !== undefined ||
+      payload.parentPhone !== undefined;
+
+    if (profileTouched) {
       const existing = await prisma.member.findUnique({
         where: { id: memberId },
         select: {
           memberType: true,
           gender: true,
+          parentName: true,
+          parentPhone: true,
           groups: {
             where: { status: "ACTIVE" },
             select: {
@@ -430,6 +439,19 @@ export async function PATCH(request: Request) {
 
       const targetMemberType = payload.memberType ?? existing.memberType;
       const targetGender = payload.gender ?? existing.gender;
+      const targetParentName = payload.parentName === undefined ? existing.parentName : payload.parentName;
+      const targetParentPhone = payload.parentPhone === undefined ? existing.parentPhone : payload.parentPhone;
+      const profileError = memberProfileCompletionError({
+        memberType: targetMemberType,
+        gender: targetGender,
+        parentName: targetParentName,
+        parentPhone: targetParentPhone,
+      });
+
+      if (profileError) {
+        return NextResponse.json({ error: profileError }, { status: 400 });
+      }
+
       const incompatibleAssignment = existing.groups.find((assignment) => {
         return !checkGroupMemberCompatibility({
           groupType: assignment.group.groupType,
@@ -465,9 +487,18 @@ export async function PATCH(request: Request) {
         gender: payload.gender,
         birthDate: payload.birthDate === undefined ? undefined : new Date(payload.birthDate),
         address: payload.address === undefined ? undefined : payload.address?.trim() || null,
-        parentName: payload.parentName === undefined ? undefined : payload.parentName?.trim() || null,
-        parentPhone: payload.parentPhone === undefined ? undefined : payload.parentPhone?.trim() || null,
-        parentAddress: payload.parentAddress === undefined ? undefined : payload.parentAddress?.trim() || null,
+        parentName:
+          payload.memberType && payload.memberType !== "KID"
+            ? null
+            : payload.parentName === undefined ? undefined : payload.parentName?.trim() || null,
+        parentPhone:
+          payload.memberType && payload.memberType !== "KID"
+            ? null
+            : payload.parentPhone === undefined ? undefined : payload.parentPhone?.trim() || null,
+        parentAddress:
+          payload.memberType && payload.memberType !== "KID"
+            ? null
+            : payload.parentAddress === undefined ? undefined : payload.parentAddress?.trim() || null,
       },
     });
 

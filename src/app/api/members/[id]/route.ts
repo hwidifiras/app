@@ -4,6 +4,7 @@ import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { updateMemberSchema } from "@/lib/schemas/member";
 import { expireStaleSubscriptions } from "@/lib/membership-rules";
 import { checkGroupMemberCompatibility } from "@/lib/demographics";
+import { memberProfileCompletionError } from "@/lib/member-profile-policy";
 
 export const runtime = "nodejs";
 
@@ -262,12 +263,20 @@ export async function PATCH(
 
   try {
     const updated = await prisma.$transaction(async (tx) => {
-      if (payload.memberType !== undefined || payload.gender !== undefined) {
+      const profileTouched =
+        payload.memberType !== undefined ||
+        payload.gender !== undefined ||
+        payload.parentName !== undefined ||
+        payload.parentPhone !== undefined;
+
+      if (profileTouched) {
         const existing = await tx.member.findUnique({
           where: { id },
           select: {
             memberType: true,
             gender: true,
+            parentName: true,
+            parentPhone: true,
             groups: {
               where: { status: "ACTIVE" },
               select: {
@@ -287,6 +296,19 @@ export async function PATCH(
 
         const targetMemberType = payload.memberType ?? existing.memberType;
         const targetGender = payload.gender ?? existing.gender;
+        const targetParentName = payload.parentName === undefined ? existing.parentName : payload.parentName;
+        const targetParentPhone = payload.parentPhone === undefined ? existing.parentPhone : payload.parentPhone;
+        const profileError = memberProfileCompletionError({
+          memberType: targetMemberType,
+          gender: targetGender,
+          parentName: targetParentName,
+          parentPhone: targetParentPhone,
+        });
+
+        if (profileError) {
+          throw new Error(`MEMBER_PROFILE_INCOMPLETE:${profileError}`);
+        }
+
         const incompatibleAssignment = existing.groups.find(
           (assignment) =>
             !checkGroupMemberCompatibility({
@@ -352,6 +374,11 @@ export async function PATCH(
         { error: `Modification impossible: l'eleve resterait incompatible avec le cours "${groupName}".` },
         { status: 409 },
       );
+    }
+
+    if (error instanceof Error && error.message.startsWith("MEMBER_PROFILE_INCOMPLETE:")) {
+      const reason = error.message.split(":").slice(1).join(":");
+      return NextResponse.json({ error: reason }, { status: 400 });
     }
 
     console.error("PATCH /api/members/[id] error:", error);
