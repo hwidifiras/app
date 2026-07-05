@@ -54,6 +54,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - `/logs` now starts with summary metrics for useful actions, payments, presences, and system noise before the detailed audit table.
 - `schedule-templates-manager.tsx` now delegates reusable schedule template cards and apply-preview UI to `schedule-template-ui.tsx`, reducing page-manager file pressure without changing behavior.
 - `data-import-wizard.tsx` now delegates the bulk preview metrics/table UI to `data-import-bulk-ui.tsx`, reducing duplicated embedded table markup without changing behavior.
+- `data-import-wizard.tsx` now delegates the import mode and recent rollback list UI to `data-import-status-ui.tsx`, keeping import actions in the wizard while reducing presentation markup.
 - A broader product-readiness roadmap now exists at `docs/audits/product-readiness-roadmap-2026-07-05.md`, covering recoverability, receipts, UI/UX consistency, settings polish, group/coach/enrollment rules, and code organization.
 
 ## Current Product Fingerprint To Reuse
@@ -110,7 +111,7 @@ Large files to split carefully:
 - `src/components/settings/data-import-wizard.tsx`
 - `src/components/groups/group-schedules-manager.tsx`
 - `src/components/settings/schedule-templates-manager.tsx` (started: template cards, selected-template summary, and apply preview extracted)
-- `src/components/settings/data-import-wizard.tsx` (started: bulk import preview extracted)
+- `src/components/settings/data-import-wizard.tsx` (started: bulk import preview and status/rollback UI extracted)
 
 Refactor rule:
 
@@ -178,6 +179,7 @@ Latest UI settings checkpoint:
 - `/logs` summary pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `schedule-templates-manager.tsx` UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `data-import-wizard.tsx` bulk preview UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
+- `data-import-wizard.tsx` status/rollback UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
 
 Start a disposable local PostgreSQL test database, or set `TEST_DATABASE_URL`, before relying on `npm.cmd test`.
