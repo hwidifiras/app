@@ -58,7 +58,10 @@ const ACTION_LABELS: Record<string, string> = {
   ATTENDANCE_CREATED: "Présence enregistrée",
   ATTENDANCE_UPDATED: "Présence modifiée",
   ATTENDANCE_DELETED: "Pointage annulé",
+  SESSION_UPDATED: "Séance modifiée",
+  SESSION_CANCELLED: "Séance annulée",
   SESSION_POSTPONED: "Séance reportée",
+  COACH_SPORT_OVERRIDE_USED: "Exception coach utilisée",
   RECEIPT_ISSUED: "Reçu émis",
   RECEIPT_VOIDED: "Reçu annulé",
   RECEIPT_EMAIL_SENT: "Reçu envoyé par email",
@@ -220,6 +223,10 @@ function buildContext(action: string, details: Record<string, unknown> | null): 
   if (action === "PAYMENT_REVERSED") {
     const amount = formatMoneyFromCents(details.reversedAmount);
     if (amount) return `Annulation ${amount}`;
+  }
+
+  if (action === "SESSION_UPDATED" && typeof details.mode === "string") {
+    return details.mode === "permanent" ? "Permanent" : "Exception";
   }
 
   if ((action === "RECEIPT_EMAIL_SENT" || action === "RECEIPT_EMAIL_FAILED") && typeof details.email === "string") {

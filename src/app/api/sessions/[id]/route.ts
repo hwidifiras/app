@@ -133,6 +133,50 @@ function sessionResponsePayload(
   };
 }
 
+type SessionAuditSnapshotInput = {
+  id: string;
+  groupId: string;
+  scheduleId: string | null;
+  sessionDate: Date;
+  startTime: string;
+  endTime: string;
+  coachId: string | null;
+  room: string;
+  status: string;
+  exceptionReason: string | null;
+  postponedTo?: Date | null;
+  postponementReason?: string | null;
+  postponementDetails?: string | null;
+};
+
+function sessionAuditSnapshot(session: SessionAuditSnapshotInput) {
+  return {
+    id: session.id,
+    groupId: session.groupId,
+    scheduleId: session.scheduleId,
+    sessionDate: session.sessionDate.toISOString(),
+    startTime: session.startTime,
+    endTime: session.endTime,
+    coachId: session.coachId,
+    room: session.room,
+    status: session.status,
+    exceptionReason: session.exceptionReason,
+    postponedTo: session.postponedTo ? session.postponedTo.toISOString() : null,
+    postponementReason: session.postponementReason ?? null,
+    postponementDetails: session.postponementDetails ?? null,
+  };
+}
+
+function changedSessionFields(
+  before: ReturnType<typeof sessionAuditSnapshot>,
+  after: ReturnType<typeof sessionAuditSnapshot>,
+) {
+  return Object.keys(after).filter((key) => {
+    if (key === "id" || key === "groupId" || key === "scheduleId") return false;
+    return before[key as keyof typeof before] !== after[key as keyof typeof after];
+  });
+}
+
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   let actor;
   try {
@@ -181,6 +225,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       coachId: true,
       room: true,
       status: true,
+      exceptionReason: true,
+      postponedTo: true,
+      postponementReason: true,
+      postponementDetails: true,
       group: { select: { name: true, sportId: true } },
     },
   });
@@ -419,6 +467,39 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             operation: "SESSION_UPDATE_PERMANENT",
           })
         : null;
+      const editedPlan = plannedUpdates.find((planned) => planned.id === id) ?? plannedUpdates[0];
+      const beforeSnapshot = sessionAuditSnapshot(existing);
+      const requestedSnapshot = {
+        ...beforeSnapshot,
+        sessionDate: (editedPlan?.sessionDate ?? targetDate).toISOString(),
+        startTime: editedPlan?.startTime ?? targetStartTime,
+        endTime: editedPlan?.endTime ?? targetEndTime,
+        coachId: payload.coachId !== undefined ? payload.coachId : existing.coachId,
+        room: payload.room !== undefined ? payload.room : existing.room,
+        status: payload.status ?? existing.status,
+        exceptionReason: payload.exceptionReason ?? existing.exceptionReason,
+      };
+      const changedFields = changedSessionFields(beforeSnapshot, requestedSnapshot);
+
+      ops.push(
+        prisma.auditLog.create({
+          data: {
+            action: "SESSION_UPDATED",
+            entityType: "Session",
+            entityId: id,
+            userId: actor.id,
+            details: JSON.stringify({
+              mode: "permanent",
+              affectedSessionIds: affectedIds,
+              affectedCount: affectedIds.length,
+              scheduleId: existing.scheduleId,
+              changedFields,
+              before: beforeSnapshot,
+              requested: requestedSnapshot,
+            }),
+          },
+        }),
+      );
 
       if (details) {
         ops.push(
@@ -461,15 +542,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       throw error;
     }
 
-    const updated = await prisma.session.update({
-      where: { id },
-      data: sessionData,
-      include: {
-        group: { select: { name: true, sportId: true } },
-        coach: { select: { firstName: true, lastName: true } },
-      },
-    });
-
     const details = eligibility?.ok
       ? coachSportOverrideAuditDetails(eligibility, {
           sessionId: id,
@@ -479,17 +551,47 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         })
       : null;
 
-    if (details) {
-      await prisma.auditLog.create({
+    const beforeSnapshot = sessionAuditSnapshot(existing);
+    const updated = await prisma.$transaction(async (tx) => {
+      const updatedSession = await tx.session.update({
+        where: { id },
+        data: sessionData,
+        include: {
+          group: { select: { name: true, sportId: true } },
+          coach: { select: { firstName: true, lastName: true } },
+        },
+      });
+      const afterSnapshot = sessionAuditSnapshot(updatedSession);
+
+      await tx.auditLog.create({
         data: {
-          action: "COACH_SPORT_OVERRIDE_USED",
+          action: "SESSION_UPDATED",
           entityType: "Session",
           entityId: id,
           userId: actor.id,
-          details,
+          details: JSON.stringify({
+            mode: "exception",
+            changedFields: changedSessionFields(beforeSnapshot, afterSnapshot),
+            before: beforeSnapshot,
+            after: afterSnapshot,
+          }),
         },
       });
-    }
+
+      if (details) {
+        await tx.auditLog.create({
+          data: {
+            action: "COACH_SPORT_OVERRIDE_USED",
+            entityType: "Session",
+            entityId: id,
+            userId: actor.id,
+            details,
+          },
+        });
+      }
+
+      return updatedSession;
+    });
 
     return NextResponse.json({ data: sessionResponsePayload(updated) });
   } catch (error) {

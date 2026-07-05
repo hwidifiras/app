@@ -44,7 +44,8 @@ The codebase already has `src/lib/recovery-policy.ts` with this shared vocabular
 | Groups | `DELETE /api/groups` | Sets `isActive=false`, writes `GROUP_DEACTIVATED`. | Good. |
 | Group schedules | `DELETE /api/groups/[id]/schedules` | Sets `effectiveTo`, writes `GROUP_SCHEDULE_CLOSED`. | Good. |
 | Schedule templates | `DELETE /api/schedule-templates/[id]` | Sets `isActive=false`, writes audit. | Good. |
-| Sessions | `DELETE /api/sessions/[id]` | Cancels session only if not completed and no attendances block edit, writes audit. | Good. |
+| Session edits | `PATCH /api/sessions/[id]` | Blocks completed sessions and sessions with pointage, validates conflicts, and now writes `SESSION_UPDATED` audit snapshots. Exception edits store before/after; permanent edits store affected future session IDs and requested values. | Good. |
+| Session cancellation | `DELETE /api/sessions/[id]` | Cancels session only if not completed and no attendances block edit, writes audit. | Good. |
 | Attendance creation/update | `POST/PATCH /api/attendances` | Uses attendance/session policies and writes audit. | Good, but finalization correction UX still needs review. |
 | Attendance delete | `DELETE /api/attendances` | Physically deletes the attendance row after session-state checks, restores session balance, and now writes a richer `Pointage annule` audit snapshot with previous status, override reason, checker, checked time, subscription, member, session, and balance effect. | Medium-good: behavior is safeguarded and now recoverable from logs, but perfect append-only pointage history still needs a schema change. |
 | Data import apply | `POST /api/data-import` and `/api/data-import/bulk` | Applies import with audit details and rollback metadata. | Good for migration mode. |
@@ -60,8 +61,10 @@ The codebase already has `src/lib/recovery-policy.ts` with this shared vocabular
    - If the client wants perfect append-only pointage history, change delete into `ATTENDANCE_VOIDED` or `ATTENDANCE_CORRECTED` with a preserved row and schema support.
 
 2. Session edits with existing business activity should stay conservative:
-   - Current cancellation checks attendances.
-   - Keep requiring reason and before/after audit for edits affecting time, coach, room, or group.
+   - Current edit/cancellation paths block completed sessions and sessions with pointage.
+   - Exception edits now write before/after audit snapshots.
+   - Permanent edits now write affected future session IDs and requested values.
+   - Future improvement: add a staff-entered reason for every broad permanent edit, not only cancellations/exceptions.
 
 3. Enrollment recovery must be visible in UI:
    - The code supports traceable recovery.
