@@ -15,6 +15,8 @@ function serializeSettings(settings: Awaited<ReturnType<typeof getClubSettings>>
     clubLogoUrl: settings.clubLogoUrl ?? "",
     clubAddress: settings.clubAddress,
     clubPhone: settings.clubPhone,
+    receiptLegalName: settings.receiptLegalName,
+    receiptTaxId: settings.receiptTaxId,
     allowCheckInWithPartialPayment: settings.allowCheckInWithPartialPayment,
     allowCheckInWithoutSubscription: settings.allowCheckInWithoutSubscription,
     absentConsumesSession: settings.absentConsumesSession,
@@ -172,6 +174,8 @@ export async function PATCH(request: Request) {
       ...(data.clubName !== undefined ? { clubName: data.clubName } : {}),
       ...(data.clubAddress !== undefined ? { clubAddress: data.clubAddress } : {}),
       ...(data.clubPhone !== undefined ? { clubPhone: data.clubPhone } : {}),
+      ...(data.receiptLegalName !== undefined ? { receiptLegalName: data.receiptLegalName } : {}),
+      ...(data.receiptTaxId !== undefined ? { receiptTaxId: data.receiptTaxId } : {}),
       ...(data.allowCheckInWithPartialPayment !== undefined
         ? { allowCheckInWithPartialPayment: data.allowCheckInWithPartialPayment }
         : {}),

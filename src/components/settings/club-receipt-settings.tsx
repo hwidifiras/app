@@ -8,6 +8,8 @@ import { formatMoney } from "@/lib/money";
 
 export function ClubReceiptSettings({
   clubName,
+  receiptLegalName,
+  receiptTaxId,
   receiptPrefix,
   nextReceiptSequence,
   receiptFooter,
@@ -16,10 +18,14 @@ export function ClubReceiptSettings({
   onReceiptPrefixChange,
   onNextReceiptSequenceChange,
   onReceiptFooterChange,
+  onReceiptLegalNameChange,
+  onReceiptTaxIdChange,
   onReceiptEmailDefaultChange,
   onReceiptPrintDefaultChange,
 }: {
   clubName: string;
+  receiptLegalName: string;
+  receiptTaxId: string;
   receiptPrefix: string;
   nextReceiptSequence: string;
   receiptFooter: string;
@@ -28,6 +34,8 @@ export function ClubReceiptSettings({
   onReceiptPrefixChange: (value: string) => void;
   onNextReceiptSequenceChange: (value: string) => void;
   onReceiptFooterChange: (value: string) => void;
+  onReceiptLegalNameChange: (value: string) => void;
+  onReceiptTaxIdChange: (value: string) => void;
   onReceiptEmailDefaultChange: (value: boolean) => void;
   onReceiptPrintDefaultChange: (value: boolean) => void;
 }) {
@@ -89,6 +97,34 @@ export function ClubReceiptSettings({
               maxLength={500}
             />
           </FormField>
+          <FormField
+            label="Nom légal sur reçu"
+            htmlFor="receiptLegalName"
+            hint="Facultatif: raison sociale ou nom administratif imprimé sur les reçus."
+          >
+            <input
+              id="receiptLegalName"
+              className="field"
+              value={receiptLegalName}
+              onChange={(event) => onReceiptLegalNameChange(event.target.value)}
+              maxLength={160}
+              placeholder="Ex. Association Sportive..."
+            />
+          </FormField>
+          <FormField
+            label="Identifiant fiscal"
+            htmlFor="receiptTaxId"
+            hint="Facultatif: matricule fiscal, identifiant association ou référence administrative."
+          >
+            <input
+              id="receiptTaxId"
+              className="field"
+              value={receiptTaxId}
+              onChange={(event) => onReceiptTaxIdChange(event.target.value)}
+              maxLength={80}
+              placeholder="Ex. MF / ID..."
+            />
+          </FormField>
         </FormGrid>
         <div className="grid gap-3 md:grid-cols-2">
           <SettingsToggleRow
@@ -119,6 +155,12 @@ export function ClubReceiptSettings({
             </p>
             <p className="mt-1 text-lg font-black text-[var(--foreground)]">{sampleReceiptNumber}</p>
             <p className="mt-1 text-xs text-[var(--muted-foreground)]">{clubName.trim() || "Nom du club a completer"}</p>
+            {receiptLegalName.trim() ? (
+              <p className="mt-1 text-xs font-semibold text-[var(--foreground)]">{receiptLegalName.trim()}</p>
+            ) : null}
+            {receiptTaxId.trim() ? (
+              <p className="mt-0.5 text-[0.68rem] text-[var(--muted-foreground)]">ID fiscal: {receiptTaxId.trim()}</p>
+            ) : null}
           </div>
         </div>
 

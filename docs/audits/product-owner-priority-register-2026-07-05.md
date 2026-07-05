@@ -148,7 +148,7 @@ Next improvements:
 
 | Feature | Why | Priority |
 | --- | --- | --- |
-| Company/fiscal fields in club settings | Universal for different clubs and receipts. | P1 |
+| Company/fiscal fields in club settings | Implemented for next receipts through optional legal name and fiscal/admin identifier fields. Browser QA remains. | P1 verify |
 | WhatsApp-friendly verification link copy | Useful in Tunisia where email may not be the main channel. | P1 |
 | Receipt delivery status on payment rows/details | Staff can know whether it was printed/sent. | P1 |
 | Receipt template settings | Needed for different martial-arts clients. | P2 |

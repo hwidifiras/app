@@ -22,6 +22,8 @@ export const updateClubSettingsSchema = z.object({
   clubLogoUrl: clubLogoUrlSchema.optional(),
   clubAddress: z.string().trim().max(240).optional(),
   clubPhone: z.string().trim().max(40).optional(),
+  receiptLegalName: z.string().trim().max(160).optional(),
+  receiptTaxId: z.string().trim().max(80).optional(),
   allowCheckInWithPartialPayment: z.boolean().optional(),
   allowCheckInWithoutSubscription: z.boolean().optional(),
   absentConsumesSession: z.boolean().optional(),

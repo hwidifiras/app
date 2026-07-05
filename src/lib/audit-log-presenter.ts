@@ -103,6 +103,8 @@ const CLUB_FIELD_LABELS: Record<string, string> = {
   receiptFooter: "Texte bas de recu",
   receiptEmailDefault: "Email recu automatique",
   receiptPrintDefault: "Impression recu proposee",
+  receiptLegalName: "Nom légal reçu",
+  receiptTaxId: "Identifiant fiscal reçu",
   clubName: "Nom du club",
   clubLogoUrl: "Logo",
   clubAddress: "Adresse",

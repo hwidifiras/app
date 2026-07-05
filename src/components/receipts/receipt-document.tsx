@@ -54,8 +54,14 @@ export function ReceiptDocument({
         </div>
         <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 text-sm">
           <p className="font-bold text-[#0B1220]">{snapshot.club.name}</p>
+          {snapshot.club.legalName ? (
+            <p className="mt-1 font-semibold text-[#0B1220]">{snapshot.club.legalName}</p>
+          ) : null}
           {snapshot.club.address ? <p className="mt-1 text-[var(--muted-foreground)]">{snapshot.club.address}</p> : null}
           {snapshot.club.phone ? <p className="mt-1 text-[var(--muted-foreground)]">{snapshot.club.phone}</p> : null}
+          {snapshot.club.taxId ? (
+            <p className="mt-1 text-[var(--muted-foreground)]">ID fiscal: {snapshot.club.taxId}</p>
+          ) : null}
         </div>
       </header>
 

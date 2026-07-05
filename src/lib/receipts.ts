@@ -11,6 +11,8 @@ type ReceiptSettingsRow = {
   clubLogoUrl: string;
   clubAddress: string;
   clubPhone: string;
+  receiptLegalName: string;
+  receiptTaxId: string;
   receiptPrefix: string;
   nextReceiptSequence: number;
   receiptFooter: string;
@@ -30,6 +32,8 @@ export type ReceiptSnapshot = {
     logoUrl: string;
     address: string;
     phone: string;
+    legalName?: string;
+    taxId?: string;
     footer: string;
   };
   member: {
@@ -100,6 +104,8 @@ async function nextReceiptSettings(
       clubLogoUrl: true,
       clubAddress: true,
       clubPhone: true,
+      receiptLegalName: true,
+      receiptTaxId: true,
       receiptPrefix: true,
       nextReceiptSequence: true,
       receiptFooter: true,
@@ -115,6 +121,8 @@ async function nextReceiptSettings(
         clubLogoUrl: true,
         clubAddress: true,
         clubPhone: true,
+        receiptLegalName: true,
+        receiptTaxId: true,
         receiptPrefix: true,
         nextReceiptSequence: true,
         receiptFooter: true,
@@ -132,6 +140,8 @@ async function nextReceiptSettings(
       clubLogoUrl: true,
       clubAddress: true,
       clubPhone: true,
+      receiptLegalName: true,
+      receiptTaxId: true,
       receiptPrefix: true,
       nextReceiptSequence: true,
       receiptFooter: true,
@@ -180,6 +190,8 @@ export async function issueReceiptForPayment(
       logoUrl: settings.clubLogoUrl || "",
       address: settings.clubAddress || "",
       phone: settings.clubPhone || "",
+      legalName: settings.receiptLegalName || "",
+      taxId: settings.receiptTaxId || "",
       footer: settings.receiptFooter || "",
     },
     member: {

@@ -1,0 +1,3 @@
+ALTER TABLE "ClubSettings"
+ADD COLUMN "receiptLegalName" TEXT NOT NULL DEFAULT '',
+ADD COLUMN "receiptTaxId" TEXT NOT NULL DEFAULT '';

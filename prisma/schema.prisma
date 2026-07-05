@@ -218,6 +218,8 @@ model ClubSettings {
   clubLogoUrl                           String      @default("")
   clubAddress                           String      @default("")
   clubPhone                             String      @default("")
+  receiptLegalName                      String      @default("")
+  receiptTaxId                          String      @default("")
   allowCheckInWithPartialPayment        Boolean     @default(true)
   allowCheckInWithoutSubscription       Boolean     @default(false)
   absentConsumesSession                 Boolean     @default(true)

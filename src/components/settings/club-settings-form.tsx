@@ -23,6 +23,8 @@ export type ClubSettingsFormData = {
   clubLogoUrl: string;
   clubAddress: string;
   clubPhone: string;
+  receiptLegalName: string;
+  receiptTaxId: string;
   allowCheckInWithPartialPayment: boolean;
   allowCheckInWithoutSubscription: boolean;
   absentConsumesSession: boolean;
@@ -62,6 +64,8 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
   const [logoUploading, setLogoUploading] = useState(false);
   const [clubAddress, setClubAddress] = useState(initial.clubAddress);
   const [clubPhone, setClubPhone] = useState(initial.clubPhone);
+  const [receiptLegalName, setReceiptLegalName] = useState(initial.receiptLegalName);
+  const [receiptTaxId, setReceiptTaxId] = useState(initial.receiptTaxId);
   const [allowPartialPayment, setAllowPartialPayment] = useState(initial.allowCheckInWithPartialPayment);
   const [allowWithoutSubscription, setAllowWithoutSubscription] = useState(
     initial.allowCheckInWithoutSubscription,
@@ -128,6 +132,8 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
         clubLogoUrl,
         clubAddress,
         clubPhone,
+        receiptLegalName: receiptLegalName.trim(),
+        receiptTaxId: receiptTaxId.trim(),
         allowCheckInWithPartialPayment: allowPartialPayment,
         allowCheckInWithoutSubscription: allowWithoutSubscription,
         absentConsumesSession,
@@ -168,6 +174,8 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
     setClubLogoUrl(json.data.clubLogoUrl ?? "");
     setClubAddress(json.data.clubAddress);
     setClubPhone(json.data.clubPhone);
+    setReceiptLegalName(json.data.receiptLegalName ?? "");
+    setReceiptTaxId(json.data.receiptTaxId ?? "");
     setAllowPartialPayment(json.data.allowCheckInWithPartialPayment);
     setAllowWithoutSubscription(json.data.allowCheckInWithoutSubscription);
     setAbsentConsumesSession(json.data.absentConsumesSession);
@@ -491,6 +499,8 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
       >
         <ClubReceiptSettings
           clubName={clubName}
+          receiptLegalName={receiptLegalName}
+          receiptTaxId={receiptTaxId}
           receiptPrefix={receiptPrefix}
           nextReceiptSequence={nextReceiptSequence}
           receiptFooter={receiptFooter}
@@ -499,6 +509,8 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
           onReceiptPrefixChange={setReceiptPrefix}
           onNextReceiptSequenceChange={setNextReceiptSequence}
           onReceiptFooterChange={setReceiptFooter}
+          onReceiptLegalNameChange={setReceiptLegalName}
+          onReceiptTaxIdChange={setReceiptTaxId}
           onReceiptEmailDefaultChange={setReceiptEmailDefault}
           onReceiptPrintDefaultChange={setReceiptPrintDefault}
         />

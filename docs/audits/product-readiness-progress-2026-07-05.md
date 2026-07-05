@@ -42,6 +42,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Receipt email sending uses the existing Resend email infrastructure and writes audit logs.
 - Club settings now control receipt prefix, next sequence, footer, default print, and default email behavior.
 - Payment creation honors `receiptEmailDefault`: if enabled and the member has an email, the receipt is sent automatically after the payment transaction commits.
+- Club settings now support optional legal receipt identity fields: official receipt name and fiscal/admin identifier. New receipt snapshots preserve and render these fields, while existing receipts keep their original snapshots.
 
 ### Martial-Arts Product Fit
 
@@ -179,7 +180,7 @@ The latest product-owner concerns should be treated as one connected execution s
 
 Current receipt system is functional. Excellent version should add:
 
-- optional company/tax fields in club settings;
+- browser QA for optional company/tax fields in club settings and printed receipt output;
 - receipt delivery history visible from payment detail;
 - email template settings;
 - resend button in payment history, not only receipt page.
@@ -218,6 +219,7 @@ Latest UI settings checkpoint:
 - `/settings/schedules` clarity and stale-preview safety pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `/settings/data-import` guidance pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `/logs` summary pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
+- Receipt legal/fiscal identity field pass added DB fields and receipt snapshot/rendering support; it passed `npx.cmd prisma generate`, `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`. `npm.cmd test` remains blocked by the missing local PostgreSQL server at `localhost:5432`.
 - `schedule-templates-manager.tsx` UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `data-import-wizard.tsx` bulk preview UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `data-import-wizard.tsx` status/rollback UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.

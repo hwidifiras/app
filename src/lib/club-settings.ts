@@ -8,6 +8,8 @@ export type ClubSettingsData = {
   clubLogoUrl: string;
   clubAddress: string;
   clubPhone: string;
+  receiptLegalName: string;
+  receiptTaxId: string;
   allowCheckInWithPartialPayment: boolean;
   allowCheckInWithoutSubscription: boolean;
   absentConsumesSession: boolean;
@@ -31,6 +33,8 @@ const DEFAULTS = {
   clubLogoUrl: "",
   clubAddress: "",
   clubPhone: "",
+  receiptLegalName: "",
+  receiptTaxId: "",
   allowCheckInWithPartialPayment: true,
   allowCheckInWithoutSubscription: false,
   absentConsumesSession: true,
@@ -54,6 +58,8 @@ function normalizeClubSettings(row: Record<string, unknown>): ClubSettingsData {
     clubLogoUrl: typeof row.clubLogoUrl === "string" ? row.clubLogoUrl : DEFAULTS.clubLogoUrl,
     clubAddress: typeof row.clubAddress === "string" ? row.clubAddress : DEFAULTS.clubAddress,
     clubPhone: typeof row.clubPhone === "string" ? row.clubPhone : DEFAULTS.clubPhone,
+    receiptLegalName: typeof row.receiptLegalName === "string" ? row.receiptLegalName : DEFAULTS.receiptLegalName,
+    receiptTaxId: typeof row.receiptTaxId === "string" ? row.receiptTaxId : DEFAULTS.receiptTaxId,
     allowCheckInWithPartialPayment:
       typeof row.allowCheckInWithPartialPayment === "boolean"
         ? row.allowCheckInWithPartialPayment
