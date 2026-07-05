@@ -175,3 +175,18 @@ Latest UI settings checkpoint:
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
 
 Start a disposable local PostgreSQL test database, or set `TEST_DATABASE_URL`, before relying on `npm.cmd test`.
+
+## Browser QA Checkpoint
+
+A read-only browser QA pass was started against the currently reachable live app and documented here:
+
+- `docs/audits/product-readiness-browser-2026-07-05/ui-qa-notes.md`
+
+Key result:
+
+- Live `https://we-discipline.com/settings` returns `404`, while the current branch contains `/settings`.
+- Live settings subpages still show older layouts, so the live app is behind the current branch.
+- No horizontal overflow was detected in the captured live settings/admin pages at desktop `1440x900` or mobile `390x844`.
+- Raw screenshots are stored locally under an ignored `screenshots/` folder to avoid committing client data.
+
+Current-branch screenshot QA remains pending until the branch is deployed to staging/live or a local Postgres-backed runtime is available.
