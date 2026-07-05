@@ -4,6 +4,8 @@ import Link from "next/link";
 import { Mail, Printer } from "lucide-react";
 import { useState } from "react";
 
+import { buildReceiptVerificationPath } from "@/lib/receipt-verification-url";
+
 type ReceiptActionsProps = {
   receiptId: string;
   receiptNumber: string;
@@ -19,7 +21,7 @@ export function ReceiptActions({
 }: ReceiptActionsProps) {
   const [isSending, setIsSending] = useState(false);
   const [message, setMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
-  const verifyHref = `/receipts/verify?receiptNumber=${encodeURIComponent(receiptNumber)}&code=${encodeURIComponent(verificationCode)}`;
+  const verifyHref = buildReceiptVerificationPath(receiptNumber, verificationCode);
   const hasEmail = Boolean(defaultEmail?.trim());
 
   async function sendEmail() {

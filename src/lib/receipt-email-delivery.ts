@@ -1,6 +1,7 @@
 import { sendReceiptEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 import { parseReceiptSnapshot } from "@/lib/receipts";
+import { buildReceiptVerificationUrl } from "@/lib/receipt-verification-url";
 
 type ReceiptEmailFailureCode =
   | "RECEIPT_NOT_FOUND"
@@ -19,17 +20,6 @@ export type ReceiptEmailDeliveryResult =
       status: number;
       email?: string;
     };
-
-export function buildReceiptVerificationUrl(
-  requestUrl: string,
-  receiptNumber: string,
-  verificationCode: string,
-) {
-  const url = new URL("/receipts/verify", requestUrl);
-  url.searchParams.set("receiptNumber", receiptNumber);
-  url.searchParams.set("code", verificationCode);
-  return url.toString();
-}
 
 export async function sendReceiptEmailForReceipt({
   receiptId,

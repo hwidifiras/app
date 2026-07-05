@@ -1,6 +1,9 @@
+import { headers } from "next/headers";
+
 import { ReceiptDocument } from "@/components/receipts/receipt-document";
 import { prisma } from "@/lib/prisma";
 import { parseReceiptSnapshot } from "@/lib/receipts";
+import { buildReceiptVerificationUrl } from "@/lib/receipt-verification-url";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -11,9 +14,14 @@ export default async function ReceiptVerifyPage({
   searchParams: Promise<{ receiptNumber?: string; code?: string }>;
 }) {
   const params = await searchParams;
+  const h = await headers();
   const receiptNumber = params.receiptNumber?.trim().toUpperCase() ?? "";
   const code = params.code?.trim().toUpperCase() ?? "";
   const canSearch = receiptNumber.length > 0 && code.length > 0;
+  const host = h.get("host");
+  const protocol = h.get("x-forwarded-proto") ?? "https";
+  const verificationUrl =
+    canSearch && host ? buildReceiptVerificationUrl(`${protocol}://${host}`, receiptNumber, code) : undefined;
 
   const receipt = canSearch
     ? await prisma.receipt.findFirst({
@@ -61,7 +69,14 @@ export default async function ReceiptVerifyPage({
           </div>
         ) : null}
 
-        {snapshot && receipt ? <ReceiptDocument snapshot={snapshot} status={receipt.status} publicMode /> : null}
+        {snapshot && receipt ? (
+          <ReceiptDocument
+            snapshot={snapshot}
+            status={receipt.status}
+            publicMode
+            verificationUrl={verificationUrl}
+          />
+        ) : null}
       </div>
     </main>
   );

@@ -1,17 +1,20 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 
 import { ReceiptActions } from "@/components/receipts/receipt-actions";
 import { ReceiptDocument } from "@/components/receipts/receipt-document";
 import { PageHeader } from "@/components/ui/page-header";
 import { prisma } from "@/lib/prisma";
 import { parseReceiptSnapshot } from "@/lib/receipts";
+import { buildReceiptVerificationUrl } from "@/lib/receipt-verification-url";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function ReceiptPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const h = await headers();
   const receipt = await prisma.receipt.findUnique({
     where: { id },
     select: {
@@ -39,6 +42,11 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
   if (!receipt) notFound();
   const snapshot = parseReceiptSnapshot(receipt);
   if (!snapshot) notFound();
+  const host = h.get("host");
+  const protocol = h.get("x-forwarded-proto") ?? "https";
+  const verificationUrl = host
+    ? buildReceiptVerificationUrl(`${protocol}://${host}`, receipt.receiptNumber, receipt.verificationCode)
+    : undefined;
 
   return (
     <main className="app-shell py-4 md:py-8 print:bg-white print:p-0">
@@ -63,7 +71,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
         />
       </div>
 
-      <ReceiptDocument snapshot={snapshot} status={receipt.status} />
+      <ReceiptDocument snapshot={snapshot} status={receipt.status} verificationUrl={verificationUrl} />
     </main>
   );
 }

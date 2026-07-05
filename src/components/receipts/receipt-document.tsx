@@ -25,10 +25,12 @@ export function ReceiptDocument({
   snapshot,
   status,
   publicMode = false,
+  verificationUrl,
 }: {
   snapshot: ReceiptSnapshot;
   status: "ISSUED" | "VOIDED";
   publicMode?: boolean;
+  verificationUrl?: string;
 }) {
   const isVoided = status === "VOIDED";
   const memberName = publicMode
@@ -106,6 +108,11 @@ export function ReceiptDocument({
 
       <footer className="mt-5 border-t border-[var(--border)] pt-4 text-xs leading-5 text-[var(--muted-foreground)]">
         <p>Ce recu est verifiable avec le numero et le code de verification.</p>
+        {verificationUrl ? (
+          <p className="mt-1 break-all">
+            Lien verification: <span className="font-mono text-[#0B1220]">{verificationUrl}</span>
+          </p>
+        ) : null}
         {snapshot.club.footer ? <p className="mt-1">{snapshot.club.footer}</p> : null}
         <p className="mt-1 font-mono text-[0.68rem]">Hash: {snapshot.receipt.contentHash}</p>
       </footer>
