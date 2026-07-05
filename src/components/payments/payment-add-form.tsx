@@ -9,16 +9,18 @@ import {
   Check,
   CheckCircle2,
   CreditCard,
-  UserRound,
   Wallet,
 } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FieldControl } from "@/components/ui/field-control";
 import { FormActions, FormField, FormGrid, FormSection, FormSectionNav } from "@/components/ui/form-layout";
-import { SubscriptionBillingSummary } from "@/components/ui/reception-info-card";
 import { UndoButton } from "@/components/ui/undo-button";
 import { PaymentSummaryPanel } from "@/components/payments/payment-summary-panel";
+import {
+  PaymentSubscriptionSelector,
+  type PaymentSubscriptionRow,
+} from "@/components/payments/payment-subscription-selector";
 import { useActionHistory } from "@/hooks/use-action-history";
 import { formatMoney, MONEY_INPUT_SUFFIX } from "@/lib/money";
 import { cn } from "@/lib/utils";
@@ -30,21 +32,12 @@ const METHODS = [
   { value: "CHECK", label: "Chèque", icon: <Banknote className="size-4" /> },
 ];
 
-type SubscriptionRow = {
-  id: string;
-  memberId: string;
-  memberName: string;
-  planName: string;
-  amount: number;
-  totalPaid: number;
-};
-
 export function PaymentAddForm({
   subscriptions: initialSubscriptions,
   defaultSubscriptionId,
   receiptPrintDefault = true,
 }: {
-  subscriptions: SubscriptionRow[];
+  subscriptions: PaymentSubscriptionRow[];
   defaultSubscriptionId?: string;
   receiptPrintDefault?: boolean;
 }) {
@@ -307,71 +300,16 @@ export function PaymentAddForm({
 
         <div className="grid min-w-0 items-start gap-4 lg:grid-cols-12">
           <div className="space-y-4 lg:col-span-8">
-            <FormSection
-              id="payment-member"
-              title="1. Dette"
-              description="Choisissez le membre puis l'abonnement qui a encore un solde."
-            >
-              <FormGrid>
-                <FormField label="Membre *" htmlFor="member">
-                  <FieldControl icon={<UserRound className="size-4" />}>
-                    <select
-                      id="member"
-                      value={memberId}
-                      onChange={(event) => selectMember(event.target.value)}
-                      required
-                      className="field has-leading-icon"
-                    >
-                      <option value="">Sélectionner un membre</option>
-                      {members.map((member) => (
-                        <option key={member.id} value={member.id}>
-                          {member.name}
-                        </option>
-                      ))}
-                    </select>
-                  </FieldControl>
-                </FormField>
-
-                <FormField label="Abonnement à régler *" htmlFor="subscription">
-                  <select
-                    id="subscription"
-                    value={subscriptionId}
-                    onChange={(event) => selectSubscription(event.target.value)}
-                    required
-                    disabled={!memberId}
-                    className="field"
-                  >
-                    <option value="">Sélectionner un abonnement</option>
-                    {memberSubscriptions.map((subscription) => (
-                      <option key={subscription.id} value={subscription.id}>
-                        {subscription.planName} · reste {formatMoney(subscription.amount - subscription.totalPaid)}
-                      </option>
-                    ))}
-                  </select>
-                </FormField>
-              </FormGrid>
-
-              {selected ? (
-                <div className="mt-4 md:hidden">
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-sm">
-                    <span className="text-[var(--muted-foreground)]">Reste à encaisser</span>
-                    <strong className="tabular-nums text-[var(--danger)]">{formatMoney(remaining)}</strong>
-                  </div>
-                  <a href="#payment-amount" className="btn btn-primary btn-block-mobile mt-2 min-h-11">
-                    Saisir le montant
-                  </a>
-                </div>
-              ) : null}
-
-              {selected ? (
-                <div className="mt-4 hidden md:block">
-                  <SubscriptionBillingSummary
-                    amountDueCents={selected.amount}
-                    totalPaidCents={selected.totalPaid}
-                  />
-                </div>
-              ) : null}
-            </FormSection>
+            <PaymentSubscriptionSelector
+              members={members}
+              memberId={memberId}
+              subscriptionId={subscriptionId}
+              memberSubscriptions={memberSubscriptions}
+              selected={selected}
+              remaining={remaining}
+              onMemberChange={selectMember}
+              onSubscriptionChange={selectSubscription}
+            />
 
             <FormSection
               id="payment-amount"
