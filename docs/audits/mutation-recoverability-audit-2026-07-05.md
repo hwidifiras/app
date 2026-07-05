@@ -85,6 +85,6 @@ The codebase already has `src/lib/recovery-policy.ts` with this shared vocabular
 ## Immediate Code Direction
 
 - Keep `src/lib/recovery-policy.ts` as the product vocabulary.
-- Expand it with all real audit actions currently emitted by the app.
+- `src/lib/recovery-policy.ts` now maps the main real audit actions currently emitted by the app.
 - Use it in audit-log presentation and risky-action copy so staff sees `Correction`, `Annulation tracable`, `Archive`, or `Fermeture` instead of technical delete/update language.
 - For attendance delete, decide whether the next pass should preserve rows instead of deleting them physically.

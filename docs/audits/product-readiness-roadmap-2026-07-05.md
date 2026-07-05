@@ -14,6 +14,10 @@ This roadmap is based on the current codebase, the existing product-readiness pr
 
 `docs/audits/product-readiness-browser-2026-07-05/`
 
+The broader execution map for the latest product-readiness prompt lives at:
+
+`docs/audits/saas-product-execution-map-2026-07-05.md`
+
 ## Current Evidence Limits
 
 - The current branch contains newer settings and product-readiness work than the live app.
