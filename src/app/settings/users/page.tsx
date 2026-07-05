@@ -1,8 +1,8 @@
-import { headers } from "next/headers";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
+import { getAuthUser } from "@/lib/request-user";
 import { PageHeader } from "@/components/ui/page-header";
 import { SettingsMetric } from "@/components/settings/settings-hub";
 import { UserCreateForm } from "@/components/settings/user-create-form";
@@ -13,11 +13,9 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function SettingsUsersPage() {
-  const h = await headers();
-  const role = h.get("x-user-role");
-  const currentUserId = h.get("x-user-id") ?? "";
+  const authUser = await getAuthUser();
 
-  if (role !== "ADMIN") {
+  if (!authUser || authUser.role !== "ADMIN") {
     return (
       <main className="app-shell py-4 md:py-8">
         <PageHeader
@@ -33,6 +31,7 @@ export default async function SettingsUsersPage() {
   }
 
   const users = await prisma.user.findMany({
+    where: { tenantId: authUser.tenantId },
     orderBy: [{ role: "asc" }, { createdAt: "desc" }],
     select: {
       id: true,
@@ -95,7 +94,7 @@ export default async function SettingsUsersPage() {
             </p>
           </div>
           <div className="mt-4">
-            <UsersListClient users={rows} currentUserId={currentUserId} />
+            <UsersListClient users={rows} currentUserId={authUser.id} />
           </div>
         </section>
 

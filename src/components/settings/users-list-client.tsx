@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, Pencil } from "lucide-react";
+import { AlertTriangle, Mail, Pencil } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormField } from "@/components/ui/form-layout";
@@ -44,7 +44,12 @@ export function UsersListClient({
     setMessage(null);
   }
 
-  async function saveEdit(userId: string) {
+  async function saveEdit(user: UserRow) {
+    if (user.isActive && !editActive && !window.confirm(`Désactiver le compte ${user.name} ?`)) {
+      return;
+    }
+
+    const userId = user.id;
     setLoadingId(userId);
     setMessage(null);
 
@@ -132,12 +137,21 @@ export function UsersListClient({
                 <p className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-xs leading-relaxed text-[var(--muted-foreground)]">
                   Désactiver coupe l&apos;accès au prochain chargement, sans supprimer les actions déjà tracées.
                 </p>
+                {u.isActive && !editActive && !isSelf ? (
+                  <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
+                    <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                    <p>
+                      Ce compte ne pourra plus ouvrir l&apos;application. Ses anciennes actions restent visibles dans le
+                      journal.
+                    </p>
+                  </div>
+                ) : null}
                 <div className="list-card-actions mt-3">
                   <button
                     type="button"
                     className="btn btn-primary btn-block-mobile"
                     disabled={loadingId === u.id}
-                    onClick={() => saveEdit(u.id)}
+                    onClick={() => saveEdit(u)}
                   >
                     {loadingId === u.id ? "..." : "Enregistrer"}
                   </button>

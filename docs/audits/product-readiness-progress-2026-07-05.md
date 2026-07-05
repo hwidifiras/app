@@ -119,7 +119,7 @@ The new `/settings` hub is the entry point. Next UI pass should make these pages
 - `/settings/schedules`: template/apply clarity pass is implemented; remaining improvement is browser QA with real groups and mobile layout.
 - `/sessions`: working-day-aware display hides closed empty days, keeps closed days with sessions visible, and now explains this rule near the filters.
 - `/sports`: discipline creation keeps free text while offering a grouped martial-arts starter catalog for common club disciplines.
-- `/settings/users`: role intent and permission clarity pass is implemented; browser QA still needed on desktop and mobile.
+- `/settings/users`: role intent, tenant-scoped reads, permission clarity, and deactivation warning are implemented; browser QA still needed on desktop and mobile.
 - `/settings/data-import`: page-level guidance, safety framing, and per-import rollback state are implemented; deeper wizard component split remains a code-organization follow-up.
 - `/members/[id]`: top health strip and action row exist; a correction guide now points staff to the right edit, payment, attendance, subscription, and assignment surfaces.
 - `/logs`: summary/category filters, tenant-scoped reads, and readable traceability details are implemented; remaining improvement is browser QA.
@@ -219,6 +219,7 @@ Latest UI settings checkpoint:
 - Audit-log readability and tenant-scope pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Planning working-day hint pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Discipline suggestion catalog pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
+- Users deactivation safety pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Group policy picker pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Planning UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
