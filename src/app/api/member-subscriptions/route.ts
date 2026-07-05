@@ -56,8 +56,9 @@ function changedSubscriptionFields(
 }
 
 export async function GET(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -73,6 +74,7 @@ export async function GET(request: Request) {
 
   const subscriptions = await prisma.memberSubscription.findMany({
     where: {
+      tenantId: actor.tenantId,
       ...(memberId ? { memberId } : {}),
       ...(planId ? { planId } : {}),
       ...(sportId ? { sportId } : {}),
@@ -131,7 +133,9 @@ export async function POST(request: Request) {
   const start = new Date(startDate);
 
   try {
-    const memberExists = await prisma.member.findUnique({ where: { id: memberId } });
+    const memberExists = await prisma.member.findFirst({
+      where: { id: memberId, tenantId: actor.tenantId },
+    });
     if (!memberExists) {
       return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
     }
@@ -139,7 +143,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Impossible de creer un abonnement pour un membre archive" }, { status: 409 });
     }
 
-    const plan = await prisma.subscriptionPlan.findUnique({ where: { id: planId } });
+    const plan = await prisma.subscriptionPlan.findFirst({
+      where: { id: planId, tenantId: actor.tenantId },
+    });
     if (!plan) {
       return NextResponse.json({ error: "Plan introuvable" }, { status: 404 });
     }
@@ -147,6 +153,7 @@ export async function POST(request: Request) {
     if (plan.sportId) {
       const incompatibleGroup = await prisma.groupMember.findFirst({
         where: {
+          tenantId: actor.tenantId,
           memberId,
           status: "ACTIVE",
           group: { sportId: { not: plan.sportId } },
@@ -171,6 +178,7 @@ export async function POST(request: Request) {
       const created = await createSubscriptionFromPlan(
         tx,
         {
+          tenantId: actor.tenantId,
           memberId,
           plan,
           startDate: start,
@@ -181,6 +189,7 @@ export async function POST(request: Request) {
       if (payCents > 0) {
         const payment = await tx.payment.create({
           data: {
+            tenantId: actor.tenantId,
             memberSubscriptionId: created.id,
             amount: payCents,
             createdById: actor.id,
@@ -190,11 +199,13 @@ export async function POST(request: Request) {
 
         await tx.auditLog.create({
           data: {
+            tenantId: actor.tenantId,
             action: "PAYMENT_CREATED",
             entityType: "Payment",
             entityId: payment.id,
             userId: actor.id,
             details: JSON.stringify({
+              tenantId: actor.tenantId,
               source: "member-subscription",
               amount: payCents,
               memberId,
@@ -206,11 +217,13 @@ export async function POST(request: Request) {
         const receipt = await issueReceiptForPayment(tx, payment.id, actor.id);
         await tx.auditLog.create({
           data: {
+            tenantId: actor.tenantId,
             action: "RECEIPT_ISSUED",
             entityType: "Receipt",
             entityId: receipt.id,
             userId: actor.id,
             details: JSON.stringify({
+              tenantId: actor.tenantId,
               paymentId: payment.id,
               receiptNumber: receipt.receiptNumber,
               source: "member-subscription",
@@ -221,11 +234,13 @@ export async function POST(request: Request) {
 
       await tx.auditLog.create({
         data: {
+          tenantId: actor.tenantId,
           action: "MEMBER_SUBSCRIPTION_CREATED",
           entityType: "MemberSubscription",
           entityId: created.id,
           userId: actor.id,
           details: JSON.stringify({
+            tenantId: actor.tenantId,
             memberId,
             planId,
             sportId: plan.sportId,
@@ -241,8 +256,8 @@ export async function POST(request: Request) {
       return created;
     });
 
-    const withRelations = await prisma.memberSubscription.findUniqueOrThrow({
-      where: { id: subscription.id },
+    const withRelations = await prisma.memberSubscription.findFirstOrThrow({
+      where: { id: subscription.id, tenantId: actor.tenantId },
       include: {
         member: { select: { id: true, firstName: true, lastName: true } },
         plan: { select: { id: true, name: true } },
@@ -308,8 +323,8 @@ export async function PATCH(request: Request) {
   }
 
   try {
-    const existing = await prisma.memberSubscription.findUnique({
-      where: { id: subscriptionId },
+    const existing = await prisma.memberSubscription.findFirst({
+      where: { id: subscriptionId, tenantId: actor.tenantId },
       select: {
         id: true,
         memberId: true,
@@ -373,8 +388,8 @@ export async function PATCH(request: Request) {
 
     let nextSportId = existing.sportId;
     if (payload.planId) {
-      const planExists = await prisma.subscriptionPlan.findUnique({
-        where: { id: payload.planId },
+      const planExists = await prisma.subscriptionPlan.findFirst({
+        where: { id: payload.planId, tenantId: actor.tenantId },
         select: { id: true, sportId: true },
       });
       if (!planExists) {
@@ -386,6 +401,7 @@ export async function PATCH(request: Request) {
     if (payload.planId && nextSportId !== existing.sportId) {
       const incompatibleAssignment = await prisma.groupMember.findFirst({
         where: {
+          tenantId: actor.tenantId,
           memberId: existing.memberId,
           status: "ACTIVE",
           group: { sportId: { not: nextSportId } },
@@ -424,11 +440,13 @@ export async function PATCH(request: Request) {
 
       await tx.auditLog.create({
         data: {
+          tenantId: actor.tenantId,
           action: "MEMBER_SUBSCRIPTION_UPDATED",
           entityType: "MemberSubscription",
           entityId: subscriptionId,
           userId: actor.id,
           details: JSON.stringify({
+            tenantId: actor.tenantId,
             changedFields: changedSubscriptionFields(beforeSnapshot, afterSnapshot),
             before: beforeSnapshot,
             after: afterSnapshot,
@@ -492,8 +510,8 @@ export async function DELETE(request: Request) {
     const reasonValue = (body as { reason?: unknown }).reason;
     const rawReason = typeof reasonValue === "string" ? reasonValue.trim() : "";
     const reason = rawReason || "Résiliation admin";
-    const existing = await prisma.memberSubscription.findUnique({
-      where: { id: subscriptionId },
+    const existing = await prisma.memberSubscription.findFirst({
+      where: { id: subscriptionId, tenantId: actor.tenantId },
       select: {
         id: true,
         memberId: true,
@@ -521,11 +539,13 @@ export async function DELETE(request: Request) {
 
       await tx.auditLog.create({
         data: {
+          tenantId: actor.tenantId,
           action: "MEMBER_SUBSCRIPTION_CANCELLED",
           entityType: "MemberSubscription",
           entityId: subscriptionId,
           userId: actor.id,
           details: JSON.stringify({
+            tenantId: actor.tenantId,
             cancelledAt: now.toISOString(),
             reason,
             changedFields: changedSubscriptionFields(beforeSnapshot, afterSnapshot),

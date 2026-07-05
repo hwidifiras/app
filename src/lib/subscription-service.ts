@@ -3,6 +3,7 @@ import type { Prisma, SubscriptionPlan } from "@prisma/client";
 import { computeEndDate } from "@/lib/membership-rules";
 
 export type SubscriptionFromPlanInput = {
+  tenantId?: string;
   memberId: string;
   plan: Pick<SubscriptionPlan, "id" | "sportId" | "price" | "totalSessions" | "validityDays">;
   startDate: Date;
@@ -13,6 +14,7 @@ export type SubscriptionFromPlanInput = {
 export function buildSubscriptionData(input: SubscriptionFromPlanInput) {
   const carryOver = Math.max(0, input.carryOverSessions ?? 0);
   return {
+    ...(input.tenantId ? { tenantId: input.tenantId } : {}),
     memberId: input.memberId,
     planId: input.plan.id,
     sportId: input.plan.sportId,
@@ -28,9 +30,10 @@ export async function expireActiveSubscriptionForSportWithSnapshot(
   tx: Prisma.TransactionClient,
   memberId: string,
   sportId: string,
+  tenantId?: string,
 ) {
   const active = await tx.memberSubscription.findFirst({
-    where: { memberId, sportId, status: "ACTIVE" },
+    where: { ...(tenantId ? { tenantId } : {}), memberId, sportId, status: "ACTIVE" },
     select: { id: true, remainingSessions: true },
   });
 
@@ -51,7 +54,12 @@ export async function createSubscriptionFromPlan(
   input: SubscriptionFromPlanInput,
   options?: { carryOverRemainingSessions?: boolean },
 ) {
-  const snapshot = await expireActiveSubscriptionForSportWithSnapshot(tx, input.memberId, input.plan.sportId);
+  const snapshot = await expireActiveSubscriptionForSportWithSnapshot(
+    tx,
+    input.memberId,
+    input.plan.sportId,
+    input.tenantId,
+  );
   const carryOver =
     options?.carryOverRemainingSessions && snapshot.remainingSessions > 0 ? snapshot.remainingSessions : 0;
 
