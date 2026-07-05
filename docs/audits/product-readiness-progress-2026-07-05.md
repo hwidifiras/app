@@ -56,6 +56,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - `data-import-wizard.tsx` now delegates the bulk preview metrics/table UI to `data-import-bulk-ui.tsx`, reducing duplicated embedded table markup without changing behavior.
 - `data-import-wizard.tsx` now delegates the import mode and recent rollback list UI to `data-import-status-ui.tsx`, keeping import actions in the wizard while reducing presentation markup.
 - A broader product-readiness roadmap now exists at `docs/audits/product-readiness-roadmap-2026-07-05.md`, covering recoverability, receipts, UI/UX consistency, settings polish, group/coach/enrollment rules, and code organization.
+- A mutation recoverability audit now exists at `docs/audits/mutation-recoverability-audit-2026-07-05.md`, mapping payment, enrollment, attendance, sessions, schedules, group assignments, data import, and catalog mutations to the recovery vocabulary.
 
 ## Current Product Fingerprint To Reuse
 
@@ -85,6 +86,7 @@ Audit every mutation route under `src/app/api` and classify it:
 Highest-risk routes to re-check next:
 
 - attendance corrections after finalization;
+- attendance delete is guarded and audited, but still physically removes the attendance row; decide whether to preserve a voided/corrected row instead;
 - session edit audit coverage beyond cancellation;
 - group schedule generation preview and future-session effects;
 - subscription edit/cancel with existing payments and assignments;
