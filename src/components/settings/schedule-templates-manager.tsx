@@ -5,57 +5,26 @@ import { CalendarPlus, Eye, Plus, Trash2 } from "lucide-react";
 
 import {
   CLUB_DAY_LABELS,
-  CLUB_DAY_SHORT_LABELS,
   WORKING_DAY_ORDER,
   type ClubDay,
 } from "@/lib/club-working-days";
 import type { GroupTypeValue } from "@/lib/demographics";
-import { cn } from "@/lib/utils";
-
-type SlotInput = {
-  dayOfWeek: ClubDay;
-  startTime: string;
-  durationMinutes: number;
-};
-
-type TemplateDto = {
-  id: string;
-  name: string;
-  description: string;
-  isActive: boolean;
-  slots: Array<SlotInput & { id: string }>;
-};
-
-type GroupOption = {
-  id: string;
-  name: string;
-  sportId: string;
-  sportName: string;
-  groupType: GroupTypeValue;
-};
-
-type SportOption = {
-  id: string;
-  name: string;
-};
-
-type ApplySummary = {
-  templateName: string;
-  targetGroups: Array<{ id: string; name: string; sportName: string; groupType: GroupTypeValue }>;
-  groupCount: number;
-  slotCount: number;
-  newScheduleCount: number;
-  closedScheduleCount: number;
-  futureSessionsCount: number;
-  closedDayWarnings: string[];
-  effectiveFrom: string;
-  effectiveTo: string | null;
-};
+import {
+  ScheduleApplyPreview,
+  ScheduleTemplateCard,
+  SelectedScheduleTemplateSummary,
+  scheduleSlotLabel,
+  type ScheduleApplySummary,
+  type ScheduleGroupOption,
+  type ScheduleSlotInput,
+  type ScheduleSportOption,
+  type ScheduleTemplateDto,
+} from "@/components/settings/schedule-template-ui";
 
 type ApplyResponse = {
   data?: {
     applied: boolean;
-    summary: ApplySummary;
+    summary: ScheduleApplySummary;
     generation?: { groupIds: string[]; horizonDays: number };
   };
   error?: string;
@@ -69,16 +38,8 @@ function dateInputToIso(value: string) {
   return new Date(`${value}T00:00:00.000Z`).toISOString();
 }
 
-function formatDate(value: string | null) {
-  return value ? new Date(value).toLocaleDateString("fr-FR") : "sans fin";
-}
-
-function emptySlot(): SlotInput {
+function emptySlot(): ScheduleSlotInput {
   return { dayOfWeek: "MONDAY", startTime: "18:00", durationMinutes: 90 };
-}
-
-function slotLabel(slot: SlotInput) {
-  return `${CLUB_DAY_SHORT_LABELS[slot.dayOfWeek]} ${slot.startTime} (${slot.durationMinutes} min)`;
 }
 
 export function ScheduleTemplatesManager({
@@ -87,9 +48,9 @@ export function ScheduleTemplatesManager({
   sports,
   workingDays,
 }: {
-  initialTemplates: TemplateDto[];
-  groups: GroupOption[];
-  sports: SportOption[];
+  initialTemplates: ScheduleTemplateDto[];
+  groups: ScheduleGroupOption[];
+  sports: ScheduleSportOption[];
   workingDays: ClubDay[];
 }) {
   const [templates, setTemplates] = useState(initialTemplates);
@@ -97,7 +58,7 @@ export function ScheduleTemplatesManager({
   const [selectedTemplateId, setSelectedTemplateId] = useState(initialTemplates[0]?.id ?? "");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [slots, setSlots] = useState<SlotInput[]>([emptySlot()]);
+  const [slots, setSlots] = useState<ScheduleSlotInput[]>([emptySlot()]);
   const [targetMode, setTargetMode] = useState<"SELECTED_GROUPS" | "SPORT" | "GROUP_TYPE" | "ALL_ACTIVE">("SELECTED_GROUPS");
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [sportId, setSportId] = useState(sports[0]?.id ?? "");
@@ -107,7 +68,7 @@ export function ScheduleTemplatesManager({
   const [replaceExisting, setReplaceExisting] = useState(true);
   const [autoGenerate, setAutoGenerate] = useState(true);
   const [confirmFutureSessions, setConfirmFutureSessions] = useState(false);
-  const [preview, setPreview] = useState<ApplySummary | null>(null);
+  const [preview, setPreview] = useState<ScheduleApplySummary | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -118,7 +79,7 @@ export function ScheduleTemplatesManager({
 
   const workingDaySet = useMemo(() => new Set(workingDays), [workingDays]);
   const selectedTemplateClosedSlots = useMemo(
-    () => selectedTemplate?.slots.filter((slot) => !workingDaySet.has(slot.dayOfWeek)).map(slotLabel) ?? [],
+    () => selectedTemplate?.slots.filter((slot) => !workingDaySet.has(slot.dayOfWeek)).map(scheduleSlotLabel) ?? [],
     [selectedTemplate, workingDaySet],
   );
   const targetGroups = useMemo(() => {
@@ -133,7 +94,7 @@ export function ScheduleTemplatesManager({
     setConfirmFutureSessions(false);
   }
 
-  function updateSlot(index: number, patch: Partial<SlotInput>) {
+  function updateSlot(index: number, patch: Partial<ScheduleSlotInput>) {
     setSlots((current) => current.map((slot, slotIndex) => (slotIndex === index ? { ...slot, ...patch } : slot)));
   }
 
@@ -158,7 +119,7 @@ export function ScheduleTemplatesManager({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, description, slots }),
     });
-    const json: { data?: TemplateDto; error?: string } = await response.json();
+    const json: { data?: ScheduleTemplateDto; error?: string } = await response.json();
     setLoading(false);
 
     if (!response.ok || !json.data) {
@@ -350,43 +311,16 @@ export function ScheduleTemplatesManager({
               Aucun modèle pour le moment.
             </div>
           ) : templates.map((template) => (
-            <article
+            <ScheduleTemplateCard
               key={template.id}
-              className={cn(
-                "flex items-start justify-between gap-3 rounded-lg border p-3 text-left transition",
-                selectedTemplate?.id === template.id
-                  ? "border-[var(--primary)] bg-[var(--primary)]/5"
-                  : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)]/40",
-              )}
-            >
-              <button
-                type="button"
-                onClick={() => {
-                  clearApplyPreview();
-                  setSelectedTemplateId(template.id);
-                }}
-                className="min-w-0 flex-1 text-left"
-              >
-                <div className="min-w-0">
-                  <p className="font-semibold text-[var(--foreground)]">{template.name}</p>
-                  {template.description ? <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">{template.description}</p> : null}
-                  <p className="mt-2 text-xs font-medium text-[var(--muted-foreground)]">
-                    {template.slots.map(slotLabel).join(" · ")}
-                  </p>
-                </div>
-              </button>
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    void archiveTemplate(template.id);
-                  }}
-                  className="inline-flex rounded-md border border-[var(--border)] p-2 text-[var(--muted-foreground)] hover:text-[var(--danger)]"
-                  aria-label="Archiver le modèle"
-                >
-                  <Trash2 className="size-4" />
-                </button>
-            </article>
+              template={template}
+              selected={selectedTemplate?.id === template.id}
+              onSelect={() => {
+                clearApplyPreview();
+                setSelectedTemplateId(template.id);
+              }}
+              onArchive={() => void archiveTemplate(template.id)}
+            />
           ))}
         </div>
       </section>
@@ -421,24 +355,7 @@ export function ScheduleTemplatesManager({
             </select>
           </label>
 
-          {selectedTemplate ? (
-            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--primary)]">
-                Modèle sélectionné
-              </p>
-              <p className="mt-1 font-semibold text-[var(--foreground)]">{selectedTemplate.name}</p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {selectedTemplate.slots.map((slot) => (
-                  <span
-                    key={slot.id}
-                    className="rounded-full bg-[var(--surface)] px-2.5 py-1 text-xs font-semibold text-[var(--muted-foreground)]"
-                  >
-                    {slotLabel(slot)}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ) : null}
+          {selectedTemplate ? <SelectedScheduleTemplateSummary template={selectedTemplate} /> : null}
 
           <div className="grid gap-3 md:grid-cols-2">
             <label className="block">
@@ -581,44 +498,9 @@ export function ScheduleTemplatesManager({
             </button>
           </div>
 
-          {preview ? (
-            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--primary)]">Aperçu avant application</p>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <PreviewMetric label="Groupes" value={preview.groupCount} />
-                <PreviewMetric label="Nouveaux horaires" value={preview.newScheduleCount} />
-                <PreviewMetric label="Horaires fermés" value={preview.closedScheduleCount} />
-                <PreviewMetric label="Séances futures existantes" value={preview.futureSessionsCount} warning={preview.futureSessionsCount > 0} />
-              </div>
-              <p className="mt-3 text-xs text-[var(--muted-foreground)]">
-                Periode: du {formatDate(preview.effectiveFrom)} au {formatDate(preview.effectiveTo)}.
-              </p>
-              {preview.closedDayWarnings.length > 0 ? (
-                <div className="mt-3 rounded-lg border border-[var(--warning)]/25 bg-[var(--warning)]/10 px-3 py-2 text-xs font-semibold text-[var(--warning)]">
-                  Jours fermés dans les réglages: {preview.closedDayWarnings.join(", ")}.
-                </div>
-              ) : null}
-              <div className="mt-3 max-h-32 overflow-auto rounded-lg border border-[var(--border)] p-2">
-                {preview.targetGroups.map((group) => (
-                  <div key={group.id} className="flex justify-between gap-3 border-b border-[var(--border)] py-1.5 last:border-b-0">
-                    <span className="truncate text-sm font-medium">{group.name}</span>
-                    <span className="shrink-0 text-xs text-[var(--muted-foreground)]">{group.sportName}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
+          {preview ? <ScheduleApplyPreview preview={preview} /> : null}
         </div>
       </section>
-    </div>
-  );
-}
-
-function PreviewMetric({ label, value, warning }: { label: string; value: number; warning?: boolean }) {
-  return (
-    <div className={cn("rounded-lg border px-3 py-2", warning ? "border-[var(--warning)]/25 bg-[var(--warning)]/10" : "border-[var(--border)] bg-[var(--surface-soft)]")}>
-      <p className="text-[0.65rem] font-bold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">{label}</p>
-      <p className="mt-1 text-lg font-bold text-[var(--foreground)]">{value}</p>
     </div>
   );
 }

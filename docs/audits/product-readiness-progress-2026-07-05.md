@@ -52,6 +52,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - `/settings/schedules` now starts with schedule summary metrics, keeps template creation collapsed by default, shows the selected template before applying, and clears stale previews when targets or dates change.
 - `/settings/data-import` now opens with migration readiness metrics and explicit guidance about when to use reprise mode and when rollback remains safe.
 - `/logs` now starts with summary metrics for useful actions, payments, presences, and system noise before the detailed audit table.
+- `schedule-templates-manager.tsx` now delegates reusable schedule template cards and apply-preview UI to `schedule-template-ui.tsx`, reducing page-manager file pressure without changing behavior.
 
 ## Current Product Fingerprint To Reuse
 
@@ -106,7 +107,7 @@ Large files to split carefully:
 - `src/components/enrollment/enrollment-wizard.tsx`
 - `src/components/settings/data-import-wizard.tsx`
 - `src/components/groups/group-schedules-manager.tsx`
-- `src/components/settings/schedule-templates-manager.tsx`
+- `src/components/settings/schedule-templates-manager.tsx` (started: template cards, selected-template summary, and apply preview extracted)
 
 Refactor rule:
 
@@ -172,6 +173,7 @@ Latest UI settings checkpoint:
 - `/settings/schedules` clarity and stale-preview safety pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `/settings/data-import` guidance pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `/logs` summary pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
+- `schedule-templates-manager.tsx` UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
 
 Start a disposable local PostgreSQL test database, or set `TEST_DATABASE_URL`, before relying on `npm.cmd test`.
