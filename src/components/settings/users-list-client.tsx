@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Mail, Pencil } from "lucide-react";
+import { AlertTriangle, Mail, Pencil, RotateCcw } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormField } from "@/components/ui/form-layout";
+import { ListSearch } from "@/components/ui/list-controls";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { deriveUserRoleIntent, describeUserRights, userRoleIntentLabel } from "@/lib/user-role-intent";
@@ -34,7 +35,42 @@ export function UsersListClient({
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editActive, setEditActive] = useState(true);
-  const pagination = usePagination(users, 12);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState<"ALL" | "ADMIN" | "RECEPTION" | "COACH">("ALL");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
+
+  const filteredUsers = useMemo(() => {
+    const query = searchTerm.trim().toLocaleLowerCase("fr");
+    return users.filter((user) => {
+      const permissionKeys = user.permissions.map((permission) => permission.key);
+      const roleIntent = deriveUserRoleIntent(user.role, permissionKeys);
+      const rightsLabel = describeUserRights(user.role, permissionKeys);
+      const matchesSearch =
+        !query ||
+        user.name.toLocaleLowerCase("fr").includes(query) ||
+        user.email.toLocaleLowerCase("fr").includes(query) ||
+        userRoleIntentLabel(roleIntent).toLocaleLowerCase("fr").includes(query) ||
+        rightsLabel.toLocaleLowerCase("fr").includes(query);
+      const matchesRole = roleFilter === "ALL" || roleIntent === roleFilter;
+      const matchesStatus =
+        statusFilter === "ALL" ||
+        (statusFilter === "ACTIVE" ? user.isActive : !user.isActive);
+      return matchesSearch && matchesRole && matchesStatus;
+    });
+  }, [roleFilter, searchTerm, statusFilter, users]);
+
+  const activeFilterCount = [roleFilter !== "ALL", statusFilter !== "ALL"].filter(Boolean).length;
+  const pagination = usePagination(filteredUsers, 12, `${searchTerm}|${roleFilter}|${statusFilter}`);
+
+  function resetFilters() {
+    setRoleFilter("ALL");
+    setStatusFilter("ALL");
+  }
+
+  function resetAll() {
+    setSearchTerm("");
+    resetFilters();
+  }
 
   function startEdit(user: UserRow) {
     setEditingId(user.id);
@@ -101,6 +137,63 @@ export function UsersListClient({
         message={message}
         variant={message?.includes("envoyé") || message?.includes("mis à jour") ? "success" : undefined}
       />
+
+      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+        <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_10rem_10rem_auto] md:items-end">
+          <div className="min-w-0">
+            <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Recherche</label>
+            <ListSearch
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Nom, email, rôle ou droit..."
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Profil</label>
+            <select
+              className="field text-xs"
+              value={roleFilter}
+              onChange={(event) => setRoleFilter(event.target.value as typeof roleFilter)}
+            >
+              <option value="ALL">Tous</option>
+              <option value="ADMIN">Admin</option>
+              <option value="RECEPTION">Réception</option>
+              <option value="COACH">Coach</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Statut</label>
+            <select
+              className="field text-xs"
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+            >
+              <option value="ALL">Tous</option>
+              <option value="ACTIVE">Actifs</option>
+              <option value="INACTIVE">Désactivés</option>
+            </select>
+          </div>
+          {activeFilterCount > 0 || searchTerm ? (
+            <button type="button" className="btn btn-ghost px-3" onClick={resetAll} title="Réinitialiser">
+              <RotateCcw className="size-4" />
+            </button>
+          ) : null}
+        </div>
+        <p className="mt-2 text-xs text-[var(--muted-foreground)]">
+          {filteredUsers.length} compte{filteredUsers.length > 1 ? "s" : ""} affiché{filteredUsers.length > 1 ? "s" : ""}
+        </p>
+      </div>
+
+      {filteredUsers.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-soft)] px-3 py-5 text-center text-sm text-[var(--muted-foreground)]">
+          Aucun compte ne correspond aux filtres.
+          <div className="mt-3">
+            <button type="button" className="btn btn-ghost btn-sm" onClick={resetAll}>
+              Réinitialiser
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {pagination.pageItems.map((u) => {
         const isEditing = editingId === u.id;
