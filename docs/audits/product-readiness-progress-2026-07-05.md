@@ -125,6 +125,7 @@ The new `/settings` hub is the entry point. Next UI pass should make these pages
 - `/sports`: discipline creation keeps free text while offering a grouped martial-arts starter catalog for common club disciplines.
 - `/settings/users`: role intent, tenant-scoped reads, permission clarity, and deactivation warning are implemented; browser QA still needed on desktop and mobile.
 - `/settings/data-import`: page-level guidance, safety framing, and per-import rollback state are implemented; deeper wizard component split remains a code-organization follow-up.
+- `/settings/data-import` rollback follow-up now summarizes total/annulable/locked/already-annulled imports and links locked imports to the member profile for safe correction.
 - `/settings`: hub and admin settings pages now use DB-backed auth/tenant context instead of header-only admin checks.
 - `/members/[id]`: top health strip and action row exist; a correction guide now points staff to the right edit, payment, attendance, subscription, and assignment surfaces.
 - `/subscriptions/[id]/edit` now shows a correction summary before the fields: already paid, proposed amount, session impact, changed-sensitive values, reason-required state, and amount-below-paid warning.
@@ -251,6 +252,7 @@ Latest UI settings checkpoint:
 - Schedule application safety-card pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Receipt verification message pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Subscription correction summary pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
+- Data-import rollback visibility pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
 
 Start a disposable local PostgreSQL test database, or set `TEST_DATABASE_URL`, before relying on `npm.cmd test`.

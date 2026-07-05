@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CheckCircle2, Download, LockKeyhole, RotateCcw } from "lucide-react";
 
 export type RecentImport = {
@@ -105,6 +106,10 @@ export function RecentImportsPanel({
   busy: boolean;
   onRollback: (auditLogId: string) => void;
 }) {
+  const rollbackAvailableCount = status.recentImports.filter((item) => item.rollbackStatus === "AVAILABLE").length;
+  const lockedCount = status.recentImports.filter((item) => item.rollbackStatus === "LOCKED_BY_ACTIVITY").length;
+  const rolledBackCount = status.recentImports.filter((item) => item.rollbackStatus === "ROLLED_BACK").length;
+
   return (
     <section className="panel p-4 sm:p-5">
       <h2 className="font-semibold">Derniers imports</h2>
@@ -112,9 +117,17 @@ export function RecentImportsPanel({
         L&apos;annulation reste disponible seulement avant toute nouvelle présence, paiement, abonnement ou lien famille.
         Les lignes verrouillées se corrigent depuis les écrans métier pour garder la trace.
       </p>
+      <div className="mt-4 grid gap-2 sm:grid-cols-4">
+        <RollbackMetric label="Total suivi" value={status.recentImports.length} />
+        <RollbackMetric label="Annulables" value={rollbackAvailableCount} tone="success" />
+        <RollbackMetric label="Verrouillés" value={lockedCount} tone="warning" />
+        <RollbackMetric label="Déjà annulés" value={rolledBackCount} tone="info" />
+      </div>
       <div className="mt-4 space-y-2">
         {status.recentImports.length === 0 ? (
-          <p className="text-sm text-[var(--muted-foreground)]">Aucun import enregistré.</p>
+          <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-soft)] px-3 py-4 text-center text-sm text-[var(--muted-foreground)]">
+            Aucun import enregistré. Les reprises appliquées apparaîtront ici avec leur état d&apos;annulation.
+          </div>
         ) : (
           status.recentImports.map((item) => (
             <div
@@ -146,6 +159,10 @@ export function RecentImportsPanel({
                 >
                   <RotateCcw className="size-4" /> Annuler l&apos;import
                 </button>
+              ) : item.rollbackStatus === "LOCKED_BY_ACTIVITY" ? (
+                <Link href={`/members/${item.memberId}`} className="btn btn-ghost">
+                  Ouvrir la fiche
+                </Link>
               ) : (
                 <span className="text-xs font-semibold text-[var(--muted-foreground)]">
                   Annulation indisponible
@@ -156,5 +173,31 @@ export function RecentImportsPanel({
         )}
       </div>
     </section>
+  );
+}
+
+function RollbackMetric({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: number;
+  tone?: "default" | "success" | "warning" | "info";
+}) {
+  const toneClass =
+    tone === "success"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+      : tone === "warning"
+        ? "border-amber-200 bg-amber-50 text-amber-900"
+        : tone === "info"
+          ? "border-blue-200 bg-blue-50 text-blue-800"
+          : "border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)]";
+
+  return (
+    <div className={`rounded-lg border px-3 py-2 ${toneClass}`}>
+      <p className="text-[0.62rem] font-bold uppercase tracking-[0.12em] opacity-70">{label}</p>
+      <p className="mt-1 text-lg font-black">{value}</p>
+    </div>
   );
 }
