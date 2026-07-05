@@ -48,6 +48,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Admin users see the configuration hub, club rules, schedules, formulas, offers, import, users, and logs.
 - Non-admin users see only account settings in the configuration drawer, reducing sidebar confusion.
 - `/settings/users` now shows Admin / Reception / Coach access posture, role-first account creation, clearer permission labels, and safer deactivation copy.
+- `/settings/club` now starts with an operational summary for club identity, working days, pointage, and receipts, with reception rules separated from the long preferences form.
 
 ## Current Product Fingerprint To Reuse
 
@@ -87,7 +88,7 @@ Highest-risk routes to re-check next:
 
 The new `/settings` hub is the entry point. Next UI pass should make these pages match it:
 
-- `/settings/club`: split long form into clearer cards for identity, pointage, planning conflicts, receipts, and alerts.
+- `/settings/club`: summary and guidance pass is implemented; remaining improvement is browser QA and any form-section copy tightening found there.
 - `/settings/schedules`: improve templates with stronger preview, selected target summary, and safer apply confirmation.
 - `/settings/users`: role intent and permission clarity pass is implemented; browser QA still needed on desktop and mobile.
 - `/settings/data-import`: make import steps more visual and make rollback limits explicit.
@@ -164,6 +165,7 @@ Recent checkpoints still passed:
 Latest UI settings checkpoint:
 
 - `/settings/users` role-intent polish passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
+- `/settings/club` hierarchy polish passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
 
 Start a disposable local PostgreSQL test database, or set `TEST_DATABASE_URL`, before relying on `npm.cmd test`.
