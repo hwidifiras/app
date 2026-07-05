@@ -9,9 +9,9 @@ import { buildCoachDto } from "@/lib/coach-view-model";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function activeCoachGroupInclude(referenceDate = new Date()) {
+function activeCoachGroupInclude(referenceDate = new Date(), tenantId?: string) {
   return {
-    where: { isActive: true },
+    where: { ...(tenantId ? { tenantId } : {}), isActive: true },
     select: {
       id: true,
       name: true,
@@ -27,8 +27,9 @@ function activeCoachGroupInclude(referenceDate = new Date()) {
 }
 
 export async function GET(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -40,6 +41,7 @@ export async function GET(request: Request) {
   const coaches = await prisma.coach.findMany({
     where: query
       ? {
+          tenantId: actor.tenantId,
           OR: [
             { firstName: { contains: query } },
             { lastName: { contains: query } },
@@ -48,14 +50,14 @@ export async function GET(request: Request) {
             { qualifications: { some: { sport: { name: { contains: query } } } } },
           ],
         }
-      : undefined,
+      : { tenantId: actor.tenantId },
     include: {
       sport: { select: { id: true, name: true } },
       qualifications: {
         include: { sport: { select: { id: true, name: true } } },
         orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
       },
-      groups: activeCoachGroupInclude(now),
+      groups: activeCoachGroupInclude(now, actor.tenantId),
     },
     orderBy: { createdAt: "desc" },
   });
@@ -97,7 +99,7 @@ export async function POST(request: Request) {
 
   if (qualifiedSportIds.length > 0) {
     const foundSports = await prisma.sport.findMany({
-      where: { id: { in: qualifiedSportIds } },
+      where: { tenantId: actor.tenantId, id: { in: qualifiedSportIds }, isActive: true },
       select: { id: true },
     });
     if (foundSports.length !== qualifiedSportIds.length) {
@@ -129,7 +131,7 @@ export async function POST(request: Request) {
             include: { sport: { select: { id: true, name: true } } },
             orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
           },
-          groups: activeCoachGroupInclude(),
+          groups: activeCoachGroupInclude(new Date(), actor.tenantId),
         },
       });
 
@@ -215,7 +217,7 @@ export async function PATCH(request: Request) {
 
   if (sportIdsToValidate.length > 0) {
     const foundSports = await prisma.sport.findMany({
-      where: { id: { in: sportIdsToValidate } },
+      where: { tenantId: actor.tenantId, id: { in: sportIdsToValidate }, isActive: true },
       select: { id: true },
     });
     if (foundSports.length !== sportIdsToValidate.length) {
@@ -224,15 +226,15 @@ export async function PATCH(request: Request) {
   }
 
   try {
-    const before = await prisma.coach.findUnique({
-      where: { id: coachId },
+    const before = await prisma.coach.findFirst({
+      where: { id: coachId, tenantId: actor.tenantId },
       include: {
         sport: { select: { id: true, name: true } },
         qualifications: {
           include: { sport: { select: { id: true, name: true } } },
           orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
         },
-        groups: activeCoachGroupInclude(),
+        groups: activeCoachGroupInclude(new Date(), actor.tenantId),
       },
     });
 
@@ -259,7 +261,7 @@ export async function PATCH(request: Request) {
       });
 
       if (qualificationReplacementIds !== undefined) {
-        await tx.coachSportQualification.deleteMany({ where: { coachId } });
+        await tx.coachSportQualification.deleteMany({ where: { tenantId: actor.tenantId, coachId } });
         if (qualificationReplacementIds.length > 0) {
           await tx.coachSportQualification.createMany({
             data: qualificationReplacementIds.map((qualifiedSportId) => ({
@@ -272,7 +274,7 @@ export async function PATCH(request: Request) {
         }
       } else if (sportIdValue !== undefined) {
         await tx.coachSportQualification.updateMany({
-          where: { coachId },
+          where: { tenantId: actor.tenantId, coachId },
           data: { isPrimary: false },
         });
         if (sportIdValue) {
@@ -284,15 +286,15 @@ export async function PATCH(request: Request) {
         }
       }
 
-      const next = await tx.coach.findUniqueOrThrow({
-        where: { id: coachId },
+      const next = await tx.coach.findFirstOrThrow({
+        where: { id: coachId, tenantId: actor.tenantId },
         include: {
           sport: { select: { id: true, name: true } },
           qualifications: {
             include: { sport: { select: { id: true, name: true } } },
             orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
           },
-          groups: activeCoachGroupInclude(),
+          groups: activeCoachGroupInclude(new Date(), actor.tenantId),
         },
       });
 
@@ -366,7 +368,7 @@ export async function DELETE(request: Request) {
   }
 
   const linkedGroups = await prisma.group.findMany({
-    where: { coachId },
+    where: { tenantId: actor.tenantId, coachId },
     select: { id: true, name: true },
     orderBy: { name: "asc" },
   });

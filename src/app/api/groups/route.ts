@@ -108,8 +108,9 @@ function toGroupDto(group: {
 }
 
 export async function GET(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -120,6 +121,7 @@ export async function GET(request: Request) {
   const groups = await prisma.group.findMany({
     where: query
       ? {
+          tenantId: actor.tenantId,
           OR: [
             { name: { contains: query } },
             { room: { contains: query } },
@@ -128,7 +130,7 @@ export async function GET(request: Request) {
             { coach: { is: { lastName: { contains: query } } } },
           ],
         }
-      : undefined,
+      : { tenantId: actor.tenantId },
     include: {
       sport: { select: { name: true } },
       coach: { select: { firstName: true, lastName: true } },
@@ -170,12 +172,18 @@ export async function POST(request: Request) {
     );
   }
 
-  const sportExists = await prisma.sport.findUnique({ where: { id: parsed.data.sportId }, select: { id: true } });
+  const sportExists = await prisma.sport.findFirst({
+    where: { id: parsed.data.sportId, tenantId: actor.tenantId, isActive: true },
+    select: { id: true },
+  });
   if (!sportExists) {
     return NextResponse.json({ error: "Sport introuvable" }, { status: 404 });
   }
 
-  const coachExists = await prisma.coach.findUnique({ where: { id: parsed.data.coachId }, select: { id: true } });
+  const coachExists = await prisma.coach.findFirst({
+    where: { id: parsed.data.coachId, tenantId: actor.tenantId, isActive: true },
+    select: { id: true },
+  });
   if (!coachExists) {
     return NextResponse.json({ error: "Coach introuvable" }, { status: 404 });
   }
@@ -197,6 +205,7 @@ export async function POST(request: Request) {
   const created = await prisma.$transaction(async (tx) => {
     const group = await tx.group.create({
       data: {
+        tenantId: actor.tenantId,
         name: parsed.data.name,
         groupType: parsed.data.groupType,
         genderPolicy: parsed.data.genderPolicy,
@@ -214,11 +223,13 @@ export async function POST(request: Request) {
 
     await tx.auditLog.create({
       data: {
+        tenantId: actor.tenantId,
         action: "GROUP_CREATED",
         entityType: "Group",
         entityId: group.id,
         userId: actor.id,
         details: JSON.stringify({
+          tenantId: actor.tenantId,
           after: groupAuditSnapshot(group),
         }),
       },
@@ -233,6 +244,7 @@ export async function POST(request: Request) {
     if (details) {
       await tx.auditLog.create({
         data: {
+          tenantId: actor.tenantId,
           action: "COACH_SPORT_OVERRIDE_USED",
           entityType: "Group",
           entityId: group.id,
@@ -287,8 +299,8 @@ export async function PATCH(request: Request) {
   }
 
   const payload = updatePayload.data;
-  const existingGroup = await prisma.group.findUnique({
-    where: { id: groupId },
+  const existingGroup = await prisma.group.findFirst({
+    where: { id: groupId, tenantId: actor.tenantId },
     select: {
       id: true,
       name: true,
@@ -342,14 +354,20 @@ export async function PATCH(request: Request) {
   }
 
   if (payload.sportId) {
-    const sportExists = await prisma.sport.findUnique({ where: { id: payload.sportId }, select: { id: true } });
+    const sportExists = await prisma.sport.findFirst({
+      where: { id: payload.sportId, tenantId: actor.tenantId, isActive: true },
+      select: { id: true },
+    });
     if (!sportExists) {
       return NextResponse.json({ error: "Sport introuvable" }, { status: 404 });
     }
   }
 
   if (payload.coachId) {
-    const coachExists = await prisma.coach.findUnique({ where: { id: payload.coachId }, select: { id: true } });
+    const coachExists = await prisma.coach.findFirst({
+      where: { id: payload.coachId, tenantId: actor.tenantId, isActive: true },
+      select: { id: true },
+    });
     if (!coachExists) {
       return NextResponse.json({ error: "Coach introuvable" }, { status: 404 });
     }
@@ -386,6 +404,7 @@ export async function PATCH(request: Request) {
   const futureSessionsForCoachPropagation = shouldApplyCoachToFutureSessions
     ? await prisma.session.findMany({
         where: {
+          tenantId: actor.tenantId,
           groupId,
           sessionDate: { gte: utcDateOnlyForTimeZone(new Date()) },
           status: { in: ["PLANNED", "RESCHEDULED"] },
@@ -451,11 +470,13 @@ export async function PATCH(request: Request) {
 
       await tx.auditLog.create({
         data: {
+          tenantId: actor.tenantId,
           action: "GROUP_UPDATED",
           entityType: "Group",
           entityId: group.id,
           userId: actor.id,
           details: JSON.stringify({
+            tenantId: actor.tenantId,
             fields: Object.entries(payload)
               .filter(
                 ([field, value]) =>
@@ -487,6 +508,7 @@ export async function PATCH(request: Request) {
       if (details) {
         await tx.auditLog.create({
           data: {
+            tenantId: actor.tenantId,
             action: "COACH_SPORT_OVERRIDE_USED",
             entityType: "Group",
             entityId: group.id,
@@ -499,17 +521,19 @@ export async function PATCH(request: Request) {
       if (shouldApplyCoachToFutureSessions && futureSessionsForCoachPropagation.length > 0) {
         const sessionIds = futureSessionsForCoachPropagation.map((session) => session.id);
         const updateResult = await tx.session.updateMany({
-          where: { id: { in: sessionIds } },
+          where: { tenantId: actor.tenantId, id: { in: sessionIds } },
           data: { coachId: targetCoachId },
         });
 
         await tx.auditLog.create({
           data: {
+            tenantId: actor.tenantId,
             action: "GROUP_COACH_PROPAGATED",
             entityType: "Group",
             entityId: group.id,
             userId: actor.id,
             details: JSON.stringify({
+              tenantId: actor.tenantId,
               groupId: group.id,
               groupName: group.name,
               previousCoachId: existingGroup.coachId,
@@ -571,11 +595,12 @@ export async function DELETE(request: Request) {
 
       await tx.auditLog.create({
         data: {
+          tenantId: actor.tenantId,
           action: "GROUP_DEACTIVATED",
           entityType: "Group",
           entityId: groupId,
           userId: actor.id,
-          details: JSON.stringify({ deactivatedAt: new Date().toISOString() }),
+          details: JSON.stringify({ tenantId: actor.tenantId, deactivatedAt: new Date().toISOString() }),
         },
       });
 
