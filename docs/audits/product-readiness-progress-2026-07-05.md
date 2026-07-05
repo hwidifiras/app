@@ -68,6 +68,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - `sessions-planner.tsx` now delegates session tiles, selected-session detail panel, legend, and session display helpers to `session-planner-ui.tsx`; a dead hidden legacy session-list block was removed.
 - `club-settings-form.tsx` now delegates receipt settings and receipt preview UI to `club-receipt-settings.tsx`, and shared settings toggles to `settings-toggle-row.tsx`.
 - Planning session generation now uses a dry-run preview before creating sessions, shows the target/date range/active horaires/existing sessions, and writes `SESSIONS_GENERATED` audit logs after confirmed generation.
+- Enrollment success now keeps staff on the confirmation screen, shows a direct member-profile link, and exposes the safe traced `Annuler cette inscription` recovery action with a required reason.
 - A broader product-readiness roadmap now exists at `docs/audits/product-readiness-roadmap-2026-07-05.md`, covering recoverability, receipts, UI/UX consistency, settings polish, group/coach/enrollment rules, and code organization.
 - A master SaaS execution map now exists at `docs/audits/saas-product-execution-map-2026-07-05.md`, covering recoverability, page-by-page UX audit scope, settings redesign, receipts, group rules, planning/working days, code organization, and future gym-module strategy.
 - A mutation recoverability audit now exists at `docs/audits/mutation-recoverability-audit-2026-07-05.md`, mapping payment, enrollment, attendance, sessions, schedules, group assignments, data import, and catalog mutations to the recovery vocabulary.
@@ -209,6 +210,7 @@ Latest UI settings checkpoint:
 - Club receipt settings extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Audit-log business label pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Planning generation preview pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
+- Enrollment recovery visibility pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Group policy picker pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Planning UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.

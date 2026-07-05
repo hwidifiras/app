@@ -27,6 +27,7 @@ import {
   type GroupTypeValue,
   type MemberTypeValue,
 } from "@/lib/demographics";
+import type { EnrollmentUndoSnapshot } from "@/lib/enrollment-undo";
 import type { OfferKind } from "@prisma/client";
 
 type MemberType = MemberTypeValue;
@@ -90,6 +91,11 @@ type QuoteData = {
   totalDiscountCents: number;
   blocked: boolean;
   warnings: string[];
+};
+
+type EnrollmentCompletion = {
+  memberIds: string[];
+  undoSnapshot: EnrollmentUndoSnapshot;
 };
 
 function lineMemberProfile(line: LineState, members: MemberOption[]): { memberType: MemberType; gender: Gender } | null {
@@ -157,6 +163,9 @@ export function EnrollmentWizard({
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [completed, setCompleted] = useState(false);
+  const [completion, setCompletion] = useState<EnrollmentCompletion | null>(null);
+  const [voidReason, setVoidReason] = useState("");
+  const [voiding, setVoiding] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -289,6 +298,7 @@ export function EnrollmentWizard({
     const data = await res.json() as {
       data?: {
         memberIds: string[];
+        undoSnapshot: EnrollmentUndoSnapshot;
       };
       error?: string;
     };
@@ -299,9 +309,46 @@ export function EnrollmentWizard({
     }
 
     const memberIds = data.data?.memberIds ?? [];
+    const undoSnapshot = data.data?.undoSnapshot;
     setCompleted(true);
+    setCompletion(undoSnapshot ? { memberIds, undoSnapshot } : null);
+    setVoidReason("");
     setMessage("Inscription confirmée.");
-    router.replace(memberIds[0] ? `/members/${memberIds[0]}` : "/members");
+    router.refresh();
+  }
+
+  async function voidCompletedEnrollment() {
+    if (!completion) return;
+    const reason = voidReason.trim();
+    if (reason.length < 3) {
+      setMessage("Motif obligatoire pour annuler cette inscription.");
+      return;
+    }
+
+    setVoiding(true);
+    setMessage(null);
+    const res = await fetch("/api/enrollment/revert", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        undoSnapshot: completion.undoSnapshot,
+        reason,
+      }),
+    });
+    const data = (await res.json()) as { data?: { voided: boolean }; error?: string };
+    setVoiding(false);
+
+    if (!res.ok || !data.data?.voided) {
+      setMessage(data.error ?? "Impossible d'annuler cette inscription.");
+      return;
+    }
+
+    setCompleted(false);
+    setCompletion(null);
+    setQuote(null);
+    setVoidReason("");
+    setStep(1);
+    setMessage("Inscription annulee avec trace: paiements inverses, recus annules, abonnements resilies et affectations fermees si applicable.");
     router.refresh();
   }
 
@@ -309,6 +356,8 @@ export function EnrollmentWizard({
     setMessage(null);
     setQuote(null);
     setCompleted(false);
+    setCompletion(null);
+    setVoidReason("");
   }
 
   function updateLine(lineKey: string, next: LineState) {
@@ -434,6 +483,55 @@ export function EnrollmentWizard({
         <p>Le paiement règle la dette de la formule — il n&apos;ajoute pas de séances en plus.</p>
         <p>Pour 2 mois, choisissez une formule 2 mois ou faites un renouvellement.</p>
       </ReceptionInfoCard>
+
+      {completion ? (
+        <section className="rounded-lg border border-[var(--success)]/35 bg-[var(--success)]/10 p-4 shadow-[var(--shadow-panel)]">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-[var(--success)]">
+                Inscription enregistree
+              </p>
+              <h2 className="mt-1 text-base font-black text-[var(--foreground)]">
+                Verification avant de quitter
+              </h2>
+              <p className="mt-1 text-sm leading-relaxed text-[var(--muted-foreground)]">
+                Si une erreur humaine vient d&apos;etre faite, vous pouvez annuler cette inscription tant qu&apos;aucun pointage
+                n&apos;a ete cree sur les abonnements ou les eleves concernes. L&apos;annulation reste tracee dans le journal.
+              </p>
+            </div>
+            <Link
+              href={completion.memberIds[0] ? `/members/${completion.memberIds[0]}` : "/members"}
+              className="btn btn-primary btn-block-mobile shrink-0"
+              prefetch={false}
+            >
+              Voir fiche
+            </Link>
+          </div>
+          <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+            <FormField
+              label="Motif d'annulation"
+              htmlFor="enrollmentVoidReason"
+              hint="Ex. mauvais groupe, mauvais montant, doublon de fiche."
+            >
+              <input
+                id="enrollmentVoidReason"
+                className="field"
+                value={voidReason}
+                onChange={(event) => setVoidReason(event.target.value)}
+                placeholder="Motif obligatoire"
+              />
+            </FormField>
+            <button
+              type="button"
+              className="btn btn-ghost btn-block-mobile border-[var(--danger)]/30 text-[var(--danger)]"
+              disabled={voiding || voidReason.trim().length < 3}
+              onClick={() => { void voidCompletedEnrollment(); }}
+            >
+              {voiding ? "Annulation..." : "Annuler cette inscription"}
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       <div className="enrollment-stepper grid grid-cols-3 gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-2 shadow-[var(--shadow-panel)]">
         {["Élèves", "Offre", "Devis"].map((label, index) => {

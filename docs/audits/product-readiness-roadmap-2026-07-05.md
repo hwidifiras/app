@@ -97,7 +97,7 @@ Domain-specific logic should live in small policy/helper modules, not scattered 
 
 | Area | Current Risk | Target Behavior | Priority |
 | --- | --- | --- | --- |
-| Enrollment details after apply | Some details can be edited from member/subscription pages, but the original enrollment action needs clear recovery language. | Keep enrollment recovery visible and make the correction path obvious from member/subscription/payment views. | P0 |
+| Enrollment details after apply | Some details can be edited from member/subscription pages; the wizard now keeps a post-success recovery panel with reason-required cancellation before leaving the flow. | Next: make the correction path obvious from member/subscription/payment views too. | P1 |
 | Attendance after finalization | Staff may need to correct a real mistake after finalization. Current flow requires reopening first, then correction; logs now include reopen/finalize reasons and attendance before/after snapshots. | Future schema pass can preserve deleted attendance rows instead of physical delete. | P1 |
 | Session edit | Schedule/session edits can affect pointage and conflict history. Completed/pointed sessions are blocked, and edits now write audit snapshots. | Add staff-entered reason UX for broad permanent edits, not only cancellations/exceptions. | P1 |
 | Subscription edit | Amount/date/plan/status edits can affect payments and active assignments. Current guard blocks unsafe edits, shows already-paid amount, requires reason for formula/status/value changes, and writes before/after audit. | Browser QA and copy polish on the edit page. | P1 |
