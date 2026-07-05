@@ -122,6 +122,17 @@ function lineCompatibilityIssue(line: LineState, members: MemberOption[], groups
   return `Profil incompatible: membre ${memberTypeLabel(memberProfile.memberType)} / ${genderLabel(memberProfile.gender)} avec cours ${groupTypeLabel(group.groupType)} / ${groupGenderPolicyLabel(group.genderPolicy)}.`;
 }
 
+function isGroupCompatibleWithLine(line: LineState, members: MemberOption[], group: GroupOption) {
+  const memberProfile = lineMemberProfile(line, members);
+  if (!memberProfile) return true;
+  return checkGroupMemberCompatibility({
+    groupType: group.groupType,
+    genderPolicy: group.genderPolicy,
+    memberType: memberProfile.memberType,
+    gender: memberProfile.gender,
+  }).ok;
+}
+
 function newLine(memberId = ""): LineState {
   return {
     key: crypto.randomUUID(),
@@ -405,6 +416,7 @@ export function EnrollmentWizard({
           l.newFirstName &&
           l.newLastName &&
           l.newPhone &&
+          l.memberType !== "NOT_SPECIFIED" &&
           l.gender !== "NOT_SPECIFIED" &&
           (l.memberType !== "KID" || (l.parentName && l.parentPhone)))),
   );
@@ -420,6 +432,7 @@ export function EnrollmentWizard({
         if (line.mode === "existing" && !line.memberId) missing.push("membre");
         if (line.mode === "new") {
           if (!line.newFirstName || !line.newLastName || !line.newPhone) missing.push("identité");
+          if (line.memberType === "NOT_SPECIFIED") missing.push("adulte/enfant");
           if (line.gender === "NOT_SPECIFIED") missing.push("genre");
           if (line.memberType === "KID" && (!line.parentName || !line.parentPhone)) missing.push("parent");
         }
@@ -882,6 +895,32 @@ function LineEditor({
   onRemove: () => void;
   canRemove: boolean;
 }) {
+  const memberProfile = lineMemberProfile(line, members);
+  const profileLabel = memberProfile
+    ? `${memberTypeLabel(memberProfile.memberType)} · ${genderLabel(memberProfile.gender)}`
+    : "Profil à choisir";
+  const selectedGroup = groups.find((group) => group.id === line.groupId);
+  const selectedCompatibility =
+    selectedGroup && memberProfile
+      ? checkGroupMemberCompatibility({
+          groupType: selectedGroup.groupType,
+          genderPolicy: selectedGroup.genderPolicy,
+          memberType: memberProfile.memberType,
+          gender: memberProfile.gender,
+        })
+      : null;
+  const compatibleGroups = memberProfile
+    ? groups.filter((group) => isGroupCompatibleWithLine(line, members, group))
+    : groups;
+  const incompatibleGroups = memberProfile
+    ? groups.filter((group) => !isGroupCompatibleWithLine(line, members, group))
+    : [];
+  const suggestedGroups = compatibleGroups.filter((group) => group.id !== line.groupId).slice(0, 4);
+  const existingProfileIncomplete =
+    line.mode === "existing" &&
+    memberProfile !== null &&
+    (memberProfile.memberType === "NOT_SPECIFIED" || memberProfile.gender === "NOT_SPECIFIED");
+
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-2 text-sm">
@@ -947,19 +986,35 @@ function LineEditor({
               onChange={(e) => onChange({ ...line, newPhone: e.target.value })}
             />
           </FormField>
-          <FormField label="Type de membre" htmlFor={`${line.key}-type`} className="sm:col-span-3">
-            <select
-              id={`${line.key}-type`}
-              className="field"
-              value={line.memberType}
-              onChange={(e) =>
-                onChange({ ...line, memberType: e.target.value as LineState["memberType"] })
-              }
-            >
-              <option value="NOT_SPECIFIED">Type non précisé</option>
-              <option value="ADULT">Adulte</option>
-              <option value="KID">Enfant</option>
-            </select>
+          <FormField label="Public" htmlFor={`${line.key}-type`} className="sm:col-span-3">
+            <div id={`${line.key}-type`} className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Public">
+              {[
+                { value: "ADULT", label: "Adulte", hint: "Téléphone de l'élève requis" },
+                { value: "KID", label: "Enfant", hint: "Parent obligatoire" },
+              ].map((option) => (
+                <label
+                  key={option.value}
+                  className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2 text-sm transition ${
+                    line.memberType === option.value
+                      ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
+                      : "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-soft)]"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name={`${line.key}-type`}
+                    value={option.value}
+                    checked={line.memberType === option.value}
+                    onChange={() => onChange({ ...line, memberType: option.value as LineState["memberType"] })}
+                    required
+                  />
+                  <span>
+                    <span className="block font-semibold">{option.label}</span>
+                    <span className="block text-xs text-[var(--muted-foreground)]">{option.hint}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
           </FormField>
           <FormField label="Genre" htmlFor={`${line.key}-gender`} className="sm:col-span-3">
             <div id={`${line.key}-gender`} className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Genre">
@@ -1039,14 +1094,75 @@ function LineEditor({
           onChange={(e) => onChange({ ...line, groupId: e.target.value, planId: "" })}
         >
           <option value="">Sélectionner un groupe</option>
-          {groups.map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.name} — {g.sportName} · {groupTypeLabel(g.groupType)} ({g.activeMembers}/{g.capacity})
-            </option>
-          ))}
+          {memberProfile ? (
+            <>
+              <optgroup label={`Groupes compatibles (${compatibleGroups.length})`}>
+                {compatibleGroups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name} — {g.sportName} · {groupTypeLabel(g.groupType)} · {groupGenderPolicyLabel(g.genderPolicy)} ({g.activeMembers}/{g.capacity})
+                  </option>
+                ))}
+              </optgroup>
+              {incompatibleGroups.length > 0 ? (
+                <optgroup label={`À vérifier / incompatibles (${incompatibleGroups.length})`}>
+                  {incompatibleGroups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name} — {g.sportName} · {groupTypeLabel(g.groupType)} · {groupGenderPolicyLabel(g.genderPolicy)} ({g.activeMembers}/{g.capacity})
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null}
+            </>
+          ) : (
+            groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name} — {g.sportName} · {groupTypeLabel(g.groupType)} ({g.activeMembers}/{g.capacity})
+              </option>
+            ))
+          )}
         </select>
       </FormField>
+      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-xs">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <p className="font-semibold text-[var(--foreground)]">Profil élève: {profileLabel}</p>
+          <p className="text-[var(--muted-foreground)]">
+            {compatibleGroups.length} groupe{compatibleGroups.length > 1 ? "s" : ""} compatible
+            {compatibleGroups.length > 1 ? "s" : ""}
+          </p>
+        </div>
+        {existingProfileIncomplete ? (
+          <p className="mt-1 text-amber-700">
+            Profil incomplet sur la fiche membre: complétez adulte/enfant et genre pour fiabiliser les règles groupe.
+          </p>
+        ) : null}
+        {selectedGroup && selectedCompatibility?.ok ? (
+          <p className="mt-1 text-[var(--success)]">
+            Groupe compatible: {groupTypeLabel(selectedGroup.groupType)} · {groupGenderPolicyLabel(selectedGroup.genderPolicy)}.
+          </p>
+        ) : selectedGroup && selectedCompatibility && !selectedCompatibility.ok ? (
+          <p className="mt-1 font-medium text-[var(--danger)]">
+            {selectedCompatibility.message} Choisissez un groupe compatible avant de continuer.
+          </p>
+        ) : null}
+      </div>
       {lineIssue ? <FeedbackMessage variant="error" message={lineIssue} /> : null}
+      {lineIssue && suggestedGroups.length > 0 ? (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900">
+          <p className="font-bold">Suggestions compatibles</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {suggestedGroups.map((group) => (
+              <button
+                key={group.id}
+                type="button"
+                className="rounded-lg border border-blue-200 bg-white px-3 py-2 font-semibold text-blue-800 hover:border-blue-400"
+                onClick={() => onChange({ ...line, groupId: group.id, planId: "" })}
+              >
+                {group.name} · {group.sportName}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <FormField label="Formule" htmlFor={`${line.key}-plan`}>
         <select
           id={`${line.key}-plan`}
