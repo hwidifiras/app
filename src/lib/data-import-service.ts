@@ -61,8 +61,8 @@ export async function inspectDataImport(payload: DataImportPayload): Promise<Imp
 
   const [duplicateMember, group, plan, sessions, settings] = await Promise.all([
     prisma.member.findUnique({ where: { tenantId_phone: { tenantId, phone: memberPhone } }, select: { id: true } }),
-    prisma.group.findUnique({
-      where: { id: payload.groupId },
+    prisma.group.findFirst({
+      where: { id: payload.groupId, tenantId },
       select: {
         id: true,
         name: true,
@@ -71,12 +71,12 @@ export async function inspectDataImport(payload: DataImportPayload): Promise<Imp
         sportId: true,
         capacity: true,
         isActive: true,
-        _count: { select: { members: { where: { status: "ACTIVE" } } } },
+        _count: { select: { members: { where: { tenantId, status: "ACTIVE" } } } },
         sport: { select: { name: true } },
       },
     }),
-    prisma.subscriptionPlan.findUnique({
-      where: { id: payload.planId },
+    prisma.subscriptionPlan.findFirst({
+      where: { id: payload.planId, tenantId },
       select: {
         id: true,
         name: true,
@@ -87,7 +87,7 @@ export async function inspectDataImport(payload: DataImportPayload): Promise<Imp
       },
     }),
     prisma.session.findMany({
-      where: { id: { in: payload.attendances.map((row) => row.sessionId) } },
+      where: { tenantId, id: { in: payload.attendances.map((row) => row.sessionId) } },
       select: { id: true, groupId: true, sessionDate: true, status: true },
     }),
     getClubSettings(),
@@ -188,11 +188,11 @@ export async function applyDataImport(
   const context = await inspectDataImport(payload);
 
   return prisma.$transaction(async (tx) => {
-    const groupState = await tx.group.findUniqueOrThrow({
-      where: { id: context.group.id },
+    const groupState = await tx.group.findFirstOrThrow({
+      where: { id: context.group.id, tenantId },
       select: {
         capacity: true,
-        _count: { select: { members: { where: { status: "ACTIVE" } } } },
+        _count: { select: { members: { where: { tenantId, status: "ACTIVE" } } } },
       },
     });
     if (groupState._count.members >= groupState.capacity) {
@@ -360,23 +360,24 @@ function parseImportAuditDetails(details: string | null): ImportAuditDetails | n
 
 async function resolveDataImportRollbackStatus(
   details: ImportAuditDetails,
+  tenantId: string,
 ): Promise<DataImportRollbackStatus> {
   const [member, subscription] = await Promise.all([
-    prisma.member.findUnique({
-      where: { id: details.memberId },
+    prisma.member.findFirst({
+      where: { id: details.memberId, tenantId },
       select: {
         id: true,
-        groups: { select: { id: true } },
-        subscriptions: { select: { id: true } },
-        attendances: { select: { id: true } },
+        groups: { where: { tenantId }, select: { id: true } },
+        subscriptions: { where: { tenantId }, select: { id: true } },
+        attendances: { where: { tenantId }, select: { id: true } },
         householdLink: { select: { id: true } },
       },
     }),
-    prisma.memberSubscription.findUnique({
-      where: { id: details.subscriptionId },
+    prisma.memberSubscription.findFirst({
+      where: { id: details.subscriptionId, tenantId },
       select: {
-        payments: { select: { id: true } },
-        attendances: { select: { id: true } },
+        payments: { where: { tenantId }, select: { id: true } },
+        attendances: { where: { tenantId }, select: { id: true } },
       },
     }),
   ]);
@@ -435,7 +436,7 @@ export async function getDataImportRollbackEligibility(
   const details = parseImportAuditDetails(audit.details);
   if (!details) return rollbackEligibilityForStatus("NOT_FOUND");
 
-  const status = await resolveDataImportRollbackStatus(details);
+  const status = await resolveDataImportRollbackStatus(details, tenantId);
   return rollbackEligibilityForStatus(status);
 }
 
@@ -452,17 +453,17 @@ export async function rollbackDataImport(auditLogId: string, actorId: string) {
   const details = parseImportAuditDetails(audit.details);
   if (!details) throw new Error("IMPORT_NOT_FOUND");
 
-  const rollbackStatus = await resolveDataImportRollbackStatus(details);
+  const rollbackStatus = await resolveDataImportRollbackStatus(details, tenantId);
   if (rollbackStatus === "ALREADY_REMOVED") throw new Error("IMPORT_ALREADY_REMOVED");
   if (rollbackStatus === "LOCKED_BY_ACTIVITY") throw new Error("IMPORT_HAS_NEW_ACTIVITY");
   if (rollbackStatus !== "AVAILABLE") throw new Error("IMPORT_NOT_FOUND");
 
   await prisma.$transaction(async (tx) => {
-    await tx.attendance.deleteMany({ where: { id: { in: details.attendanceIds } } });
-    if (details.paymentId) await tx.payment.deleteMany({ where: { id: details.paymentId } });
-    await tx.groupMember.deleteMany({ where: { id: details.assignmentId } });
-    await tx.memberSubscription.deleteMany({ where: { id: details.subscriptionId } });
-    await tx.member.delete({ where: { id: details.memberId } });
+    await tx.attendance.deleteMany({ where: { tenantId, id: { in: details.attendanceIds } } });
+    if (details.paymentId) await tx.payment.deleteMany({ where: { tenantId, id: details.paymentId } });
+    await tx.groupMember.deleteMany({ where: { tenantId, id: details.assignmentId } });
+    await tx.memberSubscription.deleteMany({ where: { tenantId, id: details.subscriptionId } });
+    await tx.member.deleteMany({ where: { tenantId, id: details.memberId } });
     await tx.auditLog.create({
       data: {
         tenantId,
@@ -470,7 +471,7 @@ export async function rollbackDataImport(auditLogId: string, actorId: string) {
         entityType: "DataImport",
         entityId: details.memberId,
         userId: actorId,
-        details: JSON.stringify({ sourceAuditLogId: auditLogId }),
+        details: JSON.stringify({ tenantId, sourceAuditLogId: auditLogId }),
       },
     });
   });
