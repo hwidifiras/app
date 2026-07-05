@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { ClubReceiptSettings } from "@/components/settings/club-receipt-settings";
+import { SettingsToggleRow } from "@/components/settings/settings-toggle-row";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormField, FormGrid, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import { FieldControl } from "@/components/ui/field-control";
@@ -39,54 +41,6 @@ export type ClubSettingsFormData = {
 type ClubSettingsFormProps = {
   initial: ClubSettingsFormData;
 };
-
-function ToggleRow({
-  id,
-  label,
-  description,
-  checked,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  description: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <label
-      htmlFor={id}
-      className={cn(
-        "flex cursor-pointer items-start justify-between gap-4 rounded-lg border p-3.5 shadow-[var(--shadow-panel)] transition sm:p-4",
-        checked
-          ? "border-primary/30 bg-primary/5"
-          : "border-border/80 bg-[var(--surface-soft)]/60 hover:border-primary/25",
-      )}
-    >
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold text-foreground">{label}</span>
-        <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{description}</span>
-      </span>
-      <span className="relative mt-0.5 inline-flex h-7 w-12 shrink-0 items-center">
-        <input
-          id={id}
-          type="checkbox"
-          className="peer sr-only"
-          checked={checked}
-          onChange={(e) => onChange(e.target.checked)}
-        />
-        <span
-          className="absolute inset-0 rounded-full bg-muted transition peer-checked:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2"
-          aria-hidden
-        />
-        <span
-          className="relative ml-1 size-5 rounded-full bg-white shadow transition peer-checked:translate-x-5"
-          aria-hidden
-        />
-      </span>
-    </label>
-  );
-}
 
 function centsToMoneyInput(cents: number): string {
   if (cents <= 0) return "";
@@ -400,21 +354,21 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
         description="Définissez ce que l'équipe peut accepter pendant le pointage."
       >
         <div className="space-y-3">
-          <ToggleRow
+          <SettingsToggleRow
             id="allowPartialPayment"
             label="Pointage avec paiement partiel"
             description="Un membre ayant payé une partie de son abonnement peut être pointé présent."
             checked={allowPartialPayment}
             onChange={setAllowPartialPayment}
           />
-          <ToggleRow
+          <SettingsToggleRow
             id="allowWithoutSubscription"
             label="Autoriser exceptionnellement sans abonnement"
             description="L'équipe pourra enregistrer un passage motivé pour une personne sans abonnement actif."
             checked={allowWithoutSubscription}
             onChange={setAllowWithoutSubscription}
           />
-          <ToggleRow
+          <SettingsToggleRow
             id="absentConsumesSession"
             label="Une absence consomme une séance"
             description="Lorsqu'elle est activée, une absence déduit une séance du quota restant."
@@ -468,14 +422,14 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
               })}
             </div>
           </div>
-          <ToggleRow
+          <SettingsToggleRow
             id="allowSameRoomConcurrentGroups"
             label="Deux groupes dans la meme salle"
             description="Si activé, deux groupes différents peuvent avoir cours dans la même salle au même horaire sans conflit de salle."
             checked={allowSameRoomConcurrentGroups}
             onChange={setAllowSameRoomConcurrentGroups}
           />
-          <ToggleRow
+          <SettingsToggleRow
             id="allowCoachConcurrentSameRoomQualified"
             label="Coach multi-groupes dans la meme salle"
             description="Si activé, un coach peut encadrer deux groupes au même horaire quand ils sont dans la même salle et que les disciplines font partie de ses spécialités."
@@ -535,68 +489,19 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
         title="Recus de paiement"
         description="Configurez la numerotation et le texte affiche sur les recus imprimes ou verifies en ligne."
       >
-        <FormGrid>
-          <FormField
-            label="Prefixe des recus"
-            htmlFor="receiptPrefix"
-            hint="Exemple: WD donne WD-2026-000001."
-          >
-            <input
-              id="receiptPrefix"
-              className="field uppercase"
-              value={receiptPrefix}
-              onChange={(event) => setReceiptPrefix(event.target.value.toUpperCase())}
-              maxLength={10}
-              required
-            />
-          </FormField>
-          <FormField
-            label="Prochain numero"
-            htmlFor="nextReceiptSequence"
-            hint="Augmente automatiquement apres chaque paiement."
-          >
-            <input
-              id="nextReceiptSequence"
-              type="number"
-              min={1}
-              step={1}
-              className="field"
-              value={nextReceiptSequence}
-              onChange={(event) => setNextReceiptSequence(event.target.value)}
-              required
-            />
-          </FormField>
-          <FormField
-            label="Texte en bas du recu"
-            htmlFor="receiptFooter"
-            hint="Conditions, merci, cachet du club ou mention administrative."
-            className="md:col-span-2"
-          >
-            <textarea
-              id="receiptFooter"
-              className="field min-h-24"
-              value={receiptFooter}
-              onChange={(event) => setReceiptFooter(event.target.value)}
-              maxLength={500}
-            />
-          </FormField>
-        </FormGrid>
-        <div className="mt-3 grid gap-3 md:grid-cols-2">
-          <ToggleRow
-            id="receiptPrintDefault"
-            label="Proposer l'impression apres paiement"
-            description="Affiche un lien direct vers le recu imprimable apres un encaissement."
-            checked={receiptPrintDefault}
-            onChange={setReceiptPrintDefault}
-          />
-          <ToggleRow
-            id="receiptEmailDefault"
-            label="Envoi email par defaut"
-            description="Apres un encaissement, le recu est envoye automatiquement si le membre possede un email."
-            checked={receiptEmailDefault}
-            onChange={setReceiptEmailDefault}
-          />
-        </div>
+        <ClubReceiptSettings
+          clubName={clubName}
+          receiptPrefix={receiptPrefix}
+          nextReceiptSequence={nextReceiptSequence}
+          receiptFooter={receiptFooter}
+          receiptEmailDefault={receiptEmailDefault}
+          receiptPrintDefault={receiptPrintDefault}
+          onReceiptPrefixChange={setReceiptPrefix}
+          onNextReceiptSequenceChange={setNextReceiptSequence}
+          onReceiptFooterChange={setReceiptFooter}
+          onReceiptEmailDefaultChange={setReceiptEmailDefault}
+          onReceiptPrintDefaultChange={setReceiptPrintDefault}
+        />
       </FormSection>
 
       <FormActions sticky>
