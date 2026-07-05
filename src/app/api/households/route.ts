@@ -9,6 +9,26 @@ import {
 
 export const runtime = "nodejs";
 
+function householdAuditSnapshot(household: {
+  id: string;
+  label: string | null;
+  members: Array<{
+    relationship: string;
+    member: { id: string; firstName: string; lastName: string; phone: string };
+  }>;
+}) {
+  return {
+    id: household.id,
+    label: household.label,
+    members: household.members.map((item) => ({
+      memberId: item.member.id,
+      memberName: `${item.member.firstName} ${item.member.lastName}`.trim(),
+      memberPhone: item.member.phone,
+      relationship: item.relationship,
+    })),
+  };
+}
+
 export async function GET(request: Request) {
   try {
     await requirePermission(request, "members.manage");
@@ -93,27 +113,42 @@ export async function POST(request: Request) {
   }
 
   try {
-    const household = await prisma.household.create({
-      data: {
-        tenantId: actor.tenantId,
-        label: parsed.data.label?.trim() || null,
-        members: {
-          create: {
-            tenantId: actor.tenantId,
-            memberId: parsed.data.memberId,
-            relationship: parsed.data.relationship,
-          },
-        },
-      },
-      include: {
-        members: {
-          include: {
-            member: {
-              select: { id: true, firstName: true, lastName: true, phone: true },
+    const household = await prisma.$transaction(async (tx) => {
+      const created = await tx.household.create({
+        data: {
+          tenantId: actor.tenantId,
+          label: parsed.data.label?.trim() || null,
+          members: {
+            create: {
+              tenantId: actor.tenantId,
+              memberId: parsed.data.memberId,
+              relationship: parsed.data.relationship,
             },
           },
         },
-      },
+        include: {
+          members: {
+            include: {
+              member: {
+                select: { id: true, firstName: true, lastName: true, phone: true },
+              },
+            },
+          },
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          tenantId: actor.tenantId,
+          action: "HOUSEHOLD_CREATED",
+          entityType: "Household",
+          entityId: created.id,
+          userId: actor.id,
+          details: JSON.stringify({ after: householdAuditSnapshot(created) }),
+        },
+      });
+
+      return created;
     });
 
     return NextResponse.json({ data: household }, { status: 201 });
@@ -153,17 +188,38 @@ export async function PATCH(request: Request) {
   }
 
   try {
-    const link = await prisma.householdMember.create({
-      data: {
-        tenantId: actor.tenantId,
-        householdId: addParsed.data.householdId,
-        memberId: addParsed.data.memberId,
-        relationship: addParsed.data.relationship,
-      },
-      include: {
-        member: { select: { id: true, firstName: true, lastName: true } },
-        household: { select: { id: true, label: true } },
-      },
+    const link = await prisma.$transaction(async (tx) => {
+      const created = await tx.householdMember.create({
+        data: {
+          tenantId: actor.tenantId,
+          householdId: addParsed.data.householdId,
+          memberId: addParsed.data.memberId,
+          relationship: addParsed.data.relationship,
+        },
+        include: {
+          member: { select: { id: true, firstName: true, lastName: true } },
+          household: { select: { id: true, label: true } },
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          tenantId: actor.tenantId,
+          action: "HOUSEHOLD_MEMBER_ADDED",
+          entityType: "Household",
+          entityId: created.householdId,
+          userId: actor.id,
+          details: JSON.stringify({
+            householdId: created.householdId,
+            householdLabel: created.household.label,
+            memberId: created.memberId,
+            memberName: `${created.member.firstName} ${created.member.lastName}`.trim(),
+            relationship: created.relationship,
+          }),
+        },
+      });
+
+      return created;
     });
     return NextResponse.json({ data: link });
   } catch {

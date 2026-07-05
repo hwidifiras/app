@@ -275,6 +275,7 @@ Latest UI settings checkpoint:
 - Coach create/update audit pass now logs before/after specialties, active groups, weekly load, and active-state changes transactionally; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Direct group assignment audit pass now logs created, updated, and closed assignments with before/after details and generated subscription linkage; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Bulk group assignment audit pass now logs created/reactivated assignment IDs, requested members, skip counts, and tenant-linked close summaries; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
+- Household audit pass now logs foyer creation and member additions to foyers with readable audit labels; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
 
 Start a disposable local PostgreSQL test database, or set `TEST_DATABASE_URL`, before relying on `npm.cmd test`.
