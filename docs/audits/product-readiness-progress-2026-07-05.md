@@ -38,6 +38,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Receipt actions now support copying the public verification link for manual sending.
 - Receipt actions now support copying a ready-to-send verification message with receipt number, code, and public verification link for WhatsApp/SMS-style handoff.
 - Payment history now shows compact receipt actions for each issued receipt: open receipt, resend email when a member email exists, and copy verification link.
+- Payment history now shows a compact receipt delivery badge: email sent, failed, not sent, missing email, or blocked for voided receipts. Payment detail remains the full delivery trail.
 - Payment correction/detail now shows the linked receipt, resend/copy actions, and the latest receipt email delivery attempts from audit logs.
 - Receipt email sending uses the existing Resend email infrastructure and writes audit logs.
 - Club settings now control receipt prefix, next sequence, footer, default print, and default email behavior.
@@ -220,6 +221,7 @@ Latest UI settings checkpoint:
 - `/settings/data-import` guidance pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `/logs` summary pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Receipt legal/fiscal identity field pass added DB fields and receipt snapshot/rendering support; it passed `npx.cmd prisma generate`, `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`. `npm.cmd test` remains blocked by the missing local PostgreSQL server at `localhost:5432`.
+- Payment receipt delivery badge pass passed `npm.cmd run lint -- --no-cache` and `npm.cmd run build`. `npm.cmd test` remains blocked by the missing local PostgreSQL server at `localhost:5432`.
 - `schedule-templates-manager.tsx` UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `data-import-wizard.tsx` bulk preview UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `data-import-wizard.tsx` status/rollback UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.

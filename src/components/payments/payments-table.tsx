@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Banknote, ChevronDown, ChevronRight, Plus, RotateCcw } from "lucide-react";
 
 import { buildSubscriptionBillingView, formatMoney } from "@/lib/subscription-billing";
+import type { ReceiptDeliveryStatus } from "@/lib/receipt-delivery-status";
 import { cn } from "@/lib/utils";
 import { PaymentReceiptActions } from "@/components/payments/payment-receipt-actions";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -40,6 +41,7 @@ type PaymentGroup = {
       receiptNumber: string;
       verificationCode: string;
       status: "ISSUED" | "VOIDED";
+      deliveryStatus?: ReceiptDeliveryStatus | null;
     } | null;
     sequence: number;
     status: string;

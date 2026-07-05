@@ -8,6 +8,7 @@ import {
   buildReceiptVerificationMessage,
   buildReceiptVerificationPath,
 } from "@/lib/receipt-verification-url";
+import type { ReceiptDeliveryStatus } from "@/lib/receipt-delivery-status";
 import { cn } from "@/lib/utils";
 
 type PaymentReceipt = {
@@ -15,6 +16,7 @@ type PaymentReceipt = {
   receiptNumber: string;
   verificationCode: string;
   status: "ISSUED" | "VOIDED";
+  deliveryStatus?: ReceiptDeliveryStatus | null;
 };
 
 export function PaymentReceiptActions({
@@ -27,6 +29,9 @@ export function PaymentReceiptActions({
   const [isSending, setIsSending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [tone, setTone] = useState<"success" | "error">("success");
+  const [deliveryStatus, setDeliveryStatus] = useState<ReceiptDeliveryStatus | null>(
+    receipt.deliveryStatus ?? null,
+  );
   const verifyHref = buildReceiptVerificationPath(receipt.receiptNumber, receipt.verificationCode);
   const canSend = receipt.status === "ISSUED" && Boolean(defaultEmail?.trim());
 
@@ -83,9 +88,21 @@ export function PaymentReceiptActions({
       }
       setTone("success");
       setMessage(`Envoyé${payload?.data?.email ? ` à ${payload.data.email}` : ""}`);
+      setDeliveryStatus({
+        delivered: true,
+        email: payload?.data?.email ?? defaultEmail ?? null,
+        createdAt: new Date().toISOString(),
+        reason: null,
+      });
     } catch {
       setTone("error");
       setMessage("Erreur réseau");
+      setDeliveryStatus({
+        delivered: false,
+        email: defaultEmail ?? null,
+        createdAt: new Date().toISOString(),
+        reason: "Erreur réseau",
+      });
     } finally {
       setIsSending(false);
     }
@@ -105,6 +122,11 @@ export function PaymentReceiptActions({
         Reçu {receipt.receiptNumber}
         {receipt.status === "VOIDED" ? " annulé" : ""}
       </Link>
+      <ReceiptDeliveryChip
+        receiptStatus={receipt.status}
+        deliveryStatus={deliveryStatus}
+        hasEmail={Boolean(defaultEmail?.trim())}
+      />
       <button
         type="button"
         disabled={isSending || !canSend}
@@ -143,5 +165,59 @@ export function PaymentReceiptActions({
         </span>
       ) : null}
     </div>
+  );
+}
+
+function ReceiptDeliveryChip({
+  receiptStatus,
+  deliveryStatus,
+  hasEmail,
+}: {
+  receiptStatus: PaymentReceipt["status"];
+  deliveryStatus: ReceiptDeliveryStatus | null;
+  hasEmail: boolean;
+}) {
+  if (receiptStatus === "VOIDED") {
+    return (
+      <span className="rounded-full bg-red-50 px-2 py-0.5 text-[0.6rem] font-semibold text-red-700">
+        Envoi bloqué
+      </span>
+    );
+  }
+
+  if (deliveryStatus) {
+    const sentAt = new Intl.DateTimeFormat("fr-FR", {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(new Date(deliveryStatus.createdAt));
+    return (
+      <span
+        className={cn(
+          "rounded-full px-2 py-0.5 text-[0.6rem] font-semibold",
+          deliveryStatus.delivered ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700",
+        )}
+        title={[
+          deliveryStatus.email ? `Email: ${deliveryStatus.email}` : null,
+          `Date: ${sentAt}`,
+          !deliveryStatus.delivered && deliveryStatus.reason ? `Motif: ${deliveryStatus.reason}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+      >
+        {deliveryStatus.delivered ? "Email envoyé" : "Email échoué"}
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={cn(
+        "rounded-full px-2 py-0.5 text-[0.6rem] font-semibold",
+        hasEmail ? "bg-[var(--surface-soft)] text-[var(--muted-foreground)]" : "bg-amber-50 text-amber-700",
+      )}
+      title={hasEmail ? "Aucun envoi email enregistré pour ce reçu" : "Ajoutez un email au membre pour envoyer le reçu"}
+    >
+      {hasEmail ? "Non envoyé" : "Email manquant"}
+    </span>
   );
 }

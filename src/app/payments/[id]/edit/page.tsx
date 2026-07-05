@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { PaymentEditForm } from "@/components/payments/payment-edit-form";
+import { buildReceiptDeliveryStatus, RECEIPT_EMAIL_AUDIT_ACTIONS } from "@/lib/receipt-delivery-status";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -91,30 +92,12 @@ async function getPayment(id: string) {
   });
 }
 
-function parseReceiptDeliveryDetails(details: string | null) {
-  if (!details) return { email: null, delivered: null, reason: null };
-  try {
-    const parsed = JSON.parse(details) as {
-      email?: unknown;
-      delivered?: unknown;
-      reason?: unknown;
-    };
-    return {
-      email: typeof parsed.email === "string" ? parsed.email : null,
-      delivered: typeof parsed.delivered === "boolean" ? parsed.delivered : null,
-      reason: typeof parsed.reason === "string" ? parsed.reason : null,
-    };
-  } catch {
-    return { email: null, delivered: null, reason: null };
-  }
-}
-
 async function getReceiptDeliveryLogs(receiptId: string) {
   const logs = await prisma.auditLog.findMany({
     where: {
       entityType: "Receipt",
       entityId: receiptId,
-      action: { in: ["RECEIPT_EMAIL_SENT", "RECEIPT_EMAIL_FAILED"] },
+      action: { in: [...RECEIPT_EMAIL_AUDIT_ACTIONS] },
     },
     orderBy: { createdAt: "desc" },
     take: 8,
@@ -129,15 +112,12 @@ async function getReceiptDeliveryLogs(receiptId: string) {
   const usersById = new Map(users.map((user) => [user.id, user]));
 
   return logs.map((log) => {
-    const details = parseReceiptDeliveryDetails(log.details);
+    const deliveryStatus = buildReceiptDeliveryStatus(log);
     const actor = log.userId ? usersById.get(log.userId) : null;
     return {
       id: log.id,
       action: log.action,
-      createdAt: log.createdAt.toISOString(),
-      email: details.email,
-      delivered: details.delivered ?? log.action === "RECEIPT_EMAIL_SENT",
-      reason: details.reason,
+      ...deliveryStatus,
       actorName: actor?.name || actor?.email || null,
     };
   });

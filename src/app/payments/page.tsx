@@ -3,6 +3,11 @@ import { formatMoney } from "@/lib/money";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { PaymentsTable } from "@/components/payments/payments-table";
+import {
+  buildReceiptDeliveryStatus,
+  RECEIPT_EMAIL_AUDIT_ACTIONS,
+  type ReceiptDeliveryStatus,
+} from "@/lib/receipt-delivery-status";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -28,6 +33,7 @@ type PaymentRow = {
     receiptNumber: string;
     verificationCode: string;
     status: "ISSUED" | "VOIDED";
+    deliveryStatus?: ReceiptDeliveryStatus | null;
   } | null;
 };
 
@@ -55,6 +61,7 @@ type PaymentGroup = {
       receiptNumber: string;
       verificationCode: string;
       status: "ISSUED" | "VOIDED";
+      deliveryStatus?: ReceiptDeliveryStatus | null;
     } | null;
     sequence: number;
     status: string;
@@ -90,6 +97,29 @@ export default async function PaymentsPage() {
         },
       },
     });
+    const receiptIds = rows.map((row) => row.receipt?.id).filter((receiptId): receiptId is string => Boolean(receiptId));
+    const deliveryLogs = receiptIds.length
+      ? await prisma.auditLog.findMany({
+          where: {
+            entityType: "Receipt",
+            entityId: { in: receiptIds },
+            action: { in: [...RECEIPT_EMAIL_AUDIT_ACTIONS] },
+          },
+          orderBy: { createdAt: "desc" },
+          select: {
+            action: true,
+            entityId: true,
+            details: true,
+            createdAt: true,
+          },
+        })
+      : [];
+    const latestDeliveryByReceiptId = new Map<string, ReceiptDeliveryStatus>();
+    for (const log of deliveryLogs) {
+      if (!latestDeliveryByReceiptId.has(log.entityId)) {
+        latestDeliveryByReceiptId.set(log.entityId, buildReceiptDeliveryStatus(log));
+      }
+    }
 
     const payments: PaymentRow[] = rows.map((p) => ({
       id: p.id,
@@ -109,7 +139,12 @@ export default async function PaymentsPage() {
       paymentMethod: p.paymentMethod,
       entryType: p.entryType,
       correctionReason: p.correctionReason,
-      receipt: p.receipt,
+      receipt: p.receipt
+        ? {
+            ...p.receipt,
+            deliveryStatus: latestDeliveryByReceiptId.get(p.receipt.id) ?? null,
+          }
+        : null,
     }));
 
     // Regrouper par abonnement
