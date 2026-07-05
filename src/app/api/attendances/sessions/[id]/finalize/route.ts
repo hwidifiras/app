@@ -35,8 +35,8 @@ export async function POST(
   const reason =
     parsed.data.reason?.trim() ||
     (parsed.data.action === "reopen" ? "Correction du pointage" : "Finalisation du pointage");
-  const session = await prisma.session.findUnique({
-    where: { id },
+  const session = await prisma.session.findFirst({
+    where: { id, tenantId: actor.tenantId },
     include: {
       group: {
         select: {
@@ -58,6 +58,7 @@ export async function POST(
     }
     const completionLog = await prisma.auditLog.findFirst({
       where: {
+        tenantId: actor.tenantId,
         action: "SESSION_COMPLETED",
         entityType: "Session",
         entityId: id,
@@ -82,11 +83,13 @@ export async function POST(
       });
       await tx.auditLog.create({
         data: {
+          tenantId: actor.tenantId,
           action: "SESSION_REOPENED",
           entityType: "Session",
           entityId: id,
           userId: actor.id,
           details: JSON.stringify({
+            tenantId: actor.tenantId,
             previousStatus: "COMPLETED",
             reopenedStatus,
             attendanceCount: session.attendances.length,
@@ -138,11 +141,13 @@ export async function POST(
     });
     await tx.auditLog.create({
       data: {
+        tenantId: actor.tenantId,
         action: "SESSION_COMPLETED",
         entityType: "Session",
         entityId: id,
         userId: actor.id,
         details: JSON.stringify({
+          tenantId: actor.tenantId,
           expectedMemberCount: lifecycle.expectedMemberCount,
           checkedMemberCount: lifecycle.checkedMemberCount,
           previousStatus: session.status,
