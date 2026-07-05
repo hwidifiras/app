@@ -43,6 +43,53 @@ function sessionDateKey(session: PlanningConflictSession) {
   return formatUtcDateOnlyIso(new Date(session.sessionDate));
 }
 
+function conflictTime(session: PlanningConflictSession) {
+  return `${session.startTime}-${session.endTime}`;
+}
+
+function coachConflictReason(params: {
+  coachName: string;
+  other: PlanningConflictSession;
+  sameRoom: boolean;
+  preferenceAllowsSameRoomQualified: boolean;
+  coachQualifiedForBoth: boolean;
+}) {
+  const base = `Coach · ${params.coachName} chevauche avec ${params.other.groupName} (${conflictTime(params.other)}).`;
+
+  if (!params.sameRoom) {
+    return `${base} Salle différente: un coach ne peut pas être sur deux cours en même temps.`;
+  }
+
+  if (!params.preferenceAllowsSameRoomQualified) {
+    return `${base} La préférence "coach sur deux cours même salle" est désactivée.`;
+  }
+
+  if (!params.coachQualifiedForBoth) {
+    return `${base} Même salle, mais le coach n'est pas qualifié pour les deux disciplines.`;
+  }
+
+  return base;
+}
+
+function roomConflictReason(params: {
+  roomLabel: string;
+  other: PlanningConflictSession;
+  allowSameRoomConcurrentGroups: boolean;
+  allowCoachConcurrentSameRoomQualified: boolean;
+}) {
+  const base = `Salle · ${params.roomLabel} chevauche avec ${params.other.groupName} (${conflictTime(params.other)}).`;
+
+  if (!params.allowSameRoomConcurrentGroups && !params.allowCoachConcurrentSameRoomQualified) {
+    return `${base} Les préférences de partage de salle sont désactivées.`;
+  }
+
+  if (!params.allowSameRoomConcurrentGroups && params.allowCoachConcurrentSameRoomQualified) {
+    return `${base} Le partage de salle n'est autorisé que si c'est le même coach qualifié.`;
+  }
+
+  return base;
+}
+
 export function buildPlanningConflictDetails(params: {
   sessions: PlanningConflictSession[];
   coaches: PlanningConflictCoach[];
@@ -79,25 +126,51 @@ export function buildPlanningConflictDetails(params: {
 
         const sameCoach = a.coachId && b.coachId && a.coachId === b.coachId;
         const sameRoom = formatRoomLabel(a.room) === formatRoomLabel(b.room);
+        const sharedCoach = sameCoach ? coachesById.get(a.coachId!) : undefined;
+        const coachQualifiedForBoth =
+          Boolean(sameCoach) &&
+          coachIsQualifiedForSport(sharedCoach, a.groupSportId) &&
+          coachIsQualifiedForSport(sharedCoach, b.groupSportId);
         const coachCanShareSameRoom =
           Boolean(sameCoach) &&
           params.preferences.allowCoachConcurrentSameRoomQualified &&
           sameRoom &&
-          coachIsQualifiedForSport(coachesById.get(a.coachId!), a.groupSportId) &&
-          coachIsQualifiedForSport(coachesById.get(a.coachId!), b.groupSportId);
+          coachQualifiedForBoth;
 
         if (sameCoach && !coachCanShareSameRoom) {
           const coachName = a.coachName ?? b.coachName ?? "Coach";
-          addDetail(a.id, `${coachName} est déjà affecté à ${b.groupName} (${b.startTime}-${b.endTime}).`);
-          addDetail(b.id, `${coachName} est déjà affecté à ${a.groupName} (${a.startTime}-${a.endTime}).`);
+          addDetail(a.id, coachConflictReason({
+            coachName,
+            other: b,
+            sameRoom,
+            preferenceAllowsSameRoomQualified: params.preferences.allowCoachConcurrentSameRoomQualified,
+            coachQualifiedForBoth,
+          }));
+          addDetail(b.id, coachConflictReason({
+            coachName,
+            other: a,
+            sameRoom,
+            preferenceAllowsSameRoomQualified: params.preferences.allowCoachConcurrentSameRoomQualified,
+            coachQualifiedForBoth,
+          }));
         }
 
         const roomCanShare = params.preferences.allowSameRoomConcurrentGroups || coachCanShareSameRoom;
 
         if (sameRoom && !roomCanShare) {
           const roomLabel = formatRoomLabel(a.room);
-          addDetail(a.id, `${roomLabel} est déjà réservée par ${b.groupName} (${b.startTime}-${b.endTime}).`);
-          addDetail(b.id, `${roomLabel} est déjà réservée par ${a.groupName} (${a.startTime}-${a.endTime}).`);
+          addDetail(a.id, roomConflictReason({
+            roomLabel,
+            other: b,
+            allowSameRoomConcurrentGroups: params.preferences.allowSameRoomConcurrentGroups,
+            allowCoachConcurrentSameRoomQualified: params.preferences.allowCoachConcurrentSameRoomQualified,
+          }));
+          addDetail(b.id, roomConflictReason({
+            roomLabel,
+            other: a,
+            allowSameRoomConcurrentGroups: params.preferences.allowSameRoomConcurrentGroups,
+            allowCoachConcurrentSameRoomQualified: params.preferences.allowCoachConcurrentSameRoomQualified,
+          }));
         }
       }
     }

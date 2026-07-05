@@ -190,6 +190,9 @@ export function SessionTile({
                     <li key={reason}>{reason}</li>
                   ))}
                 </ul>
+                <p className="mt-1.5 text-[0.68rem] text-[var(--muted-foreground)]">
+                  Modifiez l&apos;horaire, le coach, la salle ou les préférences du club.
+                </p>
               </div>
             ) : null}
 
@@ -315,12 +318,15 @@ export function SessionDetailPanel({
 
       {conflictReasons.length > 0 ? (
         <div className="mt-3 rounded-lg border border-[var(--danger)]/25 bg-[var(--danger)]/10 p-3">
-          <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--danger)]">A corriger</p>
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--danger)]">À corriger</p>
           <ul className="mt-2 space-y-1 text-xs text-[var(--foreground)]">
             {conflictReasons.map((reason) => (
               <li key={reason}>{reason}</li>
             ))}
           </ul>
+          <p className="mt-2 text-xs text-[var(--muted-foreground)]">
+            Solution: changer l&apos;horaire, le coach, la salle ou ajuster les préférences du club.
+          </p>
         </div>
       ) : null}
 
