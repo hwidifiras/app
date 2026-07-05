@@ -39,10 +39,11 @@ function getThirtyDaysAgo(): Date {
   return d;
 }
 
-async function countOverrides(memberId: string): Promise<number> {
+async function countOverrides(memberId: string, tenantId: string): Promise<number> {
   const thirtyDaysAgo = getThirtyDaysAgo();
   return prisma.attendance.count({
     where: {
+      tenantId,
       memberId,
       status: "OVERRIDE",
       checkedAt: { gte: thirtyDaysAgo },
@@ -77,8 +78,9 @@ function attendanceAuditSnapshot(attendance: AttendanceAuditSnapshotInput) {
 }
 
 export async function GET(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "attendance.manage");
+    actor = await requirePermission(request, "attendance.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -89,6 +91,7 @@ export async function GET(request: Request) {
 
   const attendances = await prisma.attendance.findMany({
     where: {
+      tenantId: actor.tenantId,
       ...(sessionId ? { sessionId } : {}),
       ...(memberId ? { memberId } : {}),
     },
@@ -146,8 +149,8 @@ export async function POST(request: Request) {
     : overrideReason?.trim() || null;
 
   try {
-    const sessionExists = await prisma.session.findUnique({
-      where: { id: sessionId },
+    const sessionExists = await prisma.session.findFirst({
+      where: { id: sessionId, tenantId: actor.tenantId },
       include: {
         group: { select: { id: true, sportId: true, groupType: true } },
       },
@@ -172,7 +175,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const memberExists = await prisma.member.findUnique({ where: { id: memberId } });
+    const memberExists = await prisma.member.findFirst({
+      where: { id: memberId, tenantId: actor.tenantId },
+    });
     if (!memberExists) {
       return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
     }
@@ -291,7 +296,7 @@ export async function POST(request: Request) {
         );
       }
 
-      const overrideCount = await countOverrides(memberId);
+      const overrideCount = await countOverrides(memberId, actor.tenantId);
 
       if (overrideCount >= 3) {
         return NextResponse.json(
@@ -319,6 +324,7 @@ export async function POST(request: Request) {
 
           const updated = await tx.memberSubscription.updateMany({
             where: {
+              tenantId: actor.tenantId,
               id: activeSub.id,
               remainingSessions: { gt: 0 },
             },
@@ -333,6 +339,7 @@ export async function POST(request: Request) {
 
       const attendance = await tx.attendance.create({
         data: {
+          tenantId: actor.tenantId,
           sessionId,
           memberId,
           status,
@@ -363,6 +370,7 @@ export async function POST(request: Request) {
 
       await tx.auditLog.create({
         data: {
+          tenantId: actor.tenantId,
           action: "ATTENDANCE_CREATED",
           entityType: "Attendance",
           entityId: attendance.id,
@@ -370,6 +378,7 @@ export async function POST(request: Request) {
           details: JSON.stringify({
             sessionId,
             memberId,
+            tenantId: actor.tenantId,
             status,
             sportId,
             overrideReason: normalizedOverrideReason,
@@ -387,7 +396,7 @@ export async function POST(request: Request) {
       {
         data: result,
         warning:
-          status === "OVERRIDE" && (await countOverrides(memberId)) >= 2
+          status === "OVERRIDE" && (await countOverrides(memberId, actor.tenantId)) >= 2
             ? "Attention: 2 passages exceptionnels sur 30 jours"
             : undefined,
       },
@@ -460,8 +469,8 @@ export async function PATCH(request: Request) {
 
   try {
     const clubSettings = await getClubSettings();
-    const existing = await prisma.attendance.findUnique({
-      where: { id: attendanceId },
+    const existing = await prisma.attendance.findFirst({
+      where: { id: attendanceId, tenantId: actor.tenantId },
       select: {
         id: true,
         memberId: true,
@@ -544,7 +553,7 @@ export async function PATCH(request: Request) {
     }
 
     if (nextStatus === "OVERRIDE" && nextStatus !== existing.status) {
-      const overrideCount = await countOverrides(existing.memberId);
+      const overrideCount = await countOverrides(existing.memberId, actor.tenantId);
       if (overrideCount >= 3) {
         return NextResponse.json(
           {
@@ -639,11 +648,13 @@ export async function PATCH(request: Request) {
 
       await tx.auditLog.create({
         data: {
+          tenantId: actor.tenantId,
           action: "ATTENDANCE_UPDATED",
           entityType: "Attendance",
           entityId: attendanceId,
-          userId: actor?.id ?? null,
+          userId: actor.id,
           details: JSON.stringify({
+            tenantId: actor.tenantId,
             oldStatus: existing.status,
             newStatus: payload.status ?? existing.status,
             overrideReason: payload.overrideReason || null,
@@ -712,8 +723,8 @@ export async function DELETE(request: Request) {
 
   try {
     const clubSettings = await getClubSettings();
-    const existing = await prisma.attendance.findUnique({
-      where: { id: attendanceId },
+    const existing = await prisma.attendance.findFirst({
+      where: { id: attendanceId, tenantId: actor.tenantId },
       select: {
         memberId: true,
         status: true,
@@ -782,11 +793,13 @@ export async function DELETE(request: Request) {
 
       await tx.auditLog.create({
         data: {
+          tenantId: actor.tenantId,
           action: "ATTENDANCE_DELETED",
           entityType: "Attendance",
           entityId: attendanceId,
           userId: actor.id,
           details: JSON.stringify({
+            tenantId: actor.tenantId,
             deletedAt: new Date().toISOString(),
             reason: "Annulation du pointage",
             previousStatus: existing.status,
