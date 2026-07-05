@@ -6,6 +6,10 @@ import { useRouter } from "next/navigation";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormSectionNav } from "@/components/ui/form-layout";
+import {
+  BulkImportPreviewTable,
+  type BulkImportResult,
+} from "@/components/settings/data-import-bulk-ui";
 import type { GroupTypeValue } from "@/lib/demographics";
 import { formatMoney } from "@/lib/money";
 
@@ -59,27 +63,6 @@ type Preview = {
   warnings: string[];
 };
 
-type BulkImportRow = {
-  rowNumber: number;
-  externalId: string;
-  memberName: string;
-  groupName: string;
-  planName: string;
-  status: "OK" | "ERROR" | "IMPORTED";
-  errors: string[];
-  warnings: string[];
-  memberId?: string;
-  remainingBalanceCents?: number;
-};
-
-type BulkImportResult = {
-  totalRows: number;
-  okRows: number;
-  errorRows: number;
-  importedRows: number;
-  rows: BulkImportRow[];
-};
-
 const today = new Date().toISOString().slice(0, 10);
 const templateUrl = "/templates/we-discipline-reprise-membres.xlsx";
 
@@ -89,18 +72,6 @@ function isoDate(value: string) {
 
 function moneyInputToCents(value: string) {
   return Math.round((Number.parseFloat(value.replace(",", ".")) || 0) * 100);
-}
-
-function bulkRowStatusText(row: BulkImportRow) {
-  if (row.status === "ERROR") return row.errors.join("; ");
-  if (row.status === "IMPORTED") return "Importé";
-  return row.warnings.join("; ") || "Valide";
-}
-
-function bulkRowStatusClass(row: BulkImportRow) {
-  if (row.status === "ERROR") return "text-red-700";
-  if (row.status === "IMPORTED") return "text-blue-700";
-  return "text-emerald-700";
 }
 
 export function DataImportWizard({
@@ -466,54 +437,7 @@ export function DataImportWizard({
               </button>
             </div>
 
-            {bulkPreview ? (
-              <div className="mt-5 space-y-3">
-                <div className="grid gap-2 text-sm sm:grid-cols-4">
-                  <div className="rounded-lg bg-[var(--surface-soft)] p-3"><span className="text-[var(--muted-foreground)]">Lignes</span><strong className="block">{bulkPreview.totalRows}</strong></div>
-                  <div className="rounded-lg bg-emerald-500/10 p-3 text-emerald-700"><span>Valides</span><strong className="block">{bulkPreview.okRows}</strong></div>
-                  <div className="rounded-lg bg-red-500/10 p-3 text-red-700"><span>Erreurs</span><strong className="block">{bulkPreview.errorRows}</strong></div>
-                  <div className="rounded-lg bg-blue-500/10 p-3 text-blue-700"><span>Importées</span><strong className="block">{bulkPreview.importedRows}</strong></div>
-                </div>
-
-                <div className="data-table overflow-x-auto rounded-lg border border-[var(--border)]">
-                  <table className="w-full min-w-[760px] text-left text-sm">
-                    <thead className="bg-[var(--surface-soft)] text-xs uppercase text-[var(--muted-foreground)]">
-                      <tr>
-                        <th className="px-3 py-2">Ligne</th>
-                        <th className="px-3 py-2">Membre</th>
-                        <th className="px-3 py-2">Groupe</th>
-                        <th className="px-3 py-2">Formule</th>
-                        <th className="px-3 py-2">Solde</th>
-                        <th className="px-3 py-2">Statut</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--border)]">
-                      {bulkPreview.rows.slice(0, 50).map((row) => (
-                        <tr key={`${row.rowNumber}-${row.externalId}`}>
-                          <td className="px-3 py-2" data-label="Ligne">{row.rowNumber}</td>
-                          <td className="data-table-primary px-3 py-2 font-medium" data-label="Membre">
-                            <span>{row.memberName || "Membre sans nom"}</span>
-                            {row.externalId ? (
-                              <span className="mt-0.5 block text-[0.68rem] font-medium text-[var(--muted-foreground)]">
-                                Réf. générée {row.externalId}
-                              </span>
-                            ) : null}
-                          </td>
-                          <td className="px-3 py-2" data-label="Groupe">{row.groupName || "-"}</td>
-                          <td className="px-3 py-2" data-label="Formule">{row.planName || "-"}</td>
-                          <td className="px-3 py-2" data-label="Solde">{formatMoney(row.remainingBalanceCents ?? 0)}</td>
-                          <td className="px-3 py-2" data-label="Statut">
-                            <span className={bulkRowStatusClass(row)}>
-                              {bulkRowStatusText(row)}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ) : null}
+            {bulkPreview ? <BulkImportPreviewTable result={bulkPreview} /> : null}
           </section>
 
         <form
