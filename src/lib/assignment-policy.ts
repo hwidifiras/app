@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { utcDateOnlyForTimeZone } from "@/lib/dates";
+import { getRequiredTenantId } from "@/lib/tenant-context";
 
 type AssignmentWindow = {
   status: "ACTIVE";
@@ -81,8 +82,10 @@ export function isScheduleActiveOnDate(
 }
 
 export async function schedulesForGroupWindow(groupId: string, startDate: Date, endDate?: Date | null) {
+  const tenantId = getRequiredTenantId();
   return prisma.groupSchedule.findMany({
     where: {
+      tenantId,
       groupId,
       ...scheduleWindowWhere(startDate, endDate),
     },
@@ -106,8 +109,10 @@ export function isDateWithinBusinessDayWindow(
 }
 
 export async function findActiveAssignmentOnDate(groupId: string, memberId: string, date: Date) {
+  const tenantId = getRequiredTenantId();
   return prisma.groupMember.findFirst({
     where: {
+      tenantId,
       groupId,
       memberId,
       ...activeAssignmentBusinessDayWindow(date),
@@ -121,8 +126,9 @@ export async function ensureGroupCapacityOnDate(
   date: Date,
   ignoredAssignmentId?: string,
 ) {
-  const group = await prisma.group.findUnique({
-    where: { id: groupId },
+  const tenantId = getRequiredTenantId();
+  const group = await prisma.group.findFirst({
+    where: { id: groupId, tenantId },
     select: { capacity: true },
   });
 
@@ -132,6 +138,7 @@ export async function ensureGroupCapacityOnDate(
 
   const activeCount = await prisma.groupMember.count({
     where: {
+      tenantId,
       groupId,
       ...activeAssignmentWindow(date),
       ...(ignoredAssignmentId ? { NOT: { id: ignoredAssignmentId } } : {}),
@@ -169,11 +176,13 @@ export async function checkScheduleConflictForAssignmentWindow(
   endDate?: Date | null,
   ignoredAssignmentId?: string,
 ) {
+  const tenantId = getRequiredTenantId();
   const newGroupSchedules = await schedulesForGroupWindow(groupId, startDate, endDate);
   if (newGroupSchedules.length === 0) return { ok: true as const };
 
   const existingAssignments = await prisma.groupMember.findMany({
     where: {
+      tenantId,
       memberId,
       ...activeAssignmentOverlapWindow(startDate, endDate),
       NOT: ignoredAssignmentId ? { id: ignoredAssignmentId } : { groupId },

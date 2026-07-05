@@ -32,7 +32,8 @@ function activeSubscriptionDateWindow(date: Date) {
   };
 }
 
-const activeSubWhere = (memberId: string, sportId: string, now = new Date()) => ({
+const activeSubWhere = (tenantId: string, memberId: string, sportId: string, now = new Date()) => ({
+  tenantId,
   memberId,
   sportId,
   status: "ACTIVE" as const,
@@ -89,11 +90,13 @@ export async function checkScheduleConflictForMember(
   startDate: Date = new Date(),
   endDate?: Date | null,
 ) {
+  const tenantId = getRequiredTenantId();
   const newGroupSchedules = await schedulesForGroupWindow(groupId, startDate, endDate);
   if (newGroupSchedules.length === 0) return { ok: true as const };
 
   const existingAssignments = await prisma.groupMember.findMany({
     where: {
+      tenantId,
       memberId,
       status: "ACTIVE",
       ...(endDate ? { startDate: { lt: endDate } } : {}),
@@ -147,10 +150,12 @@ export function isSubscriptionFullyPaid(amount: number, payments: { amount: numb
 }
 
 export async function expireStaleSubscriptions(memberId?: string) {
+  const tenantId = getRequiredTenantId();
   const now = new Date();
   const { dayStart } = businessDayWindow(now);
   await prisma.memberSubscription.updateMany({
     where: {
+      tenantId,
       status: "ACTIVE",
       ...(memberId ? { memberId } : {}),
       OR: [{ endDate: { lt: dayStart } }, { remainingSessions: { lte: 0 } }],
@@ -163,10 +168,11 @@ export async function resolveActiveSubscription(
   memberId: string,
   sportId: string,
 ): Promise<ActiveSubscriptionView | null> {
+  const tenantId = getRequiredTenantId();
   await expireStaleSubscriptions(memberId);
   const now = new Date();
   const sub = await prisma.memberSubscription.findFirst({
-    where: activeSubWhere(memberId, sportId, now),
+    where: activeSubWhere(tenantId, memberId, sportId, now),
     select: {
       id: true,
       sportId: true,
@@ -193,8 +199,10 @@ export async function resolveSubscriptionForAttendance(
   sportId: string,
   sessionDate: Date,
 ): Promise<ActiveSubscriptionView | null> {
+  const tenantId = getRequiredTenantId();
   const sub = await prisma.memberSubscription.findFirst({
     where: {
+      tenantId,
       memberId,
       sportId,
       status: { in: ["ACTIVE", "EXPIRED"] },
@@ -246,8 +254,9 @@ export async function expireActiveSubscriptionForSport(
   memberId: string,
   sportId: string,
 ) {
+  const tenantId = getRequiredTenantId();
   await tx.memberSubscription.updateMany({
-    where: { memberId, sportId, status: "ACTIVE" },
+    where: { tenantId, memberId, sportId, status: "ACTIVE" },
     data: { status: "EXPIRED" },
   });
 }
@@ -299,6 +308,7 @@ type ResolvedLine = {
 };
 
 async function resolveEnrollmentLines(lines: EnrollmentLineInput[], startDateInput?: string) {
+  const tenantId = getRequiredTenantId();
   const startDate = startDateInput ? new Date(startDateInput) : new Date();
   const resolved: ResolvedLine[] = [];
 
@@ -312,8 +322,8 @@ async function resolveEnrollmentLines(lines: EnrollmentLineInput[], startDateInp
     if (!memberId && line.newMember) {
       memberName = `${line.newMember.firstName} ${line.newMember.lastName}`;
     } else if (memberId) {
-      const m = await prisma.member.findUnique({
-        where: { id: memberId },
+      const m = await prisma.member.findFirst({
+        where: { id: memberId, tenantId },
         select: { firstName: true, lastName: true, status: true, memberType: true, gender: true },
       });
       if (!m) throw new Error(`LINE_${i}:MEMBER_NOT_FOUND`);
@@ -325,11 +335,11 @@ async function resolveEnrollmentLines(lines: EnrollmentLineInput[], startDateInp
       throw new Error(`LINE_${i}:MEMBER_REQUIRED`);
     }
 
-    const group = await prisma.group.findUnique({
-      where: { id: line.groupId },
+    const group = await prisma.group.findFirst({
+      where: { id: line.groupId, tenantId },
       include: {
         sport: { select: { name: true } },
-        _count: { select: { members: { where: { status: "ACTIVE" } } } },
+        _count: { select: { members: { where: { tenantId, status: "ACTIVE" } } } },
       },
     });
     if (!group || !group.isActive) throw new Error(`LINE_${i}:GROUP_INVALID`);
@@ -337,8 +347,8 @@ async function resolveEnrollmentLines(lines: EnrollmentLineInput[], startDateInp
       throw new Error(`LINE_${i}:MEMBER_TYPE_MISMATCH`);
     }
 
-    const plan = await prisma.subscriptionPlan.findUnique({
-      where: { id: line.planId },
+    const plan = await prisma.subscriptionPlan.findFirst({
+      where: { id: line.planId, tenantId },
       include: { sport: { select: { name: true } } },
     });
     if (!plan || !plan.isActive) throw new Error(`LINE_${i}:PLAN_INVALID`);
@@ -350,7 +360,7 @@ async function resolveEnrollmentLines(lines: EnrollmentLineInput[], startDateInp
     if (memberId) {
       await expireStaleSubscriptions(memberId);
       const existing = await prisma.memberSubscription.findFirst({
-        where: activeSubWhere(memberId, plan.sportId, startDate),
+        where: activeSubWhere(tenantId, memberId, plan.sportId, startDate),
         select: { id: true },
       });
       existingSubId = existing?.id ?? null;
@@ -486,7 +496,7 @@ export async function buildEnrollmentQuote(
 
   const memberIds = [...new Set(resolved.map((r) => r.memberId).filter(Boolean))];
   const householdLinks = await prisma.householdMember.findMany({
-    where: { memberId: { in: memberIds } },
+    where: { tenantId, memberId: { in: memberIds } },
     select: { memberId: true, householdId: true },
   });
   const householdByMember = new Map(householdLinks.map((h) => [h.memberId, h.householdId]));
@@ -497,7 +507,7 @@ export async function buildEnrollmentQuote(
       resolved.filter((r) => r.memberId === mid).map((r) => r.plan.sportId),
     );
     const existingSports = await prisma.memberSubscription.findMany({
-      where: { memberId: mid, status: "ACTIVE" },
+      where: { tenantId, memberId: mid, status: "ACTIVE" },
       select: { sportId: true },
     });
     const hasOther =
@@ -507,7 +517,7 @@ export async function buildEnrollmentQuote(
 
   let offer: Offer | null = null;
   if (offerId) {
-    offer = await prisma.offer.findUnique({ where: { id: offerId } });
+    offer = await prisma.offer.findFirst({ where: { id: offerId, tenantId } });
   }
 
   const { discounts, offerName, warnings: offerWarnings } = applyOfferToLines(
@@ -618,7 +628,7 @@ export async function ensureSharedHouseholdForMembers(
   const tenantId = getRequiredTenantId();
 
   const links = await tx.householdMember.findMany({
-    where: { memberId: { in: memberIds } },
+    where: { tenantId, memberId: { in: memberIds } },
     select: { memberId: true, householdId: true },
   });
   const byMember = new Map(links.map((l) => [l.memberId, l.householdId]));
@@ -640,7 +650,7 @@ export async function ensureSharedHouseholdForMembers(
 
   for (const id of memberIds) {
     if (byMember.has(id)) continue;
-    const taken = await tx.householdMember.findUnique({ where: { memberId: id } });
+    const taken = await tx.householdMember.findFirst({ where: { tenantId, memberId: id } });
     if (taken) throw new Error("HOUSEHOLD_MEMBER_TAKEN");
     await tx.householdMember.create({
       data: { tenantId, householdId: targetHouseholdId, memberId: id, relationship: "OTHER" },
