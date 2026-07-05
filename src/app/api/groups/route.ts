@@ -135,7 +135,7 @@ export async function GET(request: Request) {
       sport: { select: { name: true } },
       coach: { select: { firstName: true, lastName: true } },
       schedules: { orderBy: { createdAt: "asc" } },
-      _count: { select: { members: { where: { status: "ACTIVE" } } } },
+      _count: { select: { members: { where: { tenantId: actor.tenantId, status: "ACTIVE" } } } },
     },
     orderBy: { createdAt: "desc" },
     take: 50,
@@ -314,7 +314,7 @@ export async function PATCH(request: Request) {
       sport: { select: { name: true } },
       coach: { select: { firstName: true, lastName: true } },
       members: {
-        where: { status: "ACTIVE" },
+        where: { tenantId: actor.tenantId, status: "ACTIVE" },
         select: {
           member: {
             select: {

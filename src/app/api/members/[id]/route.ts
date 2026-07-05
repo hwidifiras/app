@@ -26,7 +26,7 @@ export async function GET(
       where: { id, tenantId: actor.tenantId },
       include: {
         groups: {
-          where: { status: "ACTIVE" },
+          where: { tenantId: actor.tenantId, status: "ACTIVE" },
           include: {
             group: {
               select: {
@@ -283,7 +283,7 @@ export async function PATCH(
           parentName: true,
           parentPhone: true,
           groups: {
-            where: { status: "ACTIVE" },
+            where: { tenantId: actor.tenantId, status: "ACTIVE" },
             select: {
               group: {
                 select: {
