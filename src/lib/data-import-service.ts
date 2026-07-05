@@ -253,6 +253,25 @@ export async function applyDataImport(
           })
         : null;
 
+    if (payment) {
+      await tx.auditLog.create({
+        data: {
+          tenantId,
+          action: "PAYMENT_CREATED",
+          entityType: "Payment",
+          entityId: payment.id,
+          userId: actorId,
+          details: JSON.stringify({
+            source: "manual-paper-migration",
+            amount: payload.paidCents,
+            memberId: member.id,
+            subscriptionId: subscription.id,
+            auditScope: "data-import",
+          }),
+        },
+      });
+    }
+
     const attendanceIds: string[] = [];
     for (const attendance of payload.attendances) {
       const created = await tx.attendance.create({
