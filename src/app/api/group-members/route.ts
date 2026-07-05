@@ -64,8 +64,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "enrollment.manage");
+    actor = await requirePermission(request, "enrollment.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -167,6 +168,7 @@ export async function POST(request: Request) {
   try {
     const created = await prisma.$transaction(async (tx) => {
       const now = new Date();
+      let createdSubscriptionId: string | null = null;
       const groupCapacity = await tx.group.findUnique({
         where: { id: parsed.data.groupId },
         select: {
@@ -221,7 +223,7 @@ export async function POST(request: Request) {
           data: { status: "EXPIRED" },
         });
 
-        await tx.memberSubscription.create({
+        const subscription = await tx.memberSubscription.create({
           data: {
             memberId: parsed.data.memberId,
             planId: selectedPlan.id,
@@ -233,6 +235,7 @@ export async function POST(request: Request) {
             status: "ACTIVE",
           },
         });
+        createdSubscriptionId = subscription.id;
       }
 
       const createdAssignment = await tx.groupMember.create({
@@ -246,6 +249,21 @@ export async function POST(request: Request) {
         include: {
           group: { select: { name: true } },
           member: { select: { firstName: true, lastName: true, phone: true } },
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          tenantId: actor.tenantId,
+          action: "GROUP_MEMBER_CREATED",
+          entityType: "GroupMember",
+          entityId: createdAssignment.id,
+          userId: actor.id,
+          details: JSON.stringify({
+            after: toGroupMemberDto(createdAssignment),
+            createdSubscriptionId,
+            planId: selectedPlan.id,
+          }),
         },
       });
 
@@ -277,8 +295,9 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "enrollment.manage");
+    actor = await requirePermission(request, "enrollment.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -316,9 +335,12 @@ export async function PATCH(request: Request) {
   const payload = updatePayload.data;
 
   try {
-    const existing = await prisma.groupMember.findUnique({ 
-      where: { id: groupMemberId }, 
-      select: { id: true, groupId: true, memberId: true, startDate: true, endDate: true, group: { select: { sportId: true } } }
+    const existing = await prisma.groupMember.findUnique({
+      where: { id: groupMemberId },
+      include: {
+        group: { select: { name: true, sportId: true } },
+        member: { select: { firstName: true, lastName: true, phone: true } },
+      },
     });
     if (!existing) {
       return NextResponse.json({ error: "Affectation introuvable" }, { status: 404 });
@@ -368,17 +390,35 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "La date de fin doit être >= date de début" }, { status: 400 });
     }
 
-    const updated = await prisma.groupMember.update({
-      where: { id: groupMemberId },
-      data: {
-        startDate,
-        endDate,
-        status: payload.status,
-      },
-      include: {
-        group: { select: { name: true } },
-        member: { select: { firstName: true, lastName: true, phone: true } },
-      },
+    const updated = await prisma.$transaction(async (tx) => {
+      const next = await tx.groupMember.update({
+        where: { id: groupMemberId },
+        data: {
+          startDate,
+          endDate,
+          status: payload.status,
+        },
+        include: {
+          group: { select: { name: true } },
+          member: { select: { firstName: true, lastName: true, phone: true } },
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          tenantId: actor.tenantId,
+          action: "GROUP_MEMBER_UPDATED",
+          entityType: "GroupMember",
+          entityId: groupMemberId,
+          userId: actor.id,
+          details: JSON.stringify({
+            before: toGroupMemberDto(existing),
+            after: toGroupMemberDto(next),
+          }),
+        },
+      });
+
+      return next;
     });
 
     return NextResponse.json({ data: toGroupMemberDto(updated) });
@@ -426,6 +466,7 @@ export async function DELETE(request: Request) {
 
       await tx.auditLog.create({
         data: {
+          tenantId: actor.tenantId,
           action: "GROUP_MEMBER_CLOSED",
           entityType: "GroupMember",
           entityId: groupMemberId,
