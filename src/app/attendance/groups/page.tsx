@@ -9,6 +9,7 @@ import {
   deriveSessionLifecycle,
   expectedMemberIdsAtSession,
 } from "@/lib/session-lifecycle";
+import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -47,6 +48,24 @@ export default async function AttendanceByGroupPage({
   searchParams: Promise<{ groupId?: string; from?: string; to?: string; page?: string }>;
 }) {
   const { groupId, from, to, page: pageParam } = await searchParams;
+  const authUser = await getAuthUser();
+
+  if (!authUser) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Élèves"
+          title="Suivi groupes"
+          description="Connectez-vous pour consulter les rapports de présence."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
+
+  const tenantId = authUser.tenantId;
   const requestedPage = Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1);
   const pageSize = 50;
 
@@ -59,13 +78,14 @@ export default async function AttendanceByGroupPage({
   toDate.setHours(23, 59, 59, 999);
 
   const groups = await prisma.group.findMany({
-    where: { isActive: true },
+    where: { tenantId, isActive: true },
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });
 
   const sessions = await prisma.session.findMany({
     where: {
+      tenantId,
       ...(groupId ? { groupId } : {}),
       sessionDate: { gte: fromDate, lte: toDate },
     },
@@ -76,15 +96,16 @@ export default async function AttendanceByGroupPage({
           name: true,
           members: {
             where: {
+              tenantId,
               status: "ACTIVE",
-              member: { status: "ACTIVE" },
+              member: { tenantId, status: "ACTIVE" },
             },
             select: { memberId: true, startDate: true, endDate: true },
           },
         },
       },
       coach: { select: { firstName: true, lastName: true } },
-      attendances: { select: { memberId: true, status: true } },
+      attendances: { where: { tenantId }, select: { memberId: true, status: true } },
     },
     orderBy: [{ group: { name: "asc" } }, { sessionDate: "desc" }, { startTime: "asc" }],
   });

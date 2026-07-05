@@ -6,16 +6,35 @@ import {
   type AttendanceHistoryRow,
 } from "@/components/attendance/attendance-history-list";
 import { formatAttendanceOperator, isLikelyInternalId } from "@/lib/attendance-display";
+import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function AttendancePage() {
+  const authUser = await getAuthUser();
+
+  if (!authUser) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Élèves"
+          title="Historique présences"
+          description="Connectez-vous pour consulter les présences."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
+
   let hasError = false;
   let rows: AttendanceHistoryRow[] = [];
 
   try {
     const data = await prisma.attendance.findMany({
+      where: { tenantId: authUser.tenantId },
       orderBy: { checkedAt: "desc" },
       include: {
         session: { select: { sessionDate: true, startTime: true, group: { select: { name: true } } } },
@@ -27,7 +46,7 @@ export default async function AttendancePage() {
     );
     const operators = operatorIds.length
       ? await prisma.user.findMany({
-          where: { id: { in: operatorIds } },
+          where: { tenantId: authUser.tenantId, id: { in: operatorIds } },
           select: { id: true, name: true },
         })
       : [];
