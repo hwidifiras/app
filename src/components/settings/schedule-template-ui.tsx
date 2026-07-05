@@ -31,6 +31,8 @@ export type ScheduleSportOption = {
   name: string;
 };
 
+export type ScheduleTargetMode = "SELECTED_GROUPS" | "SPORT" | "GROUP_TYPE" | "ALL_ACTIVE";
+
 export type ScheduleApplySummary = {
   templateName: string;
   targetGroups: Array<{ id: string; name: string; sportName: string; groupType: GroupTypeValue }>;
@@ -43,6 +45,33 @@ export type ScheduleApplySummary = {
   effectiveFrom: string;
   effectiveTo: string | null;
 };
+
+export const SCHEDULE_TARGET_MODE_OPTIONS: Array<{
+  value: ScheduleTargetMode;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "SELECTED_GROUPS",
+    label: "Groupes sélectionnés",
+    description: "Idéal pour changer quelques cours sans toucher au reste du planning.",
+  },
+  {
+    value: "SPORT",
+    label: "Une discipline",
+    description: "Applique le modèle à tous les groupes actifs de la discipline choisie.",
+  },
+  {
+    value: "GROUP_TYPE",
+    label: "Enfants ou adultes",
+    description: "Applique le modèle selon le public du cours.",
+  },
+  {
+    value: "ALL_ACTIVE",
+    label: "Tous les groupes actifs",
+    description: "Action large pour préparer une nouvelle saison ou une période spéciale.",
+  },
+];
 
 export function scheduleSlotLabel(slot: ScheduleSlotInput) {
   return `${CLUB_DAY_SHORT_LABELS[slot.dayOfWeek]} ${slot.startTime} (${slot.durationMinutes} min)`;
@@ -151,6 +180,91 @@ export function ScheduleApplyPreview({ preview }: { preview: ScheduleApplySummar
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+export function ScheduleApplySafetyCard({
+  selectedTemplateName,
+  targetLabel,
+  targetCount,
+  targetMode,
+  replaceExisting,
+  autoGenerate,
+  closedSlots,
+  hasPreview,
+}: {
+  selectedTemplateName: string | null;
+  targetLabel: string;
+  targetCount: number;
+  targetMode: ScheduleTargetMode;
+  replaceExisting: boolean;
+  autoGenerate: boolean;
+  closedSlots: string[];
+  hasPreview: boolean;
+}) {
+  const isBroadTarget = targetMode !== "SELECTED_GROUPS";
+
+  return (
+    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--primary)]">
+            Impact prévu
+          </p>
+          <p className="mt-1 text-sm font-semibold text-[var(--foreground)]">
+            {selectedTemplateName ? `Modèle « ${selectedTemplateName} »` : "Aucun modèle sélectionné"}
+          </p>
+        </div>
+        <span
+          className={cn(
+            "w-fit rounded-full px-2.5 py-1 text-xs font-bold",
+            hasPreview
+              ? "bg-[var(--success)]/10 text-[var(--success)]"
+              : "bg-[var(--primary)]/10 text-[var(--primary)]",
+          )}
+        >
+          {hasPreview ? "Prévisualisé" : "Prévisualisation requise"}
+        </span>
+      </div>
+
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        <SafetyItem label="Cible" value={targetLabel} detail={`${targetCount} groupe${targetCount > 1 ? "s" : ""}`} />
+        <SafetyItem
+          label="Horaires"
+          value={replaceExisting ? "Remplacer actifs/futurs" : "Ajouter seulement"}
+          detail={replaceExisting ? "Les anciens créneaux des cibles seront fermés." : "Les créneaux existants restent actifs."}
+        />
+        <SafetyItem
+          label="Séances"
+          value={autoGenerate ? "Génération après application" : "Sans génération"}
+          detail={autoGenerate ? "Crée les séances manquantes depuis les horaires." : "Les horaires sont prêts, séances à générer plus tard."}
+        />
+      </div>
+
+      {isBroadTarget ? (
+        <div className="mt-3 rounded-lg border border-[var(--warning)]/25 bg-[var(--warning)]/10 px-3 py-2 text-xs font-semibold leading-relaxed text-[var(--warning)]">
+          Action large: vérifiez la liste des groupes et les séances futures dans l&apos;aperçu avant d&apos;appliquer.
+        </div>
+      ) : null}
+
+      {closedSlots.length > 0 ? (
+        <div className="mt-3 rounded-lg border border-[var(--danger)]/25 bg-[var(--danger)]/10 px-3 py-2 text-xs font-semibold leading-relaxed text-[var(--danger)]">
+          Créneau sur jour fermé: {closedSlots.join(", ")}. Le planning gardera visibles les séances réelles, mais ce modèle doit être vérifié.
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function SafetyItem({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
+      <p className="text-[0.62rem] font-bold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
+        {label}
+      </p>
+      <p className="mt-1 text-sm font-bold text-[var(--foreground)]">{value}</p>
+      <p className="mt-0.5 text-[0.7rem] leading-relaxed text-[var(--muted-foreground)]">{detail}</p>
     </div>
   );
 }

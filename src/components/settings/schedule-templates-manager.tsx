@@ -10,7 +10,9 @@ import {
 } from "@/lib/club-working-days";
 import type { GroupTypeValue } from "@/lib/demographics";
 import {
+  SCHEDULE_TARGET_MODE_OPTIONS,
   ScheduleApplyPreview,
+  ScheduleApplySafetyCard,
   ScheduleTemplateCard,
   SelectedScheduleTemplateSummary,
   scheduleSlotLabel,
@@ -18,6 +20,7 @@ import {
   type ScheduleGroupOption,
   type ScheduleSlotInput,
   type ScheduleSportOption,
+  type ScheduleTargetMode,
   type ScheduleTemplateDto,
 } from "@/components/settings/schedule-template-ui";
 
@@ -59,7 +62,7 @@ export function ScheduleTemplatesManager({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [slots, setSlots] = useState<ScheduleSlotInput[]>([emptySlot()]);
-  const [targetMode, setTargetMode] = useState<"SELECTED_GROUPS" | "SPORT" | "GROUP_TYPE" | "ALL_ACTIVE">("SELECTED_GROUPS");
+  const [targetMode, setTargetMode] = useState<ScheduleTargetMode>("SELECTED_GROUPS");
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [sportId, setSportId] = useState(sports[0]?.id ?? "");
   const [groupType, setGroupType] = useState<GroupTypeValue>("ADULTS");
@@ -88,6 +91,24 @@ export function ScheduleTemplatesManager({
     if (targetMode === "GROUP_TYPE") return groups.filter((group) => group.groupType === groupType);
     return groups.filter((group) => selectedGroupIds.includes(group.id));
   }, [groupType, groups, selectedGroupIds, sportId, targetMode]);
+  const selectedTargetModeOption = useMemo(
+    () => SCHEDULE_TARGET_MODE_OPTIONS.find((option) => option.value === targetMode) ?? SCHEDULE_TARGET_MODE_OPTIONS[0],
+    [targetMode],
+  );
+  const targetLabel = useMemo(() => {
+    if (targetMode === "ALL_ACTIVE") return "Tous les groupes actifs";
+    if (targetMode === "SPORT") {
+      return sports.find((sport) => sport.id === sportId)?.name ?? "Discipline sélectionnée";
+    }
+    if (targetMode === "GROUP_TYPE") {
+      if (groupType === "KIDS") return "Groupes enfants";
+      if (groupType === "MIXED") return "Groupes mixtes";
+      return "Groupes adultes";
+    }
+    if (targetGroups.length === 0) return "Aucun groupe sélectionné";
+    if (targetGroups.length === 1) return targetGroups[0]?.name ?? "Groupe sélectionné";
+    return "Groupes sélectionnés";
+  }, [groupType, sportId, sports, targetGroups, targetMode]);
 
   function clearApplyPreview() {
     setPreview(null);
@@ -178,6 +199,10 @@ export function ScheduleTemplatesManager({
       setMessage("Sélectionnez un modèle");
       return;
     }
+    if (targetGroups.length === 0) {
+      setMessage("Choisissez au moins un groupe cible avant de prévisualiser.");
+      return;
+    }
     setLoading(true);
     setMessage(null);
     setPreview(null);
@@ -201,6 +226,10 @@ export function ScheduleTemplatesManager({
 
   async function applyTemplate() {
     if (!selectedTemplate) return;
+    if (targetGroups.length === 0) {
+      setMessage("Choisissez au moins un groupe cible avant d'appliquer les horaires.");
+      return;
+    }
     setLoading(true);
     setMessage(null);
 
@@ -368,11 +397,15 @@ export function ScheduleTemplatesManager({
                 }}
                 className="field"
               >
-                <option value="SELECTED_GROUPS">Groupes sélectionnés</option>
-                <option value="SPORT">Une discipline</option>
-                <option value="GROUP_TYPE">Enfants ou adultes</option>
-                <option value="ALL_ACTIVE">Tous les groupes actifs</option>
+                {SCHEDULE_TARGET_MODE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
+              <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--muted-foreground)]">
+                {selectedTargetModeOption.description}
+              </p>
             </label>
             {targetMode === "SPORT" ? (
               <label className="block">
@@ -429,6 +462,17 @@ export function ScheduleTemplatesManager({
             ) : null}
           </div>
 
+          <ScheduleApplySafetyCard
+            selectedTemplateName={selectedTemplate?.name ?? null}
+            targetLabel={targetLabel}
+            targetCount={targetGroups.length}
+            targetMode={targetMode}
+            replaceExisting={replaceExisting}
+            autoGenerate={autoGenerate}
+            closedSlots={selectedTemplateClosedSlots}
+            hasPreview={Boolean(preview)}
+          />
+
           <div className="grid gap-3 md:grid-cols-2">
             <label className="block">
               <span className="mb-1 block text-xs font-semibold">Appliquer à partir du</span>
@@ -468,11 +512,11 @@ export function ScheduleTemplatesManager({
                 }}
                 className="mt-0.5 size-4 accent-[var(--primary)]"
               />
-              <span>Fermer les horaires actifs/futurs des groupes cibles avant de créer les nouveaux.</span>
+              <span>Fermer les horaires actifs/futurs des groupes cibles avant d&apos;ouvrir les nouveaux créneaux.</span>
             </label>
             <label className="flex items-start gap-2">
               <input type="checkbox" checked={autoGenerate} onChange={(event) => setAutoGenerate(event.target.checked)} className="mt-0.5 size-4 accent-[var(--primary)]" />
-              <span>Générer les séances après application.</span>
+              <span>Générer les séances manquantes après application des horaires.</span>
             </label>
             {preview?.futureSessionsCount ? (
               <label className="flex items-start gap-2 text-[var(--warning)]">
@@ -485,7 +529,7 @@ export function ScheduleTemplatesManager({
           <div className="flex flex-col gap-2 sm:flex-row">
             <button type="button" onClick={() => void previewApply()} disabled={loading || !selectedTemplate} className="btn btn-ghost btn-block-mobile">
               <Eye className="size-4" />
-              Prévisualiser
+              Prévisualiser l&apos;impact
             </button>
             <button
               type="button"
@@ -494,7 +538,7 @@ export function ScheduleTemplatesManager({
               className="btn btn-primary btn-block-mobile"
             >
               <CalendarPlus className="size-4" />
-              Appliquer le modèle
+              Appliquer les horaires
             </button>
           </div>
 
