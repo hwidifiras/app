@@ -5,13 +5,20 @@ import { Pencil, Trash2, UserRound } from "lucide-react";
 
 import { CoachDto } from "@/types/coach";
 import { SportDto } from "@/types/sport";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormActions, FormField, FormGrid } from "@/components/ui/form-layout";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListSearch } from "@/components/ui/list-controls";
 import { Pagination, usePagination } from "@/components/ui/pagination";
+import {
+  CoachGroupsPreview,
+  CoachLoadSummary,
+  CoachRuleCard,
+  CoachSpecialtyChips,
+  CoachSummaryMetric,
+  coachRuleCards,
+} from "@/components/coaches/coach-manager-ui";
 
 type CoachManagerProps = {
   initialCoaches: CoachDto[];
@@ -92,6 +99,15 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
       ].some((value) => value.toLocaleLowerCase("fr").includes(query)),
     );
   }, [coaches, searchTerm]);
+  const overview = useMemo(() => {
+    const active = coaches.filter((coach) => coach.isActive).length;
+    const inactive = coaches.length - active;
+    const withoutSpecialty = coaches.filter((coach) => coach.isActive && coach.qualifiedSports.length === 0).length;
+    const activeGroups = coaches.reduce((sum, coach) => sum + coach.activeGroupCount, 0);
+    const weeklySchedules = coaches.reduce((sum, coach) => sum + coach.weeklyScheduleCount, 0);
+
+    return { active, inactive, withoutSpecialty, activeGroups, weeklySchedules };
+  }, [coaches]);
   const pagination = usePagination(filteredCoaches, 15, searchTerm);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -209,12 +225,12 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
         setPendingDeleteCoach(null);
         setBlockedCoach({ name: coachLabel.trim(), groups: result.details.groups });
       }
-      setMessage(result.error ?? "Erreur lors de la desactivation du coach");
+      setMessage(result.error ?? "Erreur lors de la désactivation du coach");
       setActionLoadingId(null);
       return;
     }
 
-    setMessage("Coach desactive avec succes");
+    setMessage("Coach désactivé avec succès");
     setPendingDeleteCoach(null);
     if (editingId === coachId) {
       cancelEdit();
@@ -224,12 +240,32 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
   }
 
   return (
-    <div>
+    <div className="space-y-4">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <CoachSummaryMetric label="Coachs actifs" value={overview.active} detail={`${overview.inactive} désactivé(s)`} tone="success" />
+        <CoachSummaryMetric
+          label="Spécialités"
+          value={overview.withoutSpecialty}
+          detail={overview.withoutSpecialty > 0 ? "Coach(s) à compléter" : "Tous les actifs sont qualifiés"}
+          tone={overview.withoutSpecialty > 0 ? "warning" : "success"}
+        />
+        <CoachSummaryMetric label="Cours affectés" value={overview.activeGroups} detail="Groupes actifs avec coach" />
+        <CoachSummaryMetric label="Charge semaine" value={overview.weeklySchedules} detail="Créneaux horaires actifs" />
+      </section>
+
+      <section className="grid gap-3 lg:grid-cols-3">
+        {coachRuleCards.map((card) => (
+          <CoachRuleCard key={card.title} icon={card.icon} title={card.title} tone={card.tone}>
+            {card.text}
+          </CoachRuleCard>
+        ))}
+      </section>
+
       <div className="grid w-full items-start gap-4 lg:grid-cols-[minmax(20rem,0.85fr)_minmax(0,1.25fr)]">
         <section id="coach-create" className="panel order-2 scroll-mt-24 p-4 sm:p-5 lg:order-1">
           <h2 className="text-base font-semibold text-[var(--foreground)]">Ajouter un coach</h2>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-            Créer un nouveau coach avec sa spécialité sportive.
+            Créez le coach, sa spécialité principale et les disciplines qu&apos;il peut encadrer.
           </p>
 
           <form onSubmit={onSubmit} className="mt-5 space-y-4">
@@ -272,7 +308,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                 />
               </FormField>
             </FormGrid>
-            <FormField label="Spécialité" htmlFor="coach-sport" hint="Optionnelle">
+            <FormField label="Spécialité principale" htmlFor="coach-sport" hint="Sert de repère dans les groupes et le planning.">
               <select
                 id="coach-sport"
                 value={sportId}
@@ -287,7 +323,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                 }}
                 className="field"
               >
-                <option value="">Spécialité non renseignée</option>
+                <option value="">Spécialité à compléter</option>
                 {sports.map((sport) => (
                   <option key={sport.id} value={sport.id}>
                     {sport.name}
@@ -298,7 +334,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
 
             {sports.length > 0 ? (
               <div>
-                <p className="mb-2 text-xs font-medium text-[var(--muted-foreground)]">Sports autorises</p>
+                <p className="mb-2 text-xs font-medium text-[var(--muted-foreground)]">Disciplines autorisées</p>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {sports.map((sport) => (
                     <label key={sport.id} className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
@@ -312,6 +348,9 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                     </label>
                   ))}
                 </div>
+                <p className="mt-2 text-xs leading-relaxed text-[var(--muted-foreground)]">
+                  Le planning utilise ces disciplines pour savoir si un coach peut couvrir deux cours ou une exception.
+                </p>
               </div>
             ) : null}
 
@@ -374,7 +413,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                       className="field text-xs"
                     />
                     <select
-                      aria-label="Spécialité du coach"
+                      aria-label="Spécialité principale du coach"
                       value={editSportId}
                       onFocus={() => void reloadSports()}
                       onClick={() => void reloadSports()}
@@ -387,7 +426,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                       }}
                       className="field text-xs"
                     >
-                      <option value="">Spécialité non renseignée</option>
+                      <option value="">Spécialité à compléter</option>
                       {sports.map((sport) => (
                         <option key={sport.id} value={sport.id}>
                           {sport.name}
@@ -395,18 +434,21 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                       ))}
                     </select>
                     {sports.length > 0 ? (
-                      <div className="grid gap-1 sm:grid-cols-2">
-                        {sports.map((sport) => (
-                          <label key={sport.id} className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
-                            <input
-                              type="checkbox"
-                              checked={withPrimarySport(editQualifiedSportIds, editSportId).includes(sport.id)}
-                              disabled={sport.id === editSportId}
-                              onChange={() => setEditQualifiedSportIds((current) => toggleSportId(current, sport.id))}
-                            />
-                            <span className="truncate text-[var(--foreground)]">{sport.name}</span>
-                          </label>
-                        ))}
+                      <div>
+                        <p className="mb-1 text-xs font-semibold text-[var(--muted-foreground)]">Disciplines autorisées</p>
+                        <div className="grid gap-1 sm:grid-cols-2">
+                          {sports.map((sport) => (
+                            <label key={sport.id} className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
+                              <input
+                                type="checkbox"
+                                checked={withPrimarySport(editQualifiedSportIds, editSportId).includes(sport.id)}
+                                disabled={sport.id === editSportId}
+                                onChange={() => setEditQualifiedSportIds((current) => toggleSportId(current, sport.id))}
+                              />
+                              <span className="truncate text-[var(--foreground)]">{sport.name}</span>
+                            </label>
+                          ))}
+                        </div>
                       </div>
                     ) : null}
                     <label className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
@@ -437,53 +479,53 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
-                    <div className="flex min-w-0 flex-1 items-center gap-3">
-                      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-xs font-bold text-[var(--primary)]">
-                        {coach.firstName[0]}
-                        {coach.lastName[0]}
+                  <div className="space-y-3">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                      <div className="flex min-w-0 flex-1 items-start gap-3">
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-xs font-bold text-[var(--primary)]">
+                          {coach.firstName[0]}
+                          {coach.lastName[0]}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-bold text-[var(--foreground)]">
+                            {coach.firstName} {coach.lastName}
+                          </p>
+                          <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
+                            {coach.phone}
+                            {coach.email ? ` · ${coach.email}` : ""}
+                          </p>
+                          <div className="mt-2">
+                            <CoachSpecialtyChips coach={coach} />
+                          </div>
+                        </div>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-[var(--foreground)]">
-                          {coach.firstName} {coach.lastName}
-                        </p>
+                      <div className="list-card-actions mt-1 shrink-0 md:mt-0 md:justify-end">
+                        <button
+                          type="button"
+                          onClick={() => startEdit(coach)}
+                          disabled={actionLoadingId === coach.id}
+                          className="btn btn-ghost btn-sm inline-flex items-center justify-center md:size-9 md:p-0"
+                          title="Modifier"
+                          aria-label="Modifier"
+                        >
+                          <Pencil className="size-4" />
+                          <span className="md:hidden">Modifier</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPendingDeleteCoach(coach)}
+                          disabled={actionLoadingId === coach.id}
+                          className="btn btn-ghost btn-sm inline-flex items-center justify-center border-red-200 text-red-700 hover:bg-red-50 md:size-9 md:p-0"
+                          title="Désactiver"
+                          aria-label="Désactiver"
+                        >
+                          <Trash2 className="size-4" />
+                          <span className="md:hidden">Désactiver</span>
+                        </button>
                       </div>
                     </div>
-                    <div className="grid flex-1 grid-cols-2 gap-x-3 gap-y-1 text-xs text-[var(--muted-foreground)] sm:grid-cols-5">
-                      <span className="truncate" data-label="Téléphone">{coach.phone}</span>
-                      <span className="truncate" data-label="Email">{coach.email ?? "—"}</span>
-                      <span className="truncate" data-label="Spécialité">{coach.sportName ?? "—"}</span>
-                      <span className="truncate" data-label="Autorisations">{qualifiedSportNames(coach) || "-"}</span>
-                      <span data-label="Statut">
-                        <StatusBadge variant={coach.isActive ? "success" : "muted"}>
-                          {coach.isActive ? "Actif" : "Inactif"}
-                        </StatusBadge>
-                      </span>
-                    </div>
-                    <div className="list-card-actions mt-1 shrink-0 md:mt-0 md:justify-end">
-                      <button
-                        type="button"
-                        onClick={() => startEdit(coach)}
-                        disabled={actionLoadingId === coach.id}
-                        className="btn btn-ghost btn-sm inline-flex items-center justify-center md:size-9 md:p-0"
-                        title="Modifier"
-                        aria-label="Modifier"
-                      >
-                        <Pencil className="size-4" />
-                        <span className="md:hidden">Modifier</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPendingDeleteCoach(coach)}
-                        disabled={actionLoadingId === coach.id}
-                        className="btn btn-danger btn-sm inline-flex items-center justify-center md:size-9 md:p-0"
-                        title="Desactiver"
-                        aria-label="Desactiver"
-                      >
-                        <Trash2 className="size-4" />
-                        <span className="md:hidden">Desactiver</span>
-                      </button>
-                    </div>
+                    <CoachLoadSummary coach={coach} />
+                    <CoachGroupsPreview coach={coach} />
                   </div>
                 )}
               </li>
@@ -523,9 +565,9 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
       {blockedCoach ? (
         <div className="mobile-modal-overlay fixed inset-0 z-50 flex justify-center bg-black/40">
           <div className="mobile-modal-panel border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-floating)] md:rounded-lg">
-            <h3 className="text-base font-semibold text-[var(--foreground)]">Suppression impossible</h3>
+            <h3 className="text-base font-semibold text-[var(--foreground)]">Désactivation impossible</h3>
             <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-              Le coach <span className="font-medium text-[var(--foreground)]">{blockedCoach.name}</span> est assigne aux groupes suivants :
+              Le coach <span className="font-medium text-[var(--foreground)]">{blockedCoach.name}</span> est assigné aux groupes suivants. Affectez ces groupes à un autre coach avant de le désactiver.
             </p>
             <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-[var(--foreground)]">
               {blockedCoach.groups.map((group) => (
@@ -547,9 +589,9 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
 
       <ConfirmDialog
         open={pendingDeleteCoach !== null}
-        title="Desactiver ce coach ?"
-        description={`${pendingDeleteCoach?.firstName ?? ""} ${pendingDeleteCoach?.lastName ?? ""} sera retire des nouvelles configurations sans effacer l'historique.`}
-        confirmLabel="Desactiver le coach"
+        title="Désactiver ce coach ?"
+        description={`${pendingDeleteCoach?.firstName ?? ""} ${pendingDeleteCoach?.lastName ?? ""} sera retiré des nouvelles configurations sans effacer l'historique. Si des groupes actifs l'utilisent encore, l'action sera bloquée.`}
+        confirmLabel="Désactiver le coach"
         loading={actionLoadingId === pendingDeleteCoach?.id}
         onCancel={() => setPendingDeleteCoach(null)}
         onConfirm={() => pendingDeleteCoach ? deleteCoach(pendingDeleteCoach.id) : undefined}

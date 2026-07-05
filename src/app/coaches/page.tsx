@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import { CoachManager } from "@/components/coaches/coach-manager";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
+import { buildCoachDto } from "@/lib/coach-view-model";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -21,6 +22,9 @@ export default async function CoachesPage() {
     sportName: string | null;
     qualifiedSportIds: string[];
     qualifiedSports: Array<{ id: string; name: string; isPrimary: boolean }>;
+    activeGroups: Array<{ id: string; name: string; sportName: string | null; room: string | null }>;
+    activeGroupCount: number;
+    weeklyScheduleCount: number;
     createdAt: string;
     updatedAt: string;
   }> = [];
@@ -42,48 +46,27 @@ export default async function CoachesPage() {
             include: { sport: { select: { id: true, name: true } } },
             orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
           },
+          groups: {
+            where: { isActive: true },
+            select: {
+              id: true,
+              name: true,
+              room: true,
+              sport: { select: { name: true } },
+              schedules: {
+                where: { OR: [{ effectiveTo: null }, { effectiveTo: { gte: new Date() } }] },
+                select: { id: true },
+              },
+            },
+            orderBy: { name: "asc" },
+          },
         },
         orderBy: { createdAt: "desc" },
       }),
       prisma.sport.findMany({ orderBy: { name: "asc" }, where: { isActive: true } }),
     ]);
 
-    initialCoaches = coaches.map((coach) => {
-      const qualifiedSportsById = new Map<string, { id: string; name: string; isPrimary: boolean }>();
-      for (const qualification of coach.qualifications) {
-        qualifiedSportsById.set(qualification.sport.id, {
-          id: qualification.sport.id,
-          name: qualification.sport.name,
-          isPrimary: qualification.isPrimary,
-        });
-      }
-      if (coach.sport) {
-        qualifiedSportsById.set(coach.sport.id, {
-          id: coach.sport.id,
-          name: coach.sport.name,
-          isPrimary: true,
-        });
-      }
-      const qualifiedSports = Array.from(qualifiedSportsById.values()).sort((a, b) => {
-        if (a.isPrimary !== b.isPrimary) return a.isPrimary ? -1 : 1;
-        return a.name.localeCompare(b.name, "fr");
-      });
-
-      return {
-        id: coach.id,
-        firstName: coach.firstName,
-        lastName: coach.lastName,
-        phone: coach.phone,
-        email: coach.email,
-        isActive: coach.isActive,
-        sportId: coach.sportId,
-        sportName: coach.sport?.name ?? null,
-        qualifiedSportIds: qualifiedSports.map((sport) => sport.id),
-        qualifiedSports,
-        createdAt: coach.createdAt.toISOString(),
-        updatedAt: coach.updatedAt.toISOString(),
-      };
-    });
+    initialCoaches = coaches.map(buildCoachDto);
 
     sportsOptions = sports.map((sport) => ({
       ...sport,

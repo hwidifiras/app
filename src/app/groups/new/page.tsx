@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { GroupAddForm } from "@/components/groups/group-add-form";
 import { PageHeader } from "@/components/ui/page-header";
+import { buildCoachDto } from "@/lib/coach-view-model";
 import type { CoachDto } from "@/types/coach";
 
 export const dynamic = "force-dynamic";
@@ -35,42 +36,7 @@ export default async function NewGroupPage() {
     ]);
 
     sportsOptions = sports.map((s) => ({ ...s, createdAt: s.createdAt.toISOString(), updatedAt: s.updatedAt.toISOString() }));
-    coachesOptions = coaches.map((c) => {
-      const qualifiedSportsById = new Map<string, { id: string; name: string; isPrimary: boolean }>();
-      for (const qualification of c.qualifications) {
-        qualifiedSportsById.set(qualification.sport.id, {
-          id: qualification.sport.id,
-          name: qualification.sport.name,
-          isPrimary: qualification.isPrimary,
-        });
-      }
-      if (c.sport) {
-        qualifiedSportsById.set(c.sport.id, {
-          id: c.sport.id,
-          name: c.sport.name,
-          isPrimary: true,
-        });
-      }
-      const qualifiedSports = Array.from(qualifiedSportsById.values()).sort((a, b) => {
-        if (a.isPrimary !== b.isPrimary) return a.isPrimary ? -1 : 1;
-        return a.name.localeCompare(b.name, "fr");
-      });
-
-      return {
-        id: c.id,
-        firstName: c.firstName,
-        lastName: c.lastName,
-        phone: c.phone,
-        email: c.email,
-        isActive: c.isActive,
-        sportId: c.sportId,
-        sportName: c.sport?.name ?? null,
-        qualifiedSportIds: qualifiedSports.map((sport) => sport.id),
-        qualifiedSports,
-        createdAt: c.createdAt.toISOString(),
-        updatedAt: c.updatedAt.toISOString(),
-      };
-    });
+    coachesOptions = coaches.map(buildCoachDto);
     membersOptions = members.map((m) => ({
       id: m.id,
       firstName: m.firstName,

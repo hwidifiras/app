@@ -4,65 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { createCoachSchema, updateCoachSchema } from "@/lib/schemas/coach";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { normalizeCoachSportIds } from "@/lib/coach-qualification-policy";
+import { buildCoachDto } from "@/lib/coach-view-model";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function toCoachDto(coach: {
-  id: string;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  email: string | null;
-  isActive: boolean;
-  sportId: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  sport: { id: string; name: string } | null;
-  qualifications: Array<{
-    sportId: string;
-    isPrimary: boolean;
-    sport: { id: string; name: string };
-  }>;
-}) {
-  const qualifiedSportsById = new Map<string, { id: string; name: string; isPrimary: boolean }>();
-
-  for (const qualification of coach.qualifications) {
-    qualifiedSportsById.set(qualification.sport.id, {
-      id: qualification.sport.id,
-      name: qualification.sport.name,
-      isPrimary: qualification.isPrimary,
-    });
-  }
-
-  if (coach.sport) {
-    qualifiedSportsById.set(coach.sport.id, {
-      id: coach.sport.id,
-      name: coach.sport.name,
-      isPrimary: true,
-    });
-  }
-
-  const qualifiedSports = Array.from(qualifiedSportsById.values()).sort((a, b) => {
-    if (a.isPrimary !== b.isPrimary) return a.isPrimary ? -1 : 1;
-    return a.name.localeCompare(b.name, "fr");
-  });
-
-  return {
-    id: coach.id,
-    firstName: coach.firstName,
-    lastName: coach.lastName,
-    phone: coach.phone,
-    email: coach.email,
-    isActive: coach.isActive,
-    sportId: coach.sportId,
-    sportName: coach.sport?.name ?? null,
-    qualifiedSportIds: qualifiedSports.map((sport) => sport.id),
-    qualifiedSports,
-    createdAt: coach.createdAt.toISOString(),
-    updatedAt: coach.updatedAt.toISOString(),
-  };
-}
 
 export async function GET(request: Request) {
   try {
@@ -73,6 +18,7 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q")?.trim();
+  const now = new Date();
 
   const coaches = await prisma.coach.findMany({
     where: query
@@ -92,11 +38,25 @@ export async function GET(request: Request) {
         include: { sport: { select: { id: true, name: true } } },
         orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
       },
+      groups: {
+        where: { isActive: true },
+        select: {
+          id: true,
+          name: true,
+          room: true,
+          sport: { select: { name: true } },
+          schedules: {
+            where: { OR: [{ effectiveTo: null }, { effectiveTo: { gte: now } }] },
+            select: { id: true },
+          },
+        },
+        orderBy: { name: "asc" },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json({ data: coaches.map(toCoachDto) });
+  return NextResponse.json({ data: coaches.map(buildCoachDto) });
 }
 
 export async function POST(request: Request) {
@@ -164,10 +124,24 @@ export async function POST(request: Request) {
           include: { sport: { select: { id: true, name: true } } },
           orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
         },
+        groups: {
+          where: { isActive: true },
+          select: {
+            id: true,
+            name: true,
+            room: true,
+            sport: { select: { name: true } },
+            schedules: {
+              where: { OR: [{ effectiveTo: null }, { effectiveTo: { gte: new Date() } }] },
+              select: { id: true },
+            },
+          },
+          orderBy: { name: "asc" },
+        },
       },
     });
 
-    return NextResponse.json({ data: toCoachDto(coach) }, { status: 201 });
+    return NextResponse.json({ data: buildCoachDto(coach) }, { status: 201 });
   } catch (error) {
     const isDuplicatePhone =
       typeof error === "object" &&
@@ -296,11 +270,25 @@ export async function PATCH(request: Request) {
             include: { sport: { select: { id: true, name: true } } },
             orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
           },
+          groups: {
+            where: { isActive: true },
+            select: {
+              id: true,
+              name: true,
+              room: true,
+              sport: { select: { name: true } },
+              schedules: {
+                where: { OR: [{ effectiveTo: null }, { effectiveTo: { gte: new Date() } }] },
+                select: { id: true },
+              },
+            },
+            orderBy: { name: "asc" },
+          },
         },
       });
     });
 
-    return NextResponse.json({ data: toCoachDto(updated) });
+    return NextResponse.json({ data: buildCoachDto(updated) });
   } catch (error) {
     const isDuplicatePhone =
       typeof error === "object" &&
@@ -376,6 +364,7 @@ export async function DELETE(request: Request) {
 
     await prisma.auditLog.create({
       data: {
+        tenantId: actor.tenantId,
         action: "COACH_DEACTIVATED",
         entityType: "Coach",
         entityId: coachId,

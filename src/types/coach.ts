@@ -9,6 +9,9 @@ export type CoachDto = {
   sportName: string | null;
   qualifiedSportIds: string[];
   qualifiedSports: Array<{ id: string; name: string; isPrimary: boolean }>;
+  activeGroups: Array<{ id: string; name: string; sportName: string | null; room: string | null }>;
+  activeGroupCount: number;
+  weeklyScheduleCount: number;
   createdAt: string;
   updatedAt: string;
 };
