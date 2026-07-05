@@ -25,6 +25,7 @@ export async function GET(request: Request) {
     orderBy: { createdAt: "desc" },
     include: {
       sport: { select: { id: true, name: true } },
+      _count: { select: { applications: true } },
     },
   });
 
@@ -32,6 +33,7 @@ export async function GET(request: Request) {
     data: offers.map((offer) => ({
       ...offer,
       sportName: offer.sport?.name ?? null,
+      applicationsCount: offer._count.applications,
       rules: offerToRulesRecord(offer),
     })),
   });
@@ -158,7 +160,13 @@ export async function DELETE(request: Request) {
 
   const offer = await prisma.offer.findUnique({
     where: { id: offerId },
-    select: { id: true, name: true, kind: true, isActive: true },
+    select: {
+      id: true,
+      name: true,
+      kind: true,
+      isActive: true,
+      _count: { select: { applications: true } },
+    },
   });
 
   if (!offer) {
@@ -180,7 +188,11 @@ export async function DELETE(request: Request) {
       entityType: "Offer",
       entityId: offer.id,
       userId: actor.id,
-      details: JSON.stringify({ kind: offer.kind, name: offer.name }),
+      details: JSON.stringify({
+        kind: offer.kind,
+        name: offer.name,
+        applicationsCount: offer._count.applications,
+      }),
     },
   });
 

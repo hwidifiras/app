@@ -51,7 +51,8 @@ The codebase already has `src/lib/recovery-policy.ts` with this shared vocabular
 | Attendance delete | `DELETE /api/attendances` | Physically deletes the attendance row after session-state checks, restores session balance, and now writes a richer `Pointage annule` audit snapshot with previous status, override reason, checker, checked time, subscription, member, session, and balance effect. | Medium-good: behavior is safeguarded and now recoverable from logs, but perfect append-only pointage history still needs a schema change. |
 | Data import apply | `POST /api/data-import` and `/api/data-import/bulk` | Applies import with audit details and rollback metadata. | Good for migration mode. |
 | Data import rollback | `rollbackDataImport()` | Physically deletes imported member/subscription/assignment/payment/attendance only if no new activity exists, then writes rollback audit. | Acceptable `draft-delete`, because rollback is blocked after real activity. |
-| Disciplines/coaches/formulas/offers | catalog routes | Delete paths deactivate/archive and write audit. | Good. |
+| Disciplines/coaches/formulas | catalog routes | Delete paths deactivate/archive and write audit. | Good. |
+| Offers | `POST/GET/DELETE /api/offers` | Offers are created or deactivated, not edited in place. The offer list now shows usage count so used offers are understood as historical templates; deactivation keeps existing inscriptions intact. | Good. |
 | Club/settings/users | settings routes | Updates write audit logs. | Good, but settings pages need clearer preview/risk copy for business-changing settings. |
 
 ## P0 Follow-Up Checks
@@ -75,9 +76,10 @@ The codebase already has `src/lib/recovery-policy.ts` with this shared vocabular
    - Rollback is safe only before new activity.
    - UI should show why rollback is unavailable when blocked.
 
-5. Offers after use need a historical-meaning check:
-   - If an offer was used, editing its value can change the meaning of old enrollments.
-   - Prefer version/deactivate/new offer for used offers.
+5. Offers after use:
+   - There is no in-place offer update route.
+   - Used offers now show usage count in the list and deactivate confirmation.
+   - Safe path remains: deactivate the old offer and create a new one.
 
 ## Immediate Code Direction
 

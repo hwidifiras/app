@@ -24,6 +24,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Session edits now write actor-linked audit entries: exception edits include before/after snapshots, and permanent edits include affected future session IDs plus requested values.
 - Subscription edits now require admin + reason for formula/status/value changes, block amount below paid total, and write before/after audit snapshots.
 - Subscription cancellation now preserves before/after audit details.
+- Offers remain create/deactivate only; active offer cards now show usage count so used discounts are treated as historical templates, not editable meanings.
 - Attendance undo keeps its balance adjustment and audit entry inside the same transaction.
 
 ### Receipts
@@ -100,7 +101,7 @@ Highest-risk routes to re-check next:
 - session edit reason UX for broad permanent changes;
 - group schedule generation preview and future-session effects;
 - subscription browser QA and copy polish after the latest edit/cancel audit pass;
-- offer edits after use;
+- offer browser QA after the usage-count/deactivation clarity pass;
 - data import rollback boundaries.
 
 ### P1 - Settings And Configuration Polish
@@ -196,6 +197,7 @@ Latest UI settings checkpoint:
 - Payment receipt delivery history pass passed `npm.cmd run lint`, `npm.cmd run build`, `npx.cmd prisma validate`, and `npm.cmd audit --omit=dev`.
 - Session edit audit pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Subscription edit audit pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
+- Offer historical-meaning pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Group policy picker pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Planning UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.

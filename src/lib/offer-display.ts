@@ -9,6 +9,7 @@ export type OfferLike = OfferRuleSource & {
   name: string;
   isActive: boolean;
   sportName?: string | null;
+  applicationsCount?: number;
   rules: Record<string, unknown> | string;
 };
 

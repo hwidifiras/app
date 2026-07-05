@@ -290,6 +290,11 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
                     <p className="mt-1 text-xs text-[var(--muted-foreground)]">
                       {formatOfferRulesSummary(offer)}
                     </p>
+                    <p className="mt-2 inline-flex rounded-full bg-[var(--surface)] px-2 py-1 text-[0.68rem] font-semibold text-[var(--muted-foreground)]">
+                      {(offer.applicationsCount ?? 0) > 0
+                        ? `${offer.applicationsCount} utilisation${(offer.applicationsCount ?? 0) > 1 ? "s" : ""} - historique conservé`
+                        : "Pas encore utilisée"}
+                    </p>
                   </div>
                   <button
                     type="button"
@@ -477,7 +482,11 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
       <ConfirmDialog
         open={pendingDeleteOffer !== null}
         title="Désactiver cette offre ?"
-        description={`L'offre « ${pendingDeleteOffer?.name ?? ""} » ne sera plus proposée. Les inscriptions existantes seront conservées.`}
+        description={
+          pendingDeleteOffer && (pendingDeleteOffer.applicationsCount ?? 0) > 0
+            ? `L'offre « ${pendingDeleteOffer.name} » a déjà été utilisée ${pendingDeleteOffer.applicationsCount} fois. Elle sera désactivée, sans modifier les inscriptions existantes.`
+            : `L'offre « ${pendingDeleteOffer?.name ?? ""} » ne sera plus proposée. Les inscriptions existantes seront conservées.`
+        }
         confirmLabel="Désactiver l'offre"
         loading={deletingId === pendingDeleteOffer?.id}
         onCancel={() => setPendingDeleteOffer(null)}
