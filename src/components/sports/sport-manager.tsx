@@ -11,6 +11,10 @@ import { FormField } from "@/components/ui/form-layout";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListSearch } from "@/components/ui/list-controls";
 import { Pagination, usePagination } from "@/components/ui/pagination";
+import {
+  MARTIAL_ARTS_DISCIPLINE_SUGGESTIONS,
+  type MartialArtsDisciplineSuggestion,
+} from "@/lib/martial-arts-catalog";
 import { cn } from "@/lib/utils";
 
 type SportManagerProps = {
@@ -169,7 +173,21 @@ export function SportManager({ initialSports }: SportManagerProps) {
         (sport.description?.toLocaleLowerCase("fr").includes(query) ?? false),
     );
   }, [searchTerm, sports]);
+
+  const disciplineSuggestions = useMemo(() => {
+    const existingNames = new Set(sports.map((sport) => sport.name.trim().toLocaleLowerCase("fr")));
+    return MARTIAL_ARTS_DISCIPLINE_SUGGESTIONS.filter(
+      (suggestion) => !existingNames.has(suggestion.name.toLocaleLowerCase("fr")),
+    );
+  }, [sports]);
+
   const pagination = usePagination(filteredSports, 12, searchTerm);
+
+  function applyDisciplineSuggestion(suggestion: MartialArtsDisciplineSuggestion) {
+    setName(suggestion.name);
+    setDescription(suggestion.description);
+    setMessage(null);
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -358,11 +376,45 @@ export function SportManager({ initialSports }: SportManagerProps) {
         </div>
 
         {createOpen ? (
-          <form
-            id="sport-create"
-            onSubmit={onSubmit}
-            className="mt-4 grid gap-4 border-t border-[var(--border)] pt-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.2fr)_auto] lg:items-end"
-          >
+          <div id="sport-create" className="mt-4 space-y-4 border-t border-[var(--border)] pt-4">
+            {disciplineSuggestions.length > 0 ? (
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
+                    Suggestions martiales
+                  </p>
+                  <p className="text-sm text-[var(--muted-foreground)]">
+                    Choisissez un modele pour remplir rapidement le nom et la description.
+                  </p>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  {disciplineSuggestions.slice(0, 8).map((suggestion) => {
+                    const selected = name.trim().toLocaleLowerCase("fr") === suggestion.name.toLocaleLowerCase("fr");
+                    return (
+                      <button
+                        key={suggestion.name}
+                        type="button"
+                        onClick={() => applyDisciplineSuggestion(suggestion)}
+                        className={cn(
+                          "rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-left transition hover:border-[var(--primary)]/45 hover:bg-[var(--primary)]/5",
+                          selected && "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]",
+                        )}
+                      >
+                        <span className="block text-sm font-semibold text-[var(--foreground)]">{suggestion.name}</span>
+                        <span className="mt-1 line-clamp-2 block text-xs text-[var(--muted-foreground)]">
+                          {suggestion.description}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            <form
+              onSubmit={onSubmit}
+              className="grid gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.2fr)_auto] lg:items-end"
+            >
             <FormField label="Nom de la discipline" htmlFor="sport-name">
               <input
                 id="sport-name"
@@ -385,7 +437,8 @@ export function SportManager({ initialSports }: SportManagerProps) {
             <button type="submit" disabled={loading} className="btn btn-primary btn-block-mobile lg:mb-0.5">
               {loading ? "Enregistrement..." : "Créer"}
             </button>
-          </form>
+            </form>
+          </div>
         ) : null}
 
         <FeedbackMessage message={message} className="mt-4" />
