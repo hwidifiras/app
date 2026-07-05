@@ -11,6 +11,34 @@ import { validatePlanSessionsPerWeekForSport } from "@/lib/sport-weekly-standard
 
 export const runtime = "nodejs";
 
+type SubscriptionPlanAuditSnapshot = {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  totalSessions: number;
+  sessionsPerWeek: number | null;
+  validityDays: number;
+  isActive: boolean;
+  sportId: string;
+  sport?: { name: string } | null;
+};
+
+function planAuditSnapshot(plan: SubscriptionPlanAuditSnapshot) {
+  return {
+    id: plan.id,
+    name: plan.name,
+    description: plan.description,
+    price: plan.price,
+    totalSessions: plan.totalSessions,
+    sessionsPerWeek: plan.sessionsPerWeek,
+    validityDays: plan.validityDays,
+    isActive: plan.isActive,
+    sportId: plan.sportId,
+    sportName: plan.sport?.name ?? null,
+  };
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q")?.trim();
@@ -37,9 +65,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   let body: unknown;
+  let actor;
 
   try {
-    await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -71,16 +100,32 @@ export async function POST(request: Request) {
   }
 
   try {
-    const plan = await prisma.subscriptionPlan.create({
-      data: {
-        name: parsed.data.name,
-        description: descriptionValue,
-        price: parsed.data.price,
-        totalSessions: parsed.data.totalSessions,
-        sessionsPerWeek: parsed.data.sessionsPerWeek ?? null,
-        validityDays: parsed.data.validityDays,
-        sportId: parsed.data.sportId,
-      },
+    const plan = await prisma.$transaction(async (tx) => {
+      const created = await tx.subscriptionPlan.create({
+        data: {
+          name: parsed.data.name,
+          description: descriptionValue,
+          price: parsed.data.price,
+          totalSessions: parsed.data.totalSessions,
+          sessionsPerWeek: parsed.data.sessionsPerWeek ?? null,
+          validityDays: parsed.data.validityDays,
+          sportId: parsed.data.sportId,
+        },
+        include: { sport: { select: { name: true } } },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          tenantId: actor.tenantId,
+          action: "SUBSCRIPTION_PLAN_CREATED",
+          entityType: "SubscriptionPlan",
+          entityId: created.id,
+          userId: actor.id,
+          details: JSON.stringify({ after: planAuditSnapshot(created) }),
+        },
+      });
+
+      return created;
     });
 
     return NextResponse.json({ data: plan }, { status: 201 });
@@ -101,9 +146,10 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   let body: unknown;
+  let actor;
 
   try {
-    await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "catalog.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -141,7 +187,7 @@ export async function PATCH(request: Request) {
   try {
     const currentPlan = await prisma.subscriptionPlan.findUnique({
       where: { id: planId },
-      select: { sportId: true },
+      include: { sport: { select: { name: true } } },
     });
 
     if (!currentPlan) {
@@ -156,26 +202,45 @@ export async function PATCH(request: Request) {
       }
     }
 
-    const updated = await prisma.subscriptionPlan.update({
-      where: { id: planId },
-      data: {
-        name: payload.name,
-        description:
-          payload.description === undefined
-            ? undefined
-            : payload.description === "" || payload.description === null
-              ? null
-              : payload.description,
-        price: payload.price,
-        totalSessions:
-          payload.sessionsPerWeek !== undefined
-            ? totalSessionsFromWeekly(payload.sessionsPerWeek)
-            : undefined,
-        sessionsPerWeek: payload.sessionsPerWeek,
-        validityDays: payload.validityDays,
-        isActive: payload.isActive,
-        sportId: payload.sportId === undefined ? undefined : payload.sportId === "" ? undefined : payload.sportId,
-      },
+    const updated = await prisma.$transaction(async (tx) => {
+      const next = await tx.subscriptionPlan.update({
+        where: { id: planId },
+        data: {
+          name: payload.name,
+          description:
+            payload.description === undefined
+              ? undefined
+              : payload.description === "" || payload.description === null
+                ? null
+                : payload.description,
+          price: payload.price,
+          totalSessions:
+            payload.sessionsPerWeek !== undefined
+              ? totalSessionsFromWeekly(payload.sessionsPerWeek)
+              : undefined,
+          sessionsPerWeek: payload.sessionsPerWeek,
+          validityDays: payload.validityDays,
+          isActive: payload.isActive,
+          sportId: payload.sportId === undefined ? undefined : payload.sportId === "" ? undefined : payload.sportId,
+        },
+        include: { sport: { select: { name: true } } },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          tenantId: actor.tenantId,
+          action: "SUBSCRIPTION_PLAN_UPDATED",
+          entityType: "SubscriptionPlan",
+          entityId: planId,
+          userId: actor.id,
+          details: JSON.stringify({
+            before: planAuditSnapshot(currentPlan),
+            after: planAuditSnapshot(next),
+          }),
+        },
+      });
+
+      return next;
     });
 
     return NextResponse.json({ data: updated });
@@ -263,6 +328,7 @@ export async function DELETE(request: Request) {
 
     await prisma.auditLog.create({
       data: {
+        tenantId: actor.tenantId,
         action: "SUBSCRIPTION_PLAN_DEACTIVATED",
         entityType: "SubscriptionPlan",
         entityId: planId,
