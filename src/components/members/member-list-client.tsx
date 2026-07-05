@@ -2,54 +2,26 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, RotateCcw, SlidersHorizontal, X } from "lucide-react";
+import { RotateCcw, SlidersHorizontal, X } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ListSearch } from "@/components/ui/list-controls";
 import { Pagination } from "@/components/ui/pagination";
-
-type GroupOption = {
-  id: string;
-  name: string;
-  sportId: string;
-};
-
-type SportOption = {
-  id: string;
-  name: string;
-};
-
-type MemberWithGroups = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  email: string | null;
-  memberType: "ADULT" | "KID" | "NOT_SPECIFIED";
-  gender: "MALE" | "FEMALE" | "NOT_SPECIFIED";
-  birthDate: string | null;
-  address: string | null;
-  parentName: string | null;
-  parentPhone: string | null;
-  parentAddress: string | null;
-  status: "ACTIVE" | "ARCHIVED";
-  paymentStatus: "PAID" | "PARTIAL" | "UNPAID";
-  joinedAt: string;
-  archivedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-  groupIds: string[];
-};
+import { MemberRow } from "./member-row";
+import {
+  getGroupLabel,
+  MEMBER_LIST_PAGE_SIZE,
+  type GroupOption,
+  type MemberWithGroups,
+  type SportOption,
+} from "./member-list-model";
 
 type MemberListClientProps = {
   initialMembers: MemberWithGroups[];
   groupsOptions: GroupOption[];
   sportsOptions: SportOption[];
 };
-
-const PAGE_SIZE = 10;
 
 export function MemberListClient({ initialMembers, groupsOptions, sportsOptions }: MemberListClientProps) {
   const [members, setMembers] = useState<MemberWithGroups[]>(initialMembers);
@@ -84,12 +56,6 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
     setExpandedMemberIds((current) =>
       current.includes(memberId) ? current.filter((id) => id !== memberId) : [...current, memberId],
     );
-  }
-
-  function paymentBadge(status: MemberWithGroups["paymentStatus"]) {
-    if (status === "PAID") return { label: "Payé", className: "bg-emerald-100 text-emerald-700" };
-    if (status === "PARTIAL") return { label: "Partiel", className: "bg-amber-100 text-amber-700" };
-    return { label: "Non payé", className: "bg-rose-100 text-rose-700" };
   }
 
   function resetPagingAndSelection() {
@@ -151,15 +117,10 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
     [filteredMembers],
   );
 
-  const pageCount = Math.max(1, Math.ceil(filteredMembers.length / PAGE_SIZE));
+  const pageCount = Math.max(1, Math.ceil(filteredMembers.length / MEMBER_LIST_PAGE_SIZE));
   const currentPageSafe = Math.min(currentPage, pageCount);
-  const pageStart = (currentPageSafe - 1) * PAGE_SIZE;
-  const pageMembers = filteredMembers.slice(pageStart, pageStart + PAGE_SIZE);
-
-  function groupLabel(groupId: string) {
-    if (groupId === "UNASSIGNED") return "Sans groupe";
-    return groupsOptions.find((group) => group.id === groupId)?.name ?? "Groupe";
-  }
+  const pageStart = (currentPageSafe - 1) * MEMBER_LIST_PAGE_SIZE;
+  const pageMembers = filteredMembers.slice(pageStart, pageStart + MEMBER_LIST_PAGE_SIZE);
 
   const reloadMembers = async () => {
     const response = await fetch("/api/members", { cache: "no-store" });
@@ -215,103 +176,6 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
     setBulkArchiveOpen(false);
     await reloadMembers();
     setActionLoadingId(null);
-  }
-
-  function renderMemberRow(member: MemberWithGroups, selectable = false) {
-    const isExpanded = expandedMemberIds.includes(member.id);
-    const payment = paymentBadge(member.paymentStatus);
-    const firstGroupName =
-      member.groupIds.length > 0
-        ? groupsOptions.find((group) => group.id === member.groupIds[0])?.name ?? "Groupe"
-        : "Sans groupe";
-
-    return (
-      <tr
-        key={member.id}
-        className={`mobile-collapsible-row transition-colors hover:bg-[var(--surface-soft)] ${isExpanded ? "is-expanded" : ""}`}
-      >
-        {selectable ? (
-          <td className="hidden px-4 py-3 align-top sm:table-cell">
-            <input
-              type="checkbox"
-              checked={selectedMemberIds.includes(member.id)}
-              onChange={() => toggleMemberSelection(member.id)}
-              className="size-4 rounded border-border text-primary focus:ring-primary"
-              aria-label={`Sélectionner ${member.firstName} ${member.lastName}`}
-            />
-          </td>
-        ) : null}
-        <td className="data-table-primary px-4 py-3 font-medium" data-label="Nom">
-          <Link
-            href={`/members/${member.id}`}
-            prefetch={false}
-            className="text-foreground hover:text-[var(--primary)] hover:underline"
-          >
-            {member.firstName} {member.lastName}
-          </Link>
-          <div className="mt-2 flex flex-wrap items-center gap-1.5 md:hidden">
-            <span className="chip chip-muted px-1.5 py-0.5 text-[10px]">{member.phone}</span>
-            <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${payment.className}`}>
-              {payment.label}
-            </span>
-            <StatusBadge
-              variant={member.status === "ACTIVE" ? "success" : "muted"}
-              className="px-1.5 py-0.5 text-[10px]"
-            >
-              {member.status === "ACTIVE" ? "Actif" : "Résilié"}
-            </StatusBadge>
-            <span className="chip chip-muted max-w-full truncate px-1.5 py-0.5 text-[10px]">{firstGroupName}</span>
-          </div>
-        </td>
-        <td className="px-4 py-3 mobile-detail-cell" data-label="Téléphone">{member.phone}</td>
-        <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell mobile-detail-cell" data-label="Email">{member.email ?? "-"}</td>
-        <td className="hidden px-4 py-3 lg:table-cell mobile-detail-cell" data-label="Groupes">
-          {member.groupIds.length === 0 ? (
-            <span className="text-xs text-muted-foreground">-</span>
-          ) : (
-            <div className="flex flex-wrap gap-1">
-              {member.groupIds.map((groupId) => {
-                const groupName = groupsOptions.find((group) => group.id === groupId)?.name ?? groupId.slice(0, 6);
-                return (
-                  <span key={groupId} className="chip chip-muted px-1.5 py-0.5 text-[10px]">
-                    {groupName}
-                  </span>
-                );
-              })}
-            </div>
-          )}
-        </td>
-        <td className="px-4 py-3 mobile-detail-cell" data-label="Paiement">
-          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[0.7rem] font-semibold ${paymentBadge(member.paymentStatus).className}`}>
-            {paymentBadge(member.paymentStatus).label}
-          </span>
-        </td>
-        <td className="px-4 py-3 mobile-detail-cell" data-label="Statut">
-          <StatusBadge variant={member.status === "ACTIVE" ? "success" : "muted"}>{member.status === "ACTIVE" ? "Actif" : "Résilié"}</StatusBadge>
-        </td>
-        <td className="hidden px-4 py-3 text-muted-foreground md:table-cell mobile-detail-cell" data-label="Inscrit le">{new Date(member.createdAt).toLocaleDateString("fr-FR")}</td>
-        <td className="card-actions-cell px-4 py-3 text-right" data-label="Actions">
-          <Link
-            href={`/members/${member.id}`}
-            prefetch={false}
-            className="btn btn-ghost min-h-0 px-2 py-1 text-xs"
-          >
-            Ouvrir
-          </Link>
-        </td>
-        <td className="px-4 py-3 text-center md:hidden mobile-toggle-cell">
-          <button
-            type="button"
-            className="mobile-card-toggle w-full"
-            onClick={() => toggleExpandMember(member.id)}
-            aria-expanded={isExpanded}
-          >
-            {isExpanded ? "Réduire" : "Infos"}
-            <ChevronDown className={`size-3 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
-          </button>
-        </td>
-      </tr>
-    );
   }
 
   return (
@@ -466,7 +330,18 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
                     </td>
                   </tr>
                 ) : (
-                  pageMembers.map((member) => renderMemberRow(member, true))
+                  pageMembers.map((member) => (
+                    <MemberRow
+                      key={member.id}
+                      member={member}
+                      groupsOptions={groupsOptions}
+                      selectable
+                      selected={selectedMemberIds.includes(member.id)}
+                      expanded={expandedMemberIds.includes(member.id)}
+                      onToggleSelection={toggleMemberSelection}
+                      onToggleExpand={toggleExpandMember}
+                    />
+                  ))
                 )}
               </tbody>
             </table>
@@ -476,7 +351,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
             currentPage={currentPageSafe}
             pageCount={pageCount}
             totalItems={filteredMembers.length}
-            pageSize={PAGE_SIZE}
+            pageSize={MEMBER_LIST_PAGE_SIZE}
             onPageChange={setCurrentPage}
           />
         </div>
@@ -485,7 +360,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
           {Array.from(groupedMembers.entries()).map(([groupId, rows]) => (
             <section key={groupId} className="rounded-lg border border-border bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-foreground">{groupLabel(groupId)}</h3>
+                <h3 className="text-sm font-semibold text-foreground">{getGroupLabel(groupId, groupsOptions)}</h3>
                 <span className="text-xs text-muted-foreground">{rows.length} membre(s)</span>
               </div>
               <div className="data-table mt-3 overflow-x-auto rounded-lg border border-border shadow-[var(--shadow-panel)]">
@@ -502,7 +377,21 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
                       <th className="px-4 py-3 text-right font-semibold">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border">{rows.length === 0 ? null : rows.map((member) => renderMemberRow(member, false))}</tbody>
+                  <tbody className="divide-y divide-border">
+                    {rows.length === 0
+                      ? null
+                      : rows.map((member) => (
+                          <MemberRow
+                            key={member.id}
+                            member={member}
+                            groupsOptions={groupsOptions}
+                            selected={selectedMemberIds.includes(member.id)}
+                            expanded={expandedMemberIds.includes(member.id)}
+                            onToggleSelection={toggleMemberSelection}
+                            onToggleExpand={toggleExpandMember}
+                          />
+                        ))}
+                  </tbody>
                 </table>
               </div>
             </section>
