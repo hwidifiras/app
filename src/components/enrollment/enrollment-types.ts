@@ -43,6 +43,27 @@ export type PlanOption = {
   sportName: string;
 };
 
+export type QuoteData = {
+  lines: Array<{
+    lineIndex: number;
+    memberName: string;
+    groupName: string;
+    planName: string;
+    sportName: string;
+    listPriceCents: number;
+    discountCents: number;
+    finalAmountCents: number;
+    reusesExistingSubscription: boolean;
+    warnings: string[];
+    blocked: boolean;
+  }>;
+  offerName: string | null;
+  totalFinalCents: number;
+  totalDiscountCents: number;
+  blocked: boolean;
+  warnings: string[];
+};
+
 export type LineState = {
   key: string;
   mode: "existing" | "new";

@@ -5,11 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
-import { FieldControl } from "@/components/ui/field-control";
 import { FormActions } from "@/components/ui/form-layout";
 import { ReceptionInfoCard } from "@/components/ui/reception-info-card";
 import { EnrollmentCompletionPanel } from "@/components/enrollment/enrollment-completion-panel";
 import { EnrollmentLineEditor } from "@/components/enrollment/enrollment-line-editor";
+import { EnrollmentQuotePanel } from "@/components/enrollment/enrollment-quote-panel";
 import {
   lineCompatibilityIssue,
   newEnrollmentLine,
@@ -21,6 +21,7 @@ import {
   type MemberOption,
   type MemberType,
   type PlanOption,
+  type QuoteData,
 } from "@/components/enrollment/enrollment-types";
 import type { OfferLike } from "@/lib/offer-display";
 import {
@@ -28,33 +29,12 @@ import {
   getOfferEnrollmentHint,
   getOfferKindLabel,
 } from "@/lib/offer-display";
-import { formatMoney, MONEY_INPUT_SUFFIX } from "@/lib/money";
+import { formatMoney } from "@/lib/money";
 import { formatPaymentPrefill } from "@/lib/subscription-billing";
 import type { EnrollmentUndoSnapshot } from "@/lib/enrollment-undo";
 import type { OfferKind } from "@prisma/client";
 
 type OfferOption = OfferLike;
-
-type QuoteData = {
-  lines: Array<{
-    lineIndex: number;
-    memberName: string;
-    groupName: string;
-    planName: string;
-    sportName: string;
-    listPriceCents: number;
-    discountCents: number;
-    finalAmountCents: number;
-    reusesExistingSubscription: boolean;
-    warnings: string[];
-    blocked: boolean;
-  }>;
-  offerName: string | null;
-  totalFinalCents: number;
-  totalDiscountCents: number;
-  blocked: boolean;
-  warnings: string[];
-};
 
 type EnrollmentCompletion = {
   memberIds: string[];
@@ -296,6 +276,13 @@ export function EnrollmentWizard({
     const g = groups.find((x) => x.id === groupId);
     if (!g) return [];
     return plans.filter((p) => p.sportId === g.sportId);
+  }
+
+  function updateQuoteLinePayment(lineIndex: number, value: string) {
+    setMessage(null);
+    setLines((prev) =>
+      prev.map((row, index) => (index === lineIndex ? { ...row, paymentCents: value } : row)),
+    );
   }
 
   const selectedOffer = useMemo(
@@ -560,126 +547,20 @@ export function EnrollmentWizard({
             </section>
           )}
 
-          {step === 3 && quote && (
-            <section className="panel space-y-4 p-5">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--primary)]">3. Devis + paiement</p>
-                <h2 className="mt-1 text-lg font-semibold">Confirmer l&apos;inscription</h2>
-                <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-                  Contrôlez le prix, l&apos;offre appliquée et l&apos;acompte encaissé avant validation.
-                </p>
-              </div>
-              {quote.offerName && <p className="text-sm font-medium text-green-700">Offre appliquée: {quote.offerName}</p>}
-              <ul className="space-y-3 text-sm">
-                {quote.lines.map((l) => {
-                  const paymentValue = lines[l.lineIndex]?.paymentCents ?? "";
-                  const paymentNumber = parseFloat(paymentValue.replace(",", "."));
-                  const paymentCents = Number.isFinite(paymentNumber) ? Math.round(paymentNumber * 100) : 0;
-                  const balanceAfterPayment = Math.max(0, l.finalAmountCents - Math.max(0, paymentCents));
-
-                  return (
-                    <li key={l.lineIndex} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
-                      <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <p className="font-semibold">{l.memberName}</p>
-                          <p className="text-[var(--muted-foreground)]">
-                            {l.groupName} — {l.planName} ({l.sportName})
-                          </p>
-                        </div>
-                        <span className="rounded-full bg-[var(--primary)]/10 px-2.5 py-1 text-xs font-bold text-[var(--primary)]">
-                          {formatMoney(l.finalAmountCents)}
-                        </span>
-                      </div>
-                      <div className="mt-3 grid gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 sm:grid-cols-4">
-                        <div>
-                          <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Catalogue</p>
-                          <p className="mt-1 font-bold">{formatMoney(l.listPriceCents)}</p>
-                        </div>
-                        <div>
-                          <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Remise</p>
-                          <p className={`mt-1 font-bold ${l.discountCents > 0 ? "text-[var(--success)]" : "text-[var(--muted-foreground)]"}`}>
-                            {l.discountCents > 0 ? `-${formatMoney(l.discountCents)}` : "Aucune"}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">À payer</p>
-                          <p className="mt-1 font-bold text-[var(--foreground)]">{formatMoney(l.finalAmountCents)}</p>
-                        </div>
-                        <div>
-                          <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Reste après acompte</p>
-                          <p className={`mt-1 font-bold ${balanceAfterPayment > 0 ? "text-[var(--warning)]" : "text-[var(--success)]"}`}>
-                            {formatMoney(balanceAfterPayment)}
-                          </p>
-                        </div>
-                      </div>
-                      {l.discountCents > 0 && quote.offerName && (
-                        <ReceptionInfoCard variant="success" className="mt-2">
-                          <p className="font-semibold">Offre « {quote.offerName} »</p>
-                          <p>
-                            Nouvel abonnement à {formatMoney(l.finalAmountCents)} — le paiement ci-dessous est prérempli.
-                          </p>
-                        </ReceptionInfoCard>
-                      )}
-                      {l.reusesExistingSubscription && l.discountCents === 0 && (
-                        <ReceptionInfoCard variant="warning" className="mt-2">
-                          <p className="font-semibold">Même abonnement réutilisé</p>
-                          <p>Pas de nouvelles séances — ajout d&apos;un cours ou paiement du solde uniquement.</p>
-                        </ReceptionInfoCard>
-                      )}
-                      {l.warnings.length > 0 && (
-                        <p className="mt-1 text-xs text-red-600">{l.warnings.join(" • ")}</p>
-                      )}
-                      {l.blocked && (
-                        <p className="mt-1 text-xs font-medium text-red-600">Cette ligne est bloquée.</p>
-                      )}
-                      <label className="mt-2 block text-sm">
-                        <span className="font-medium">
-                          {l.reusesExistingSubscription ? "Paiement complémentaire (TND)" : "Paiement initial (TND)"}
-                        </span>
-                        <span className="mt-0.5 block text-xs text-[var(--muted-foreground)]">
-                          Max {formatMoney(l.finalAmountCents)} pour cette période
-                        </span>
-                        <FieldControl suffix={MONEY_INPUT_SUFFIX} className="mt-1">
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            className="field pr-10"
-                            value={paymentValue}
-                            onChange={(e) => {
-                              setMessage(null);
-                              setLines((prev) =>
-                                prev.map((row, i) =>
-                                  i === l.lineIndex ? { ...row, paymentCents: e.target.value } : row,
-                                ),
-                              );
-                            }}
-                          />
-                        </FieldControl>
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
-              {quote.warnings.length > 0 && (
-                <FeedbackMessage variant="error" message={quote.warnings.join(" • ")} />
-              )}
-              <FormActions sticky>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-block-mobile"
-                  onClick={() => {
-                    setMessage(null);
-                    setStep(2);
-                  }}
-                >
-                  Retour
-                </button>
-                <button type="submit" className="btn btn-primary btn-block-mobile" disabled={loading || completed || quote.blocked}>
-                  {loading ? "Inscription…" : `Confirmer ${formatMoney(quotePaidCents)}`}
-                </button>
-              </FormActions>
-            </section>
-          )}
+          {step === 3 && quote ? (
+            <EnrollmentQuotePanel
+              quote={quote}
+              lines={lines}
+              quotePaidCents={quotePaidCents}
+              loading={loading}
+              completed={completed}
+              onBack={() => {
+                setMessage(null);
+                setStep(2);
+              }}
+              onPaymentChange={updateQuoteLinePayment}
+            />
+          ) : null}
         </div>
 
         <aside className="order-first rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)] lg:sticky lg:top-20 lg:order-none">
