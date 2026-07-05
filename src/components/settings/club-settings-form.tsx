@@ -3,20 +3,19 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { ClubIdentitySection } from "@/components/settings/club-identity-section";
+import { ClubPlanningRulesSection } from "@/components/settings/club-planning-rules-section";
 import { ClubReceiptSettings } from "@/components/settings/club-receipt-settings";
 import { SettingsToggleRow } from "@/components/settings/settings-toggle-row";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormField, FormGrid, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import { FieldControl } from "@/components/ui/field-control";
 import {
-  CLUB_DAY_LABELS,
-  CLUB_DAY_SHORT_LABELS,
   DEFAULT_WORKING_DAYS,
   WORKING_DAY_ORDER,
   type ClubDay,
 } from "@/lib/club-working-days";
 import { MONEY_INPUT_SUFFIX } from "@/lib/money";
-import { cn } from "@/lib/utils";
 
 export type ClubSettingsFormData = {
   clubName: string;
@@ -265,96 +264,18 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
         ]}
       />
 
-      <FormSection
-        id="club-identity"
-        title="Identité du club"
-        description="Ces informations apparaissent dans l'application et sur les écrans d'accueil."
-      >
-        <FormGrid>
-          <FormField
-            label="Nom du club"
-            htmlFor="clubName"
-            hint="Laissez vide pour conserver le nom actuel de l'application."
-            className="md:col-span-2"
-          >
-            <input
-              id="clubName"
-              className="field"
-              value={clubName}
-              onChange={(e) => setClubName(e.target.value)}
-              placeholder="Ex. Club Karaté Tunis"
-            />
-          </FormField>
-          <FormField
-            label="Logo du club"
-            htmlFor="clubLogoFile"
-            hint="Image PNG, JPEG ou WebP, jusqu'à 1 Mo."
-            className="md:col-span-2"
-          >
-            <div className="flex flex-wrap items-start gap-4">
-              <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-[var(--surface-soft)] shadow-[var(--shadow-panel)]">
-                {clubLogoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={clubLogoUrl} alt="" className="size-full object-contain p-1" />
-                ) : (
-                  <span className="text-xs text-muted-foreground">Aucun</span>
-                )}
-              </div>
-              <div className="flex min-w-0 flex-1 flex-col gap-2">
-                <input
-                  id="clubLogoFile"
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="sr-only"
-                  disabled={logoUploading}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) void uploadLogo(file);
-                    e.target.value = "";
-                  }}
-                />
-                <label
-                  htmlFor="clubLogoFile"
-                  className={`btn btn-primary btn-block-mobile inline-flex min-h-11 cursor-pointer items-center justify-center text-sm sm:w-fit ${
-                    logoUploading ? "pointer-events-none opacity-60" : ""
-                  }`}
-                >
-                  {logoUploading ? "Importation…" : "Choisir une image"}
-                </label>
-                {clubLogoUrl ? (
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-block-mobile min-h-11 text-sm sm:w-fit"
-                    disabled={logoUploading}
-                    onClick={() => void removeLogo()}
-                  >
-                    Supprimer le logo
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          </FormField>
-          <FormField label="Adresse" htmlFor="clubAddress">
-            <input
-              id="clubAddress"
-              className="field"
-              value={clubAddress}
-              onChange={(e) => setClubAddress(e.target.value)}
-              placeholder="Rue, ville"
-            />
-          </FormField>
-          <FormField label="Téléphone" htmlFor="clubPhone">
-            <input
-              id="clubPhone"
-              className="field"
-              value={clubPhone}
-              onChange={(e) => setClubPhone(e.target.value)}
-              placeholder="+216 ..."
-              inputMode="tel"
-            />
-          </FormField>
-        </FormGrid>
-      </FormSection>
+      <ClubIdentitySection
+        clubName={clubName}
+        clubLogoUrl={clubLogoUrl}
+        logoUploading={logoUploading}
+        clubAddress={clubAddress}
+        clubPhone={clubPhone}
+        onClubNameChange={setClubName}
+        onClubAddressChange={setClubAddress}
+        onClubPhoneChange={setClubPhone}
+        onUploadLogo={(file) => void uploadLogo(file)}
+        onRemoveLogo={() => void removeLogo()}
+      />
 
       <FormSection
         id="club-checkin"
@@ -386,66 +307,14 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
         </div>
       </FormSection>
 
-      <FormSection
-        id="club-planning"
-        title="Planning & conflits"
-        description="Choisissez quand le planning doit accepter des chevauchements volontaires."
-      >
-        <div className="space-y-3">
-          <div className="rounded-lg border border-border/80 bg-[var(--surface-soft)]/60 p-3.5 shadow-[var(--shadow-panel)] sm:p-4">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <p className="text-sm font-semibold text-foreground">Jours d&apos;ouverture du club</p>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  Les jours fermes sans seance sont masques du planning. Une seance exceptionnelle reste visible.
-                </p>
-              </div>
-              <span className="text-xs font-semibold text-muted-foreground">
-                {workingDays.length} jour{workingDays.length > 1 ? "s" : ""}
-              </span>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-              {WORKING_DAY_ORDER.map((day) => {
-                const checked = workingDays.includes(day);
-                return (
-                  <label
-                    key={day}
-                    className={cn(
-                      "flex min-h-12 cursor-pointer items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition",
-                      checked
-                        ? "border-primary/35 bg-primary/10 text-primary"
-                        : "border-border bg-[var(--surface)] text-muted-foreground hover:border-primary/25 hover:text-foreground",
-                    )}
-                    title={CLUB_DAY_LABELS[day]}
-                  >
-                    <span>{CLUB_DAY_SHORT_LABELS[day]}</span>
-                    <input
-                      type="checkbox"
-                      className="size-4 accent-[var(--primary)]"
-                      checked={checked}
-                      onChange={(event) => toggleWorkingDay(day, event.target.checked)}
-                    />
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-          <SettingsToggleRow
-            id="allowSameRoomConcurrentGroups"
-            label="Deux groupes dans la meme salle"
-            description="Si activé, deux groupes différents peuvent avoir cours dans la même salle au même horaire sans conflit de salle."
-            checked={allowSameRoomConcurrentGroups}
-            onChange={setAllowSameRoomConcurrentGroups}
-          />
-          <SettingsToggleRow
-            id="allowCoachConcurrentSameRoomQualified"
-            label="Coach multi-groupes dans la meme salle"
-            description="Si activé, un coach peut encadrer deux groupes au même horaire quand ils sont dans la même salle et que les disciplines font partie de ses spécialités."
-            checked={allowCoachConcurrentSameRoomQualified}
-            onChange={setAllowCoachConcurrentSameRoomQualified}
-          />
-        </div>
-      </FormSection>
+      <ClubPlanningRulesSection
+        workingDays={workingDays}
+        allowSameRoomConcurrentGroups={allowSameRoomConcurrentGroups}
+        allowCoachConcurrentSameRoomQualified={allowCoachConcurrentSameRoomQualified}
+        onToggleWorkingDay={toggleWorkingDay}
+        onAllowSameRoomConcurrentGroupsChange={setAllowSameRoomConcurrentGroups}
+        onAllowCoachConcurrentSameRoomQualifiedChange={setAllowCoachConcurrentSameRoomQualified}
+      />
 
       <FormSection
         id="club-alerts"
