@@ -187,6 +187,22 @@ export async function POST(request: Request) {
             paymentMethod: paymentMethod?.trim() || "CASH",
           },
         });
+
+        await tx.auditLog.create({
+          data: {
+            action: "PAYMENT_CREATED",
+            entityType: "Payment",
+            entityId: payment.id,
+            userId: actor.id,
+            details: JSON.stringify({
+              source: "member-subscription",
+              amount: payCents,
+              memberId,
+              subscriptionId: created.id,
+            }),
+          },
+        });
+
         const receipt = await issueReceiptForPayment(tx, payment.id, actor.id);
         await tx.auditLog.create({
           data: {
