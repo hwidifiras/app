@@ -34,6 +34,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const delivery = await sendReceiptEmailForReceipt({
     receiptId: id,
+    tenantId: actor.tenantId,
     requestUrl: request.url,
     actorId: actor.id,
     targetEmail: parsed.data.email,

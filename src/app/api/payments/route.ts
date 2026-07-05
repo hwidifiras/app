@@ -169,6 +169,7 @@ export async function POST(request: Request) {
       if (settings.receiptEmailDefault && payment.receipt?.id) {
         receiptEmailDelivery = await sendReceiptEmailForReceipt({
           receiptId: payment.receipt.id,
+          tenantId: actor.tenantId,
           requestUrl: request.url,
           actorId: actor.id,
         });

@@ -23,17 +23,19 @@ export type ReceiptEmailDeliveryResult =
 
 export async function sendReceiptEmailForReceipt({
   receiptId,
+  tenantId,
   requestUrl,
   actorId,
   targetEmail,
 }: {
   receiptId: string;
+  tenantId: string;
   requestUrl: string;
   actorId: string;
   targetEmail?: string | null;
 }): Promise<ReceiptEmailDeliveryResult> {
-  const receipt = await prisma.receipt.findUnique({
-    where: { id: receiptId },
+  const receipt = await prisma.receipt.findFirst({
+    where: { id: receiptId, tenantId },
     include: {
       payment: {
         select: {
@@ -111,6 +113,7 @@ export async function sendReceiptEmailForReceipt({
       details: JSON.stringify({
         receiptNumber: receipt.receiptNumber,
         paymentId: receipt.paymentId,
+        tenantId,
         email,
         delivered: delivery.delivered,
         reason: delivery.delivered ? null : delivery.reason,
