@@ -1,14 +1,11 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import { CalendarPlus, Eye, Plus, Trash2 } from "lucide-react";
+import { CalendarPlus, Eye, Plus } from "lucide-react";
 
-import {
-  CLUB_DAY_LABELS,
-  WORKING_DAY_ORDER,
-  type ClubDay,
-} from "@/lib/club-working-days";
+import type { ClubDay } from "@/lib/club-working-days";
 import type { GroupTypeValue } from "@/lib/demographics";
+import { ScheduleTemplateCreateForm } from "@/components/settings/schedule-template-create-form";
 import {
   SCHEDULE_TARGET_MODE_OPTIONS,
   ScheduleApplyPreview,
@@ -285,53 +282,18 @@ export function ScheduleTemplatesManager({
         </div>
 
         {showCreateForm ? (
-        <form onSubmit={createTemplate} className="mt-4 space-y-3 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
-          <div className="grid gap-3 md:grid-cols-2">
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold">Nom du modèle</span>
-              <input className="field" value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex. Ramadan 18h" required />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold">Description</span>
-              <input className="field" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Optionnel" />
-            </label>
-          </div>
-
-          <div className="space-y-2">
-            {slots.map((slot, index) => (
-              <div key={index} className="grid gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2 md:grid-cols-[1fr_0.8fr_0.8fr_auto]">
-                <select value={slot.dayOfWeek} onChange={(event) => updateSlot(index, { dayOfWeek: event.target.value as ClubDay })} className="field">
-                  {WORKING_DAY_ORDER.map((day) => (
-                    <option key={day} value={day}>{CLUB_DAY_LABELS[day]}</option>
-                  ))}
-                </select>
-                <input type="time" value={slot.startTime} onChange={(event) => updateSlot(index, { startTime: event.target.value })} className="field" />
-                <input
-                  type="number"
-                  min={30}
-                  max={240}
-                  step={15}
-                  value={slot.durationMinutes}
-                  onChange={(event) => updateSlot(index, { durationMinutes: Number(event.target.value) })}
-                  className="field"
-                />
-                <button type="button" onClick={() => removeSlot(index)} className="btn btn-ghost px-3" aria-label="Retirer l'horaire">
-                  <Trash2 className="size-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
-            <button type="button" onClick={() => setSlots((current) => [...current, emptySlot()])} className="btn btn-ghost">
-              <Plus className="size-4" />
-              Ajouter un horaire
-            </button>
-            <button type="submit" disabled={loading} className="btn btn-primary">
-              Créer le modèle
-            </button>
-          </div>
-        </form>
+          <ScheduleTemplateCreateForm
+            name={name}
+            description={description}
+            slots={slots}
+            loading={loading}
+            onNameChange={setName}
+            onDescriptionChange={setDescription}
+            onSlotChange={updateSlot}
+            onSlotRemove={removeSlot}
+            onSlotAdd={() => setSlots((current) => [...current, emptySlot()])}
+            onSubmit={createTemplate}
+          />
         ) : null}
 
         <div className="mt-4 grid gap-2">
