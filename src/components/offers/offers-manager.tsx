@@ -2,14 +2,12 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { CircleOff, Plus, Tag } from "lucide-react";
+import { OffersActiveList } from "@/components/offers/offers-active-list";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FieldControl } from "@/components/ui/field-control";
-import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormActions } from "@/components/ui/form-layout";
-import { ListSearch } from "@/components/ui/list-controls";
-import { Pagination, usePagination } from "@/components/ui/pagination";
+import { usePagination } from "@/components/ui/pagination";
 import type { OfferLike } from "@/lib/offer-display";
 import {
   formatOfferRulesSummary,
@@ -245,81 +243,21 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
 
   return (
     <div className="grid items-start gap-4 sm:gap-5 lg:grid-cols-2">
-      <section className="panel order-1 p-4 sm:p-5">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold">Offres actives</h2>
-            <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-              {filteredOffers.length} offre{filteredOffers.length > 1 ? "s" : ""} affichée{filteredOffers.length > 1 ? "s" : ""}
-            </p>
-          </div>
-          <button type="button" onClick={openCreateForm} className="btn btn-primary btn-block-mobile min-h-11 sm:w-auto">
-            <Plus className="size-4" />
-            Créer une offre
-          </button>
-        </div>
-        <ListSearch value={searchTerm} onChange={setSearchTerm} placeholder="Rechercher une offre..." />
-        {filteredOffers.length === 0 ? (
-          <EmptyState
-            className="mt-4"
-            icon={<Tag className="size-8 opacity-45" />}
-            title={offers.length === 0 ? "Aucune offre active" : "Aucun résultat"}
-            message={offers.length === 0 ? "Créez une offre avec un modèle simple." : "Essayez une autre recherche."}
-            action={
-              searchTerm ? (
-                <button type="button" onClick={() => setSearchTerm("")} className="btn btn-ghost">
-                  Effacer la recherche
-                </button>
-              ) : (
-                <button type="button" onClick={openCreateForm} className="btn btn-primary">
-                  Créer une offre
-                </button>
-              )
-            }
-          />
-        ) : (
-          <ul className="mt-4 max-h-[65dvh] space-y-2 overflow-y-auto pr-1 text-sm">
-            {pagination.pageItems.map((offer) => (
-              <li key={offer.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)]/35 p-3 shadow-[var(--shadow-panel)]">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-medium text-[var(--foreground)]">{offer.name}</p>
-                    <p className="text-xs font-semibold text-[var(--primary)]">
-                      {getOfferKindLabel(offer.kind as OfferKind)}
-                    </p>
-                    <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-                      {formatOfferRulesSummary(offer)}
-                    </p>
-                    <p className="mt-2 inline-flex rounded-full bg-[var(--surface)] px-2 py-1 text-[0.68rem] font-semibold text-[var(--muted-foreground)]">
-                      {(offer.applicationsCount ?? 0) > 0
-                        ? `${offer.applicationsCount} utilisation${(offer.applicationsCount ?? 0) > 1 ? "s" : ""} - historique conservé`
-                        : "Pas encore utilisée"}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setPendingDeleteOffer(offer)}
-                    disabled={deletingId !== null}
-                    className="btn btn-ghost btn-sm shrink-0 border-[var(--warning)]/35 px-2.5 py-2 text-[var(--warning)]"
-                    title="Désactiver l'offre"
-                    aria-label={`Désactiver ${offer.name}`}
-                  >
-                    <CircleOff className="size-4" />
-                    <span className="text-xs font-semibold">Désactiver</span>
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-        <Pagination
-          currentPage={pagination.currentPage}
-          pageCount={pagination.pageCount}
-          totalItems={filteredOffers.length}
-          pageSize={12}
-          onPageChange={pagination.setPage}
-        />
-      </section>
+      <OffersActiveList
+        offers={offers}
+        pageItems={pagination.pageItems}
+        filteredCount={filteredOffers.length}
+        searchTerm={searchTerm}
+        currentPage={pagination.currentPage}
+        pageCount={pagination.pageCount}
+        deletingId={deletingId}
+        pageSize={12}
+        onSearchChange={setSearchTerm}
+        onClearSearch={() => setSearchTerm("")}
+        onOpenCreate={openCreateForm}
+        onQueueDelete={setPendingDeleteOffer}
+        onPageChange={pagination.setPage}
+      />
 
       <section id="offer-create" className="panel order-2 scroll-mt-24 p-4 sm:p-5">
         <h2 className="mb-2 text-lg font-semibold">Créer une offre</h2>
