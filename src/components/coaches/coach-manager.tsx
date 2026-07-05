@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import { Pencil, Trash2, UserRound } from "lucide-react";
+import { UserRound } from "lucide-react";
 
 import { CoachDto } from "@/types/coach";
 import { SportDto } from "@/types/sport";
@@ -11,11 +11,10 @@ import { FormActions, FormField, FormGrid } from "@/components/ui/form-layout";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListSearch } from "@/components/ui/list-controls";
 import { Pagination, usePagination } from "@/components/ui/pagination";
+import { CoachCard } from "@/components/coaches/coach-card";
+import { qualifiedSportNames, toggleSportId, withPrimarySport } from "@/components/coaches/coach-manager-model";
 import {
-  CoachGroupsPreview,
-  CoachLoadSummary,
   CoachRuleCard,
-  CoachSpecialtyChips,
   CoachSummaryMetric,
   coachRuleCards,
 } from "@/components/coaches/coach-manager-ui";
@@ -24,22 +23,6 @@ type CoachManagerProps = {
   initialCoaches: CoachDto[];
   sportsOptions: SportDto[];
 };
-
-function withPrimarySport(ids: string[], primarySportId: string) {
-  const normalized = new Set(ids.filter(Boolean));
-  if (primarySportId) normalized.add(primarySportId);
-  return Array.from(normalized);
-}
-
-function toggleSportId(ids: string[], sportId: string) {
-  return ids.includes(sportId)
-    ? ids.filter((id) => id !== sportId)
-    : [...ids, sportId];
-}
-
-function qualifiedSportNames(coach: CoachDto) {
-  return coach.qualifiedSports.map((sport) => sport.name).join(", ");
-}
 
 export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProps) {
   const [firstName, setFirstName] = useState("");
@@ -381,154 +364,32 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
 
           <ul className="mt-4 space-y-2">
             {pagination.pageItems.map((coach) => (
-              <li key={coach.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5">
-                {editingId === coach.id ? (
-                  <div className="space-y-2">
-                    <input
-                      aria-label="Prénom du coach"
-                      value={editFirstName}
-                      onChange={(e) => setEditFirstName(e.target.value)}
-                      placeholder="Prénom"
-                      className="field text-xs"
-                    />
-                    <input
-                      aria-label="Nom du coach"
-                      value={editLastName}
-                      onChange={(e) => setEditLastName(e.target.value)}
-                      placeholder="Nom"
-                      className="field text-xs"
-                    />
-                    <input
-                      aria-label="Téléphone du coach"
-                      value={editPhone}
-                      onChange={(e) => setEditPhone(e.target.value)}
-                      placeholder="Téléphone"
-                      className="field text-xs"
-                    />
-                    <input
-                      aria-label="Email du coach"
-                      value={editEmail}
-                      onChange={(e) => setEditEmail(e.target.value)}
-                      placeholder="Email"
-                      className="field text-xs"
-                    />
-                    <select
-                      aria-label="Spécialité principale du coach"
-                      value={editSportId}
-                      onFocus={() => void reloadSports()}
-                      onClick={() => void reloadSports()}
-                      onChange={(e) => {
-                        const nextSportId = e.target.value;
-                        setEditSportId(nextSportId);
-                        if (nextSportId) {
-                          setEditQualifiedSportIds((current) => withPrimarySport(current, nextSportId));
-                        }
-                      }}
-                      className="field text-xs"
-                    >
-                      <option value="">Spécialité à compléter</option>
-                      {sports.map((sport) => (
-                        <option key={sport.id} value={sport.id}>
-                          {sport.name}
-                        </option>
-                      ))}
-                    </select>
-                    {sports.length > 0 ? (
-                      <div>
-                        <p className="mb-1 text-xs font-semibold text-[var(--muted-foreground)]">Disciplines autorisées</p>
-                        <div className="grid gap-1 sm:grid-cols-2">
-                          {sports.map((sport) => (
-                            <label key={sport.id} className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
-                              <input
-                                type="checkbox"
-                                checked={withPrimarySport(editQualifiedSportIds, editSportId).includes(sport.id)}
-                                disabled={sport.id === editSportId}
-                                onChange={() => setEditQualifiedSportIds((current) => toggleSportId(current, sport.id))}
-                              />
-                              <span className="truncate text-[var(--foreground)]">{sport.name}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                    <label className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
-                      <input
-                        type="checkbox"
-                        checked={editIsActive}
-                        onChange={(e) => setEditIsActive(e.target.checked)}
-                      />
-                      Coach actif
-                    </label>
-                    <div className="list-card-actions mt-3">
-                      <button
-                        type="button"
-                        onClick={() => saveEdit(coach.id)}
-                        disabled={actionLoadingId === coach.id}
-                        className="btn btn-primary btn-block-mobile"
-                      >
-                        Enregistrer
-                      </button>
-                      <button
-                        type="button"
-                        onClick={cancelEdit}
-                        disabled={actionLoadingId === coach.id}
-                        className="btn btn-ghost btn-block-mobile"
-                      >
-                        Annuler
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                      <div className="flex min-w-0 flex-1 items-start gap-3">
-                        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-xs font-bold text-[var(--primary)]">
-                          {coach.firstName[0]}
-                          {coach.lastName[0]}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-bold text-[var(--foreground)]">
-                            {coach.firstName} {coach.lastName}
-                          </p>
-                          <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
-                            {coach.phone}
-                            {coach.email ? ` · ${coach.email}` : ""}
-                          </p>
-                          <div className="mt-2">
-                            <CoachSpecialtyChips coach={coach} />
-                          </div>
-                        </div>
-                      </div>
-                      <div className="list-card-actions mt-1 shrink-0 md:mt-0 md:justify-end">
-                        <button
-                          type="button"
-                          onClick={() => startEdit(coach)}
-                          disabled={actionLoadingId === coach.id}
-                          className="btn btn-ghost btn-sm inline-flex items-center justify-center md:size-9 md:p-0"
-                          title="Modifier"
-                          aria-label="Modifier"
-                        >
-                          <Pencil className="size-4" />
-                          <span className="md:hidden">Modifier</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPendingDeleteCoach(coach)}
-                          disabled={actionLoadingId === coach.id}
-                          className="btn btn-ghost btn-sm inline-flex items-center justify-center border-red-200 text-red-700 hover:bg-red-50 md:size-9 md:p-0"
-                          title="Désactiver"
-                          aria-label="Désactiver"
-                        >
-                          <Trash2 className="size-4" />
-                          <span className="md:hidden">Désactiver</span>
-                        </button>
-                      </div>
-                    </div>
-                    <CoachLoadSummary coach={coach} />
-                    <CoachGroupsPreview coach={coach} />
-                  </div>
-                )}
-              </li>
+              <CoachCard
+                key={coach.id}
+                coach={coach}
+                sports={sports}
+                editing={editingId === coach.id}
+                actionBusy={actionLoadingId === coach.id}
+                editFirstName={editFirstName}
+                editLastName={editLastName}
+                editPhone={editPhone}
+                editEmail={editEmail}
+                editSportId={editSportId}
+                editQualifiedSportIds={editQualifiedSportIds}
+                editIsActive={editIsActive}
+                onReloadSports={() => { void reloadSports(); }}
+                onStartEdit={() => startEdit(coach)}
+                onCancelEdit={cancelEdit}
+                onSaveEdit={() => { void saveEdit(coach.id); }}
+                onQueueDelete={() => setPendingDeleteCoach(coach)}
+                onEditFirstNameChange={setEditFirstName}
+                onEditLastNameChange={setEditLastName}
+                onEditPhoneChange={setEditPhone}
+                onEditEmailChange={setEditEmail}
+                onEditSportIdChange={setEditSportId}
+                onEditQualifiedSportIdsChange={setEditQualifiedSportIds}
+                onEditIsActiveChange={setEditIsActive}
+              />
             ))}
             {filteredCoaches.length === 0 ? (
               <li>
