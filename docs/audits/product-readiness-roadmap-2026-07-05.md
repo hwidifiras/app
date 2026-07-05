@@ -248,7 +248,7 @@ Coach conflict logic must be understandable:
 
 | File | Risk | Refactor Direction |
 | --- | --- | --- |
-| `src/components/sessions/sessions-planner.tsx` | Large manager file mixing filters, summaries, mobile layout, cards, detail panel. | Extract `SessionWeekColumn`, `SessionCompactCard`, `SelectedSessionPanel`, view-model helpers. |
+| `src/components/sessions/sessions-planner.tsx` | Large manager file mixing filters, summaries, mobile layout, cards, detail panel. | Started: session tiles, selected-session panel, legend, and display helpers extracted to `session-planner-ui.tsx`; remaining target is week/day sections and view-model helpers. |
 | `src/app/page.tsx` | Dashboard data shaping and layout can become hard to reason about. | Extract dashboard view models and keep server page orchestration thin. |
 | `src/components/enrollment/enrollment-wizard.tsx` | Many steps and rules in one component. | Extract step components and quote summary. |
 | `src/components/settings/data-import-wizard.tsx` | Manual import and bulk import live together. | Continue extracting bulk preview, manual form sections, rollback panel. |

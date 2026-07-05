@@ -58,6 +58,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - `schedule-templates-manager.tsx` now delegates reusable schedule template cards and apply-preview UI to `schedule-template-ui.tsx`, reducing page-manager file pressure without changing behavior.
 - `data-import-wizard.tsx` now delegates the bulk preview metrics/table UI to `data-import-bulk-ui.tsx`, reducing duplicated embedded table markup without changing behavior.
 - `data-import-wizard.tsx` now delegates the import mode and recent rollback list UI to `data-import-status-ui.tsx`, keeping import actions in the wizard while reducing presentation markup.
+- `sessions-planner.tsx` now delegates session tiles, selected-session detail panel, legend, and session display helpers to `session-planner-ui.tsx`; a dead hidden legacy session-list block was removed.
 - A broader product-readiness roadmap now exists at `docs/audits/product-readiness-roadmap-2026-07-05.md`, covering recoverability, receipts, UI/UX consistency, settings polish, group/coach/enrollment rules, and code organization.
 - A mutation recoverability audit now exists at `docs/audits/mutation-recoverability-audit-2026-07-05.md`, mapping payment, enrollment, attendance, sessions, schedules, group assignments, data import, and catalog mutations to the recovery vocabulary.
 - Attendance undo/cancellation now records a richer audit snapshot and is presented as `Pointage annulé` instead of `Présence supprimée`.
@@ -111,13 +112,12 @@ The new `/settings` hub is the entry point. Next UI pass should make these pages
 
 Large files to split carefully:
 
-- `src/components/sessions/sessions-planner.tsx`
+- `src/components/sessions/sessions-planner.tsx` (started: cards/detail panel/legend extracted and dead hidden list removed)
 - `src/app/page.tsx`
 - `src/components/enrollment/enrollment-wizard.tsx`
-- `src/components/settings/data-import-wizard.tsx`
+- `src/components/settings/data-import-wizard.tsx` (started: bulk import preview and status/rollback UI extracted)
 - `src/components/groups/group-schedules-manager.tsx`
 - `src/components/settings/schedule-templates-manager.tsx` (started: template cards, selected-template summary, and apply preview extracted)
-- `src/components/settings/data-import-wizard.tsx` (started: bulk import preview and status/rollback UI extracted)
 
 Refactor rule:
 
@@ -188,6 +188,7 @@ Latest UI settings checkpoint:
 - Attendance undo audit enrichment passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Receipt QR/copy-link pass passed `npm.cmd run lint`, `npm.cmd run build`, `npx.cmd prisma validate`, and `npm.cmd audit --omit=dev`.
 - Group policy picker pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
+- Planning UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
 
 Start a disposable local PostgreSQL test database, or set `TEST_DATABASE_URL`, before relying on `npm.cmd test`.
