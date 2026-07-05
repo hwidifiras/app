@@ -169,7 +169,7 @@ export async function PATCH(request: Request) {
   }
 
   const updated = await prisma.clubSettings.update({
-    where: { id: "default" },
+    where: { id: before.id },
     data: {
       ...(data.clubName !== undefined ? { clubName: data.clubName } : {}),
       ...(data.clubAddress !== undefined ? { clubAddress: data.clubAddress } : {}),

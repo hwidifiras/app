@@ -3,7 +3,8 @@ import path from "node:path";
 
 import { NextResponse } from "next/server";
 
-import { writeClubLogoUrl } from "@/lib/club-settings";
+import { getClubSettings, writeClubLogoUrl } from "@/lib/club-settings";
+import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/request-user";
 
 export const runtime = "nodejs";
@@ -17,12 +18,20 @@ const MIME_TO_EXT: Record<string, string> = {
 
 const BRANDING_DIR = path.join(process.cwd(), "public", "branding");
 
-async function removeUploadedLogos() {
+function tenantLogoKey(tenantSlug: string, tenantId: string) {
+  return (tenantSlug || tenantId).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "") || tenantId;
+}
+
+function logoFilePrefix(tenantSlug: string, tenantId: string) {
+  return `club-logo-${tenantLogoKey(tenantSlug, tenantId)}`;
+}
+
+async function removeUploadedLogos(filePrefix: string) {
   try {
     const files = await readdir(BRANDING_DIR);
     await Promise.all(
       files
-        .filter((f) => f.startsWith("club-logo."))
+        .filter((f) => f.startsWith(`${filePrefix}.`))
         .map((f) => unlink(path.join(BRANDING_DIR, f))),
     );
   } catch {
@@ -30,9 +39,22 @@ async function removeUploadedLogos() {
   }
 }
 
-export async function POST(request: Request) {
+async function removeLogoByUrl(logoUrl: string) {
+  if (!logoUrl.startsWith("/branding/")) return;
+  const filename = path.basename(logoUrl);
+  if (!filename.startsWith("club-logo")) return;
+
   try {
-    await requireAdmin(request);
+    await unlink(path.join(BRANDING_DIR, filename));
+  } catch {
+    /* file may already be gone */
+  }
+}
+
+export async function POST(request: Request) {
+  let admin;
+  try {
+    admin = await requireAdmin(request);
   } catch (e) {
     const code = e instanceof Error ? e.message : "FORBIDDEN";
     return NextResponse.json(
@@ -61,10 +83,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Format accepté : PNG, JPEG ou WebP" }, { status: 400 });
   }
 
-  await mkdir(BRANDING_DIR, { recursive: true });
-  await removeUploadedLogos();
+  const before = await getClubSettings();
+  const filePrefix = logoFilePrefix(admin.tenantSlug, admin.tenantId);
 
-  const filename = `club-logo.${ext}`;
+  await mkdir(BRANDING_DIR, { recursive: true });
+  await removeUploadedLogos(filePrefix);
+
+  const filename = `${filePrefix}.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
   await writeFile(path.join(BRANDING_DIR, filename), buffer);
 
@@ -79,12 +104,28 @@ export async function POST(request: Request) {
     );
   }
 
+  await prisma.auditLog.create({
+    data: {
+      tenantId: admin.tenantId,
+      action: "CLUB_LOGO_UPDATED",
+      entityType: "ClubSettings",
+      entityId: before.id,
+      userId: admin.id,
+      details: JSON.stringify({
+        before: { clubLogoUrl: before.clubLogoUrl },
+        after: { clubLogoUrl },
+        file: { name: file.name, type: file.type, size: file.size },
+      }),
+    },
+  });
+
   return NextResponse.json({ data: { clubLogoUrl } });
 }
 
 export async function DELETE(request: Request) {
+  let admin;
   try {
-    await requireAdmin(request);
+    admin = await requireAdmin(request);
   } catch (e) {
     const code = e instanceof Error ? e.message : "FORBIDDEN";
     return NextResponse.json(
@@ -93,13 +134,31 @@ export async function DELETE(request: Request) {
     );
   }
 
-  await removeUploadedLogos();
+  const before = await getClubSettings();
+  const filePrefix = logoFilePrefix(admin.tenantSlug, admin.tenantId);
+
+  await removeUploadedLogos(filePrefix);
+  await removeLogoByUrl(before.clubLogoUrl);
   try {
     await writeClubLogoUrl("");
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: "Impossible de supprimer le logo en base" }, { status: 500 });
   }
+
+  await prisma.auditLog.create({
+    data: {
+      tenantId: admin.tenantId,
+      action: "CLUB_LOGO_REMOVED",
+      entityType: "ClubSettings",
+      entityId: before.id,
+      userId: admin.id,
+      details: JSON.stringify({
+        before: { clubLogoUrl: before.clubLogoUrl },
+        after: { clubLogoUrl: "" },
+      }),
+    },
+  });
 
   return NextResponse.json({ data: { clubLogoUrl: "" } });
 }
