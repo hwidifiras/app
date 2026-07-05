@@ -168,7 +168,7 @@ export function PaymentReceiptActions({
   );
 }
 
-function ReceiptDeliveryChip({
+export function ReceiptDeliveryChip({
   receiptStatus,
   deliveryStatus,
   hasEmail,

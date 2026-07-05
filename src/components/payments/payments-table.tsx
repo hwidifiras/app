@@ -6,7 +6,7 @@ import { Banknote, ChevronDown, ChevronRight, Plus, RotateCcw } from "lucide-rea
 
 import { buildSubscriptionBillingView, formatMoney } from "@/lib/subscription-billing";
 import { cn } from "@/lib/utils";
-import { PaymentReceiptActions } from "@/components/payments/payment-receipt-actions";
+import { PaymentReceiptActions, ReceiptDeliveryChip } from "@/components/payments/payment-receipt-actions";
 import { AmountSummary, OfferRemark, PaymentInstallmentStatus, StatusChip, SubscriptionProgressBar } from "@/components/payments/payment-table-parts";
 import { ledgerTypeLabel, type PaymentGroup } from "@/components/payments/payment-table-model";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -135,6 +135,7 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
           });
           const isOpen = expandedId === group.subscriptionId;
           const installmentCount = group.payments.length;
+          const latestReceiptPayment = group.payments.find((payment) => payment.receipt);
 
           return (
             <li
@@ -176,6 +177,13 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
                     <span className="text-[0.65rem] text-[var(--muted-foreground)]">
                       {installmentCount} versement{installmentCount > 1 ? "s" : ""}
                     </span>
+                    {latestReceiptPayment?.receipt ? (
+                      <ReceiptDeliveryChip
+                        receiptStatus={latestReceiptPayment.receipt.status}
+                        deliveryStatus={latestReceiptPayment.receipt.deliveryStatus ?? null}
+                        hasEmail={Boolean(latestReceiptPayment.memberEmail?.trim())}
+                      />
+                    ) : null}
                   </span>
                 </span>
               </button>
@@ -262,6 +270,7 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
               const isOpen = expandedId === group.subscriptionId;
               const hasLedgerRows = group.payments.length > 0;
               const latestPayment = group.payments[0];
+              const latestReceiptPayment = group.payments.find((payment) => payment.receipt);
 
               return (
                 <Fragment key={group.subscriptionId}>
@@ -318,8 +327,15 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
                     </td>
                     <td className="hidden px-4 py-3 md:table-cell">{latestPayment?.paymentMethod ?? "—"}</td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <StatusChip statusLabel={billing.statusLabel} statusTone={billing.statusTone} />
+                        {latestReceiptPayment?.receipt ? (
+                          <ReceiptDeliveryChip
+                            receiptStatus={latestReceiptPayment.receipt.status}
+                            deliveryStatus={latestReceiptPayment.receipt.deliveryStatus ?? null}
+                            hasEmail={Boolean(latestReceiptPayment.memberEmail?.trim())}
+                          />
+                        ) : null}
                         {!billing.isComplete ? (
                           <button
                             type="button"
