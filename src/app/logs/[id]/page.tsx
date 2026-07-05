@@ -65,7 +65,7 @@ export default async function LogDetailPage({ params }: { params: Promise<{ id: 
   });
   if (!log) notFound();
 
-  const presentation = await enrichAuditLogPresentation(log, presentAuditLog(log));
+  const presentation = await enrichAuditLogPresentation(log, presentAuditLog(log), authUser.tenantId);
 
   const user = log.userId
     ? await prisma.user.findFirst({

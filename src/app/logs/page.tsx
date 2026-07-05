@@ -124,6 +124,7 @@ export default async function LogsPage({
   const presentationById = await enrichAuditLogContexts(
     logs,
     new Map(filtered.map((p) => [p.log.id, p.presentation])),
+    authUser.tenantId,
   );
 
   const userIds = Array.from(

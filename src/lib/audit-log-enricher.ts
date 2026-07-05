@@ -45,10 +45,18 @@ function memberLabel(m: { firstName: string; lastName: string }): string {
   return `${m.firstName} ${m.lastName}`.trim();
 }
 
-async function loadMembers(ids: string[]) {
+function tenantWhere(tenantId?: string | null) {
+  return tenantId ? { tenantId } : {};
+}
+
+function tenantIdForLog(log: AuditLogRow, explicitTenantId?: string | null) {
+  return explicitTenantId ?? log.tenantId ?? null;
+}
+
+async function loadMembers(ids: string[], tenantId?: string | null) {
   if (ids.length === 0) return new Map<string, { firstName: string; lastName: string; phone: string }>();
   const rows = await prisma.member.findMany({
-    where: { id: { in: ids } },
+    where: { ...tenantWhere(tenantId), id: { in: ids } },
     select: { id: true, firstName: true, lastName: true, phone: true },
   });
   return new Map(rows.map((m) => [m.id, m]));
@@ -74,9 +82,11 @@ const OFFER_KIND_LABELS: Record<string, string> = {
 export async function enrichAuditLogPresentation(
   log: AuditLogRow,
   base?: AuditPresentation,
+  explicitTenantId?: string | null,
 ): Promise<AuditPresentation> {
   const presentation = base ?? presentAuditLog(log);
   const details = parseDetails(log.details);
+  const tenantId = tenantIdForLog(log, explicitTenantId);
   const sections: AuditDetailSection[] = [];
 
   switch (log.action) {
@@ -104,12 +114,12 @@ export async function enrichAuditLogPresentation(
         if (list.length) rows.push({ label: "Inscriptions", list });
       } else {
         const memberIds = parseIdList(details?.memberIds);
-        const members = await loadMembers(memberIds);
+        const members = await loadMembers(memberIds, tenantId);
         const subIds = parseIdList(details?.subscriptionIds);
         const subs =
           subIds.length > 0
             ? await prisma.memberSubscription.findMany({
-                where: { id: { in: subIds } },
+                where: { ...tenantWhere(tenantId), id: { in: subIds } },
                 include: {
                   member: { select: { firstName: true, lastName: true } },
                   plan: { select: { name: true, sport: { select: { name: true } } } },
@@ -136,8 +146,8 @@ export async function enrichAuditLogPresentation(
       if (details?.offerName && typeof details.offerName === "string") {
         rows.push({ label: "Offre appliquée", value: details.offerName });
       } else if (details?.offerId && typeof details.offerId === "string") {
-        const offer = await prisma.offer.findUnique({
-          where: { id: details.offerId },
+        const offer = await prisma.offer.findFirst({
+          where: { ...tenantWhere(tenantId), id: details.offerId },
           select: { name: true, kind: true },
         });
         if (offer) {
@@ -160,8 +170,8 @@ export async function enrichAuditLogPresentation(
       const rows: AuditDetailRow[] = [];
       const subId = log.entityType === "MemberSubscription" ? log.entityId : null;
       const sub = subId
-        ? await prisma.memberSubscription.findUnique({
-            where: { id: subId },
+        ? await prisma.memberSubscription.findFirst({
+            where: { ...tenantWhere(tenantId), id: subId },
             include: {
               member: { select: { firstName: true, lastName: true, phone: true } },
               plan: { select: { name: true, sport: { select: { name: true } } } },
@@ -177,8 +187,8 @@ export async function enrichAuditLogPresentation(
         if (details?.startDate) rows.push({ label: "Début", value: formatDateFr(details.startDate) });
         if (details?.source) rows.push({ label: "Origine", value: String(details.source) });
       } else if (details?.memberId) {
-        const m = await prisma.member.findUnique({
-          where: { id: String(details.memberId) },
+        const m = await prisma.member.findFirst({
+          where: { ...tenantWhere(tenantId), id: String(details.memberId) },
           select: { firstName: true, lastName: true, phone: true },
         });
         if (m) rows.push({ label: "Élève", value: `${memberLabel(m)} · ${m.phone}` });
@@ -200,8 +210,8 @@ export async function enrichAuditLogPresentation(
       const rows: AuditDetailRow[] = [];
       const paymentId = log.entityType === "Payment" ? log.entityId : null;
       const payment = paymentId
-        ? await prisma.payment.findUnique({
-            where: { id: paymentId },
+        ? await prisma.payment.findFirst({
+            where: { ...tenantWhere(tenantId), id: paymentId },
             include: {
               memberSubscription: {
                 include: {
@@ -244,8 +254,8 @@ export async function enrichAuditLogPresentation(
           value: `${memberLabel(m)} — abonnement ${payment.memberSubscription.plan.name}`,
         });
       } else if (details?.memberId) {
-        const m = await prisma.member.findUnique({
-          where: { id: String(details.memberId) },
+        const m = await prisma.member.findFirst({
+          where: { ...tenantWhere(tenantId), id: String(details.memberId) },
           select: { firstName: true, lastName: true },
         });
         if (m) rows.push({ label: "Élève", value: memberLabel(m) });
@@ -261,8 +271,8 @@ export async function enrichAuditLogPresentation(
       const rows: AuditDetailRow[] = [];
       const attId = log.entityType === "Attendance" ? log.entityId : null;
       const att = attId
-        ? await prisma.attendance.findUnique({
-            where: { id: attId },
+        ? await prisma.attendance.findFirst({
+            where: { ...tenantWhere(tenantId), id: attId },
             include: {
               member: { select: { firstName: true, lastName: true } },
               session: {
@@ -281,8 +291,8 @@ export async function enrichAuditLogPresentation(
       if (att?.member) {
         rows.push({ label: "Élève", value: memberLabel(att.member) });
       } else if (memberId) {
-        const m = await prisma.member.findUnique({
-          where: { id: memberId },
+        const m = await prisma.member.findFirst({
+          where: { ...tenantWhere(tenantId), id: memberId },
           select: { firstName: true, lastName: true },
         });
         if (m) rows.push({ label: "Élève", value: memberLabel(m) });
@@ -291,8 +301,8 @@ export async function enrichAuditLogPresentation(
       const session =
         att?.session ??
         (sessionId
-          ? await prisma.session.findUnique({
-              where: { id: sessionId },
+          ? await prisma.session.findFirst({
+              where: { ...tenantWhere(tenantId), id: sessionId },
               include: {
                 group: { select: { name: true } },
                 coach: { select: { firstName: true, lastName: true } },
@@ -344,8 +354,8 @@ export async function enrichAuditLogPresentation(
 
     case "SESSION_POSTPONED": {
       const rows: AuditDetailRow[] = [];
-      const session = await prisma.session.findUnique({
-        where: { id: log.entityId },
+      const session = await prisma.session.findFirst({
+        where: { ...tenantWhere(tenantId), id: log.entityId },
         include: { group: { select: { name: true } } },
       });
       if (session) rows.push({ label: "Cours", value: session.group.name });
@@ -370,8 +380,8 @@ export async function enrichAuditLogPresentation(
     case "MEMBER_DELETED":
     case "MEMBER_UPDATED": {
       const rows: AuditDetailRow[] = [];
-      const member = await prisma.member.findUnique({
-        where: { id: log.entityId },
+      const member = await prisma.member.findFirst({
+        where: { ...tenantWhere(tenantId), id: log.entityId },
         select: { firstName: true, lastName: true, phone: true, email: true },
       });
       if (member) {
@@ -401,8 +411,8 @@ export async function enrichAuditLogPresentation(
       const rows: AuditDetailRow[] = [];
       const user =
         log.entityType === "User"
-          ? await prisma.user.findUnique({
-              where: { id: log.entityId },
+          ? await prisma.user.findFirst({
+              where: { ...tenantWhere(tenantId), id: log.entityId },
               select: { name: true, email: true, role: true },
             })
           : null;
@@ -529,6 +539,7 @@ function buildEnrichedContext(
 export async function enrichAuditLogContexts(
   logs: AuditLogRow[],
   presentations: Map<string, AuditPresentation>,
+  explicitTenantId?: string | null,
 ): Promise<Map<string, AuditPresentation>> {
   const out = new Map(presentations);
 
@@ -555,7 +566,7 @@ export async function enrichAuditLogContexts(
       const ids = parseIdList(details?.memberIds);
       if (ids.length > 0) {
         const members = await prisma.member.findMany({
-          where: { id: { in: ids.slice(0, 3) } },
+          where: { ...tenantWhere(tenantIdForLog(log, explicitTenantId)), id: { in: ids.slice(0, 3) } },
           select: { firstName: true, lastName: true },
         });
         if (members.length === 1) {

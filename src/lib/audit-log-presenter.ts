@@ -3,6 +3,7 @@ import { policyForAuditAction } from "@/lib/recovery-policy";
 
 export type AuditLogRow = {
   id: string;
+  tenantId?: string | null;
   action: string;
   entityType: string;
   entityId: string;
