@@ -20,6 +20,19 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
       verificationCode: true,
       status: true,
       snapshotJson: true,
+      payment: {
+        select: {
+          memberSubscription: {
+            select: {
+              member: {
+                select: {
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+      },
     },
   });
 
@@ -36,7 +49,12 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
           description="Version imprimable et verification publique du paiement."
           actions={
             <div className="flex flex-col gap-2 sm:flex-row">
-              <ReceiptActions receiptNumber={receipt.receiptNumber} verificationCode={receipt.verificationCode} />
+              <ReceiptActions
+                receiptId={receipt.id}
+                receiptNumber={receipt.receiptNumber}
+                verificationCode={receipt.verificationCode}
+                defaultEmail={receipt.payment.memberSubscription.member.email}
+              />
               <Link href="/payments" className="btn btn-ghost btn-block-mobile">
                 Historique caisse
               </Link>

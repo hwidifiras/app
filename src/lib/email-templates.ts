@@ -210,3 +210,111 @@ export function buildPaymentReminderEmail(params: {
 
   return { subject, html, text };
 }
+
+export type ReceiptEmailContent = {
+  subject: string;
+  html: string;
+  text: string;
+};
+
+export function buildReceiptEmail(params: {
+  memberName: string;
+  clubName: string;
+  receiptNumber: string;
+  amountCents: number;
+  paymentDate: string;
+  verificationCode: string;
+  verificationUrl: string;
+  appName?: string;
+}): ReceiptEmailContent {
+  const appName = escapeHtml(params.appName?.trim() || getAppName());
+  const memberName = escapeHtml(params.memberName);
+  const clubName = escapeHtml(params.clubName || params.appName?.trim() || getAppName());
+  const receiptNumber = escapeHtml(params.receiptNumber);
+  const verificationCode = escapeHtml(params.verificationCode);
+  const verificationUrl = escapeHtml(params.verificationUrl);
+  const amount = formatMoney(params.amountCents);
+  const paymentDate = escapeHtml(params.paymentDate);
+  const year = new Date().getFullYear();
+  const subject = `${clubName} — Reçu ${params.receiptNumber}`;
+
+  const text = [
+    `Bonjour ${params.memberName},`,
+    ``,
+    `Voici votre reçu de paiement ${params.receiptNumber}.`,
+    `Montant : ${amount}`,
+    `Date : ${params.paymentDate}`,
+    ``,
+    `Vous pouvez vérifier ce reçu avec le numéro ${params.receiptNumber} et le code ${params.verificationCode} :`,
+    params.verificationUrl,
+    ``,
+    `— ${params.clubName || params.appName?.trim() || getAppName()}`,
+  ].join("\n");
+
+  const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${subject}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f6f9ff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#10243f;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f6f9ff;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border:1px solid #d7e2f2;border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(16,36,63,0.08);">
+          <tr>
+            <td style="background:#0b1220;padding:28px 32px;">
+              <p style="margin:0;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#93c5fd;font-weight:700;">Reçu de paiement</p>
+              <h1 style="margin:8px 0 0;font-size:24px;line-height:1.25;font-weight:800;color:#ffffff;">${receiptNumber}</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px 32px;">
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#10243f;">Bonjour ${memberName},</p>
+              <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#5f7390;">
+                Votre paiement a bien été enregistré par <strong style="color:#10243f;">${clubName}</strong>.
+              </p>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border:1px solid #d7e2f2;border-radius:12px;overflow:hidden;margin:0 0 20px;">
+                <tr>
+                  <td style="padding:14px 16px;background:#f8fbff;font-size:13px;color:#5f7390;">Montant</td>
+                  <td style="padding:14px 16px;background:#f8fbff;text-align:right;font-size:16px;font-weight:800;color:#10243f;">${amount}</td>
+                </tr>
+                <tr>
+                  <td style="padding:14px 16px;border-top:1px solid #d7e2f2;font-size:13px;color:#5f7390;">Date</td>
+                  <td style="padding:14px 16px;border-top:1px solid #d7e2f2;text-align:right;font-size:14px;font-weight:700;color:#10243f;">${paymentDate}</td>
+                </tr>
+                <tr>
+                  <td style="padding:14px 16px;border-top:1px solid #d7e2f2;font-size:13px;color:#5f7390;">Code de vérification</td>
+                  <td style="padding:14px 16px;border-top:1px solid #d7e2f2;text-align:right;font-size:14px;font-weight:800;color:#10243f;letter-spacing:0.08em;">${verificationCode}</td>
+                </tr>
+              </table>
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto 20px;">
+                <tr>
+                  <td style="border-radius:12px;background:#2563eb;">
+                    <a href="${verificationUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:13px 24px;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px;">
+                      Vérifier le reçu
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0;font-size:12px;line-height:1.5;color:#94a3b8;word-break:break-all;">
+                Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br />
+                <a href="${verificationUrl}" style="color:#2563eb;">${verificationUrl}</a>
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 32px 24px;background:#f4f8ff;text-align:center;border-top:1px solid #d7e2f2;">
+              <p style="margin:0;font-size:11px;color:#5f7390;">© ${year} ${appName}</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  return { subject, html, text };
+}

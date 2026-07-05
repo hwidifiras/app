@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 
-import { buildPasswordResetEmail, buildPaymentReminderEmail } from "@/lib/email-templates";
+import { buildPasswordResetEmail, buildPaymentReminderEmail, buildReceiptEmail } from "@/lib/email-templates";
 
 export type EmailDeliveryResult =
   | { delivered: true }
@@ -93,6 +93,43 @@ export async function sendPaymentReminderEmail(
 
   if (error) {
     console.error("Resend payment reminder failed:", { from, to: params.to, error });
+    return { delivered: false, reason: "EMAIL_SEND_FAILED" };
+  }
+
+  return { delivered: true };
+}
+
+export type ReceiptEmailParams = {
+  to: string;
+  memberName: string;
+  clubName: string;
+  receiptNumber: string;
+  amountCents: number;
+  paymentDate: string;
+  verificationCode: string;
+  verificationUrl: string;
+};
+
+export async function sendReceiptEmail(params: ReceiptEmailParams): Promise<EmailDeliveryResult> {
+  const from = process.env.PASSWORD_RESET_FROM?.trim();
+  const resend = getResendClient();
+
+  if (!resend || !from) {
+    return { delivered: false, reason: "EMAIL_NOT_CONFIGURED" };
+  }
+
+  const { subject, html, text } = buildReceiptEmail(params);
+
+  const { error } = await resend.emails.send({
+    from,
+    to: params.to,
+    subject,
+    html,
+    text,
+  });
+
+  if (error) {
+    console.error("Resend receipt email failed:", { from, to: params.to, error });
     return { delivered: false, reason: "EMAIL_SEND_FAILED" };
   }
 
