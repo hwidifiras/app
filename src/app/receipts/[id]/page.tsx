@@ -64,6 +64,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
                 receiptNumber={receipt.receiptNumber}
                 verificationCode={receipt.verificationCode}
                 defaultEmail={receipt.payment.memberSubscription.member.email}
+                clubName={snapshot.club.name}
               />
               <Link href="/payments" className="btn btn-ghost btn-block-mobile">
                 Historique caisse

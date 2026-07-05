@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Copy, Mail, ReceiptText } from "lucide-react";
+import { Copy, Mail, MessageCircle, ReceiptText } from "lucide-react";
 
-import { buildReceiptVerificationPath } from "@/lib/receipt-verification-url";
+import {
+  buildReceiptVerificationMessage,
+  buildReceiptVerificationPath,
+} from "@/lib/receipt-verification-url";
 import { cn } from "@/lib/utils";
 
 type PaymentReceipt = {
@@ -32,6 +35,24 @@ export function PaymentReceiptActions({
       await navigator.clipboard.writeText(new URL(verifyHref, window.location.origin).toString());
       setTone("success");
       setMessage("Lien copié");
+    } catch {
+      setTone("error");
+      setMessage("Copie impossible");
+    }
+  }
+
+  async function copyVerificationMessage() {
+    const absoluteUrl = new URL(verifyHref, window.location.origin).toString();
+    try {
+      await navigator.clipboard.writeText(
+        buildReceiptVerificationMessage({
+          receiptNumber: receipt.receiptNumber,
+          verificationCode: receipt.verificationCode,
+          verificationUrl: absoluteUrl,
+        }),
+      );
+      setTone("success");
+      setMessage("Message copié");
     } catch {
       setTone("error");
       setMessage("Copie impossible");
@@ -107,6 +128,14 @@ export function PaymentReceiptActions({
       >
         <Copy className="size-3" />
         Copier
+      </button>
+      <button
+        type="button"
+        onClick={copyVerificationMessage}
+        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[0.65rem] font-semibold text-[var(--foreground)] hover:bg-[var(--surface-soft)]"
+      >
+        <MessageCircle className="size-3" />
+        Message
       </button>
       {message ? (
         <span className={cn("text-[0.62rem] font-semibold", tone === "success" ? "text-emerald-700" : "text-red-700")}>

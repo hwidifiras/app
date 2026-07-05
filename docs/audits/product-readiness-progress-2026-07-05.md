@@ -36,6 +36,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Receipt actions now support print, public verification, and manual email send.
 - Printed/verified receipts now include a QR code pointing to public verification.
 - Receipt actions now support copying the public verification link for manual sending.
+- Receipt actions now support copying a ready-to-send verification message with receipt number, code, and public verification link for WhatsApp/SMS-style handoff.
 - Payment history now shows compact receipt actions for each issued receipt: open receipt, resend email when a member email exists, and copy verification link.
 - Payment correction/detail now shows the linked receipt, resend/copy actions, and the latest receipt email delivery attempts from audit logs.
 - Receipt email sending uses the existing Resend email infrastructure and writes audit logs.
@@ -247,6 +248,7 @@ Latest UI settings checkpoint:
 - Planning generation wording pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Owner priority register and recoverability-doc correction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Schedule application safety-card pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
+- Receipt verification message pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
 
 Start a disposable local PostgreSQL test database, or set `TEST_DATABASE_URL`, before relying on `npm.cmd test`.

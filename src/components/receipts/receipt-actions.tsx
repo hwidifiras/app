@@ -1,16 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { Copy, Mail, Printer } from "lucide-react";
+import { Copy, Mail, MessageCircle, Printer } from "lucide-react";
 import { useState } from "react";
 
-import { buildReceiptVerificationPath } from "@/lib/receipt-verification-url";
+import {
+  buildReceiptVerificationMessage,
+  buildReceiptVerificationPath,
+} from "@/lib/receipt-verification-url";
 
 type ReceiptActionsProps = {
   receiptId: string;
   receiptNumber: string;
   verificationCode: string;
   defaultEmail?: string | null;
+  clubName?: string | null;
 };
 
 export function ReceiptActions({
@@ -18,6 +22,7 @@ export function ReceiptActions({
   receiptNumber,
   verificationCode,
   defaultEmail,
+  clubName,
 }: ReceiptActionsProps) {
   const [isSending, setIsSending] = useState(false);
   const [message, setMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
@@ -67,6 +72,23 @@ export function ReceiptActions({
     }
   }
 
+  async function copyVerificationMessage() {
+    const absoluteUrl = new URL(verifyHref, window.location.origin).toString();
+    try {
+      await navigator.clipboard.writeText(
+        buildReceiptVerificationMessage({
+          receiptNumber,
+          verificationCode,
+          verificationUrl: absoluteUrl,
+          clubName,
+        }),
+      );
+      setMessage({ tone: "success", text: "Message de verification copie." });
+    } catch {
+      setMessage({ tone: "error", text: "Impossible de copier le message." });
+    }
+  }
+
   return (
     <div className="flex flex-col gap-2 print:hidden">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -90,6 +112,10 @@ export function ReceiptActions({
         <button type="button" onClick={copyVerificationLink} className="btn btn-ghost btn-block-mobile">
           <Copy className="size-4" />
           Copier lien
+        </button>
+        <button type="button" onClick={copyVerificationMessage} className="btn btn-ghost btn-block-mobile">
+          <MessageCircle className="size-4" />
+          Copier message
         </button>
       </div>
       {message ? (
