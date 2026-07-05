@@ -78,6 +78,15 @@ export const RECOVERY_POLICIES: RecoveryPolicy[] = [
   },
   {
     area: "members",
+    action: "member-created",
+    auditActions: ["MEMBER_CREATED"],
+    normalUserCopy: "Eleve cree",
+    behavior: "archive",
+    reasonRequired: true,
+    preservesHistory: true,
+  },
+  {
+    area: "members",
     action: "member-archived",
     auditActions: ["MEMBER_ARCHIVED"],
     normalUserCopy: "Eleve archive",

@@ -83,6 +83,7 @@ const ACTION_LABELS: Record<string, string> = {
   PAYMENT_CORRECTED: "Correction de paiement",
   PAYMENT_REVERSED: "Paiement annulé",
   PAYMENT_DELETED: "Paiement supprimé",
+  MEMBER_CREATED: "Élève créé",
   MEMBER_ARCHIVED: "Élève archivé (résiliation)",
   MEMBER_UPDATED: "Fiche élève modifiée",
   MEMBER_DELETED: "Élève supprimé définitivement",

@@ -18,6 +18,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Payment correction/reversal requires admin and a reason.
 - Enrollment recovery now reverses payments, voids receipts, cancels subscriptions, closes assignments, and archives newly created members where applicable.
 - New enrollments now persist a recovery key and undo snapshot in the enrollment audit log. Member detail can surface recent recoverable inscriptions and void them later with a required reason when no attendance has consumed the affected rows.
+- Direct member inscription now logs the created student and group assignment, not only the subscription/payment side effects.
 - Catalog records for disciplines, coaches, and formulas are deactivated instead of physically deleted in normal flows.
 - Group creation and group setup edits now write actor-linked audit entries with before/after snapshots for public policy, discipline, coach, room, capacity, and active state.
 - Receipts are created for original payment entries and voided when the original payment is corrected or reversed.
@@ -281,6 +282,7 @@ Latest UI settings checkpoint:
 - Member list edit audit pass now logs before/after profile snapshots for `MEMBER_UPDATED`; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Group create/update audit pass now logs `GROUP_CREATED` and `GROUP_UPDATED` with before/after course setup snapshots and readable log labels; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Group schedule creation audit pass now logs `GROUP_SCHEDULE_CREATED` and optional auto-generated sessions with actor-linked details; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
+- Direct member inscription audit pass now logs `MEMBER_CREATED` and `GROUP_MEMBER_CREATED` in the legacy member-create route; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
 
 Start a disposable local PostgreSQL test database, or set `TEST_DATABASE_URL`, before relying on `npm.cmd test`.

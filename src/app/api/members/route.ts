@@ -274,6 +274,19 @@ export async function POST(request: Request) {
         },
       });
 
+      await tx.auditLog.create({
+        data: {
+          action: "MEMBER_CREATED",
+          entityType: "Member",
+          entityId: created.id,
+          userId: actor.id,
+          details: JSON.stringify({
+            source: "member-inscription",
+            after: memberAuditSnapshot(created),
+          }),
+        },
+      });
+
       const now = new Date();
       const endDate = new Date(now);
       endDate.setDate(endDate.getDate() + plan.validityDays);
@@ -291,11 +304,26 @@ export async function POST(request: Request) {
         },
       });
 
-      await tx.groupMember.create({
+      const groupMember = await tx.groupMember.create({
         data: {
           groupId: groupIdValue,
           memberId: created.id,
           startDate: now,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          action: "GROUP_MEMBER_CREATED",
+          entityType: "GroupMember",
+          entityId: groupMember.id,
+          userId: actor.id,
+          details: JSON.stringify({
+            source: "member-inscription",
+            memberId: created.id,
+            groupId: groupIdValue,
+            startDate: now.toISOString(),
+          }),
         },
       });
 
