@@ -8,6 +8,7 @@ import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FieldControl } from "@/components/ui/field-control";
 import { FormActions, FormField } from "@/components/ui/form-layout";
 import { ReceptionInfoCard } from "@/components/ui/reception-info-card";
+import { EnrollmentCompletionPanel } from "@/components/enrollment/enrollment-completion-panel";
 import type { OfferLike } from "@/lib/offer-display";
 import {
   formatOfferRulesSummary,
@@ -501,52 +502,15 @@ export function EnrollmentWizard({
       </ReceptionInfoCard>
 
       {completion ? (
-        <section className="rounded-lg border border-[var(--success)]/35 bg-[var(--success)]/10 p-4 shadow-[var(--shadow-panel)]">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0">
-              <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-[var(--success)]">
-                Inscription enregistree
-              </p>
-              <h2 className="mt-1 text-base font-black text-[var(--foreground)]">
-                Verification avant de quitter
-              </h2>
-              <p className="mt-1 text-sm leading-relaxed text-[var(--muted-foreground)]">
-                Si une erreur humaine vient d&apos;etre faite, vous pouvez annuler cette inscription tant qu&apos;aucun pointage
-                n&apos;a ete cree sur les abonnements ou les eleves concernes. L&apos;annulation reste tracee dans le journal.
-              </p>
-            </div>
-            <Link
-              href={completion.memberIds[0] ? `/members/${completion.memberIds[0]}` : "/members"}
-              className="btn btn-primary btn-block-mobile shrink-0"
-              prefetch={false}
-            >
-              Voir fiche
-            </Link>
-          </div>
-          <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-            <FormField
-              label="Motif d'annulation"
-              htmlFor="enrollmentVoidReason"
-              hint="Ex. mauvais groupe, mauvais montant, doublon de fiche."
-            >
-              <input
-                id="enrollmentVoidReason"
-                className="field"
-                value={voidReason}
-                onChange={(event) => setVoidReason(event.target.value)}
-                placeholder="Motif obligatoire"
-              />
-            </FormField>
-            <button
-              type="button"
-              className="btn btn-ghost btn-block-mobile border-[var(--danger)]/30 text-[var(--danger)]"
-              disabled={voiding || voidReason.trim().length < 3}
-              onClick={() => { void voidCompletedEnrollment(); }}
-            >
-              {voiding ? "Annulation..." : "Annuler cette inscription"}
-            </button>
-          </div>
-        </section>
+        <EnrollmentCompletionPanel
+          memberIds={completion.memberIds}
+          voidReason={voidReason}
+          voiding={voiding}
+          onVoidReasonChange={setVoidReason}
+          onVoid={() => {
+            void voidCompletedEnrollment();
+          }}
+        />
       ) : null}
 
       <div className="enrollment-stepper grid grid-cols-3 gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-2 shadow-[var(--shadow-panel)]">
