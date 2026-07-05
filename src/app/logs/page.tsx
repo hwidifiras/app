@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import { ChevronRight } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
 import { enrichAuditLogContexts } from "@/lib/audit-log-enricher";
+import { getAuthUser } from "@/lib/request-user";
 import {
   auditLogMatchesQuery,
   formatAuditDateTime,
@@ -76,9 +76,9 @@ export default async function LogsPage({
   const selectedCategory = isLogCategory(categoryParam) ? categoryParam : "BUSINESS";
   const requestedPage = Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1);
   const pageSize = 30;
-  const role = (await headers()).get("x-user-role");
+  const authUser = await getAuthUser();
 
-  if (role !== "ADMIN") {
+  if (!authUser || authUser.role !== "ADMIN") {
     return (
       <main className="app-shell py-4 md:py-8">
         <PageHeader
@@ -94,6 +94,7 @@ export default async function LogsPage({
   }
 
   const allLogs = await prisma.auditLog.findMany({
+    where: { tenantId: authUser.tenantId },
     orderBy: { createdAt: "desc" },
   });
 
@@ -131,7 +132,7 @@ export default async function LogsPage({
 
   const users = userIds.length
     ? await prisma.user.findMany({
-        where: { id: { in: userIds } },
+        where: { tenantId: authUser.tenantId, id: { in: userIds } },
         select: { id: true, name: true, email: true },
       })
     : [];
