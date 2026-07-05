@@ -72,6 +72,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Enrollment success now keeps staff on the confirmation screen, shows a direct member-profile link, and exposes the safe traced `Annuler cette inscription` recovery action with a required reason.
 - A broader product-readiness roadmap now exists at `docs/audits/product-readiness-roadmap-2026-07-05.md`, covering recoverability, receipts, UI/UX consistency, settings polish, group/coach/enrollment rules, and code organization.
 - A master SaaS execution map now exists at `docs/audits/saas-product-execution-map-2026-07-05.md`, covering recoverability, page-by-page UX audit scope, settings redesign, receipts, group rules, planning/working days, code organization, and future gym-module strategy.
+- A product-owner priority register now exists at `docs/audits/product-owner-priority-register-2026-07-05.md`, mapping the latest concerns to current code evidence, decisions, priorities, and implementation order.
 - A mutation recoverability audit now exists at `docs/audits/mutation-recoverability-audit-2026-07-05.md`, mapping payment, enrollment, attendance, sessions, schedules, group assignments, data import, and catalog mutations to the recovery vocabulary.
 - `src/lib/recovery-policy.ts` now maps the main emitted audit actions to the shared recovery vocabulary so future risky-action UI copy can use one source of truth.
 - Audit-log presentation now uses the recovery-policy fallback and labels newer business actions such as data import, schedule templates, group closures, catalog deactivation, and payment reminders.
@@ -243,6 +244,7 @@ Latest UI settings checkpoint:
 - Group policy picker pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Planning UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Planning generation wording pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
+- Owner priority register and recoverability-doc correction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
 
 Start a disposable local PostgreSQL test database, or set `TEST_DATABASE_URL`, before relying on `npm.cmd test`.

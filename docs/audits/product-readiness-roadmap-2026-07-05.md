@@ -18,6 +18,10 @@ The broader execution map for the latest product-readiness prompt lives at:
 
 `docs/audits/saas-product-execution-map-2026-07-05.md`
 
+The product-owner priority register for the latest review lives at:
+
+`docs/audits/product-owner-priority-register-2026-07-05.md`
+
 ## Current Evidence Limits
 
 - The current branch contains newer settings and product-readiness work than the live app.

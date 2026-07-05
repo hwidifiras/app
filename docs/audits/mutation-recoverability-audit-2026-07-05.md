@@ -35,7 +35,7 @@ The codebase already has `src/lib/recovery-policy.ts` with this shared vocabular
 | Payments | `POST /api/payments` | Creates `Payment` ledger row, issues receipt, writes `PAYMENT_CREATED` and `RECEIPT_ISSUED`. | Good. |
 | Payment correction | `PATCH /api/payments` | Admin-only correction row with `correctionReason`, original payment preserved, original receipt voided. | Good. |
 | Payment cancellation | `DELETE /api/payments` | Admin-only reversal row with reason, original preserved, original receipt voided. | Good. |
-| Enrollment | `POST /api/enrollment/apply` | Creates member/subscription/assignment/payment with audit logs and recovery snapshot. | Good, but UI should keep the recovery path visible. |
+| Enrollment | `POST /api/enrollment/apply` | Creates member/subscription/assignment/payment with audit logs and recovery snapshot. | Good. The success screen keeps a reason-required recovery action visible. |
 | Enrollment recovery | `POST /api/enrollment/revert` + `src/lib/enrollment-undo.ts` | Reverses created payments, voids receipts, cancels subscription, closes assignment, archives new member. | Good. |
 | Members | `DELETE /api/members` and `DELETE /api/members/[id]` | Archives member with audit instead of hard deleting. | Good. |
 | Subscription edits | `PATCH /api/member-subscriptions` | Blocks archived members, invalid date windows, amount below paid total, and discipline conflicts with active assignments. Formula/status/value changes require admin + reason and now write before/after audit snapshots. | Good. |
@@ -69,9 +69,10 @@ The codebase already has `src/lib/recovery-policy.ts` with this shared vocabular
    - Permanent edits now write affected future session IDs and requested values.
    - Future improvement: add a staff-entered reason for every broad permanent edit, not only cancellations/exceptions.
 
-3. Enrollment recovery must be visible in UI:
+3. Enrollment recovery is now visible in the immediate success flow:
    - The code supports traceable recovery.
-   - Staff still needs a plain-language action from member/subscription/payment context.
+   - The enrollment success screen keeps staff on the confirmation state and exposes the reason-required `Annuler cette inscription` action.
+   - Future improvement: surface the same recovery context from member/subscription/payment detail screens when the original undo snapshot is still safe to use.
 
 4. Data import rollback should keep the safe boundary obvious:
    - Rollback is safe only before new activity.

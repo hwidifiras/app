@@ -26,12 +26,13 @@ Use these words consistently:
 | Members | Archive instead of delete | No by default | Yes |
 | Group assignments | Close with `endDate` | No by default | Yes |
 | Attendance | Correct with reason after finalization/lock | Yes | Yes |
-| Catalog drafts | Delete only if unused and no business history exists | No | No |
+| Catalog records | Deactivate/archive once they can have business history | No by default | Yes |
+| Draft/import rollback rows | Physical delete only while no later business activity exists | No | No |
 
 ## Implementation Notes
 
 - The typed source of this policy is `src/lib/recovery-policy.ts`.
 - Receipt foundation is implemented first because it protects money trust.
-- Enrollment undo still needs a full product pass: the API should stop physically deleting saved business rows and move to an official void flow.
-- Catalog `DELETE` routes remain a follow-up: sports, coaches, and formulas should become deactivate/archive in the sellable SaaS version.
-
+- Enrollment recovery now uses an official void-style flow: created payments are reversed, receipts are voided, subscriptions are cancelled, assignments are closed, and newly created members are archived.
+- Catalog `DELETE` routes for sellable records should continue to mean deactivate/archive, not physical deletion. Physical deletion remains acceptable only for unused drafts or rollback rows that have no later business activity.
+- Attendance cancellation is the remaining medium-good area: the current row is physically removed after guards and audit snapshot, but a future append-only attendance schema would make this excellent.
