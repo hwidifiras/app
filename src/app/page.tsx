@@ -34,6 +34,7 @@ import { utcDateOnlyForTimeZone } from "@/lib/dates";
 import { isPaymentReminderEmailConfigured } from "@/lib/email";
 import { enrichDebtsWithReminderMeta } from "@/lib/payment-reminders";
 import { prisma } from "@/lib/prisma";
+import { getAuthUser } from "@/lib/request-user";
 import {
   deriveSessionLifecycle,
   expectedMemberIdsAtSession,
@@ -186,6 +187,20 @@ function formatLongDateFr(value: Date) {
 }
 
 export default async function Home() {
+  const authUser = await getAuthUser();
+
+  if (!authUser) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <section className="panel panel-soft p-5">
+          <p className="text-sm font-semibold text-[var(--foreground)]">Dashboard indisponible</p>
+          <p className="mt-1 text-sm text-[var(--muted-foreground)]">Connectez-vous pour afficher les données du club.</p>
+        </section>
+      </main>
+    );
+  }
+
+  const tenantId = authUser.tenantId;
   let hasDataError = false;
   let activeMembers = 0;
   let newMembersThisMonth = 0;
@@ -240,16 +255,17 @@ export default async function Home() {
       fetchedSessions,
       fetchedRecentMembers,
     ] = await Promise.all([
-      prisma.member.count({ where: { status: "ACTIVE" } }),
-      prisma.member.count({ where: { status: "ACTIVE", joinedAt: { gte: monthStart, lt: tomorrow } } }),
+      prisma.member.count({ where: { tenantId, status: "ACTIVE" } }),
+      prisma.member.count({ where: { tenantId, status: "ACTIVE", joinedAt: { gte: monthStart, lt: tomorrow } } }),
       prisma.session.count({
         where: {
+          tenantId,
           sessionDate: { gte: today, lt: tomorrow },
           status: { not: "CANCELLED" },
         },
       }),
       prisma.payment.findMany({
-        where: { paymentDate: { gte: paymentWindowStart, lt: tomorrow } },
+        where: { tenantId, paymentDate: { gte: paymentWindowStart, lt: tomorrow } },
         select: {
           id: true,
           amount: true,
@@ -260,7 +276,7 @@ export default async function Home() {
         orderBy: [{ paymentDate: "asc" }, { createdAt: "asc" }],
       }),
       prisma.memberSubscription.findMany({
-        where: { status: "ACTIVE" },
+        where: { tenantId, status: "ACTIVE" },
         select: {
           id: true,
           amount: true,
@@ -270,11 +286,12 @@ export default async function Home() {
           endDate: true,
           member: { select: { firstName: true, lastName: true, phone: true } },
           plan: { select: { name: true } },
-          payments: { select: { amount: true } },
+          payments: { where: { tenantId }, select: { amount: true } },
         },
       }),
       prisma.session.findMany({
         where: {
+          tenantId,
           sessionDate: { gte: overdueSince, lt: tomorrow },
           status: { in: ["PLANNED", "RESCHEDULED", "COMPLETED"] },
         },
@@ -290,17 +307,18 @@ export default async function Home() {
             select: {
               name: true,
               members: {
+                where: { tenantId },
                 select: { memberId: true, startDate: true, endDate: true },
               },
             },
           },
-          attendances: { select: { memberId: true } },
+          attendances: { where: { tenantId }, select: { memberId: true } },
         },
         orderBy: [{ sessionDate: "desc" }, { startTime: "asc" }],
         take: 200,
       }),
       prisma.member.findMany({
-        where: { status: "ACTIVE" },
+        where: { tenantId, status: "ACTIVE" },
         orderBy: [{ joinedAt: "desc" }, { createdAt: "desc" }],
         take: 3,
         select: {
@@ -310,7 +328,7 @@ export default async function Home() {
           joinedAt: true,
           status: true,
           subscriptions: {
-            where: { status: "ACTIVE" },
+            where: { tenantId, status: "ACTIVE" },
             orderBy: { createdAt: "desc" },
             take: 1,
             select: {
