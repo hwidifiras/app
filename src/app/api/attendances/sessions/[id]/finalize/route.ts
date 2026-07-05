@@ -12,6 +12,7 @@ export const runtime = "nodejs";
 
 const actionSchema = z.object({
   action: z.enum(["finalize", "reopen"]),
+  reason: z.string().trim().max(500).optional().or(z.literal("")),
 });
 
 export async function POST(
@@ -31,6 +32,9 @@ export async function POST(
   }
 
   const { id } = await params;
+  const reason =
+    parsed.data.reason?.trim() ||
+    (parsed.data.action === "reopen" ? "Correction du pointage" : "Finalisation du pointage");
   const session = await prisma.session.findUnique({
     where: { id },
     include: {
@@ -82,7 +86,12 @@ export async function POST(
           entityType: "Session",
           entityId: id,
           userId: actor.id,
-          details: JSON.stringify({ previousStatus: "COMPLETED", reopenedStatus }),
+          details: JSON.stringify({
+            previousStatus: "COMPLETED",
+            reopenedStatus,
+            attendanceCount: session.attendances.length,
+            reason,
+          }),
         },
       });
       return next;
@@ -137,6 +146,7 @@ export async function POST(
           expectedMemberCount: lifecycle.expectedMemberCount,
           checkedMemberCount: lifecycle.checkedMemberCount,
           previousStatus: session.status,
+          reason,
         }),
       },
     });

@@ -61,6 +61,8 @@ const ACTION_LABELS: Record<string, string> = {
   ATTENDANCE_DELETED: "Pointage annulé",
   SESSION_UPDATED: "Séance modifiée",
   SESSION_CANCELLED: "Séance annulée",
+  SESSION_COMPLETED: "Séance finalisée",
+  SESSION_REOPENED: "Séance rouverte",
   SESSION_POSTPONED: "Séance reportée",
   COACH_SPORT_OVERRIDE_USED: "Exception coach utilisée",
   RECEIPT_ISSUED: "Reçu émis",
@@ -228,6 +230,10 @@ function buildContext(action: string, details: Record<string, unknown> | null): 
 
   if (action === "SESSION_UPDATED" && typeof details.mode === "string") {
     return details.mode === "permanent" ? "Permanent" : "Exception";
+  }
+
+  if ((action === "SESSION_COMPLETED" || action === "SESSION_REOPENED") && typeof details.reason === "string") {
+    return details.reason;
   }
 
   if (action === "MEMBER_SUBSCRIPTION_UPDATED" && Array.isArray(details.changedFields)) {

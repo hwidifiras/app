@@ -25,6 +25,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Subscription edits now require admin + reason for formula/status/value changes, block amount below paid total, and write before/after audit snapshots.
 - Subscription cancellation now preserves before/after audit details.
 - Offers remain create/deactivate only; active offer cards now show usage count so used discounts are treated as historical templates, not editable meanings.
+- Attendance corrections now write before/after snapshots and balance delta inside the same transaction; session finalize/reopen logs include staff-facing reasons.
 - Attendance undo keeps its balance adjustment and audit entry inside the same transaction.
 
 ### Receipts
@@ -96,7 +97,7 @@ Audit every mutation route under `src/app/api` and classify it:
 
 Highest-risk routes to re-check next:
 
-- attendance corrections after finalization;
+- attendance append-only row preservation remains a future schema decision; reopen-before-correction is implemented and now better audited;
 - attendance delete is guarded and now records a detailed previous-state audit snapshot, but still physically removes the attendance row; decide whether to preserve a voided/corrected row in a future schema pass;
 - session edit reason UX for broad permanent changes;
 - group schedule generation preview and future-session effects;
@@ -198,6 +199,7 @@ Latest UI settings checkpoint:
 - Session edit audit pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Subscription edit audit pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Offer historical-meaning pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
+- Attendance correction audit pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Group policy picker pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Planning UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.

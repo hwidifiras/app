@@ -54,6 +54,28 @@ function policyResponse(failure: AttendancePolicyFailure) {
   return NextResponse.json(failure.body, { status: failure.status });
 }
 
+type AttendanceAuditSnapshotInput = {
+  id?: string;
+  memberId: string;
+  status: string;
+  overrideReason: string | null;
+  checkedBy: string | null;
+  checkedAt: Date;
+  memberSubscriptionId: string | null;
+};
+
+function attendanceAuditSnapshot(attendance: AttendanceAuditSnapshotInput) {
+  return {
+    id: attendance.id ?? null,
+    memberId: attendance.memberId,
+    status: attendance.status,
+    overrideReason: attendance.overrideReason,
+    checkedBy: attendance.checkedBy,
+    checkedAt: attendance.checkedAt.toISOString(),
+    memberSubscriptionId: attendance.memberSubscriptionId,
+  };
+}
+
 export async function GET(request: Request) {
   try {
     await requirePermission(request, "attendance.manage");
@@ -441,6 +463,7 @@ export async function PATCH(request: Request) {
     const existing = await prisma.attendance.findUnique({
       where: { id: attendanceId },
       select: {
+        id: true,
         memberId: true,
         status: true,
         overrideReason: true,
@@ -563,6 +586,7 @@ export async function PATCH(request: Request) {
       delta = consumptionChange.balanceDelta;
     }
 
+    const beforeSnapshot = attendanceAuditSnapshot(existing);
     const updated = await prisma.$transaction(async (tx) => {
       let memberSubscriptionId = existing.memberSubscriptionId;
 
@@ -576,7 +600,7 @@ export async function PATCH(request: Request) {
         memberSubscriptionId = adjustment.memberSubscriptionId;
       }
 
-      return tx.attendance.update({
+      const updatedAttendance = await tx.attendance.update({
         where: { id: attendanceId },
         data: {
           status: payload.status,
@@ -611,21 +635,26 @@ export async function PATCH(request: Request) {
           member: { select: { id: true, firstName: true, lastName: true } },
         },
       });
-    });
+      const afterSnapshot = attendanceAuditSnapshot(updatedAttendance);
 
-    await prisma.auditLog.create({
-      data: {
-        action: "ATTENDANCE_UPDATED",
-        entityType: "Attendance",
-        entityId: attendanceId,
-        userId: actor?.id ?? null,
-        details: JSON.stringify({
-          oldStatus: existing.status,
-          newStatus: payload.status ?? existing.status,
-          overrideReason: payload.overrideReason || null,
-          sessionBalanceDelta: delta,
-        }),
-      },
+      await tx.auditLog.create({
+        data: {
+          action: "ATTENDANCE_UPDATED",
+          entityType: "Attendance",
+          entityId: attendanceId,
+          userId: actor?.id ?? null,
+          details: JSON.stringify({
+            oldStatus: existing.status,
+            newStatus: payload.status ?? existing.status,
+            overrideReason: payload.overrideReason || null,
+            sessionBalanceDelta: delta,
+            before: beforeSnapshot,
+            after: afterSnapshot,
+          }),
+        },
+      });
+
+      return updatedAttendance;
     });
 
     return NextResponse.json({ data: updated });

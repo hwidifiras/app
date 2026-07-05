@@ -273,7 +273,13 @@ export function CheckInPanel({
     const response = await fetch(`/api/attendances/sessions/${selectedId}/finalize`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action }),
+      body: JSON.stringify({
+        action,
+        reason:
+          action === "finalize"
+            ? "Pointage terminé depuis la réception"
+            : "Correction du pointage depuis la réception",
+      }),
     });
     const result = (await response.json()) as {
       data?: { status: string };
