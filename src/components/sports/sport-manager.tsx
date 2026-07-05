@@ -1,10 +1,9 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import { CheckCircle2, Dumbbell, MoreHorizontal, Plus, Settings2, X } from "lucide-react";
+import { Dumbbell, Plus, X } from "lucide-react";
 
 import { SportDto } from "@/types/sport";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormField } from "@/components/ui/form-layout";
@@ -12,6 +11,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ListSearch } from "@/components/ui/list-controls";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { SportSuggestionPicker } from "@/components/sports/sport-suggestion-picker";
+import { SportCard } from "@/components/sports/sport-card";
+import { getMissingSetup, withStats } from "@/components/sports/sport-manager-model";
 import {
   MARTIAL_ARTS_DISCIPLINE_SUGGESTIONS,
   type MartialArtsDisciplineSuggestion,
@@ -21,65 +22,6 @@ import { cn } from "@/lib/utils";
 type SportManagerProps = {
   initialSports: SportDto[];
 };
-
-type SportStatsDto = NonNullable<SportDto["stats"]>;
-
-const EMPTY_STATS: SportStatsDto = {
-  activeGroups: 0,
-  activePlans: 0,
-  activeSubscriptions: 0,
-  coaches: 0,
-  activeOffers: 0,
-};
-
-function withStats(sport: SportDto): SportDto {
-  return {
-    ...sport,
-    stats: {
-      ...EMPTY_STATS,
-      ...(sport.stats ?? {}),
-    },
-  };
-}
-
-function getMissingSetup(sport: SportDto) {
-  const stats = sport.stats ?? EMPTY_STATS;
-  const missing: string[] = [];
-  if (stats.activeGroups === 0) missing.push("cours");
-  if (stats.activePlans === 0) missing.push("formule");
-  if (stats.coaches === 0) missing.push("coach");
-  return missing;
-}
-
-function completionState(sport: SportDto) {
-  if (!sport.isActive) {
-    return {
-      label: "Inactive",
-      detail: "Masquée des nouveaux flux.",
-      variant: "muted" as const,
-    };
-  }
-
-  const missing = getMissingSetup(sport);
-
-  if (missing.length === 0) {
-    return {
-      label: "Prête",
-      detail: "Cours, formule et coach configurés.",
-      variant: "success" as const,
-    };
-  }
-
-  return {
-    label: "À compléter",
-    detail: `Manque: ${missing.join(", ")}.`,
-    variant: "warning" as const,
-  };
-}
-
-function plural(count: number, singular: string, pluralLabel = `${singular}s`) {
-  return `${count} ${count > 1 ? pluralLabel : singular}`;
-}
 
 function SummaryMetric({
   label,
@@ -103,18 +45,6 @@ function SummaryMetric({
     <div className={cn("rounded-lg border px-3.5 py-3 shadow-[var(--shadow-panel)]", toneClass)}>
       <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em]">{label}</p>
       <p className="mt-1 text-2xl font-bold text-[var(--foreground)]">{value}</p>
-    </div>
-  );
-}
-
-function DisciplineStat({ label, value, hint }: { label: string; value: number; hint?: string }) {
-  return (
-    <div className="rounded-md bg-[var(--surface-soft)] px-3 py-2">
-      <p className="text-[0.65rem] font-bold uppercase tracking-[0.13em] text-[var(--muted-foreground)]">{label}</p>
-      <p className="mt-1 text-base font-bold text-[var(--foreground)]">
-        {value}
-        {hint ? <span className="ml-1 text-xs font-medium text-[var(--muted-foreground)]">{hint}</span> : null}
-      </p>
     </div>
   );
 }
@@ -420,152 +350,33 @@ export function SportManager({ initialSports }: SportManagerProps) {
       <section aria-label="Liste des disciplines">
         <ul className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
           {pagination.pageItems.map((sport) => {
-            const state = completionState(sport);
-            const stats = sport.stats ?? EMPTY_STATS;
             const menuOpen = openMenuId === sport.id;
             const editing = editingId === sport.id;
             const actionBusy = actionLoadingId === sport.id;
 
             return (
-              <li
+              <SportCard
                 key={sport.id}
-                className={cn(
-                  "relative overflow-visible rounded-lg border bg-[var(--surface)] p-3 shadow-[var(--shadow-panel)] transition hover:border-[var(--primary)]/30 hover:shadow-[var(--shadow-floating)] sm:p-4",
-                  !sport.isActive && "bg-[var(--surface-soft)]/65",
-                )}
-              >
-                <div className="flex min-w-0 items-start justify-between gap-3">
-                  <div className="flex min-w-0 gap-3">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-[var(--primary)]">
-                      <Dumbbell className="size-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="truncate text-base font-semibold text-[var(--foreground)]">{sport.name}</h3>
-                        <StatusBadge variant={sport.isActive ? "success" : "muted"}>
-                          {sport.isActive ? "Actif" : "Inactif"}
-                        </StatusBadge>
-                      </div>
-                      <p className="mt-1 line-clamp-2 text-sm text-[var(--muted-foreground)]">
-                        {sport.description?.trim() || "Aucune description."}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="relative shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setOpenMenuId(menuOpen ? null : sport.id)}
-                      className="btn btn-ghost btn-sm min-w-9 px-2"
-                      aria-label={`Actions pour ${sport.name}`}
-                      aria-expanded={menuOpen}
-                    >
-                      <MoreHorizontal className="size-4" />
-                    </button>
-                    {menuOpen ? (
-                      <div className="absolute right-0 z-20 mt-1 w-44 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-1 shadow-[var(--shadow-floating)]">
-                        <button
-                          type="button"
-                          onClick={() => toggleSportActive(sport)}
-                          disabled={actionBusy}
-                          className="w-full rounded-md px-2.5 py-2 text-left text-xs font-semibold text-[var(--foreground)] hover:bg-[var(--surface-soft)] disabled:opacity-50"
-                        >
-                          {sport.isActive ? "Désactiver" : "Réactiver"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPendingDeleteSport(sport);
-                            setOpenMenuId(null);
-                          }}
-                          disabled={actionBusy}
-                          className="w-full rounded-md px-2.5 py-2 text-left text-xs font-semibold text-[var(--danger)] hover:bg-[var(--danger)]/10 disabled:opacity-50"
-                        >
-                          Desactiver...
-                        </button>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className="mt-3 rounded-md border border-[var(--border)] bg-[var(--surface-soft)]/65 px-3 py-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <StatusBadge variant={state.variant}>{state.label}</StatusBadge>
-                    <p className="text-xs text-[var(--muted-foreground)]">{state.detail}</p>
-                  </div>
-                </div>
-
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <DisciplineStat label="Cours" value={stats.activeGroups} />
-                  <DisciplineStat label="Formules" value={stats.activePlans} />
-                  <DisciplineStat label="Coachs" value={stats.coaches} />
-                  <DisciplineStat label="Abonnements" value={stats.activeSubscriptions} hint="actifs" />
-                </div>
-
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)] pt-3">
-                  <p className="text-xs text-[var(--muted-foreground)]">
-                    {plural(stats.activeOffers, "offre")} active{stats.activeOffers > 1 ? "s" : ""}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => (editing ? cancelEdit() : startEdit(sport))}
-                    disabled={actionBusy}
-                    className={cn("btn btn-sm btn-block-mobile sm:w-auto", editing ? "btn-ghost" : "btn-primary")}
-                  >
-                    {editing ? <X className="size-3.5" /> : <Settings2 className="size-3.5" />}
-                    {editing ? "Fermer" : "Configurer"}
-                  </button>
-                </div>
-
-                {editing ? (
-                  <form
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      saveEdit(sport.id);
-                    }}
-                    className="mt-4 space-y-3 border-t border-[var(--border)] pt-4"
-                  >
-                    <FormField label="Nom" htmlFor={`sport-edit-name-${sport.id}`}>
-                      <input
-                        id={`sport-edit-name-${sport.id}`}
-                        aria-label="Nom de la discipline"
-                        value={editName}
-                        onChange={(event) => setEditName(event.target.value)}
-                        placeholder="Nom de la discipline"
-                        className="field text-sm"
-                        required
-                      />
-                    </FormField>
-                    <FormField label="Description" htmlFor={`sport-edit-description-${sport.id}`} hint="Optionnelle">
-                      <textarea
-                        id={`sport-edit-description-${sport.id}`}
-                        aria-label="Description de la discipline"
-                        value={editDescription}
-                        onChange={(event) => setEditDescription(event.target.value)}
-                        placeholder="Public, niveau ou particularités..."
-                        className="field text-sm"
-                        rows={2}
-                      />
-                    </FormField>
-                    <label className="flex items-center gap-2 rounded-lg bg-[var(--surface-soft)] px-3 py-2 text-sm text-[var(--foreground)]">
-                      <input
-                        type="checkbox"
-                        checked={editIsActive}
-                        onChange={(event) => setEditIsActive(event.target.checked)}
-                      />
-                      Discipline active
-                    </label>
-                    <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                      <button type="button" onClick={cancelEdit} disabled={actionBusy} className="btn btn-ghost btn-block-mobile">
-                        Annuler
-                      </button>
-                      <button type="submit" disabled={actionBusy} className="btn btn-primary btn-block-mobile">
-                        <CheckCircle2 className="size-4" />
-                        {actionBusy ? "Enregistrement..." : "Enregistrer"}
-                      </button>
-                    </div>
-                  </form>
-                ) : null}
-              </li>
+                sport={sport}
+                menuOpen={menuOpen}
+                editing={editing}
+                actionBusy={actionBusy}
+                editName={editName}
+                editDescription={editDescription}
+                editIsActive={editIsActive}
+                onToggleMenu={() => setOpenMenuId(menuOpen ? null : sport.id)}
+                onToggleActive={() => { void toggleSportActive(sport); }}
+                onQueueDelete={() => {
+                  setPendingDeleteSport(sport);
+                  setOpenMenuId(null);
+                }}
+                onStartEdit={() => startEdit(sport)}
+                onCancelEdit={cancelEdit}
+                onSaveEdit={() => { void saveEdit(sport.id); }}
+                onEditNameChange={setEditName}
+                onEditDescriptionChange={setEditDescription}
+                onEditIsActiveChange={setEditIsActive}
+              />
             );
           })}
         </ul>
