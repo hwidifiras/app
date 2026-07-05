@@ -1,69 +1,29 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, Upload } from "lucide-react";
+import { Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 
+import { DataImportBulkSection } from "@/components/settings/data-import-bulk-section";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormSectionNav } from "@/components/ui/form-layout";
-import {
-  BulkImportPreviewTable,
-  type BulkImportResult,
-} from "@/components/settings/data-import-bulk-ui";
+import type { BulkImportResult } from "@/components/settings/data-import-bulk-ui";
+import { DataImportPreviewSummary } from "@/components/settings/data-import-preview-summary";
 import {
   DataImportModePanel,
   RecentImportsPanel,
   type ImportStatus,
 } from "@/components/settings/data-import-status-ui";
-import type { GroupTypeValue } from "@/lib/demographics";
-import { formatMoney } from "@/lib/money";
-
-type GroupOption = {
-  id: string;
-  name: string;
-  groupType: GroupTypeValue;
-  sportId: string;
-  sportName: string;
-};
-
-type PlanOption = {
-  id: string;
-  name: string;
-  sportId: string;
-  price: number;
-  totalSessions: number;
-  validityDays: number;
-};
-
-type SessionOption = {
-  id: string;
-  groupId: string;
-  groupName: string;
-  sessionDate: string;
-  startTime: string;
-};
-
-type Preview = {
-  memberPhone: string;
-  memberName: string;
-  groupName: string;
-  planName: string;
-  sportName: string;
-  remainingBalanceCents: number;
-  attendanceCount: number;
-  warnings: string[];
-};
-
-const today = new Date().toISOString().slice(0, 10);
-const templateUrl = "/templates/we-discipline-reprise-membres.xlsx";
-
-function isoDate(value: string) {
-  return new Date(`${value}T00:00:00.000Z`).toISOString();
-}
-
-function moneyInputToCents(value: string) {
-  return Math.round((Number.parseFloat(value.replace(",", ".")) || 0) * 100);
-}
+import {
+  DATA_IMPORT_TEMPLATE_URL,
+  DATA_IMPORT_TODAY,
+  isoDate,
+  moneyInputToCents,
+  type DataImportPreview,
+  type GroupOption,
+  type PlanOption,
+  type SessionOption,
+} from "./data-import-model";
 
 export function DataImportWizard({
   groups,
@@ -84,7 +44,7 @@ export function DataImportWizard({
   const [busy, setBusy] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [preview, setPreview] = useState<Preview | null>(null);
+  const [preview, setPreview] = useState<DataImportPreview | null>(null);
   const [bulkFile, setBulkFile] = useState<File | null>(null);
   const [bulkPreview, setBulkPreview] = useState<BulkImportResult | null>(null);
 
@@ -99,18 +59,18 @@ export function DataImportWizard({
     address: "",
     parentName: "",
     parentPhone: "",
-    joinedAt: today,
+    joinedAt: DATA_IMPORT_TODAY,
   });
   const [groupId, setGroupId] = useState("");
   const [planId, setPlanId] = useState("");
-  const [cutoverDate, setCutoverDate] = useState(today);
-  const [assignmentStartDate, setAssignmentStartDate] = useState(today);
-  const [subscriptionStartDate, setSubscriptionStartDate] = useState(today);
+  const [cutoverDate, setCutoverDate] = useState(DATA_IMPORT_TODAY);
+  const [assignmentStartDate, setAssignmentStartDate] = useState(DATA_IMPORT_TODAY);
+  const [subscriptionStartDate, setSubscriptionStartDate] = useState(DATA_IMPORT_TODAY);
   const [subscriptionEndDate, setSubscriptionEndDate] = useState("");
   const [amount, setAmount] = useState("");
   const [paid, setPaid] = useState("");
   const [remainingSessions, setRemainingSessions] = useState("");
-  const [paymentDate, setPaymentDate] = useState(today);
+  const [paymentDate, setPaymentDate] = useState(DATA_IMPORT_TODAY);
   const [paymentMethod, setPaymentMethod] = useState("REPRISE_PAPIER");
   const [note, setNote] = useState("Import ancien fichier depuis le registre papier");
   const [attendanceStatuses, setAttendanceStatuses] = useState<
@@ -248,7 +208,7 @@ export function DataImportWizard({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, payload }),
     });
-    const json = (await response.json()) as { data?: Preview | { memberId: string }; error?: string };
+    const json = (await response.json()) as { data?: DataImportPreview | { memberId: string }; error?: string };
     setBusy(false);
     if (!response.ok || !json.data) {
       setPreview(null);
@@ -256,7 +216,7 @@ export function DataImportWizard({
       return;
     }
     if (action === "preview") {
-      setPreview(json.data as Preview);
+      setPreview(json.data as DataImportPreview);
       setMessage("Prévalidation réussie. Vérifiez le résumé avant d'appliquer.");
       return;
     }
@@ -339,7 +299,7 @@ export function DataImportWizard({
         status={status}
         expiresLabel={expiresLabel}
         busy={busy}
-        templateUrl={templateUrl}
+        templateUrl={DATA_IMPORT_TEMPLATE_URL}
         onToggleMode={() => void modeAction(status.active ? "deactivate" : "activate")}
       />
 
@@ -357,52 +317,19 @@ export function DataImportWizard({
 
       {status.active ? (
         <>
-          <section className="panel p-4 sm:p-6">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="min-w-0">
-                <p className="text-xs font-bold uppercase tracking-wider text-[var(--primary)]">Import Excel</p>
-                <h2 className="mt-1 text-lg font-semibold">Import en masse</h2>
-                <p className="mt-1 max-w-3xl text-sm text-[var(--muted-foreground)]">
-                  Utilisez le modèle, gardez les noms de groupes/formules tels qu&apos;ils existent dans le club, puis lancez la prévalidation avant d&apos;importer.
-                </p>
-                <p className="mt-2 max-w-3xl rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-800">
-                  Aucun code membre à inventer : le modèle commence par Prénom et l&apos;application génère une référence pendant Vérifier Excel.
-                </p>
-              </div>
-              <a href={templateUrl} className="btn btn-ghost btn-block-mobile" download>
-                Télécharger le modèle
-              </a>
-            </div>
-
-            <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-end">
-              <label className="text-sm font-medium">
-                Fichier .xlsx ou .csv
-                <input
-                  type="file"
-                  accept=".xlsx,.csv"
-                  className="field mt-1"
-                  onChange={(event) => {
-                    setBulkFile(event.target.files?.[0] ?? null);
-                    setBulkPreview(null);
-                    setMessage(null);
-                  }}
-                />
-              </label>
-              <button type="button" disabled={bulkBusy || !bulkFile} onClick={() => void submitBulk("preview")} className="btn btn-ghost btn-block-mobile">
-                Vérifier Excel
-              </button>
-              <button
-                type="button"
-                disabled={bulkBusy || !bulkPreview || bulkPreview.errorRows > 0 || bulkPreview.okRows === 0}
-                onClick={() => void submitBulk("apply")}
-                className="btn btn-primary btn-block-mobile"
-              >
-                <Upload className="size-4" /> Importer {bulkPreview?.okRows ? `(${bulkPreview.okRows})` : ""}
-              </button>
-            </div>
-
-            {bulkPreview ? <BulkImportPreviewTable result={bulkPreview} /> : null}
-          </section>
+          <DataImportBulkSection
+            templateUrl={DATA_IMPORT_TEMPLATE_URL}
+            bulkBusy={bulkBusy}
+            bulkFile={bulkFile}
+            bulkPreview={bulkPreview}
+            onFileChange={(file) => {
+              setBulkFile(file);
+              setBulkPreview(null);
+              setMessage(null);
+            }}
+            onPreview={() => void submitBulk("preview")}
+            onApply={() => void submitBulk("apply")}
+          />
 
         <form
           className="space-y-5"
@@ -474,7 +401,7 @@ export function DataImportWizard({
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <label className="text-sm font-medium">Date de bascule *
-                <input type="date" className="field mt-1" value={cutoverDate} max={today} onChange={(event) => { setCutoverDate(event.target.value); invalidatePreview(); }} required />
+                <input type="date" className="field mt-1" value={cutoverDate} max={DATA_IMPORT_TODAY} onChange={(event) => { setCutoverDate(event.target.value); invalidatePreview(); }} required />
               </label>
               <label className="text-sm font-medium">Groupe *
                 <select className="field mt-1" value={groupId} onChange={(event) => selectGroup(event.target.value)} required>
@@ -570,24 +497,7 @@ export function DataImportWizard({
             )}
           </section>
 
-          {preview ? (
-            <section className="panel border-[var(--primary)]/30 p-4 sm:p-6">
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600" />
-                <div className="min-w-0">
-                  <h2 className="font-semibold">Prévalidation terminée</h2>
-                  <p className="mt-1 text-sm text-[var(--muted-foreground)]">{preview.memberName} · {preview.memberPhone}</p>
-                  <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-                    <div><span className="text-[var(--muted-foreground)]">Discipline</span><strong className="block">{preview.sportName}</strong></div>
-                    <div><span className="text-[var(--muted-foreground)]">Groupe</span><strong className="block">{preview.groupName}</strong></div>
-                    <div><span className="text-[var(--muted-foreground)]">Formule</span><strong className="block">{preview.planName}</strong></div>
-                    <div><span className="text-[var(--muted-foreground)]">Solde financier</span><strong className="block">{formatMoney(preview.remainingBalanceCents)}</strong></div>
-                  </div>
-                  {preview.warnings.map((warning) => <p key={warning} className="mt-3 flex gap-2 text-sm text-amber-700"><AlertTriangle className="size-4 shrink-0" />{warning}</p>)}
-                </div>
-              </div>
-            </section>
-          ) : null}
+          <DataImportPreviewSummary preview={preview} />
 
           <FormActions sticky className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button type="submit" disabled={busy} className="btn btn-ghost btn-block-mobile">
