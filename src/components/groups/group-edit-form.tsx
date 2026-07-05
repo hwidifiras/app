@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormSection, FormSectionNav } from "@/components/ui/form-layout";
+import { GroupCoachEligibility } from "@/components/groups/group-coach-eligibility";
 import { GroupMemberSelector } from "@/components/groups/group-member-selector";
 import { GroupPolicyPicker } from "@/components/groups/group-policy-picker";
 import { GroupSetupSummary } from "@/components/groups/group-setup-summary";
@@ -204,7 +205,7 @@ export function GroupEditForm({
             <input value={name} onChange={(e) => setName(e.target.value)} className="field text-sm" required />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Sport</label>
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Discipline</label>
             <select value={sportId} onChange={(e) => setSportId(e.target.value)} className="field text-sm" required>
               <option value="">Choisir</option>
               {sportsOptions.map((sport) => (
@@ -221,7 +222,7 @@ export function GroupEditForm({
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Coach par défaut</label>
+            <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Coach du cours</label>
             <select value={coachId} onChange={(e) => setCoachId(e.target.value)} className="field text-sm" required>
               <option value="">Choisir</option>
               {coachesOptions.map((coach) => (
@@ -231,9 +232,16 @@ export function GroupEditForm({
             <p className="mt-1 text-[0.65rem] text-[var(--muted-foreground)]">
               Utilisé pour les nouvelles séances générées. Les séances déjà créées gardent leur coach sauf option ci-dessous.
             </p>
+            <GroupCoachEligibility
+              coaches={coachesOptions}
+              selectedCoach={selectedCoach}
+              selectedSportId={sportId}
+              selectedSportName={selectedSport?.name}
+              onSelectCoach={setCoachId}
+            />
             {needsCoachSportOverride ? (
               <p className="mt-1 text-xs text-[var(--danger)]">
-                Coach hors qualification pour ce sport. Validation admin avec motif obligatoire.
+                Coach hors qualification pour cette discipline. Validation admin avec motif obligatoire.
               </p>
             ) : null}
             {coachChanged ? (
