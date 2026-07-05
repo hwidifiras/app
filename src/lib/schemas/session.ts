@@ -14,6 +14,7 @@ export const updateSessionSchema = z.object({
   endTime: z.string().regex(/^\d{2}:\d{2}$/, "format HH:MM requis").optional(),
   status: z.enum(["PLANNED", "RESCHEDULED", "CANCELLED", "COMPLETED"]).optional(),
   exceptionReason: z.string().min(1, "motif requis").optional(),
+  changeReason: z.string().trim().max(500, "motif trop long").optional().or(z.literal("")),
   coachSportOverrideReason: z.string().trim().max(500).optional().or(z.literal("")),
 }).refine(
   (data) => {

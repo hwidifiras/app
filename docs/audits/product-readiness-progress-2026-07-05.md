@@ -105,7 +105,7 @@ Highest-risk routes to re-check next:
 
 - attendance append-only row preservation remains a future schema decision; reopen-before-correction is implemented and now better audited;
 - attendance delete is guarded and now records a detailed previous-state audit snapshot, but still physically removes the attendance row; decide whether to preserve a voided/corrected row in a future schema pass;
-- session edit reason UX for broad permanent changes;
+- session edit reason UX for broad permanent changes is implemented;
 - group schedule generation preview and future-session effects;
 - subscription browser QA and copy polish after the latest edit/cancel audit pass;
 - offer browser QA after the usage-count/deactivation clarity pass;
@@ -222,6 +222,7 @@ Latest UI settings checkpoint:
 - Discipline suggestion catalog pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Users deactivation safety pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Settings tenant-scope guard pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
+- Permanent session edit reason pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Group policy picker pass passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Planning UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.

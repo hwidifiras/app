@@ -230,9 +230,13 @@ function buildGenericSections(details: Record<string, unknown>): AuditDetailSect
     const label =
       {
         amount: "Montant",
+        affectedCount: "Séances concernées",
         memberSubscriptionId: "Abonnement",
         memberId: "Élève",
         archivedAt: "Date d'archivage",
+        mode: "Mode",
+        reason: "Motif",
+        scheduleId: "Créneau récurrent",
         status: "Statut",
       }[key] ?? key;
     rows.push({ label, value: display });
@@ -260,7 +264,10 @@ function buildContext(action: string, details: Record<string, unknown> | null): 
   }
 
   if (action === "SESSION_UPDATED" && typeof details.mode === "string") {
-    return details.mode === "permanent" ? "Permanent" : "Exception";
+    const mode = details.mode === "permanent" ? "Permanent" : "Exception";
+    return typeof details.reason === "string" && details.reason.trim()
+      ? `${mode} · ${details.reason.trim()}`
+      : mode;
   }
 
   if ((action === "SESSION_COMPLETED" || action === "SESSION_REOPENED") && typeof details.reason === "string") {

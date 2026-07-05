@@ -247,6 +247,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const payload = parsed.data;
   const isPermanent = editMode === "permanent";
+  const changeReason = payload.changeReason?.trim() ?? "";
 
   if (payload.status === "COMPLETED") {
     return NextResponse.json(
@@ -263,6 +264,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         error:
           "Cette séance n'est pas liée à un créneau récurrent. Utilisez le mode Exception pour modifier cette séance seule.",
       },
+      { status: 400 },
+    );
+  }
+
+  if (isPermanent && changeReason.length < 3) {
+    return NextResponse.json(
+      { error: "Motif obligatoire pour une modification permanente." },
       { status: 400 },
     );
   }
@@ -493,6 +501,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
               affectedSessionIds: affectedIds,
               affectedCount: affectedIds.length,
               scheduleId: existing.scheduleId,
+              reason: changeReason,
               changedFields,
               before: beforeSnapshot,
               requested: requestedSnapshot,

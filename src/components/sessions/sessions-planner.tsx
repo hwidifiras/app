@@ -155,6 +155,7 @@ export function SessionsPlanner({
     endTime: "",
     status: "" as SessionStatusDto | "",
     exceptionReason: "",
+    changeReason: "",
     coachSportOverrideReason: "",
   });
   const [editMode, setEditMode] = useState<"exception" | "permanent" | null>(null);
@@ -242,6 +243,7 @@ export function SessionsPlanner({
       endTime: session.endTime,
       status: session.status,
       exceptionReason: session.exceptionReason ?? "",
+      changeReason: "",
       coachSportOverrideReason: "",
     });
     setEditMode("exception");
@@ -275,6 +277,7 @@ export function SessionsPlanner({
       if (editForm.status === "CANCELLED" && editForm.exceptionReason.trim()) {
         body.exceptionReason = editForm.exceptionReason.trim();
       }
+      body.changeReason = editForm.changeReason.trim();
       if (needsCoachSportOverride) {
         body.coachSportOverrideReason = editForm.coachSportOverrideReason.trim();
       }
@@ -1511,6 +1514,27 @@ export function SessionsPlanner({
                 </button>
               </div>
 
+              {editMode === "permanent" ? (
+                <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-[0.12em] text-amber-800">
+                    Motif de modification permanente *
+                  </label>
+                  <textarea
+                    value={editForm.changeReason}
+                    onChange={(e) => setEditForm((f) => ({ ...f, changeReason: e.target.value }))}
+                    maxLength={500}
+                    disabled={editingHasAttendances}
+                    className="field min-h-20 bg-white text-sm text-[var(--foreground)]"
+                    placeholder="Ex: changement de saison, salle remplacée, nouveau créneau validé..."
+                    required
+                  />
+                  <p className="mt-1 text-xs leading-relaxed">
+                    Ce motif sera conservé dans le journal car la modification touche cette séance et les semaines
+                    suivantes.
+                  </p>
+                </div>
+              ) : null}
+
               <div className="form-actions border-t-0 pt-0">
                 <button type="button" onClick={closeEdit} className="btn btn-ghost btn-block-mobile">Annuler</button>
                 <button
@@ -1519,6 +1543,7 @@ export function SessionsPlanner({
                   disabled={
                     editLoading ||
                     editingHasAttendances ||
+                    (editMode === "permanent" && editForm.changeReason.trim().length < 3) ||
                     (editForm.status === "CANCELLED" && !editForm.exceptionReason.trim()) ||
                     (needsCoachSportOverride && !editForm.coachSportOverrideReason.trim())
                   }
