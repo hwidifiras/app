@@ -6,6 +6,7 @@ import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import { GroupMemberSelector } from "@/components/groups/group-member-selector";
 import { GroupPolicyPicker } from "@/components/groups/group-policy-picker";
+import { GroupSetupSummary } from "@/components/groups/group-setup-summary";
 import { isMemberAllowedInGroupPolicy, type GroupGenderPolicyValue, type GroupTypeValue } from "@/lib/demographics";
 import { CoachDto } from "@/types/coach";
 import { MemberDto } from "@/types/member";
@@ -15,6 +16,10 @@ function formatCoachOptionLabel(coach: CoachDto) {
   const name = `${coach.firstName} ${coach.lastName}`;
   const qualified = coach.qualifiedSports.map((sport) => sport.name).join(", ");
   return qualified ? `${name} - ${qualified}` : coach.sportName ? `${name} - ${coach.sportName}` : name;
+}
+
+function formatCoachName(coach: CoachDto | undefined) {
+  return coach ? `${coach.firstName} ${coach.lastName}` : null;
 }
 
 function coachIsQualifiedForSport(coach: CoachDto | undefined, sportId: string) {
@@ -77,6 +82,8 @@ export function GroupEditForm({
     return `${member.firstName} ${member.lastName}`.toLowerCase().includes(query) || member.phone.toLowerCase().includes(query);
   }).filter((member) => isMemberAllowed(member));
   const selectedCoach = coachesOptions.find((coach) => coach.id === coachId);
+  const selectedSport = sportsOptions.find((sport) => sport.id === sportId);
+  const compatibleMemberCount = membersOptions.filter((member) => isMemberAllowed(member)).length;
   const coachChanged = coachId !== initialData.coachId;
   const coachSportPairChanged = sportId !== initialData.sportId || coachId !== initialData.coachId;
   const needsCoachSportOverride = coachSportPairChanged && !coachIsQualifiedForSport(selectedCoach, sportId);
@@ -180,12 +187,31 @@ export function GroupEditForm({
     <form onSubmit={onSubmit} className="space-y-5 pb-4 lg:pb-0">
       <FormSectionNav
         items={[
-          { href: "#group-info", label: "Infos" },
-          { href: "#group-members", label: "Membres" },
+          { href: "#group-info", label: "Cours" },
+          { href: "#group-members", label: "Élèves" },
         ]}
       />
 
-      <FormSection id="group-info" title="Informations" description="Sport, coach, salle, capacité et statut du cours.">
+      <GroupSetupSummary
+        name={name}
+        sportName={selectedSport?.name}
+        coachName={formatCoachName(selectedCoach)}
+        room={room}
+        capacity={capacity}
+        groupType={groupType}
+        genderPolicy={genderPolicy}
+        compatibleMemberCount={compatibleMemberCount}
+        selectedMemberCount={selectedMemberIds.length}
+        totalMemberCount={membersOptions.length}
+        isActive={isActive}
+        coachOverrideActive={needsCoachSportOverride}
+      />
+
+      <FormSection
+        id="group-info"
+        title="Modifier le cours"
+        description="Les changements de public filtrent les élèves sélectionnables. Les séances futures gardent leur logique de sécurité."
+      >
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div className="sm:col-span-2 lg:col-span-1">
             <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Nom</label>
@@ -286,7 +312,7 @@ export function GroupEditForm({
         selectedIds={selectedMemberIds}
         search={membersSearch}
         title="Membres du groupe"
-        description="Sélectionnez les membres à conserver ou à ajouter. Désélectionner retire l'affectation."
+        description="Sélectionnez les élèves à conserver ou à ajouter. Désélectionner ferme l'affectation sans supprimer l'historique."
         emptyMessage="Aucun membre compatible avec ce type de groupe."
         onSearchChange={setMembersSearch}
         onSelectionChange={setSelectedMemberIds}
