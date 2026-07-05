@@ -67,8 +67,9 @@ function memberAuditSnapshot(member: MemberAuditSource) {
 }
 
 export async function GET(request: Request) {
+  let actor;
   try {
-    await requirePermission(request, "members.manage");
+    actor = await requirePermission(request, "members.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -80,6 +81,7 @@ export async function GET(request: Request) {
   let members = await prisma.member.findMany({
     where: query
       ? {
+          tenantId: actor.tenantId,
           status: "ACTIVE",
           OR: [
             { firstName: { contains: query } },
@@ -87,21 +89,21 @@ export async function GET(request: Request) {
             { phone: { contains: query } },
           ],
         }
-      : undefined,
+      : { tenantId: actor.tenantId },
     orderBy: { createdAt: "desc" },
     take: query ? 300 : undefined,
     include: {
       groups: {
-        where: { status: "ACTIVE" },
+        where: { tenantId: actor.tenantId, status: "ACTIVE" },
         select: { groupId: true },
       },
       subscriptions: {
-        where: { status: "ACTIVE" },
+        where: { tenantId: actor.tenantId, status: "ACTIVE" },
         orderBy: { createdAt: "desc" },
         take: 1,
         select: {
           amount: true,
-          payments: { select: { amount: true } },
+          payments: { where: { tenantId: actor.tenantId }, select: { amount: true } },
         },
       },
     },
@@ -228,11 +230,11 @@ export async function POST(request: Request) {
       }
 
       const [group, plan] = await Promise.all([
-        tx.group.findUnique({
-          where: { id: groupIdValue },
-          include: { _count: { select: { members: { where: { status: "ACTIVE" } } } } },
+        tx.group.findFirst({
+          where: { id: groupIdValue, tenantId: actor.tenantId },
+          include: { _count: { select: { members: { where: { tenantId: actor.tenantId, status: "ACTIVE" } } } } },
         }),
-        tx.subscriptionPlan.findUnique({ where: { id: planIdValue } }),
+        tx.subscriptionPlan.findFirst({ where: { id: planIdValue, tenantId: actor.tenantId } }),
       ]);
 
       if (!group) throw new Error("GROUP_NOT_FOUND");
@@ -260,6 +262,7 @@ export async function POST(request: Request) {
 
       const created = await tx.member.create({
         data: {
+          tenantId: actor.tenantId,
           firstName: parsed.data.firstName,
           lastName: parsed.data.lastName,
           phone: memberPhone,
@@ -276,11 +279,13 @@ export async function POST(request: Request) {
 
       await tx.auditLog.create({
         data: {
+          tenantId: actor.tenantId,
           action: "MEMBER_CREATED",
           entityType: "Member",
           entityId: created.id,
           userId: actor.id,
           details: JSON.stringify({
+            tenantId: actor.tenantId,
             source: "member-inscription",
             after: memberAuditSnapshot(created),
           }),
@@ -293,6 +298,7 @@ export async function POST(request: Request) {
 
       const subscription = await tx.memberSubscription.create({
         data: {
+          tenantId: actor.tenantId,
           memberId: created.id,
           planId: planIdValue,
           sportId: plan.sportId,
@@ -306,6 +312,7 @@ export async function POST(request: Request) {
 
       const groupMember = await tx.groupMember.create({
         data: {
+          tenantId: actor.tenantId,
           groupId: groupIdValue,
           memberId: created.id,
           startDate: now,
@@ -314,11 +321,13 @@ export async function POST(request: Request) {
 
       await tx.auditLog.create({
         data: {
+          tenantId: actor.tenantId,
           action: "GROUP_MEMBER_CREATED",
           entityType: "GroupMember",
           entityId: groupMember.id,
           userId: actor.id,
           details: JSON.stringify({
+            tenantId: actor.tenantId,
             source: "member-inscription",
             memberId: created.id,
             groupId: groupIdValue,
@@ -329,11 +338,13 @@ export async function POST(request: Request) {
 
       await tx.auditLog.create({
         data: {
+          tenantId: actor.tenantId,
           action: "MEMBER_SUBSCRIPTION_CREATED",
           entityType: "MemberSubscription",
           entityId: subscription.id,
           userId: actor.id,
           details: JSON.stringify({
+            tenantId: actor.tenantId,
             memberId: created.id,
             planId: planIdValue,
             groupId: groupIdValue,
@@ -493,12 +504,12 @@ export async function PATCH(request: Request) {
 
   try {
     const updated = await prisma.$transaction(async (tx) => {
-      const existing = await tx.member.findUnique({
-        where: { id: memberId },
+      const existing = await tx.member.findFirst({
+        where: { id: memberId, tenantId: actor.tenantId },
         select: {
           ...memberAuditSelect,
           groups: {
-            where: { status: "ACTIVE" },
+            where: { tenantId: actor.tenantId, status: "ACTIVE" },
             select: {
               group: {
                 select: {
@@ -585,11 +596,13 @@ export async function PATCH(request: Request) {
 
       await tx.auditLog.create({
         data: {
+          tenantId: actor.tenantId,
           action: "MEMBER_UPDATED",
           entityType: "Member",
           entityId: member.id,
           userId: actor.id,
           details: JSON.stringify({
+            tenantId: actor.tenantId,
             fields: Object.entries(payload)
               .filter(([, value]) => value !== undefined)
               .map(([field]) => field),
@@ -678,10 +691,10 @@ export async function DELETE(request: Request) {
 
     const archived = await prisma.$transaction(async (tx) => {
       const existing = await tx.member.findFirst({
-        where: { id: memberId },
+        where: { id: memberId, tenantId: actor.tenantId },
         include: {
-          groups: { where: { status: "ACTIVE" }, select: { id: true } },
-          subscriptions: { where: { status: "ACTIVE" }, select: { id: true } },
+          groups: { where: { tenantId: actor.tenantId, status: "ACTIVE" }, select: { id: true } },
+          subscriptions: { where: { tenantId: actor.tenantId, status: "ACTIVE" }, select: { id: true } },
         },
       });
 
@@ -696,7 +709,7 @@ export async function DELETE(request: Request) {
           archivedAt: now,
           groups: {
             updateMany: {
-              where: { status: "ACTIVE" },
+              where: { tenantId: actor.tenantId, status: "ACTIVE" },
               data: {
                 status: "INACTIVE",
                 endDate: now,
@@ -705,7 +718,7 @@ export async function DELETE(request: Request) {
           },
           subscriptions: {
             updateMany: {
-              where: { status: "ACTIVE" },
+              where: { tenantId: actor.tenantId, status: "ACTIVE" },
               data: {
                 status: "CANCELLED",
                 endDate: now,
@@ -717,11 +730,13 @@ export async function DELETE(request: Request) {
 
       await tx.auditLog.create({
         data: {
+          tenantId: actor.tenantId,
           action: "MEMBER_ARCHIVED",
           entityType: "Member",
           entityId: member.id,
           userId: actor.id,
           details: JSON.stringify({
+            tenantId: actor.tenantId,
             archivedAt: now.toISOString(),
             activeGroupAssignmentsClosed: existing.groups.length,
             activeSubscriptionsCancelled: existing.subscriptions.length,
