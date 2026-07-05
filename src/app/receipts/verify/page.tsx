@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 
 import { ReceiptDocument } from "@/components/receipts/receipt-document";
 import { prisma } from "@/lib/prisma";
+import { buildReceiptVerificationQrDataUrl } from "@/lib/receipt-qr";
 import { parseReceiptSnapshot } from "@/lib/receipts";
 import { buildReceiptVerificationUrl } from "@/lib/receipt-verification-url";
 
@@ -37,6 +38,9 @@ export default async function ReceiptVerifyPage({
     : null;
 
   const snapshot = receipt ? parseReceiptSnapshot(receipt) : null;
+  const verificationQrDataUrl = snapshot
+    ? await buildReceiptVerificationQrDataUrl(verificationUrl)
+    : undefined;
 
   return (
     <main className="min-h-screen bg-[#F6F9FF] px-4 py-8 text-[#0B1220] sm:px-6">
@@ -75,6 +79,7 @@ export default async function ReceiptVerifyPage({
             status={receipt.status}
             publicMode
             verificationUrl={verificationUrl}
+            verificationQrDataUrl={verificationQrDataUrl}
           />
         ) : null}
       </div>

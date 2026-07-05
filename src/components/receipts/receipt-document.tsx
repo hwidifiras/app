@@ -1,4 +1,5 @@
 import { BadgeCheck, CircleSlash } from "lucide-react";
+import Image from "next/image";
 
 import { formatMoney } from "@/lib/money";
 import type { ReceiptSnapshot } from "@/lib/receipts";
@@ -26,11 +27,13 @@ export function ReceiptDocument({
   status,
   publicMode = false,
   verificationUrl,
+  verificationQrDataUrl,
 }: {
   snapshot: ReceiptSnapshot;
   status: "ISSUED" | "VOIDED";
   publicMode?: boolean;
   verificationUrl?: string;
+  verificationQrDataUrl?: string;
 }) {
   const isVoided = status === "VOIDED";
   const memberName = publicMode
@@ -103,6 +106,28 @@ export function ReceiptDocument({
         <section className="mt-5 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 text-sm">
           <p className="font-semibold text-[var(--muted-foreground)]">Note</p>
           <p className="mt-1 text-[#0B1220]">{snapshot.payment.notes}</p>
+        </section>
+      ) : null}
+
+      {verificationQrDataUrl && verificationUrl ? (
+        <section className="mt-5 flex flex-col gap-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm sm:flex-row sm:items-center">
+          <div className="shrink-0 rounded-lg border border-white bg-white p-2">
+            <Image
+              src={verificationQrDataUrl}
+              alt="QR code de verification du recu"
+              width={112}
+              height={112}
+              unoptimized
+              className="size-28"
+            />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#2563EB]">Verification publique</p>
+            <p className="mt-1 font-semibold text-[#0B1220]">
+              Scanner ce QR confirme le numero, le code, le statut et le hash du recu.
+            </p>
+            <p className="mt-2 break-all font-mono text-xs text-[var(--muted-foreground)]">{verificationUrl}</p>
+          </div>
         </section>
       ) : null}
 

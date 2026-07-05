@@ -6,6 +6,7 @@ import { ReceiptActions } from "@/components/receipts/receipt-actions";
 import { ReceiptDocument } from "@/components/receipts/receipt-document";
 import { PageHeader } from "@/components/ui/page-header";
 import { prisma } from "@/lib/prisma";
+import { buildReceiptVerificationQrDataUrl } from "@/lib/receipt-qr";
 import { parseReceiptSnapshot } from "@/lib/receipts";
 import { buildReceiptVerificationUrl } from "@/lib/receipt-verification-url";
 
@@ -47,6 +48,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
   const verificationUrl = host
     ? buildReceiptVerificationUrl(`${protocol}://${host}`, receipt.receiptNumber, receipt.verificationCode)
     : undefined;
+  const verificationQrDataUrl = await buildReceiptVerificationQrDataUrl(verificationUrl);
 
   return (
     <main className="app-shell py-4 md:py-8 print:bg-white print:p-0">
@@ -71,7 +73,12 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
         />
       </div>
 
-      <ReceiptDocument snapshot={snapshot} status={receipt.status} verificationUrl={verificationUrl} />
+      <ReceiptDocument
+        snapshot={snapshot}
+        status={receipt.status}
+        verificationUrl={verificationUrl}
+        verificationQrDataUrl={verificationQrDataUrl}
+      />
     </main>
   );
 }

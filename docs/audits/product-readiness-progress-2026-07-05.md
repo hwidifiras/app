@@ -29,6 +29,8 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Printable receipt page exists at `/receipts/[id]`.
 - Public verification exists at `/receipts/verify`.
 - Receipt actions now support print, public verification, and manual email send.
+- Printed/verified receipts now include a QR code pointing to public verification.
+- Receipt actions now support copying the public verification link for manual sending.
 - Receipt email sending uses the existing Resend email infrastructure and writes audit logs.
 - Club settings now control receipt prefix, next sequence, footer, default print, and default email behavior.
 - Payment creation honors `receiptEmailDefault`: if enabled and the member has an email, the receipt is sent automatically after the payment transaction commits.
@@ -140,7 +142,6 @@ Suggested component targets:
 
 Current receipt system is functional. Excellent version should add:
 
-- QR code pointing to public verification;
 - optional company/tax fields in club settings;
 - receipt delivery history visible from payment detail;
 - email template settings;
@@ -184,6 +185,7 @@ Latest UI settings checkpoint:
 - `data-import-wizard.tsx` bulk preview UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - `data-import-wizard.tsx` status/rollback UI extraction passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
 - Attendance undo audit enrichment passed `npm.cmd run lint`, `npm.cmd run build`, and `npx.cmd prisma validate`.
+- Receipt QR/copy-link pass passed `npm.cmd run lint`, `npm.cmd run build`, `npx.cmd prisma validate`, and `npm.cmd audit --omit=dev`.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
 
 Start a disposable local PostgreSQL test database, or set `TEST_DATABASE_URL`, before relying on `npm.cmd test`.

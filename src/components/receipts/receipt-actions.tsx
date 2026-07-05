@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Mail, Printer } from "lucide-react";
+import { Copy, Mail, Printer } from "lucide-react";
 import { useState } from "react";
 
 import { buildReceiptVerificationPath } from "@/lib/receipt-verification-url";
@@ -57,6 +57,16 @@ export function ReceiptActions({
     }
   }
 
+  async function copyVerificationLink() {
+    const absoluteUrl = new URL(verifyHref, window.location.origin).toString();
+    try {
+      await navigator.clipboard.writeText(absoluteUrl);
+      setMessage({ tone: "success", text: "Lien de verification copie." });
+    } catch {
+      setMessage({ tone: "error", text: "Impossible de copier le lien." });
+    }
+  }
+
   return (
     <div className="flex flex-col gap-2 print:hidden">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -77,6 +87,10 @@ export function ReceiptActions({
         <Link href={verifyHref} className="btn btn-ghost btn-block-mobile">
           Verification publique
         </Link>
+        <button type="button" onClick={copyVerificationLink} className="btn btn-ghost btn-block-mobile">
+          <Copy className="size-4" />
+          Copier lien
+        </button>
       </div>
       {message ? (
         <p
