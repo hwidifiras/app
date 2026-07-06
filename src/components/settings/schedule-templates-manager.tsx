@@ -1,16 +1,15 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import { CalendarPlus, Eye, Plus } from "lucide-react";
+import { CalendarPlus, Eye } from "lucide-react";
 
 import type { ClubDay } from "@/lib/club-working-days";
 import type { GroupTypeValue } from "@/lib/demographics";
-import { ScheduleTemplateCreateForm } from "@/components/settings/schedule-template-create-form";
+import { ScheduleTemplateLibraryPanel } from "@/components/settings/schedule-template-library-panel";
 import {
   SCHEDULE_TARGET_MODE_OPTIONS,
   ScheduleApplyPreview,
   ScheduleApplySafetyCard,
-  ScheduleTemplateCard,
   SelectedScheduleTemplateSummary,
   scheduleSlotLabel,
   type ScheduleApplySummary,
@@ -266,55 +265,27 @@ export function ScheduleTemplatesManager({
 
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-      <section className="panel p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--primary)]">Modèles</p>
-            <h2 className="mt-1 text-lg font-semibold text-[var(--foreground)]">Horaires types</h2>
-            <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-              Créez des semaines réutilisables pour saison normale, Ramadan, été ou stages.
-            </p>
-          </div>
-          <button type="button" onClick={() => setShowCreateForm((current) => !current)} className="btn btn-primary btn-sm">
-            <Plus className="size-4" />
-            {showCreateForm ? "Fermer" : "Créer"}
-          </button>
-        </div>
-
-        {showCreateForm ? (
-          <ScheduleTemplateCreateForm
-            name={name}
-            description={description}
-            slots={slots}
-            loading={loading}
-            onNameChange={setName}
-            onDescriptionChange={setDescription}
-            onSlotChange={updateSlot}
-            onSlotRemove={removeSlot}
-            onSlotAdd={() => setSlots((current) => [...current, emptySlot()])}
-            onSubmit={createTemplate}
-          />
-        ) : null}
-
-        <div className="mt-4 grid gap-2">
-          {templates.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-[var(--border)] p-4 text-sm text-[var(--muted-foreground)]">
-              Aucun modèle pour le moment.
-            </div>
-          ) : templates.map((template) => (
-            <ScheduleTemplateCard
-              key={template.id}
-              template={template}
-              selected={selectedTemplate?.id === template.id}
-              onSelect={() => {
-                clearApplyPreview();
-                setSelectedTemplateId(template.id);
-              }}
-              onArchive={() => void archiveTemplate(template.id)}
-            />
-          ))}
-        </div>
-      </section>
+      <ScheduleTemplateLibraryPanel
+        templates={templates}
+        selectedTemplateId={selectedTemplate?.id ?? null}
+        showCreateForm={showCreateForm}
+        name={name}
+        description={description}
+        slots={slots}
+        loading={loading}
+        onToggleCreateForm={() => setShowCreateForm((current) => !current)}
+        onNameChange={setName}
+        onDescriptionChange={setDescription}
+        onSlotChange={updateSlot}
+        onSlotRemove={removeSlot}
+        onSlotAdd={() => setSlots((current) => [...current, emptySlot()])}
+        onCreateSubmit={createTemplate}
+        onSelectTemplate={(templateId) => {
+          clearApplyPreview();
+          setSelectedTemplateId(templateId);
+        }}
+        onArchiveTemplate={(templateId) => void archiveTemplate(templateId)}
+      />
 
       <section className="panel p-4">
         <div>
