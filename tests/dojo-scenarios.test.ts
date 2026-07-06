@@ -531,6 +531,7 @@ describe("temporary data import", () => {
         "Prénom",
         "Nom",
         "Type membre",
+        "Genre",
         "Téléphone",
         "Téléphone parent",
         "Date inscription",
@@ -591,10 +592,11 @@ describe("temporary data import", () => {
         "Nour",
         "Client",
         "Enfant",
+        "Fille",
         "",
         "0612348888",
         "2026-06-01",
-        fx.adultBjj.name,
+        fx.kidBjj.name,
         fx.bjjPlan.name,
         "2026-06-01",
         "2026-07-01",
@@ -741,6 +743,7 @@ describe("schema guardrails", () => {
             firstName: "Child",
             lastName: "With Parent",
             memberType: "KID",
+            gender: "MALE",
             parentName: "Parent Name",
             parentPhone: "0612345678",
           },
@@ -1536,7 +1539,7 @@ describe("api route scenarios", () => {
 
     expect(linked.status).toBe(409);
     expect(deleted.status).toBe(200);
-    expect(deletedBody.data).toEqual({ id: unused.id });
+    expect(deletedBody.data).toMatchObject({ id: unused.id, isActive: false });
   });
 
   it("rejects deleting a linked subscription plan and deletes an unused plan", async () => {
@@ -1562,7 +1565,7 @@ describe("api route scenarios", () => {
     expect(linked.status).toBe(409);
     expect(String(linkedBody.error)).toMatch(/encore utilisée/i);
     expect(deleted.status).toBe(200);
-    expect(deletedBody.data).toEqual({ id: unused.id });
+    expect(deletedBody.data).toMatchObject({ id: unused.id, isActive: false });
   });
 
   it("decrements sessions for PRESENT and ABSENT, rejects duplicate attendance", async () => {
@@ -3471,7 +3474,7 @@ describe("enrollment revert", () => {
     expect(undoSnapshot.createdSubscriptionIds).toHaveLength(1);
     expect(undoSnapshot.createdGroupMemberIds).toHaveLength(1);
 
-    const revertResponse = await revertEnrollment(jsonRequest("POST", { undoSnapshot }));
+    const revertResponse = await revertEnrollment(jsonRequest("POST", { undoSnapshot, reason: "Erreur de saisie" }));
     expect(revertResponse.status).toBe(200);
 
     const activeSubs = await prisma.memberSubscription.findMany({
@@ -3517,7 +3520,7 @@ describe("enrollment revert", () => {
     expect(undoSnapshot.createdSubscriptionIds).toHaveLength(1);
     expect(undoSnapshot.expiredSubscriptionIds).toContain(previousSub.id);
 
-    const revertResponse = await revertEnrollment(jsonRequest("POST", { undoSnapshot }));
+    const revertResponse = await revertEnrollment(jsonRequest("POST", { undoSnapshot, reason: "Erreur de saisie" }));
     expect(revertResponse.status).toBe(200);
 
     const activeSubs = await prisma.memberSubscription.findMany({
@@ -3562,6 +3565,7 @@ describe("enrollment revert", () => {
     const revertResponse = await revertEnrollment(
       jsonRequest("POST", {
         undoSnapshot: (applyBody.data as { undoSnapshot: Record<string, unknown> }).undoSnapshot,
+        reason: "Erreur de saisie",
       }),
     );
     expect(revertResponse.status).toBe(409);

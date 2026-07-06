@@ -1,5 +1,6 @@
 import { beforeEach } from "vitest";
 
+process.env.NODE_ENV = "test";
 process.env.DATABASE_URL =
   process.env.TEST_DATABASE_URL || "postgresql://gymday:gymday@localhost:5432/gymday_test?schema=public";
 process.env.AUTH_SECRET = "test-secret";
