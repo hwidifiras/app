@@ -27,7 +27,6 @@ import {
   overrideReasonFailure,
   paidSubscriptionFailure,
   sessionMutationFailure,
-  type AttendancePolicyFailure,
 } from "@/lib/attendance-policy";
 import {
   attendanceAuditSnapshot,
@@ -35,31 +34,14 @@ import {
   attendanceDeletedAuditDetails,
   attendanceUpdatedAuditDetails,
 } from "@/lib/attendance-audit-details";
+import {
+  attendancePolicyResponse,
+  countAttendanceOverrides,
+  isPrismaErrorCode,
+  readAttendanceIdFromBody,
+} from "@/lib/attendance-route-helpers";
 
 export const runtime = "nodejs";
-
-function getThirtyDaysAgo(): Date {
-  const d = new Date();
-  d.setDate(d.getDate() - 30);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-async function countOverrides(memberId: string, tenantId: string): Promise<number> {
-  const thirtyDaysAgo = getThirtyDaysAgo();
-  return prisma.attendance.count({
-    where: {
-      tenantId,
-      memberId,
-      status: "OVERRIDE",
-      checkedAt: { gte: thirtyDaysAgo },
-    },
-  });
-}
-
-function policyResponse(failure: AttendancePolicyFailure) {
-  return NextResponse.json(failure.body, { status: failure.status });
-}
 
 export async function GET(request: Request) {
   let actor;
@@ -144,7 +126,7 @@ export async function POST(request: Request) {
     }
     const sessionFailure = sessionMutationFailure(sessionExists.status, "pointer");
     if (sessionFailure) {
-      return policyResponse(sessionFailure);
+      return attendancePolicyResponse(sessionFailure);
     }
     if (sessionExists.status === "CANCELLED") {
       return NextResponse.json({ error: "Impossible de pointer une séance annulée" }, { status: 409 });
@@ -172,7 +154,7 @@ export async function POST(request: Request) {
 
     const memberFailure = await activeMemberFailure(memberId);
     if (memberFailure) {
-      return policyResponse(memberFailure);
+      return attendancePolicyResponse(memberFailure);
     }
 
     const sportId = sessionExists.group.sportId;
@@ -224,12 +206,12 @@ export async function POST(request: Request) {
     } else if (status === "PRESENT" || status === "ABSENT") {
       const assignmentCheck = await assignmentFailure(sessionExists.group.id, memberId, sessionExists.sessionDate);
       if (assignmentCheck) {
-        return policyResponse(assignmentCheck);
+        return attendancePolicyResponse(assignmentCheck);
       }
 
       const subscriptionCheck = await paidSubscriptionFailure(memberId, sportId, sessionExists.sessionDate);
       if ("failure" in subscriptionCheck) {
-        return policyResponse(subscriptionCheck.failure);
+        return attendancePolicyResponse(subscriptionCheck.failure);
       }
 
       let checkInConsumption = null as Awaited<ReturnType<typeof resolveCheckInConsumption>> | null;
@@ -280,7 +262,7 @@ export async function POST(request: Request) {
         );
       }
 
-      const overrideCount = await countOverrides(memberId, actor.tenantId);
+      const overrideCount = await countAttendanceOverrides(memberId, actor.tenantId);
 
       if (overrideCount >= 3) {
         return NextResponse.json(
@@ -382,7 +364,7 @@ export async function POST(request: Request) {
       {
         data: result,
         warning:
-          status === "OVERRIDE" && (await countOverrides(memberId, actor.tenantId)) >= 2
+          status === "OVERRIDE" && (await countAttendanceOverrides(memberId, actor.tenantId)) >= 2
             ? "Attention: 2 passages exceptionnels sur 30 jours"
             : undefined,
       },
@@ -396,13 +378,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const isDuplicate =
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      (error as { code?: string }).code === "P2002";
-
-    if (isDuplicate) {
+    if (isPrismaErrorCode(error, "P2002")) {
       return NextResponse.json(
         { error: "Présence déjà enregistrée pour ce membre sur cette séance" },
         { status: 409 },
@@ -429,15 +405,11 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "JSON invalide" }, { status: 400 });
   }
 
-  if (typeof body !== "object" || body === null || !("attendanceId" in body)) {
-    return NextResponse.json({ error: "attendanceId requis" }, { status: 400 });
+  const attendanceIdResult = readAttendanceIdFromBody(body);
+  if (!attendanceIdResult.ok) {
+    return attendanceIdResult.response;
   }
-
-  const attendanceId = (body as { attendanceId?: unknown }).attendanceId;
-
-  if (typeof attendanceId !== "string" || attendanceId.trim().length === 0) {
-    return NextResponse.json({ error: "attendanceId invalide" }, { status: 400 });
-  }
+  const { attendanceId } = attendanceIdResult;
 
   const updatePayload = updateAttendanceSchema.safeParse((body as Record<string, unknown>).payload);
 
@@ -483,7 +455,7 @@ export async function PATCH(request: Request) {
     }
     const sessionFailure = sessionMutationFailure(existing.session.status, "corriger");
     if (sessionFailure) {
-      return policyResponse(sessionFailure);
+      return attendancePolicyResponse(sessionFailure);
     }
     if (existing.session.status === "COMPLETED") {
       return NextResponse.json(
@@ -509,14 +481,14 @@ export async function PATCH(request: Request) {
     if (payload.status !== undefined && nextStatus === "OVERRIDE" && nextStatus !== existing.status) {
       const reasonFailure = overrideReasonFailure(nextStatus, payload.overrideReason);
       if (reasonFailure) {
-        return policyResponse(reasonFailure);
+        return attendancePolicyResponse(reasonFailure);
       }
     }
 
     if (payload.status !== undefined && (nextStatus === "PRESENT" || nextStatus === "ABSENT")) {
       const memberFailure = await activeMemberFailure(existing.memberId);
       if (memberFailure) {
-        return policyResponse(memberFailure);
+        return attendancePolicyResponse(memberFailure);
       }
 
       const assignmentCheck = await assignmentFailure(
@@ -525,7 +497,7 @@ export async function PATCH(request: Request) {
         existing.session.sessionDate,
       );
       if (assignmentCheck) {
-        return policyResponse(assignmentCheck);
+        return attendancePolicyResponse(assignmentCheck);
       }
 
       const subscriptionCheck = await paidSubscriptionFailure(
@@ -534,12 +506,12 @@ export async function PATCH(request: Request) {
         existing.session.sessionDate,
       );
       if ("failure" in subscriptionCheck) {
-        return policyResponse(subscriptionCheck.failure);
+        return attendancePolicyResponse(subscriptionCheck.failure);
       }
     }
 
     if (nextStatus === "OVERRIDE" && nextStatus !== existing.status) {
-      const overrideCount = await countOverrides(existing.memberId, actor.tenantId);
+      const overrideCount = await countAttendanceOverrides(existing.memberId, actor.tenantId);
       if (overrideCount >= 3) {
         return NextResponse.json(
           {
@@ -670,13 +642,7 @@ export async function PATCH(request: Request) {
         { status: 403 },
       );
     }
-    const isNotFound =
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      (error as { code?: string }).code === "P2025";
-
-    if (isNotFound) {
+    if (isPrismaErrorCode(error, "P2025")) {
       return NextResponse.json({ error: "Présence introuvable" }, { status: 404 });
     }
 
@@ -699,15 +665,11 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "JSON invalide" }, { status: 400 });
   }
 
-  if (typeof body !== "object" || body === null || !("attendanceId" in body)) {
-    return NextResponse.json({ error: "attendanceId requis" }, { status: 400 });
+  const attendanceIdResult = readAttendanceIdFromBody(body);
+  if (!attendanceIdResult.ok) {
+    return attendanceIdResult.response;
   }
-
-  const attendanceId = (body as { attendanceId?: unknown }).attendanceId;
-
-  if (typeof attendanceId !== "string" || attendanceId.trim().length === 0) {
-    return NextResponse.json({ error: "attendanceId invalide" }, { status: 400 });
-  }
+  const { attendanceId } = attendanceIdResult;
 
   try {
     const clubSettings = await getClubSettings();
@@ -748,7 +710,7 @@ export async function DELETE(request: Request) {
 
     const deleteSessionFailure = sessionMutationFailure(existing.session.status, "annuler");
     if (deleteSessionFailure) {
-      return policyResponse(deleteSessionFailure);
+      return attendancePolicyResponse(deleteSessionFailure);
     }
 
     const activeSub = await resolveActiveSubscription(existing.memberId, existing.session.group.sportId);
@@ -810,13 +772,7 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ data: { id: attendanceId } });
   } catch (error) {
-    const isNotFound =
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      (error as { code?: string }).code === "P2025";
-
-    if (isNotFound) {
+    if (isPrismaErrorCode(error, "P2025")) {
       return NextResponse.json({ error: "Présence introuvable" }, { status: 404 });
     }
 
