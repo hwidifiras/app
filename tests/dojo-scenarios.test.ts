@@ -1957,6 +1957,29 @@ describe("admin permissions and password reset", () => {
     });
   });
 
+  it("blocks closing a working day that still has future sessions or active horaires", async () => {
+    await signIn("ADMIN");
+    const fx = await dojoFixture();
+    await createSessionForGroup(fx.adultBjj.id, {
+      sessionDate: new Date("2030-01-07T00:00:00.000Z"),
+    });
+
+    const response = await patchClubSettings(
+      jsonRequest("PATCH", {
+        workingDays: ["TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"],
+      }),
+    );
+    const body = await responseJson(response);
+    const details = body.details as { blockedDays?: string[]; workingDays?: string[] } | undefined;
+    const settings = await prisma.clubSettings.findUniqueOrThrow({ where: { id: "default" } });
+
+    expect(response.status).toBe(409);
+    expect(details?.blockedDays).toContain("MONDAY");
+    expect(details?.workingDays?.join(" ")).toContain("seance");
+    expect(details?.workingDays?.join(" ")).toContain("horaire");
+    expect(settings.workingDays).toContain("MONDAY");
+  });
+
   it("blocks staff without payments.manage from recording payments", async () => {
     const staff = await prisma.user.create({
       data: {
