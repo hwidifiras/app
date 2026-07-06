@@ -115,8 +115,8 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Current handoff pack: `docs/audits/product-readiness-staging-2026-07-07/`.
 - Screenshot evidence remains local/ignored at `screenshots/product-readiness-staging-2026-07-06/`.
 - Raw screenshot QA: 24 desktop/mobile captures, 0 detected horizontal-overflow screens, 0 application-error screens.
-- Server test evidence: commit `7233093`, disposable PostgreSQL database `gymday_saas_test`, 7 migrations applied, 16 test files passed, 159 tests passed.
-- Additional coverage added in this checkpoint: closing a club working day is rejected when future sessions or active horaires still exist on that day.
+- Server test evidence: commit `a7fbaff`, disposable PostgreSQL database `gymday_saas_test`, 7 migrations applied, 16 test files passed, 162 tests passed.
+- Additional coverage added in this checkpoint: closing a club working day is rejected when future sessions or active horaires still exist on that day; planning conflict preferences now prove shared-room and same-room qualified-coach cases.
 
 ## Remaining Priority List
 

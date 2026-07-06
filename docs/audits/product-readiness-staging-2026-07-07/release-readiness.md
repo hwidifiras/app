@@ -17,8 +17,9 @@ alone without help.
 - Current staging screenshot sweep captured 24 desktop/mobile screens across 12
   high-value private routes with no detected horizontal overflow or app-error
   flags.
-- Server-side disposable PostgreSQL test run passed 16 test files and 159 tests
-  after adding the working-day closure safeguard regression.
+- Server-side disposable PostgreSQL test run passed 16 test files and 162 tests
+  after adding the working-day closure and planning conflict preference
+  regressions.
 - Money, payment correction/reversal, receipts, enrollment recovery,
   subscription guards, attendance policy, and tenant isolation have meaningful
   automated coverage.
@@ -49,8 +50,8 @@ alone without help.
   not reachable.
 - Server-side disposable PostgreSQL testing is the valid test path for this
   branch.
-- Latest server run: commit `7233093`, disposable `gymday_saas_test`, 7
-  migrations applied, 16 test files passed, 159 tests passed.
+- Latest server run: commit `a7fbaff`, disposable `gymday_saas_test`, 7
+  migrations applied, 16 test files passed, 162 tests passed.
 - Raw screenshots are intentionally ignored by Git because they may contain
   client data.
 - No production data mutation is required for the remaining QA; use temporary
