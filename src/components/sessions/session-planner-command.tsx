@@ -1,19 +1,9 @@
 import { CalendarPlus, ChevronLeft, ChevronRight } from "lucide-react";
 
-import { PlanningLegend, formatDateFr } from "@/components/sessions/session-planner-ui";
+import type { PlanningViewMode, PlanningWeekSummary } from "@/components/sessions/session-planner-derived-model";
+import { formatDateFr } from "@/components/sessions/session-planner-derived-model";
+import { PlanningLegend } from "@/components/sessions/session-planner-ui";
 import { cn } from "@/lib/utils";
-
-export type PlanningViewMode = "week" | "day" | "coach" | "room";
-
-export type PlanningWeekSummary = {
-  total: number;
-  needsAttendance: number;
-  needsFinalization: number;
-  completed: number;
-  conflicts: number;
-  noCoach: number;
-  cancelledOrRescheduled: number;
-};
 
 const planningViewModes: Array<{ value: PlanningViewMode; label: string }> = [
   { value: "week", label: "Semaine" },

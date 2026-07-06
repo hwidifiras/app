@@ -1,4 +1,4 @@
-import { formatDateFr } from "@/components/sessions/session-planner-ui";
+import { formatDateFr } from "@/components/sessions/session-planner-derived-model";
 
 export type SessionGenerationPreview = {
   horizonDays: number;

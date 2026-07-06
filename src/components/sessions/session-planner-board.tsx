@@ -4,7 +4,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { cn } from "@/lib/utils";
 import type { ClubDay } from "@/lib/club-working-days";
 import type { SessionDto } from "@/types/session";
-import { formatDateFr } from "@/components/sessions/session-planner-ui";
+import { formatDateFr } from "@/components/sessions/session-planner-derived-model";
 
 export type PlanningWeekDay = {
   key: string;

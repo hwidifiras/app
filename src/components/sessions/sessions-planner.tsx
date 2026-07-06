@@ -5,23 +5,27 @@ import { CalendarDays } from "lucide-react";
 
 import { SessionDto, SessionStatusDto } from "@/types/session";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatRoomLabel } from "@/lib/group-room";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { UndoButton } from "@/components/ui/undo-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   SessionDetailPanel,
   SessionTile,
-  formatDateFr,
-  isTodaySession,
-  sessionDateKey,
 } from "@/components/sessions/session-planner-ui";
 import {
   PlanningCommandHeader,
   PlanningSummaryStrip,
   PlanningViewSwitcher,
-  type PlanningViewMode,
 } from "@/components/sessions/session-planner-command";
+import {
+  filterPlannerSessions,
+  formatDateFr,
+  getGroupedPlanningSections,
+  getPlanningWeekSummary,
+  getRecommendedPlannerSession,
+  sessionDateKey,
+  type PlanningViewMode,
+} from "@/components/sessions/session-planner-derived-model";
 import {
   SessionGenerationPanel,
   type SessionGenerationPreview,
@@ -482,29 +486,11 @@ export function SessionsPlanner({
   }
 
   const filteredSessions = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase();
-
-    return sessions.filter((item) => {
-      const sessionDate = new Date(item.sessionDate);
-      const day = String(sessionDate.getUTCDay());
-
-      if (dayFilter !== "ALL" && day !== dayFilter) {
-        return false;
-      }
-
-      if (statusFilter !== "ALL" && item.status !== statusFilter) {
-        return false;
-      }
-
-      if (!query) {
-        return true;
-      }
-
-      return (
-        item.groupName.toLowerCase().includes(query) ||
-        (item.coachName ?? "").toLowerCase().includes(query) ||
-        item.room.toLowerCase().includes(query)
-      );
+    return filterPlannerSessions({
+      sessions,
+      dayFilter,
+      statusFilter,
+      searchTerm,
     });
   }, [dayFilter, searchTerm, sessions, statusFilter]);
 
@@ -564,21 +550,11 @@ export function SessionsPlanner({
   );
 
   const weekSummary = useMemo(() => {
-    const needsAttendance = filteredSessions.filter((session) =>
-      session.status !== "CANCELLED" &&
-      session.status !== "COMPLETED" &&
-      (session.operationalStatus === "NEEDS_FINALIZATION" || isTodaySession(session)),
-    ).length;
-    return {
-      total: filteredSessions.length,
-      needsAttendance,
-      needsFinalization: filteredSessions.filter((session) => session.operationalStatus === "NEEDS_FINALIZATION").length,
-      completed: filteredSessions.filter((session) => session.status === "COMPLETED").length,
-      conflicts: conflictSessionIds.size,
-      noCoach: filteredSessions.filter((session) => !session.coachId).length,
-      cancelledOrRescheduled: filteredSessions.filter((session) => session.status === "CANCELLED" || session.status === "RESCHEDULED").length,
-    };
-  }, [conflictSessionIds.size, filteredSessions]);
+    return getPlanningWeekSummary({
+      sessions: filteredSessions,
+      conflictSessionIds,
+    });
+  }, [conflictSessionIds, filteredSessions]);
 
   const dayStatsByDate = useMemo(
     () => getPlannerDayStatsByDate({ visibleWeekDays, sessionsByDate, conflictSessionIds }),
@@ -595,58 +571,24 @@ export function SessionsPlanner({
   );
 
   const recommendedSession = useMemo(() => {
-    return firstConflictSession ??
-      filteredSessions.find((session) => session.operationalStatus === "NEEDS_FINALIZATION") ??
-      filteredSessions.find((session) => isTodaySession(session)) ??
-      filteredSessions[0] ??
-      null;
-  }, [filteredSessions, firstConflictSession]);
+    return getRecommendedPlannerSession({
+      sessions: filteredSessions,
+      conflictSessionIds,
+    });
+  }, [conflictSessionIds, filteredSessions]);
 
   const selectedSession = useMemo(() => {
     return filteredSessions.find((session) => session.id === expandedSessionId) ?? recommendedSession;
   }, [expandedSessionId, filteredSessions, recommendedSession]);
 
   const groupedPlanningSections = useMemo(() => {
-    if (viewMode === "week") return [];
-
-    if (viewMode === "day") {
-      return visibleWeekDays
-        .map((day) => {
-          const daySessions = sessionsByDate.get(day.key) ?? [];
-          const dayStats = dayStatsByDate.get(day.key);
-          return {
-            key: day.key,
-            label: formatDateFr(`${day.key}T00:00:00`),
-            meta: `${dayStats?.total ?? 0} cours · ${dayStats?.expected ?? 0} eleves attendus`,
-            sessions: daySessions,
-          };
-        })
-        .filter((section) => section.sessions.length > 0);
-    }
-
-    const grouped = new Map<string, { key: string; label: string; sessions: SessionDto[] }>();
-
-    for (const session of filteredSessions) {
-      const key = viewMode === "coach" ? (session.coachId ?? "NO_COACH") : formatRoomLabel(session.room);
-      const label = viewMode === "coach" ? (session.coachName ?? "Sans coach") : formatRoomLabel(session.room);
-      const current = grouped.get(key) ?? { key, label, sessions: [] };
-      current.sessions.push(session);
-      grouped.set(key, current);
-    }
-
-    return Array.from(grouped.values())
-      .sort((a, b) => a.label.localeCompare(b.label, "fr"))
-      .map((section) => {
-        const days = new Set(section.sessions.map(sessionDateKey)).size;
-        return {
-          ...section,
-          meta: `${section.sessions.length} cours · ${days} jour${days > 1 ? "s" : ""}`,
-          sessions: section.sessions.sort((a, b) => {
-            const dateSort = sessionDateKey(a).localeCompare(sessionDateKey(b));
-            return dateSort || a.startTime.localeCompare(b.startTime);
-          }),
-        };
-      });
+    return getGroupedPlanningSections({
+      viewMode,
+      visibleWeekDays,
+      sessionsByDate,
+      dayStatsByDate,
+      sessions: filteredSessions,
+    });
   }, [dayStatsByDate, filteredSessions, sessionsByDate, viewMode, visibleWeekDays]);
 
   const activeFilterCount = [

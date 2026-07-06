@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { AlertTriangle, ChevronDown, Clock3, MoreHorizontal } from "lucide-react";
 
+import { formatDateFr, isTodaySession } from "@/components/sessions/session-planner-derived-model";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { formatUtcDateOnlyIso } from "@/lib/dates";
 import { formatRoomLabel } from "@/lib/group-room";
 import { cn } from "@/lib/utils";
 import type { SessionDto, SessionStatusDto } from "@/types/session";
@@ -32,23 +32,6 @@ export function displayedSessionStatus(session: SessionDto) {
             ? ("warning" as const)
             : ("info" as const),
   };
-}
-
-export function formatDateFr(dateIso: string) {
-  return new Date(dateIso).toLocaleDateString("fr-FR", {
-    weekday: "long",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
-
-export function sessionDateKey(session: SessionDto) {
-  return formatUtcDateOnlyIso(new Date(session.sessionDate));
-}
-
-export function isTodaySession(session: SessionDto) {
-  return sessionDateKey(session) === formatUtcDateOnlyIso(new Date());
 }
 
 function canCancelSession(session: SessionDto) {
