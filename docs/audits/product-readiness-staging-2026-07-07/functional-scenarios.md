@@ -21,10 +21,10 @@ PostgreSQL test proof, and known areas that still require manual browser QA.
 | Disabled/demoted user access | Current DB user state blocks stale cookies. | Covered by existing auth hardening and regression tests in server run. | Proven |
 | Dashboard daily overview | Staff sees today, caisse, priorities, and next actions. | Desktop/mobile screenshots for `/` passed no-overflow/error checks. | Visual |
 | Members list | Staff can search and access member records. | Desktop/mobile screenshots for `/members` passed. | Visual |
-| Member detail next action | Staff sees balance/subscription/session health and correction entry points. | Implemented in progress doc; current sweep did not include `/members/[id]`. | Partial |
-| Enrollment | Staff can create a member/subscription/payment with dojo constraints. | Screenshot proof for `/enrollment`; server tests cover enrollment recovery and import fixture rules. | Partial |
+| Member detail next action | Staff sees balance/subscription/session health and correction entry points. | Desktop/mobile screenshots for a real `/members/[id]` page passed no-overflow/error checks. | Visual |
+| Enrollment | Staff can create a member/subscription/payment with dojo constraints. | Desktop/mobile screenshots for `/enrollment`; server tests cover enrollment recovery and import fixture rules. | Partial |
 | Enrollment recovery | Safe recent inscription can be reversed with audit when no later activity consumed it. | Server tests passed after recovery rule alignment. | Proven |
-| New payment | Staff can take full/partial payment and issue receipt. | Screenshot proof for `/payments/new`; payment/receipt ledger covered by tests. | Partial |
+| New payment | Staff can take full/partial payment and issue receipt. | Desktop/mobile screenshots for `/payments/new`; payment/receipt ledger and receipt issuance/voiding are covered by server tests. | Partial |
 | Payment correction/reversal | Original payment remains; correction/reversal rows require reason and audit. | Server tests passed payment ledger/correction/reversal coverage. | Proven |
 | Receipt verification | Receipt number/code/hash snapshot support print and public verification. | Server regression test on `gymday_saas_test` proves issued receipts can be looked up by number/code, preserve legal/payment snapshot data, and become voided after correction or reversal. | Proven |
 | Subscriptions command view | Debt/renewal/active views help staff prioritize. | Desktop/mobile screenshots for `/subscriptions` passed. | Visual |
@@ -34,12 +34,12 @@ PostgreSQL test proof, and known areas that still require manual browser QA.
 | Planning weekly view | Staff can read sessions by week/day and select details. | Desktop/mobile screenshots for `/sessions` passed. | Visual |
 | Planning conflicts | Coach/room conflicts honor room-sharing, same-room qualified-coach sharing, and coach specialty limits. | Server regression tests on `gymday_saas_test` cover default blocks plus both preference modes. | Proven |
 | Working days | Closed empty days hide; days with sessions stay visible; closing a day with future sessions or active horaires is blocked. | Screenshot proof plus server regression test on `gymday_saas_test`. | Proven |
-| Groups and horaires | Groups use age/gender policies and weekly schedules. | Progress docs indicate implementation; current sweep focused `/settings/schedules`, not `/groups`. | Partial |
-| Coach specialties | Specialty qualification informs planning conflict/eligibility. | Progress docs indicate implementation; needs richer browser QA. | Partial |
+| Groups and horaires | Groups use age/gender policies and weekly schedules. | Desktop/mobile screenshots for `/groups`, `/groups/[id]/edit`, and `/groups/[id]/schedules` passed no-overflow/error checks; schedule and compatibility rules have server coverage. | Visual |
+| Coach specialties | Specialty qualification informs planning conflict/eligibility. | Desktop/mobile screenshots for `/coaches`; server tests cover coach qualification, planning conflict, and same-room qualified-coach cases. | Proven |
 | Club settings | Working days, pointage, conflicts, receipts are configurable. | Desktop/mobile screenshots for `/settings/club` passed. | Visual |
 | Schedule settings | Templates and impact preview guide broad changes. | Desktop/mobile screenshots for `/settings/schedules` passed. | Visual |
-| Users and roles | Admin/Reception/Coach role intent is clear and admin-only. | Desktop/mobile screenshots for `/settings/users`; auth tests cover access freshness. | Partial |
-| Data import | French template, validation, and safe rollback states are present. | Desktop/mobile screenshots for `/settings/data-import`; server tests cover import fixtures. | Partial |
+| Users and roles | Admin/Reception/Coach role intent is clear and admin-only. | Desktop/mobile screenshots for `/settings/users`; auth tests cover access freshness and admin-only boundaries. | Visual |
+| Data import | French template, validation, and safe rollback states are present. | Desktop/mobile screenshots for `/settings/data-import`; server tests cover import fixtures and rollback boundaries. | Visual |
 | Logs | Business actions can be filtered and internal noise de-emphasized. | Desktop/mobile screenshots for `/logs` passed. | Visual |
 | Tenant isolation | Tenant host/auth scoping prevents cross-tenant leakage. | Server tests passed current isolation regressions; production cutover remains separate. | Proven |
 

@@ -13,6 +13,11 @@ staging screenshots, server-side test run, and the remaining product risks.
 - Screenshot evidence: `screenshots/product-readiness-staging-2026-07-06/`
 - Screenshot QA: 24 captures across 12 routes, desktop `1440x900` and mobile
   `390x844`, with no detected horizontal overflow or app error screens.
+- Additional remaining-gap screenshots:
+  `screenshots/product-readiness-staging-2026-07-07-remaining-partials/`
+  contains 20 relevant desktop/mobile captures across member detail, enrollment,
+  payment, groups, group schedules, group edit, coaches, users, and data import,
+  with no detected horizontal overflow or app error screens.
 - Server test evidence: disposable PostgreSQL run passed 16 test files and 163
   tests after staging auth, tenant-scope fixes, working-day closure, planning
   conflict preference, and receipt verification/voiding regressions.

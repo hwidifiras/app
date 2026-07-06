@@ -17,6 +17,10 @@ alone without help.
 - Current staging screenshot sweep captured 24 desktop/mobile screens across 12
   high-value private routes with no detected horizontal overflow or app-error
   flags.
+- Additional remaining-gap browser proof captured 20 desktop/mobile screens
+  across member detail, enrollment, payment, groups, group schedules, group edit,
+  coaches, users, and data import with no detected horizontal overflow or
+  app-error flags.
 - Server-side disposable PostgreSQL test run passed 16 test files and 163 tests
   after adding the working-day closure, planning conflict preference, and receipt
   verification/voiding regressions.
