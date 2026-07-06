@@ -142,6 +142,15 @@ export function ClubReceiptSettings({
             onChange={onReceiptEmailDefaultChange}
           />
         </div>
+        <div className="rounded-lg border border-blue-100 bg-blue-50/70 p-3 text-xs leading-relaxed text-blue-950">
+          <p className="font-bold uppercase tracking-[0.14em] text-[var(--primary)]">Règle de confiance</p>
+          <ul className="mt-2 space-y-1.5">
+            <li>Chaque reçu déjà émis garde son snapshot, son hash, son numéro et son code de vérification.</li>
+            <li>Ces réglages changent seulement les prochains reçus créés après enregistrement.</li>
+            <li>Modifiez le prochain numéro seulement après reprise manuelle ou alignement comptable.</li>
+            <li>L&apos;email automatique ajoute une trace d&apos;envoi, mais ne bloque pas l&apos;encaissement.</li>
+          </ul>
+        </div>
       </div>
 
       <aside className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-4 shadow-[var(--shadow-panel)]">

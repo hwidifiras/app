@@ -259,7 +259,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
           { href: "#club-checkin", label: "Pointage" },
           { href: "#club-planning", label: "Planning" },
           { href: "#club-alerts", label: "Alertes" },
-          { href: "#club-receipts", label: "Recus" },
+          { href: "#club-receipts", label: "Reçus" },
         ]}
       />
 
@@ -303,8 +303,8 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
 
       <FormSection
         id="club-receipts"
-        title="Recus de paiement"
-        description="Configurez la numerotation et le texte affiche sur les recus imprimes ou verifies en ligne."
+        title="Reçus de paiement"
+        description="Configurez la numérotation, le texte affiché et le comportement d'impression ou d'envoi."
       >
         <ClubReceiptSettings
           clubName={clubName}
