@@ -7,64 +7,10 @@ import { resolveMemberPhone } from "@/lib/member-phone";
 import { issueReceiptForPayment } from "@/lib/receipts";
 import { checkGroupMemberCompatibility } from "@/lib/demographics";
 import { memberProfileCompletionError } from "@/lib/member-profile-policy";
+import { memberAuditSelect, memberAuditSnapshot } from "@/lib/member-audit";
+import { isPrismaErrorCode, readMemberIdFromBody } from "@/lib/member-route-helpers";
 
 export const runtime = "nodejs";
-
-type MemberAuditSource = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  email: string | null;
-  memberType: string;
-  gender: string;
-  birthDate: Date | null;
-  address: string | null;
-  parentName: string | null;
-  parentPhone: string | null;
-  parentAddress: string | null;
-  status: string;
-  joinedAt: Date;
-  archivedAt: Date | null;
-};
-
-const memberAuditSelect = {
-  id: true,
-  firstName: true,
-  lastName: true,
-  phone: true,
-  email: true,
-  memberType: true,
-  gender: true,
-  birthDate: true,
-  address: true,
-  parentName: true,
-  parentPhone: true,
-  parentAddress: true,
-  status: true,
-  joinedAt: true,
-  archivedAt: true,
-} as const;
-
-function memberAuditSnapshot(member: MemberAuditSource) {
-  return {
-    id: member.id,
-    firstName: member.firstName,
-    lastName: member.lastName,
-    phone: member.phone,
-    email: member.email,
-    memberType: member.memberType,
-    gender: member.gender,
-    birthDate: member.birthDate?.toISOString() ?? null,
-    address: member.address,
-    parentName: member.parentName,
-    parentPhone: member.parentPhone,
-    parentAddress: member.parentAddress,
-    status: member.status,
-    joinedAt: member.joinedAt.toISOString(),
-    archivedAt: member.archivedAt?.toISOString() ?? null,
-  };
-}
 
 export async function GET(request: Request) {
   let actor;
@@ -402,12 +348,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ data: member }, { status: 201 });
   } catch (error) {
-    const isDuplicatePhone =
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      (error as { code?: string }).code === "P2002";
-
     if (error instanceof Error && error.message === "PAYMENT_EXCEEDS_DUE") {
       return NextResponse.json({ error: "Le paiement depasse le montant du plan" }, { status: 409 });
     }
@@ -452,6 +392,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Capacité du groupe atteinte" }, { status: 409 });
     }
 
+    const isDuplicatePhone = isPrismaErrorCode(error, "P2002");
     const message = isDuplicatePhone
       ? "Un membre avec ce téléphone existe déjà"
       : "Erreur serveur lors de la création du membre";
@@ -476,15 +417,11 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "JSON invalide" }, { status: 400 });
   }
 
-  if (typeof body !== "object" || body === null || !("memberId" in body)) {
-    return NextResponse.json({ error: "memberId requis" }, { status: 400 });
+  const memberIdResult = readMemberIdFromBody(body);
+  if (!memberIdResult.ok) {
+    return memberIdResult.response;
   }
-
-  const memberId = (body as { memberId?: unknown }).memberId;
-
-  if (typeof memberId !== "string" || memberId.trim().length === 0) {
-    return NextResponse.json({ error: "memberId invalide" }, { status: 400 });
-  }
+  const { memberId } = memberIdResult;
 
   const updatePayload = updateMemberSchema.safeParse(
     (body as Record<string, unknown>).payload,
@@ -636,23 +573,11 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: reason }, { status: 400 });
     }
 
-    const isDuplicatePhone =
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      (error as { code?: string }).code === "P2002";
-
-    const isNotFound =
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      (error as { code?: string }).code === "P2025";
-
-    if (isNotFound) {
+    if (isPrismaErrorCode(error, "P2025")) {
       return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
     }
 
-    if (isDuplicatePhone) {
+    if (isPrismaErrorCode(error, "P2002")) {
       return NextResponse.json({ error: "Un membre avec ce téléphone existe déjà" }, { status: 409 });
     }
 
@@ -676,15 +601,11 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "JSON invalide" }, { status: 400 });
   }
 
-  if (typeof body !== "object" || body === null || !("memberId" in body)) {
-    return NextResponse.json({ error: "memberId requis" }, { status: 400 });
+  const memberIdResult = readMemberIdFromBody(body);
+  if (!memberIdResult.ok) {
+    return memberIdResult.response;
   }
-
-  const memberId = (body as { memberId?: unknown }).memberId;
-
-  if (typeof memberId !== "string" || memberId.trim().length === 0) {
-    return NextResponse.json({ error: "memberId invalide" }, { status: 400 });
-  }
+  const { memberId } = memberIdResult;
 
   try {
     const now = new Date();
