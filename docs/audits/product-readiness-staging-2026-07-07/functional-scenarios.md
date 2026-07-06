@@ -22,9 +22,9 @@ PostgreSQL test proof, and known areas that still require manual browser QA.
 | Dashboard daily overview | Staff sees today, caisse, priorities, and next actions. | Desktop/mobile screenshots for `/` passed no-overflow/error checks. | Visual |
 | Members list | Staff can search and access member records. | Desktop/mobile screenshots for `/members` passed. | Visual |
 | Member detail next action | Staff sees balance/subscription/session health and correction entry points. | Desktop/mobile screenshots for a real `/members/[id]` page passed no-overflow/error checks. | Visual |
-| Enrollment | Staff can create a member/subscription/payment with dojo constraints. | Desktop/mobile screenshots for `/enrollment`; server tests cover enrollment recovery and import fixture rules. | Partial |
+| Enrollment | Staff can create a member/subscription/payment with dojo constraints. | Desktop/mobile screenshots for `/enrollment`; server tests cover enrollment apply with payment/group assignment, family-bundle pricing, recovery, and blocked unsafe revert cases. | Proven |
 | Enrollment recovery | Safe recent inscription can be reversed with audit when no later activity consumed it. | Server tests passed after recovery rule alignment. | Proven |
-| New payment | Staff can take full/partial payment and issue receipt. | Desktop/mobile screenshots for `/payments/new`; payment/receipt ledger and receipt issuance/voiding are covered by server tests. | Partial |
+| New payment | Staff can take full/partial payment and issue receipt. | Desktop/mobile screenshots for `/payments/new`; server tests cover overpayment rejection, exact remaining payment, ledger rows, receipt issuance, verification, and voiding. | Proven |
 | Payment correction/reversal | Original payment remains; correction/reversal rows require reason and audit. | Server tests passed payment ledger/correction/reversal coverage. | Proven |
 | Receipt verification | Receipt number/code/hash snapshot support print and public verification. | Server regression test on `gymday_saas_test` proves issued receipts can be looked up by number/code, preserve legal/payment snapshot data, and become voided after correction or reversal. | Proven |
 | Subscriptions command view | Debt/renewal/active views help staff prioritize. | Desktop/mobile screenshots for `/subscriptions` passed. | Visual |
@@ -49,9 +49,9 @@ PostgreSQL test proof, and known areas that still require manual browser QA.
    preference toggles.
 2. Try to disable a working day that contains existing sessions and confirm the
    app blocks hiding it with an affected-session message.
-3. Run enrollment through success, leave the page, then recover it from member
-   detail where safe.
-4. Create a safe test payment and browser-smoke the print/copy receipt actions.
+3. Browser-click enrollment through success, leave the page, then recover it
+   from member detail where safe.
+4. Browser-click a safe test payment and smoke the print/copy receipt actions.
 5. Send a receipt email to a safe test address and confirm delivery status.
 6. Browser-smoke the pointage drawer in a temporary group: unpaid, partial,
    exception with reason, absent, finalized, reopen/correct.
