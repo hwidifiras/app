@@ -7,8 +7,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
+  let user;
   try {
-    await requireAuth(request);
+    user = await requireAuth(request);
   } catch (e) {
     const code = e instanceof Error ? e.message : "FORBIDDEN";
     return NextResponse.json(
@@ -17,6 +18,6 @@ export async function GET(request: Request) {
     );
   }
 
-  const progress = await getSetupGuideProgress();
+  const progress = await getSetupGuideProgress({ tenantId: user.tenantId });
   return NextResponse.json({ data: progress });
 }

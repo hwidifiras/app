@@ -68,8 +68,8 @@ export type SetupGuideProgress = {
   isComplete: boolean;
 };
 
-export async function getSetupGuideProgress(): Promise<SetupGuideProgress> {
-  const tenantId = getRequiredTenantId();
+export async function getSetupGuideProgress(options: { tenantId?: string } = {}): Promise<SetupGuideProgress> {
+  const tenantId = options.tenantId ?? getRequiredTenantId();
   const [sportCount, coachCount, groupCount, planCount, memberCount] = await Promise.all([
     prisma.sport.count({ where: { tenantId } }),
     prisma.coach.count({ where: { tenantId } }),
