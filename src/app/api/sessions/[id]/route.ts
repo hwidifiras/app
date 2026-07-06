@@ -24,16 +24,15 @@ import {
   coachSportOverrideAuditDetails,
   validateCoachSportEligibility,
 } from "@/lib/coach-qualification-policy";
+import {
+  addMinutesToTime,
+  changedSessionFields,
+  isPrismaErrorCode,
+  sessionAuditSnapshot,
+  sessionResponsePayload,
+} from "@/lib/session-route-helpers";
 
 export const runtime = "nodejs";
-
-function addMinutesToTime(startTime: string, durationMinutes: number) {
-  const [hours, minutes] = startTime.split(":").map((value) => Number(value));
-  const total = hours * 60 + minutes + durationMinutes;
-  const endHours = Math.floor((total % (24 * 60)) / 60);
-  const endMinutes = total % 60;
-  return `${String(endHours).padStart(2, "0")}:${String(endMinutes).padStart(2, "0")}`;
-}
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   let actor;
@@ -88,93 +87,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       createdAt: session.createdAt.toISOString(),
       updatedAt: session.updatedAt.toISOString(),
     },
-  });
-}
-
-function sessionResponsePayload(
-  updated: {
-    id: string;
-    groupId: string;
-    scheduleId: string | null;
-    sessionDate: Date;
-    startTime: string;
-    endTime: string;
-    coachId: string | null;
-    room: string;
-    status: string;
-    exceptionReason: string | null;
-    postponedTo: Date | null;
-    postponementReason: string | null;
-    postponementDetails: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-    group: { name: string; sportId: string };
-    coach: { firstName: string; lastName: string } | null;
-  },
-) {
-  return {
-    id: updated.id,
-    groupId: updated.groupId,
-    groupName: updated.group.name,
-    groupSportId: updated.group.sportId,
-    scheduleId: updated.scheduleId,
-    sessionDate: updated.sessionDate.toISOString(),
-    startTime: updated.startTime,
-    endTime: updated.endTime,
-    coachId: updated.coachId,
-    coachName: updated.coach ? `${updated.coach.firstName} ${updated.coach.lastName}` : null,
-    room: updated.room,
-    status: updated.status,
-    exceptionReason: updated.exceptionReason,
-    postponedTo: updated.postponedTo ? updated.postponedTo.toISOString() : null,
-    postponementReason: updated.postponementReason,
-    postponementDetails: updated.postponementDetails,
-    createdAt: updated.createdAt.toISOString(),
-    updatedAt: updated.updatedAt.toISOString(),
-  };
-}
-
-type SessionAuditSnapshotInput = {
-  id: string;
-  groupId: string;
-  scheduleId: string | null;
-  sessionDate: Date;
-  startTime: string;
-  endTime: string;
-  coachId: string | null;
-  room: string;
-  status: string;
-  exceptionReason: string | null;
-  postponedTo?: Date | null;
-  postponementReason?: string | null;
-  postponementDetails?: string | null;
-};
-
-function sessionAuditSnapshot(session: SessionAuditSnapshotInput) {
-  return {
-    id: session.id,
-    groupId: session.groupId,
-    scheduleId: session.scheduleId,
-    sessionDate: session.sessionDate.toISOString(),
-    startTime: session.startTime,
-    endTime: session.endTime,
-    coachId: session.coachId,
-    room: session.room,
-    status: session.status,
-    exceptionReason: session.exceptionReason,
-    postponedTo: session.postponedTo ? session.postponedTo.toISOString() : null,
-    postponementReason: session.postponementReason ?? null,
-    postponementDetails: session.postponementDetails ?? null,
-  };
-}
-
-function changedSessionFields(
-  before: ReturnType<typeof sessionAuditSnapshot>,
-  after: ReturnType<typeof sessionAuditSnapshot>,
-) {
-  return Object.keys(after).filter((key) => {
-    if (key === "id" || key === "groupId" || key === "scheduleId") return false;
-    return before[key as keyof typeof before] !== after[key as keyof typeof after];
   });
 }
 
@@ -612,16 +524,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     return NextResponse.json({ data: sessionResponsePayload(updated) });
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2002") {
-        return NextResponse.json(
-          { error: "Conflit de créneau sur une ou plusieurs séances" },
-          { status: 409 },
-        );
-      }
-      if (error.code === "P2025") {
-        return NextResponse.json({ error: "Séance ou planning introuvable" }, { status: 404 });
-      }
+    if (isPrismaErrorCode(error, "P2002")) {
+      return NextResponse.json(
+        { error: "Conflit de créneau sur une ou plusieurs séances" },
+        { status: 409 },
+      );
+    }
+    if (isPrismaErrorCode(error, "P2025")) {
+      return NextResponse.json({ error: "Séance ou planning introuvable" }, { status: 404 });
     }
 
     console.error("[sessions PATCH]", error);
