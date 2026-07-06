@@ -10,9 +10,16 @@ import { ListSearch } from "@/components/ui/list-controls";
 import { Pagination } from "@/components/ui/pagination";
 import { MemberRow } from "./member-row";
 import {
+  filterMemberList,
+  getMemberActiveFilterCount,
+  getMemberPage,
   getGroupLabel,
+  groupMembersByGroup,
   MEMBER_LIST_PAGE_SIZE,
   type GroupOption,
+  type MemberPaymentFilter,
+  type MemberStatusFilter,
+  type MemberViewMode,
   type MemberWithGroups,
   type SportOption,
 } from "./member-list-model";
@@ -26,10 +33,10 @@ type MemberListClientProps = {
 export function MemberListClient({ initialMembers, groupsOptions, sportsOptions }: MemberListClientProps) {
   const [members, setMembers] = useState<MemberWithGroups[]>(initialMembers);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "ARCHIVED">("ALL");
-  const [viewMode, setViewMode] = useState<"LIST" | "GROUPED">("LIST");
+  const [statusFilter, setStatusFilter] = useState<MemberStatusFilter>("ALL");
+  const [viewMode, setViewMode] = useState<MemberViewMode>("LIST");
   const [sportFilter, setSportFilter] = useState<string>("ALL");
-  const [paymentFilter, setPaymentFilter] = useState<"ALL" | "PAID" | "PARTIAL" | "UNPAID">("ALL");
+  const [paymentFilter, setPaymentFilter] = useState<MemberPaymentFilter>("ALL");
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [expandedMemberIds, setExpandedMemberIds] = useState<string[]>([]);
@@ -71,56 +78,36 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
     resetPagingAndSelection();
   }
 
-  const activeFilterCount = [
-    statusFilter !== "ALL",
-    paymentFilter !== "ALL",
-    sportFilter !== "ALL",
-    viewMode !== "LIST",
-  ].filter(Boolean).length;
+  const activeFilterCount = getMemberActiveFilterCount({
+    statusFilter,
+    paymentFilter,
+    sportFilter,
+    viewMode,
+  });
 
   const filteredMembers = useMemo(
     () =>
-      members.filter((member) => {
-        const query = searchTerm.trim().toLowerCase();
-        const matchesSearch =
-          !query ||
-          `${member.firstName} ${member.lastName}`.toLowerCase().includes(query) ||
-          member.phone.toLowerCase().includes(query) ||
-          (member.email?.toLowerCase() ?? "").includes(query);
-
-        const matchesStatus = statusFilter === "ALL" || member.status === statusFilter;
-        const matchesPayment = paymentFilter === "ALL" || member.paymentStatus === paymentFilter;
-        const matchesSport =
-          sportFilter === "ALL" ||
-          member.groupIds.some((groupId) => groupsOptions.find((group) => group.id === groupId)?.sportId === sportFilter);
-
-        return matchesSearch && matchesStatus && matchesPayment && matchesSport;
+      filterMemberList({
+        members,
+        groupsOptions,
+        searchTerm,
+        statusFilter,
+        paymentFilter,
+        sportFilter,
       }),
     [groupsOptions, members, paymentFilter, searchTerm, sportFilter, statusFilter],
   );
 
   const groupedMembers = useMemo(
-    () =>
-      filteredMembers.reduce((acc, member) => {
-        if (member.groupIds.length === 0) {
-          acc.set("UNASSIGNED", [...(acc.get("UNASSIGNED") ?? []), member]);
-          return acc;
-        }
-
-        member.groupIds.forEach((groupId) => {
-          const existing = acc.get(groupId) ?? [];
-          acc.set(groupId, [...existing, member]);
-        });
-
-        return acc;
-      }, new Map<string, MemberWithGroups[]>()),
+    () => groupMembersByGroup(filteredMembers),
     [filteredMembers],
   );
 
-  const pageCount = Math.max(1, Math.ceil(filteredMembers.length / MEMBER_LIST_PAGE_SIZE));
-  const currentPageSafe = Math.min(currentPage, pageCount);
-  const pageStart = (currentPageSafe - 1) * MEMBER_LIST_PAGE_SIZE;
-  const pageMembers = filteredMembers.slice(pageStart, pageStart + MEMBER_LIST_PAGE_SIZE);
+  const { pageCount, currentPageSafe, pageMembers } = getMemberPage({
+    members: filteredMembers,
+    currentPage,
+    pageSize: MEMBER_LIST_PAGE_SIZE,
+  });
 
   const reloadMembers = async () => {
     const response = await fetch("/api/members", { cache: "no-store" });

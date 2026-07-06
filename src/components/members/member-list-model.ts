@@ -31,6 +31,10 @@ export type MemberWithGroups = {
   groupIds: string[];
 };
 
+export type MemberStatusFilter = "ALL" | MemberWithGroups["status"];
+export type MemberPaymentFilter = "ALL" | MemberWithGroups["paymentStatus"];
+export type MemberViewMode = "LIST" | "GROUPED";
+
 export const MEMBER_LIST_PAGE_SIZE = 10;
 
 export function getMemberPaymentBadge(status: MemberWithGroups["paymentStatus"]) {
@@ -42,4 +46,93 @@ export function getMemberPaymentBadge(status: MemberWithGroups["paymentStatus"])
 export function getGroupLabel(groupId: string, groupsOptions: GroupOption[]) {
   if (groupId === "UNASSIGNED") return "Sans groupe";
   return groupsOptions.find((group) => group.id === groupId)?.name ?? "Groupe";
+}
+
+export function getMemberActiveFilterCount({
+  statusFilter,
+  paymentFilter,
+  sportFilter,
+  viewMode,
+}: {
+  statusFilter: MemberStatusFilter;
+  paymentFilter: MemberPaymentFilter;
+  sportFilter: string;
+  viewMode: MemberViewMode;
+}) {
+  return [
+    statusFilter !== "ALL",
+    paymentFilter !== "ALL",
+    sportFilter !== "ALL",
+    viewMode !== "LIST",
+  ].filter(Boolean).length;
+}
+
+export function filterMemberList({
+  members,
+  groupsOptions,
+  searchTerm,
+  statusFilter,
+  paymentFilter,
+  sportFilter,
+}: {
+  members: MemberWithGroups[];
+  groupsOptions: GroupOption[];
+  searchTerm: string;
+  statusFilter: MemberStatusFilter;
+  paymentFilter: MemberPaymentFilter;
+  sportFilter: string;
+}) {
+  const query = searchTerm.trim().toLowerCase();
+
+  return members.filter((member) => {
+    const matchesSearch =
+      !query ||
+      `${member.firstName} ${member.lastName}`.toLowerCase().includes(query) ||
+      member.phone.toLowerCase().includes(query) ||
+      (member.email?.toLowerCase() ?? "").includes(query);
+
+    const matchesStatus = statusFilter === "ALL" || member.status === statusFilter;
+    const matchesPayment = paymentFilter === "ALL" || member.paymentStatus === paymentFilter;
+    const matchesSport =
+      sportFilter === "ALL" ||
+      member.groupIds.some((groupId) => groupsOptions.find((group) => group.id === groupId)?.sportId === sportFilter);
+
+    return matchesSearch && matchesStatus && matchesPayment && matchesSport;
+  });
+}
+
+export function groupMembersByGroup(members: MemberWithGroups[]) {
+  return members.reduce((acc, member) => {
+    if (member.groupIds.length === 0) {
+      acc.set("UNASSIGNED", [...(acc.get("UNASSIGNED") ?? []), member]);
+      return acc;
+    }
+
+    member.groupIds.forEach((groupId) => {
+      const existing = acc.get(groupId) ?? [];
+      acc.set(groupId, [...existing, member]);
+    });
+
+    return acc;
+  }, new Map<string, MemberWithGroups[]>());
+}
+
+export function getMemberPage({
+  members,
+  currentPage,
+  pageSize = MEMBER_LIST_PAGE_SIZE,
+}: {
+  members: MemberWithGroups[];
+  currentPage: number;
+  pageSize?: number;
+}) {
+  const pageCount = Math.max(1, Math.ceil(members.length / pageSize));
+  const currentPageSafe = Math.min(currentPage, pageCount);
+  const pageStart = (currentPageSafe - 1) * pageSize;
+
+  return {
+    pageCount,
+    currentPageSafe,
+    pageMembers: members.slice(pageStart, pageStart + pageSize),
+  };
 }
