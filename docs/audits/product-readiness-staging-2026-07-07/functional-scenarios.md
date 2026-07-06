@@ -29,7 +29,7 @@ PostgreSQL test proof, and known areas that still require manual browser QA.
 | Receipt verification | Receipt number/code/hash snapshot support print and public verification. | Server regression test on `gymday_saas_test` proves issued receipts can be looked up by number/code, preserve legal/payment snapshot data, and become voided after correction or reversal. | Proven |
 | Subscriptions command view | Debt/renewal/active views help staff prioritize. | Desktop/mobile screenshots for `/subscriptions` passed. | Visual |
 | Subscription edits | Amount below paid is rejected; sensitive changes require admin reason. | Server tests and implementation progress indicate coverage. | Proven |
-| Pointage rules | Unpaid/partial/exception/finalization rules are consistent. | Attendance policy tests passed; current sweep did not include attendance detail. | Partial |
+| Pointage rules | Unpaid/partial/exception/finalization rules are consistent. | Server regression tests cover partial-payment permission, session consumption for present/absent, override reason/limit, finalized-session reopen requirement, and PATCH using the same safety rules as creation. | Proven |
 | Attendance correction/undo | Correction writes before/after and balance delta in same transaction. | Server tests and progress doc indicate coverage. | Proven |
 | Planning weekly view | Staff can read sessions by week/day and select details. | Desktop/mobile screenshots for `/sessions` passed. | Visual |
 | Planning conflicts | Coach/room conflicts honor room-sharing, same-room qualified-coach sharing, and coach specialty limits. | Server regression tests on `gymday_saas_test` cover default blocks plus both preference modes. | Proven |
@@ -53,8 +53,8 @@ PostgreSQL test proof, and known areas that still require manual browser QA.
    detail where safe.
 4. Create a safe test payment and browser-smoke the print/copy receipt actions.
 5. Send a receipt email to a safe test address and confirm delivery status.
-6. Perform pointage edge cases in a temporary group: unpaid, partial, exception
-   with reason, absent, finalized, reopen/correct.
+6. Browser-smoke the pointage drawer in a temporary group: unpaid, partial,
+   exception with reason, absent, finalized, reopen/correct.
 7. Walk a new admin through settings: club rules, horaires, users, import, logs.
 
 ## What Not To Test On Live Client Data

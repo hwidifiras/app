@@ -116,7 +116,7 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Screenshot evidence remains local/ignored at `screenshots/product-readiness-staging-2026-07-06/`.
 - Raw screenshot QA: 24 desktop/mobile captures, 0 detected horizontal-overflow screens, 0 application-error screens.
 - Server test evidence: commit `0618588`, disposable PostgreSQL database `gymday_saas_test`, 7 migrations applied, 16 test files passed, 163 tests passed.
-- Additional coverage added in this checkpoint: closing a club working day is rejected when future sessions or active horaires still exist on that day; planning conflict preferences now prove shared-room and same-room qualified-coach cases; receipt verification now proves issued receipts can be looked up by number/code, preserve legal/payment snapshot data, and become voided after payment correction or reversal.
+- Additional coverage confirmed in this checkpoint: closing a club working day is rejected when future sessions or active horaires still exist on that day; planning conflict preferences prove shared-room and same-room qualified-coach cases; receipt verification proves issued receipts can be looked up by number/code, preserve legal/payment snapshot data, and become voided after payment correction or reversal; pointage policy tests prove partial-payment permission, present/absent consumption, override reason/limit, finalized-session reopen, and PATCH/create rule parity.
 
 ## Remaining Priority List
 

@@ -63,14 +63,14 @@ alone without help.
 | --- | --- | --- |
 | First-client guided handoff | Go | Core flows are coherent and tested enough, with known caveats. |
 | Manual demo to another dojo owner | Go with prepared data | Daily flows look sellable; setup should be guided live. |
-| Paid SaaS pilot with manual onboarding | Conditional go | Requires final smoke on receipt print/email actions, pointage edge cases, and planning conflicts. |
+| Paid SaaS pilot with manual onboarding | Conditional go | Requires final browser smoke on receipt print/email actions, the pointage drawer, and planning conflict UX. |
 | Self-serve SaaS launch | No-go | Needs onboarding, billing, stronger setup guidance, and operations playbook. |
 | Production cutover to multitenant stack | No-go in this checkpoint | Cutover is separate and requires backup, migration verification, staging smoke, and rollback plan. |
 
 ## Next Optimal Fix Order
 
-1. Finish manual QA for planning conflicts, working-day blocking, receipt
-   print/email actions, and pointage edge cases.
+1. Finish manual QA for planning conflict UX, working-day blocking UX, receipt
+   print/email actions, and the pointage drawer.
 2. Make coach assignment and group eligibility obvious in group create/edit,
    coaches, and selected-session details.
 3. Standardize settings pages with shared rule/impact/danger patterns.
