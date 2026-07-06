@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { buildReceiptVerificationQrDataUrl } from "@/lib/receipt-qr";
 import { parseReceiptSnapshot } from "@/lib/receipts";
 import { buildReceiptVerificationUrl } from "@/lib/receipt-verification-url";
+import { withTenantContext } from "@/lib/tenant-context";
+import { resolveTenantFromHost } from "@/lib/tenant-resolver";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -21,20 +23,23 @@ export default async function ReceiptVerifyPage({
   const canSearch = receiptNumber.length > 0 && code.length > 0;
   const host = h.get("host");
   const protocol = h.get("x-forwarded-proto") ?? "https";
+  const resolvedTenant = await resolveTenantFromHost(h.get("x-forwarded-host") ?? host);
   const verificationUrl =
     canSearch && host ? buildReceiptVerificationUrl(`${protocol}://${host}`, receiptNumber, code) : undefined;
 
-  const receipt = canSearch
-    ? await prisma.receipt.findFirst({
-        where: {
-          receiptNumber,
-          verificationCode: code,
-        },
-        select: {
-          status: true,
-          snapshotJson: true,
-        },
-      })
+  const receipt = canSearch && resolvedTenant.ok
+    ? await withTenantContext(resolvedTenant.context, () =>
+        prisma.receipt.findFirst({
+          where: {
+            receiptNumber,
+            verificationCode: code,
+          },
+          select: {
+            status: true,
+            snapshotJson: true,
+          },
+        }),
+      )
     : null;
 
   const snapshot = receipt ? parseReceiptSnapshot(receipt) : null;
