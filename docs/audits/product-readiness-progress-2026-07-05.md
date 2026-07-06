@@ -403,3 +403,15 @@ Key result:
 - Raw screenshots are stored locally under an ignored `screenshots/` folder to avoid committing client data.
 
 Current-branch screenshot QA remains pending until the branch is deployed to staging/live or a local Postgres-backed runtime is available.
+
+## Staging Runtime Checkpoint
+
+The SaaS staging stack at `/opt/we-discipline-saas-staging` is now on `codex/phase3-multitenant-saas` commit `dc786b4`.
+
+- `dojo-saas-postgres-staging` is healthy.
+- `dojo-saas-staging` is running on `127.0.0.1:3002`.
+- Prisma migration `20260705130000_receipt_legal_fields` applied successfully on staging.
+- The app started with `next start`.
+- Smoke checks: `/login` returns `200`; unauthenticated `/settings/club`, `/payments`, and `/subscriptions` redirect to `/login`.
+
+Authenticated browser QA on staging is still pending.
