@@ -10,6 +10,10 @@ import {
 } from "@/components/settings/data-import-attendance-section";
 import { DataImportBulkSection } from "@/components/settings/data-import-bulk-section";
 import {
+  DataImportCurrentStateSection,
+  type DataImportCurrentStateField,
+} from "@/components/settings/data-import-current-state-section";
+import {
   DataImportMemberSection,
   type DataImportMemberDraft,
 } from "@/components/settings/data-import-member-section";
@@ -196,6 +200,26 @@ export function DataImportWizard({
     invalidatePreview();
   }
 
+  function updateCurrentStateField(field: DataImportCurrentStateField, value: string) {
+    const setters: Record<DataImportCurrentStateField, (nextValue: string) => void> = {
+      cutoverDate: setCutoverDate,
+      groupId: setGroupId,
+      planId: setPlanId,
+      assignmentStartDate: setAssignmentStartDate,
+      subscriptionStartDate: setSubscriptionStartDate,
+      subscriptionEndDate: setSubscriptionEndDate,
+      remainingSessions: setRemainingSessions,
+      amount: setAmount,
+      paid: setPaid,
+      paymentDate: setPaymentDate,
+      paymentMethod: setPaymentMethod,
+      note: setNote,
+    };
+
+    setters[field](value);
+    invalidatePreview();
+  }
+
   async function modeAction(action: "activate" | "deactivate") {
     setBusy(true);
     setMessage(null);
@@ -370,62 +394,28 @@ export function DataImportWizard({
             onMemberChange={updateMember}
           />
 
-          <section id="reprise-current" className="form-section-anchor panel p-4 sm:p-6">
-            <div className="mb-5">
-              <p className="text-xs font-bold uppercase tracking-wider text-[var(--primary)]">2. État réel</p>
-              <h2 className="mt-1 text-lg font-semibold">Affectation et abonnement en cours</h2>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <label className="text-sm font-medium">Date de bascule *
-                <input type="date" className="field mt-1" value={cutoverDate} max={DATA_IMPORT_TODAY} onChange={(event) => { setCutoverDate(event.target.value); invalidatePreview(); }} required />
-              </label>
-              <label className="text-sm font-medium">Groupe *
-                <select className="field mt-1" value={groupId} onChange={(event) => selectGroup(event.target.value)} required>
-                  <option value="">Sélectionner</option>
-                  {groups.map((group) => <option key={group.id} value={group.id}>{group.name} · {group.sportName}</option>)}
-                </select>
-              </label>
-              <label className="text-sm font-medium">Formule compatible *
-                <select className="field mt-1" value={planId} onChange={(event) => selectPlan(event.target.value)} disabled={!groupId} required>
-                  <option value="">Sélectionner</option>
-                  {compatiblePlans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {plan.totalSessions} séances</option>)}
-                </select>
-              </label>
-              <label className="text-sm font-medium">Affecté au groupe depuis *
-                <input type="date" className="field mt-1" value={assignmentStartDate} max={cutoverDate} onChange={(event) => { setAssignmentStartDate(event.target.value); invalidatePreview(); }} required />
-              </label>
-              <label className="text-sm font-medium">Début abonnement *
-                <input type="date" className="field mt-1" value={subscriptionStartDate} max={cutoverDate} onChange={(event) => { setSubscriptionStartDate(event.target.value); invalidatePreview(); }} required />
-              </label>
-              <label className="text-sm font-medium">Fin abonnement *
-                <input type="date" className="field mt-1" value={subscriptionEndDate} min={cutoverDate} onChange={(event) => { setSubscriptionEndDate(event.target.value); invalidatePreview(); }} required />
-              </label>
-              <label className="text-sm font-medium">Séances restantes *
-                <input type="number" min="1" max={selectedPlan?.totalSessions} className="field mt-1" value={remainingSessions} onChange={(event) => { setRemainingSessions(event.target.value); invalidatePreview(); }} required />
-              </label>
-              <label className="text-sm font-medium">Montant total dû (TND) *
-                <input type="number" min="0" step="0.01" className="field mt-1" value={amount} onChange={(event) => { setAmount(event.target.value); invalidatePreview(); }} required />
-              </label>
-              <label className="text-sm font-medium">Déjà payé (TND) *
-                <input type="number" min="0" step="0.01" className="field mt-1" value={paid} onChange={(event) => { setPaid(event.target.value); invalidatePreview(); }} required />
-              </label>
-              <label className="text-sm font-medium">Date du solde repris
-                <input type="date" className="field mt-1" value={paymentDate} max={cutoverDate} onChange={(event) => { setPaymentDate(event.target.value); invalidatePreview(); }} />
-              </label>
-              <label className="text-sm font-medium">Origine du règlement
-                <select className="field mt-1" value={paymentMethod} onChange={(event) => { setPaymentMethod(event.target.value); invalidatePreview(); }}>
-                  <option value="REPRISE_PAPIER">Ancien registre papier</option>
-                  <option value="CASH">Espèces</option>
-                  <option value="CARD">Carte</option>
-                  <option value="TRANSFER">Virement</option>
-                  <option value="CHECK">Chèque</option>
-                </select>
-              </label>
-              <label className="text-sm font-medium sm:col-span-2">Note d&apos;import *
-                <input className="field mt-1" value={note} onChange={(event) => { setNote(event.target.value); invalidatePreview(); }} required />
-              </label>
-            </div>
-          </section>
+          <DataImportCurrentStateSection
+            groups={groups}
+            compatiblePlans={compatiblePlans}
+            selectedPlan={selectedPlan}
+            values={{
+              cutoverDate,
+              groupId,
+              planId,
+              assignmentStartDate,
+              subscriptionStartDate,
+              subscriptionEndDate,
+              remainingSessions,
+              amount,
+              paid,
+              paymentDate,
+              paymentMethod,
+              note,
+            }}
+            onFieldChange={updateCurrentStateField}
+            onGroupChange={selectGroup}
+            onPlanChange={selectPlan}
+          />
 
           <DataImportAttendanceSection
             eligibleSessions={eligibleSessions}
