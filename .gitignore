@@ -52,6 +52,7 @@ yarn-error.log*
 next-dev*.log
 next-start*.log
 qa-artifacts/
+/screenshots/
 /prisma/audit-build.db
 /prisma/audit-build.db-journal
 /docs/audits/**/screenshots/
