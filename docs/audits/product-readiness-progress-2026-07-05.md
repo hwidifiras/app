@@ -429,3 +429,19 @@ The staging stack was updated to commit `51f2692` and authenticated QA was run t
 - Screenshot automation recorded `0` horizontal-overflow or application-error flags across 24 captures.
 
 Raw screenshots and `qa-results.json` are stored locally under ignored folder `screenshots/product-readiness-staging-2026-07-06/` to avoid committing client data.
+
+## Server Test Checkpoint
+
+The local PostgreSQL blocker was bypassed safely by running tests on the VPS against the separate disposable database `gymday_saas_test`, not the staging data database.
+
+- Reset `gymday_saas_test` with `prisma migrate reset --force --skip-seed` from a throwaway container.
+- Applied all seven PostgreSQL migrations successfully.
+- Fixed stale test cleanup/fixtures after the receipt, demographic, soft-deactivation, and enrollment-recovery changes:
+  - scenario cleanup deletes receipts before payments;
+  - tests force `NODE_ENV=test` even when run from the production-like staging image;
+  - import fixtures include gender and kid/adult-compatible groups;
+  - catalog delete expectations assert soft deactivation;
+  - enrollment recovery tests provide a reason and expect assignments to close instead of disappear.
+- Final result: `16` test files passed, `158` tests passed.
+
+This test run did not reset or mutate `gymday_saas_staging`.
