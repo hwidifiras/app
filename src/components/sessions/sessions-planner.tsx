@@ -34,6 +34,17 @@ import {
   MobileFilterSheet,
 } from "@/components/ui/list-controls";
 import { SessionEditModal, type SessionEditFormState } from "@/components/sessions/session-edit-modal";
+import {
+  getActivePlannerMobileDay,
+  getClosedPlannerWeekDaysWithSessions,
+  getHiddenClosedPlannerWeekDays,
+  getPlannerDayStatsByDate,
+  getPlannerWeekDays,
+  getPlannerWorkingDaySet,
+  getSessionDateKeys,
+  getVisiblePlannerWeekDays,
+  groupPlannerSessionsByDate,
+} from "@/components/sessions/session-planner-week-model";
 import { useActionHistory } from "@/hooks/use-action-history";
 import {
   addWeeksToStartIso,
@@ -44,11 +55,7 @@ import {
 } from "@/lib/dates";
 import { parseApiResponse } from "@/lib/parse-api-response";
 import { buildPlanningConflictDetails } from "@/lib/planning-conflicts";
-import {
-  DAY_INDEX_TO_CLUB_DAY,
-  DEFAULT_WORKING_DAYS,
-  type ClubDay,
-} from "@/lib/club-working-days";
+import type { ClubDay } from "@/lib/club-working-days";
 import { isCoachQualifiedForSport } from "@/lib/coach-display";
 
 type SessionsPlannerProps = {
@@ -70,23 +77,6 @@ type SessionsPlannerProps = {
     workingDays: ClubDay[];
   };
 };
-
-function getWeekDays(weekStartIso: string) {
-  const start = new Date(`${weekStartIso}T12:00:00.000Z`);
-
-  return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(start);
-    date.setUTCDate(start.getUTCDate() + index);
-
-    return {
-      key: formatUtcDateOnlyIso(date),
-      dayIndex: date.getUTCDay(),
-      dayOfWeek: DAY_INDEX_TO_CLUB_DAY[date.getUTCDay()],
-      label: date.toLocaleDateString("fr-FR", { weekday: "short" }),
-      dateLabel: date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }),
-    };
-  });
-}
 
 export function SessionsPlanner({
   initialSessions,
@@ -518,54 +508,47 @@ export function SessionsPlanner({
     });
   }, [dayFilter, searchTerm, sessions, statusFilter]);
 
-  const weekDays = useMemo(() => getWeekDays(weekStart), [weekStart]);
-  const workingDaySet = useMemo(() => {
-    const selected = planningPreferences.workingDays.length > 0
-      ? planningPreferences.workingDays
-      : [...DEFAULT_WORKING_DAYS];
-    return new Set<ClubDay>(selected);
-  }, [planningPreferences.workingDays]);
+  const weekDays = useMemo(() => getPlannerWeekDays(weekStart), [weekStart]);
+  const workingDaySet = useMemo(
+    () => getPlannerWorkingDaySet(planningPreferences.workingDays),
+    [planningPreferences.workingDays],
+  );
   const filteredSessionDateKeys = useMemo(
-    () => new Set(filteredSessions.map((session) => sessionDateKey(session))),
+    () => getSessionDateKeys(filteredSessions),
     [filteredSessions],
   );
   const visibleWeekDays = useMemo(
-    () => weekDays.filter((day) => {
-      const matchesDayFilter = dayFilter === "ALL" || String(day.dayIndex) === dayFilter;
-      if (!matchesDayFilter) return false;
-      if (dayFilter !== "ALL") return true;
-      return workingDaySet.has(day.dayOfWeek) || filteredSessionDateKeys.has(day.key);
-    }),
+    () =>
+      getVisiblePlannerWeekDays({
+        weekDays,
+        dayFilter,
+        workingDaySet,
+        sessionDateKeys: filteredSessionDateKeys,
+      }),
     [dayFilter, filteredSessionDateKeys, weekDays, workingDaySet],
   );
   const hiddenClosedDays = useMemo(
-    () => weekDays.filter((day) => !workingDaySet.has(day.dayOfWeek) && !filteredSessionDateKeys.has(day.key)),
+    () =>
+      getHiddenClosedPlannerWeekDays({
+        weekDays,
+        workingDaySet,
+        sessionDateKeys: filteredSessionDateKeys,
+      }),
     [filteredSessionDateKeys, weekDays, workingDaySet],
   );
   const closedDaysWithSessions = useMemo(
-    () => visibleWeekDays.filter((day) => !workingDaySet.has(day.dayOfWeek) && filteredSessionDateKeys.has(day.key)),
+    () =>
+      getClosedPlannerWeekDaysWithSessions({
+        visibleWeekDays,
+        workingDaySet,
+        sessionDateKeys: filteredSessionDateKeys,
+      }),
     [filteredSessionDateKeys, visibleWeekDays, workingDaySet],
   );
-  const sessionsByDate = useMemo(() => {
-    const map = new Map<string, SessionDto[]>();
-
-    for (const day of visibleWeekDays) {
-      map.set(day.key, []);
-    }
-
-    for (const item of filteredSessions) {
-      const key = formatUtcDateOnlyIso(new Date(item.sessionDate));
-      const current = map.get(key) ?? [];
-      current.push(item);
-      map.set(key, current);
-    }
-
-    for (const daySessions of map.values()) {
-      daySessions.sort((a, b) => a.startTime.localeCompare(b.startTime));
-    }
-
-    return map;
-  }, [filteredSessions, visibleWeekDays]);
+  const sessionsByDate = useMemo(
+    () => groupPlannerSessionsByDate({ visibleWeekDays, sessions: filteredSessions }),
+    [filteredSessions, visibleWeekDays],
+  );
 
   const conflictDetailsBySessionId = useMemo(() => {
     return buildPlanningConflictDetails({
@@ -597,29 +580,13 @@ export function SessionsPlanner({
     };
   }, [conflictSessionIds.size, filteredSessions]);
 
-  const dayStatsByDate = useMemo(() => {
-    const stats = new Map<string, { total: number; expected: number; finalization: number; conflicts: number }>();
-
-    for (const day of visibleWeekDays) {
-      const daySessions = sessionsByDate.get(day.key) ?? [];
-      stats.set(day.key, {
-        total: daySessions.length,
-        expected: daySessions.reduce((sum, session) => sum + (session.expectedMemberCount ?? 0), 0),
-        finalization: daySessions.filter((session) => session.operationalStatus === "NEEDS_FINALIZATION").length,
-        conflicts: daySessions.filter((session) => conflictSessionIds.has(session.id)).length,
-      });
-    }
-
-    return stats;
-  }, [conflictSessionIds, sessionsByDate, visibleWeekDays]);
+  const dayStatsByDate = useMemo(
+    () => getPlannerDayStatsByDate({ visibleWeekDays, sessionsByDate, conflictSessionIds }),
+    [conflictSessionIds, sessionsByDate, visibleWeekDays],
+  );
 
   const activeMobileDay = useMemo(() => {
-    if (visibleWeekDays.some((day) => day.key === selectedMobileDay)) {
-      return selectedMobileDay;
-    }
-
-    const firstDayWithSessions = visibleWeekDays.find((day) => (sessionsByDate.get(day.key) ?? []).length > 0);
-    return firstDayWithSessions?.key ?? visibleWeekDays[0]?.key ?? selectedMobileDay;
+    return getActivePlannerMobileDay({ selectedMobileDay, visibleWeekDays, sessionsByDate });
   }, [selectedMobileDay, sessionsByDate, visibleWeekDays]);
 
   const firstConflictSession = useMemo(
