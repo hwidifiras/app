@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { shouldUseSecureCookies } from "@/lib/auth";
 import type { RequestUser } from "@/lib/request-user";
 
 const COOKIE_NAME = "we_discipline_data_import";
@@ -26,7 +27,7 @@ export async function activateDataImportMode(user: RequestUser) {
   cookieStore.set(COOKIE_NAME, `${user.id}.${expiresAt.getTime()}`, {
     httpOnly: true,
     sameSite: "strict",
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureCookies(),
     path: "/",
     maxAge: MODE_DURATION_SECONDS,
   });

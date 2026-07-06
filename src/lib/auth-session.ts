@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 
-import { AUTH_COOKIE_NAME, signAuthToken, type AuthRole } from "@/lib/auth";
+import { AUTH_COOKIE_NAME, shouldUseSecureCookies, signAuthToken, type AuthRole } from "@/lib/auth";
 
 export async function setAuthSessionCookie(user: {
   id: string;
@@ -24,7 +24,7 @@ export async function setAuthSessionCookie(user: {
   const cookieStore = await cookies();
   cookieStore.set(AUTH_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureCookies(),
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 14,

@@ -29,6 +29,13 @@ function getAuthSecret(): Uint8Array {
   return new TextEncoder().encode(secret);
 }
 
+export function shouldUseSecureCookies(): boolean {
+  const override = process.env.AUTH_COOKIE_SECURE?.trim().toLowerCase();
+  if (override === "false" || override === "0" || override === "no") return false;
+  if (override === "true" || override === "1" || override === "yes") return true;
+  return process.env.NODE_ENV === "production";
+}
+
 export async function signAuthToken(payload: AuthTokenPayload): Promise<string> {
   return new SignJWT({ ...payload })
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
