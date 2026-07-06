@@ -9,6 +9,10 @@ import {
   type DataImportAttendanceChoice,
 } from "@/components/settings/data-import-attendance-section";
 import { DataImportBulkSection } from "@/components/settings/data-import-bulk-section";
+import {
+  DataImportMemberSection,
+  type DataImportMemberDraft,
+} from "@/components/settings/data-import-member-section";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormSectionNav } from "@/components/ui/form-layout";
 import type { BulkImportResult } from "@/components/settings/data-import-bulk-ui";
@@ -52,7 +56,7 @@ export function DataImportWizard({
   const [bulkFile, setBulkFile] = useState<File | null>(null);
   const [bulkPreview, setBulkPreview] = useState<BulkImportResult | null>(null);
 
-  const [member, setMember] = useState({
+  const [member, setMember] = useState<DataImportMemberDraft>({
     firstName: "",
     lastName: "",
     phone: "",
@@ -360,53 +364,11 @@ export function DataImportWizard({
             ]}
           />
 
-          <section id="reprise-identity" className="form-section-anchor panel p-4 sm:p-6">
-            <div className="mb-5">
-              <p className="text-xs font-bold uppercase tracking-wider text-[var(--primary)]">1. Identité</p>
-              <h2 className="mt-1 text-lg font-semibold">Membre à importer</h2>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <label className="text-sm font-medium">Prénom *
-                <input className="field mt-1" value={member.firstName} onChange={(event) => updateMember("firstName", event.target.value)} required />
-              </label>
-              <label className="text-sm font-medium">Nom *
-                <input className="field mt-1" value={member.lastName} onChange={(event) => updateMember("lastName", event.target.value)} required />
-              </label>
-              <label className="text-sm font-medium">Type *
-                <select className="field mt-1" value={member.memberType} onChange={(event) => updateMember("memberType", event.target.value as typeof member.memberType)}>
-                  <option value="ADULT">Adulte</option>
-                  <option value="KID">Enfant</option>
-                  <option value="NOT_SPECIFIED">Non précisé</option>
-                </select>
-              </label>
-              <label className="text-sm font-medium">Genre *
-                <select className="field mt-1" value={member.gender} onChange={(event) => updateMember("gender", event.target.value as typeof member.gender)} required>
-                  <option value="NOT_SPECIFIED">Non précisé</option>
-                  <option value="MALE">Garçon / homme</option>
-                  <option value="FEMALE">Fille / femme</option>
-                </select>
-              </label>
-              <label className="text-sm font-medium">Téléphone
-                <input className="field mt-1" value={member.phone} onChange={(event) => updateMember("phone", event.target.value)} />
-              </label>
-              <label className="text-sm font-medium">Email
-                <input type="email" className="field mt-1" value={member.email} onChange={(event) => updateMember("email", event.target.value)} />
-              </label>
-              <label className="text-sm font-medium">Inscrit au club depuis *
-                <input type="date" className="field mt-1" value={member.joinedAt} max={cutoverDate} onChange={(event) => updateMember("joinedAt", event.target.value)} required />
-              </label>
-              {member.memberType === "KID" ? (
-                <>
-                  <label className="text-sm font-medium">Nom du parent
-                    <input className="field mt-1" value={member.parentName} onChange={(event) => updateMember("parentName", event.target.value)} />
-                  </label>
-                  <label className="text-sm font-medium">Téléphone du parent *
-                    <input className="field mt-1" value={member.parentPhone} onChange={(event) => updateMember("parentPhone", event.target.value)} required />
-                  </label>
-                </>
-              ) : null}
-            </div>
-          </section>
+          <DataImportMemberSection
+            member={member}
+            cutoverDate={cutoverDate}
+            onMemberChange={updateMember}
+          />
 
           <section id="reprise-current" className="form-section-anchor panel p-4 sm:p-6">
             <div className="mb-5">
