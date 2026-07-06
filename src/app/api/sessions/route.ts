@@ -9,6 +9,7 @@ import {
   deriveSessionLifecycle,
   expectedMemberIdsAtSession,
 } from "@/lib/session-lifecycle";
+import { addMinutesToTime } from "@/lib/session-route-helpers";
 
 export const runtime = "nodejs";
 
@@ -26,14 +27,6 @@ const dayToIndex: Record<DayOfWeekValue, number> = {
 
 function toUtcDateOnly(date: Date) {
   return utcDateOnlyForTimeZone(date);
-}
-
-function addMinutesToTime(startTime: string, durationMinutes: number) {
-  const [hours, minutes] = startTime.split(":").map((value) => Number(value));
-  const total = hours * 60 + minutes + durationMinutes;
-  const endHours = Math.floor((total % (24 * 60)) / 60);
-  const endMinutes = total % 60;
-  return `${String(endHours).padStart(2, "0")}:${String(endMinutes).padStart(2, "0")}`;
 }
 
 function toSessionDto(session: {

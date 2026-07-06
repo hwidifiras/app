@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { getAppTimeZone, utcDateOnlyForTimeZone } from "@/lib/dates";
 import { postponeSessionSchema } from "@/lib/schemas/session";
+import { addMinutesToTime } from "@/lib/session-route-helpers";
 import { validateSessionSlot } from "@/lib/session-slot-conflict";
 
 export const runtime = "nodejs";
@@ -33,14 +34,6 @@ function toTimeString(date: Date, timeZone: string): string {
   const minute = parts.find((part) => part.type === "minute")?.value ?? "00";
 
   return `${hour}:${minute}`;
-}
-
-function addMinutesToTime(startTime: string, durationMinutes: number) {
-  const [hours, minutes] = startTime.split(":").map((value) => Number(value));
-  const total = hours * 60 + minutes + durationMinutes;
-  const endHours = Math.floor((total % (24 * 60)) / 60);
-  const endMinutes = total % 60;
-  return `${String(endHours).padStart(2, "0")}:${String(endMinutes).padStart(2, "0")}`;
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
