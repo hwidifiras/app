@@ -9,13 +9,13 @@ staging screenshots, server-side test run, and the remaining product risks.
 ## Evidence Used
 
 - Branch: `codex/phase3-multitenant-saas`
-- Latest documented checkpoint: `0d59d5b Document server test checkpoint`
+- Latest tested checkpoint: `0618588 Test receipt verification and voiding`
 - Screenshot evidence: `screenshots/product-readiness-staging-2026-07-06/`
 - Screenshot QA: 24 captures across 12 routes, desktop `1440x900` and mobile
   `390x844`, with no detected horizontal overflow or app error screens.
-- Server test evidence: disposable PostgreSQL run passed 16 test files and 162
-  tests after staging auth, tenant-scope fixes, working-day closure, and planning
-  conflict preference regressions.
+- Server test evidence: disposable PostgreSQL run passed 16 test files and 163
+  tests after staging auth, tenant-scope fixes, working-day closure, planning
+  conflict preference, and receipt verification/voiding regressions.
 
 Raw screenshots are intentionally kept outside Git because they may contain
 client data.

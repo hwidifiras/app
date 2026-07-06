@@ -26,7 +26,7 @@ PostgreSQL test proof, and known areas that still require manual browser QA.
 | Enrollment recovery | Safe recent inscription can be reversed with audit when no later activity consumed it. | Server tests passed after recovery rule alignment. | Proven |
 | New payment | Staff can take full/partial payment and issue receipt. | Screenshot proof for `/payments/new`; payment/receipt ledger covered by tests. | Partial |
 | Payment correction/reversal | Original payment remains; correction/reversal rows require reason and audit. | Server tests passed payment ledger/correction/reversal coverage. | Proven |
-| Receipt verification | Receipt number/code/hash snapshot support print and public verification. | Implemented in progress docs; needs a fresh browser print/email smoke for current staging. | Partial |
+| Receipt verification | Receipt number/code/hash snapshot support print and public verification. | Server regression test on `gymday_saas_test` proves issued receipts can be looked up by number/code, preserve legal/payment snapshot data, and become voided after correction or reversal. | Proven |
 | Subscriptions command view | Debt/renewal/active views help staff prioritize. | Desktop/mobile screenshots for `/subscriptions` passed. | Visual |
 | Subscription edits | Amount below paid is rejected; sensitive changes require admin reason. | Server tests and implementation progress indicate coverage. | Proven |
 | Pointage rules | Unpaid/partial/exception/finalization rules are consistent. | Attendance policy tests passed; current sweep did not include attendance detail. | Partial |
@@ -51,8 +51,7 @@ PostgreSQL test proof, and known areas that still require manual browser QA.
    app blocks hiding it with an affected-session message.
 3. Run enrollment through success, leave the page, then recover it from member
    detail where safe.
-4. Create a safe test payment, print/copy receipt, and test receipt verification
-   code.
+4. Create a safe test payment and browser-smoke the print/copy receipt actions.
 5. Send a receipt email to a safe test address and confirm delivery status.
 6. Perform pointage edge cases in a temporary group: unpaid, partial, exception
    with reason, absent, finalized, reopen/correct.

@@ -115,8 +115,8 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Current handoff pack: `docs/audits/product-readiness-staging-2026-07-07/`.
 - Screenshot evidence remains local/ignored at `screenshots/product-readiness-staging-2026-07-06/`.
 - Raw screenshot QA: 24 desktop/mobile captures, 0 detected horizontal-overflow screens, 0 application-error screens.
-- Server test evidence: commit `a7fbaff`, disposable PostgreSQL database `gymday_saas_test`, 7 migrations applied, 16 test files passed, 162 tests passed.
-- Additional coverage added in this checkpoint: closing a club working day is rejected when future sessions or active horaires still exist on that day; planning conflict preferences now prove shared-room and same-room qualified-coach cases.
+- Server test evidence: commit `0618588`, disposable PostgreSQL database `gymday_saas_test`, 7 migrations applied, 16 test files passed, 163 tests passed.
+- Additional coverage added in this checkpoint: closing a club working day is rejected when future sessions or active horaires still exist on that day; planning conflict preferences now prove shared-room and same-room qualified-coach cases; receipt verification now proves issued receipts can be looked up by number/code, preserve legal/payment snapshot data, and become voided after payment correction or reversal.
 
 ## Remaining Priority List
 
@@ -392,6 +392,7 @@ Latest UI settings checkpoint:
 - Planning mobile-filter extraction moved the mobile planning filter sheet into `session-planner-filters.tsx`, reducing `sessions-planner.tsx` to 791 lines while preserving group/day/status filters, reset behavior, result counts, and mobile filter actions; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; `npm.cmd test` remains blocked by missing local PostgreSQL before test execution.
 - Enrollment recovery entry-point pass added subscription-based recovery candidate lookup and surfaced the existing traceable inscription cancellation panel on subscription correction and payment correction pages, so staff can recover a full recent unused inscription from member, subscription, or payment contexts without adding a new undo path; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; local `npm.cmd test` was skipped per delivery instruction because the known local PostgreSQL test database is unavailable and server/staging remains the target for runtime testing.
 - Receipt settings trust-copy pass improved `/settings/club` receipt wording and added an explicit trust/impact block explaining immutable receipt snapshots, future-only setting effects, manual sequence changes, and email delivery trace behavior; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; local `npm.cmd test` was skipped per delivery instruction because server/staging is the runtime test target.
+- Receipt verification/voiding regression pass added server proof that a receipt is issued with the configured prefix/sequence, public number/code lookup finds the receipt, legal identity and payment snapshot details are preserved, and correction/reversal voids the affected receipt with actor-linked audit logs; it passed `npm.cmd run lint -- --no-cache`, `npx.cmd prisma validate`, and the VPS disposable PostgreSQL suite at commit `0618588` with 16 test files and 163 tests passing.
 - Recovery label audit pass changed the enrollment draft-line action from `Supprimer cette ligne` to `Retirer cette ligne`, keeping destructive/recovery vocabulary focused on saved business records while preserving draft editing behavior; it passed `npx.cmd prisma validate`, `npm.cmd run lint -- --no-cache`, and `npm.cmd run build`; local `npm.cmd test` was skipped per delivery instruction.
 - `npm.cmd test` remains blocked by the same missing local PostgreSQL test database.
 
@@ -450,6 +451,6 @@ The local PostgreSQL blocker was bypassed safely by running tests on the VPS aga
   - import fixtures include gender and kid/adult-compatible groups;
   - catalog delete expectations assert soft deactivation;
   - enrollment recovery tests provide a reason and expect assignments to close instead of disappear.
-- Final result: `16` test files passed, `158` tests passed.
+- Latest result: `16` test files passed, `163` tests passed at commit `0618588`.
 
 This test run did not reset or mutate `gymday_saas_staging`.

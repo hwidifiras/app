@@ -17,9 +17,9 @@ alone without help.
 - Current staging screenshot sweep captured 24 desktop/mobile screens across 12
   high-value private routes with no detected horizontal overflow or app-error
   flags.
-- Server-side disposable PostgreSQL test run passed 16 test files and 162 tests
-  after adding the working-day closure and planning conflict preference
-  regressions.
+- Server-side disposable PostgreSQL test run passed 16 test files and 163 tests
+  after adding the working-day closure, planning conflict preference, and receipt
+  verification/voiding regressions.
 - Money, payment correction/reversal, receipts, enrollment recovery,
   subscription guards, attendance policy, and tenant isolation have meaningful
   automated coverage.
@@ -37,7 +37,7 @@ alone without help.
   creation/editing and planning conflict review.
 - Settings pages are functional and much improved, but not all share one
   excellent guided configuration pattern yet.
-- Receipt email delivery and print/verification need a fresh safe browser smoke
+- Receipt email delivery plus print/copy actions need a fresh safe browser smoke
   before being advertised as a polished tenant feature.
 - Accessibility has earlier automated proof, but no current manual screen-reader
   traversal.
@@ -50,8 +50,8 @@ alone without help.
   not reachable.
 - Server-side disposable PostgreSQL testing is the valid test path for this
   branch.
-- Latest server run: commit `a7fbaff`, disposable `gymday_saas_test`, 7
-  migrations applied, 16 test files passed, 162 tests passed.
+- Latest server run: commit `0618588`, disposable `gymday_saas_test`, 7
+  migrations applied, 16 test files passed, 163 tests passed.
 - Raw screenshots are intentionally ignored by Git because they may contain
   client data.
 - No production data mutation is required for the remaining QA; use temporary
@@ -63,14 +63,14 @@ alone without help.
 | --- | --- | --- |
 | First-client guided handoff | Go | Core flows are coherent and tested enough, with known caveats. |
 | Manual demo to another dojo owner | Go with prepared data | Daily flows look sellable; setup should be guided live. |
-| Paid SaaS pilot with manual onboarding | Conditional go | Requires final smoke on receipts, pointage edge cases, and planning conflicts. |
+| Paid SaaS pilot with manual onboarding | Conditional go | Requires final smoke on receipt print/email actions, pointage edge cases, and planning conflicts. |
 | Self-serve SaaS launch | No-go | Needs onboarding, billing, stronger setup guidance, and operations playbook. |
 | Production cutover to multitenant stack | No-go in this checkpoint | Cutover is separate and requires backup, migration verification, staging smoke, and rollback plan. |
 
 ## Next Optimal Fix Order
 
 1. Finish manual QA for planning conflicts, working-day blocking, receipt
-   delivery, and pointage edge cases.
+   print/email actions, and pointage edge cases.
 2. Make coach assignment and group eligibility obvious in group create/edit,
    coaches, and selected-session details.
 3. Standardize settings pages with shared rule/impact/danger patterns.
