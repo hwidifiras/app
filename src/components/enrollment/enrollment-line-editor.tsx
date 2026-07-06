@@ -326,7 +326,7 @@ export function EnrollmentLineEditor({
       </FormField>
       {canRemove && (
         <button type="button" className="btn btn-ghost btn-block-mobile min-h-11 text-red-600 sm:w-auto" onClick={onRemove}>
-          Supprimer cette ligne
+          Retirer cette ligne
         </button>
       )}
     </div>
