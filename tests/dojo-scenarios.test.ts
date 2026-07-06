@@ -65,6 +65,7 @@ import {
   inspectDataImport,
   rollbackDataImport,
 } from "@/lib/data-import-service";
+import { parseReceiptSnapshot } from "@/lib/receipts";
 import { previewBulkDataImport } from "@/lib/bulk-data-import";
 import type { DataImportPayload } from "@/lib/schemas/data-import";
 import { getWeekRangeUtc } from "@/lib/dates";
@@ -2884,6 +2885,108 @@ describe("payment corrections and member archive", () => {
     expect(audits).toHaveLength(2);
     expect(audits.every((audit) => audit.userId === "admin-test-user")).toBe(true);
     expect(audits.every((audit) => audit.details?.includes("reason"))).toBe(true);
+  });
+
+  it("issues verifiable receipts and voids them on payment correction or reversal", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const sub = await createActiveSubscription(fx, { amount: 10000 });
+    await prisma.clubSettings.update({
+      where: { id: "default" },
+      data: {
+        clubName: "Receipt Club",
+        receiptLegalName: "Receipt Legal Entity",
+        receiptTaxId: "MF-123456",
+        receiptPrefix: "TEST",
+        nextReceiptSequence: 12,
+      },
+    });
+
+    const firstPaymentResponse = await createPayment(
+      jsonRequest("POST", {
+        memberSubscriptionId: sub.id,
+        amount: 4000,
+        paymentMethod: "CASH",
+        notes: "Premier versement",
+      }),
+    );
+    const firstPaymentId = (await responseJson(firstPaymentResponse)).data as { id: string };
+    const firstReceipt = await prisma.receipt.findFirstOrThrow({
+      where: { paymentId: firstPaymentId.id },
+    });
+    const firstSnapshot = parseReceiptSnapshot(firstReceipt);
+    const publicLookupBefore = await prisma.receipt.findFirst({
+      where: {
+        receiptNumber: firstReceipt.receiptNumber,
+        verificationCode: firstReceipt.verificationCode,
+      },
+    });
+
+    expect(firstPaymentResponse.status).toBe(201);
+    expect(firstReceipt.status).toBe("ISSUED");
+    expect(firstReceipt.receiptNumber).toMatch(/^TEST-\d{4}-000012$/);
+    expect(firstSnapshot?.receipt.id).toBe(firstReceipt.id);
+    expect(firstSnapshot?.club.legalName).toBe("Receipt Legal Entity");
+    expect(firstSnapshot?.club.taxId).toBe("MF-123456");
+    expect(firstSnapshot?.payment.amountCents).toBe(4000);
+    expect(firstSnapshot?.totals.remainingAfterCents).toBe(6000);
+    expect(publicLookupBefore?.status).toBe("ISSUED");
+
+    const correctionReason = "Erreur montant sur recu";
+    const correctionResponse = await patchPayment(
+      jsonRequest("PATCH", {
+        paymentId: firstPaymentId.id,
+        payload: { amount: 3000, correctionReason },
+      }),
+    );
+    const voidedCorrectionReceipt = await prisma.receipt.findUniqueOrThrow({
+      where: { id: firstReceipt.id },
+    });
+    const publicLookupAfterCorrection = await prisma.receipt.findFirst({
+      where: {
+        receiptNumber: firstReceipt.receiptNumber,
+        verificationCode: firstReceipt.verificationCode,
+      },
+    });
+
+    expect(correctionResponse.status).toBe(200);
+    expect(voidedCorrectionReceipt.status).toBe("VOIDED");
+    expect(voidedCorrectionReceipt.voidReason).toBe(correctionReason);
+    expect(publicLookupAfterCorrection?.status).toBe("VOIDED");
+
+    const secondPaymentResponse = await createPayment(
+      jsonRequest("POST", {
+        memberSubscriptionId: sub.id,
+        amount: 2000,
+        paymentMethod: "CASH",
+      }),
+    );
+    const secondPaymentId = (await responseJson(secondPaymentResponse)).data as { id: string };
+    const secondReceipt = await prisma.receipt.findFirstOrThrow({
+      where: { paymentId: secondPaymentId.id },
+    });
+    const reversalReason = "Paiement annule apres controle";
+    const reversalResponse = await deletePayment(
+      jsonRequest("DELETE", { paymentId: secondPaymentId.id, correctionReason: reversalReason }),
+    );
+    const voidedReversalReceipt = await prisma.receipt.findUniqueOrThrow({
+      where: { id: secondReceipt.id },
+    });
+    const receiptAudits = await prisma.auditLog.findMany({
+      where: {
+        action: "RECEIPT_VOIDED",
+        entityId: { in: [firstReceipt.id, secondReceipt.id] },
+      },
+    });
+
+    expect(secondPaymentResponse.status).toBe(201);
+    expect(secondReceipt.status).toBe("ISSUED");
+    expect(secondReceipt.receiptNumber).toMatch(/^TEST-\d{4}-000013$/);
+    expect(reversalResponse.status).toBe(200);
+    expect(voidedReversalReceipt.status).toBe("VOIDED");
+    expect(voidedReversalReceipt.voidReason).toBe(reversalReason);
+    expect(receiptAudits).toHaveLength(2);
+    expect(receiptAudits.every((audit) => audit.userId === "admin-test-user")).toBe(true);
   });
 
   it("rejects attendance PATCH loopholes with the same rules as creation", async () => {
