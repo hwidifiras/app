@@ -1424,6 +1424,107 @@ describe("session double booking", () => {
 
     expect(roomError).toMatch(/salle/i);
   });
+
+  it("allows two different groups in the same room when room sharing is enabled", async () => {
+    const fx = await dojoFixture();
+    const sessionDate = new Date("2026-05-18T18:00:00.000Z");
+    const otherCoach = await prisma.coach.create({
+      data: {
+        firstName: "Coach",
+        lastName: "Room Share",
+        phone: `coach-room-share-${Date.now()}`,
+        sportId: fx.karate.id,
+      },
+    });
+    await prisma.clubSettings.update({
+      where: { id: "default" },
+      data: { allowSameRoomConcurrentGroups: true },
+    });
+
+    await createSessionForGroup(fx.adultBjj.id, {
+      sessionDate,
+      startTime: "18:00",
+      endTime: "19:30",
+      coachId: fx.coach.id,
+      room: "Dojo A",
+    });
+
+    const roomError = await validateSessionSlot({
+      groupId: fx.adultKarate.id,
+      groupName: fx.adultKarate.name,
+      sessionDate,
+      startTime: "18:30",
+      endTime: "19:30",
+      coachId: otherCoach.id,
+      room: "Dojo A",
+      excludeIds: [],
+      groupSportId: fx.karate.id,
+    });
+
+    expect(roomError).toBeNull();
+  });
+
+  it("allows one qualified coach to train two groups in the same room when enabled", async () => {
+    const fx = await dojoFixture();
+    const sessionDate = new Date("2026-05-18T18:00:00.000Z");
+    await prisma.clubSettings.update({
+      where: { id: "default" },
+      data: { allowCoachConcurrentSameRoomQualified: true },
+    });
+
+    await createSessionForGroup(fx.adultBjjOverlap.id, {
+      sessionDate,
+      startTime: "18:00",
+      endTime: "19:30",
+      coachId: fx.coach.id,
+      room: "Dojo A",
+    });
+
+    const coachError = await validateSessionSlot({
+      groupId: fx.adultBjj.id,
+      groupName: fx.adultBjj.name,
+      sessionDate,
+      startTime: "18:30",
+      endTime: "19:00",
+      coachId: fx.coach.id,
+      room: "Dojo A",
+      excludeIds: [],
+      groupSportId: fx.bjj.id,
+    });
+
+    expect(coachError).toBeNull();
+  });
+
+  it("keeps coach conflicts when same-room coach sharing is enabled but the coach is not qualified", async () => {
+    const fx = await dojoFixture();
+    const sessionDate = new Date("2026-05-18T18:00:00.000Z");
+    await prisma.clubSettings.update({
+      where: { id: "default" },
+      data: { allowCoachConcurrentSameRoomQualified: true },
+    });
+
+    await createSessionForGroup(fx.adultKarate.id, {
+      sessionDate,
+      startTime: "18:00",
+      endTime: "19:30",
+      coachId: fx.coach.id,
+      room: "Dojo A",
+    });
+
+    const coachError = await validateSessionSlot({
+      groupId: fx.adultBjj.id,
+      groupName: fx.adultBjj.name,
+      sessionDate,
+      startTime: "18:30",
+      endTime: "19:00",
+      coachId: fx.coach.id,
+      room: "Dojo A",
+      excludeIds: [],
+      groupSportId: fx.bjj.id,
+    });
+
+    expect(coachError).toMatch(/coach/i);
+  });
 });
 
 describe("api route scenarios", () => {
