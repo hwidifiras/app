@@ -33,7 +33,7 @@ PostgreSQL test proof, and known areas that still require manual browser QA.
 | Attendance correction/undo | Correction writes before/after and balance delta in same transaction. | Server tests and progress doc indicate coverage. | Proven |
 | Planning weekly view | Staff can read sessions by week/day and select details. | Desktop/mobile screenshots for `/sessions` passed. | Visual |
 | Planning conflicts | Coach/room conflicts honor preferences and specialties. | Implemented direction; needs manual overlapping-case QA. | Partial |
-| Working days | Closed empty days hide; days with sessions stay visible. | Implemented direction and screenshot proof; blocked-uncheck case needs manual QA. | Partial |
+| Working days | Closed empty days hide; days with sessions stay visible; closing a day with future sessions or active horaires is blocked. | Screenshot proof plus server regression test on `gymday_saas_test`. | Proven |
 | Groups and horaires | Groups use age/gender policies and weekly schedules. | Progress docs indicate implementation; current sweep focused `/settings/schedules`, not `/groups`. | Partial |
 | Coach specialties | Specialty qualification informs planning conflict/eligibility. | Progress docs indicate implementation; needs richer browser QA. | Partial |
 | Club settings | Working days, pointage, conflicts, receipts are configurable. | Desktop/mobile screenshots for `/settings/club` passed. | Visual |

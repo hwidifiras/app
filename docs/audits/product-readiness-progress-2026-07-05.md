@@ -110,6 +110,14 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Tables should collapse into readable mobile cards instead of horizontal scrolling.
 - Dangerous actions should be visually separate and require reason when they affect money, history, or official documents.
 
+## Latest Staging Checkpoint - 2026-07-07
+
+- Current handoff pack: `docs/audits/product-readiness-staging-2026-07-07/`.
+- Screenshot evidence remains local/ignored at `screenshots/product-readiness-staging-2026-07-06/`.
+- Raw screenshot QA: 24 desktop/mobile captures, 0 detected horizontal-overflow screens, 0 application-error screens.
+- Server test evidence: commit `7233093`, disposable PostgreSQL database `gymday_saas_test`, 7 migrations applied, 16 test files passed, 159 tests passed.
+- Additional coverage added in this checkpoint: closing a club working day is rejected when future sessions or active horaires still exist on that day.
+
 ## Remaining Priority List
 
 ### P0 - Complete Recoverability Audit
