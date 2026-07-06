@@ -83,6 +83,7 @@ async function resetData() {
     prisma.offerApplication.deleteMany(),
     prisma.offer.deleteMany(),
     prisma.attendance.deleteMany(),
+    prisma.receipt.deleteMany(),
     prisma.payment.deleteMany(),
     prisma.memberSubscription.deleteMany(),
     prisma.groupMember.deleteMany(),
