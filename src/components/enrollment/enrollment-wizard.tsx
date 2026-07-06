@@ -10,6 +10,8 @@ import { ReceptionInfoCard } from "@/components/ui/reception-info-card";
 import { EnrollmentCompletionPanel } from "@/components/enrollment/enrollment-completion-panel";
 import { EnrollmentLineEditor } from "@/components/enrollment/enrollment-line-editor";
 import { EnrollmentQuotePanel } from "@/components/enrollment/enrollment-quote-panel";
+import { EnrollmentStepper } from "@/components/enrollment/enrollment-stepper";
+import { EnrollmentSummarySidebar, type EnrollmentLineSummary } from "@/components/enrollment/enrollment-summary-sidebar";
 import {
   lineCompatibilityIssue,
   newEnrollmentLine,
@@ -319,7 +321,7 @@ export function EnrollmentWizard({
           (l.memberType !== "KID" || (l.parentName && l.parentPhone)))),
   );
   const linesValid = linesComplete && lineIssues.every((issue) => !issue);
-  const lineSummaries = useMemo(
+  const lineSummaries = useMemo<Array<EnrollmentLineSummary & { index: number }>>(
     () =>
       lines.map((line, index) => {
         const member = members.find((item) => item.id === line.memberId);
@@ -407,29 +409,7 @@ export function EnrollmentWizard({
         />
       ) : null}
 
-      <div className="enrollment-stepper grid grid-cols-3 gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-2 shadow-[var(--shadow-panel)]">
-        {["Élèves", "Offre", "Devis"].map((label, index) => {
-          const itemStep = index + 1;
-          const active = step === itemStep;
-          const done = step > itemStep;
-          return (
-            <div
-              key={label}
-              aria-current={active ? "step" : undefined}
-              className={`rounded-lg border px-2 py-2 text-center text-xs font-bold transition ${
-                active
-                  ? "border-[var(--primary)] bg-[var(--primary)] text-white shadow-[var(--shadow-panel)]"
-                  : done
-                    ? "border-[var(--primary)]/25 bg-[var(--primary)]/10 text-[var(--primary)]"
-                    : "border-transparent bg-[var(--surface-raised)] text-[var(--muted-foreground)]"
-              }`}
-            >
-              <span className="block text-[0.62rem] opacity-80">{done ? "Terminée" : `Étape ${itemStep}`}</span>
-              {label}
-            </div>
-          );
-        })}
-      </div>
+      <EnrollmentStepper step={step} />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
         <div className="min-w-0 space-y-4">
@@ -563,69 +543,17 @@ export function EnrollmentWizard({
           ) : null}
         </div>
 
-        <aside className="order-first rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)] lg:sticky lg:top-20 lg:order-none">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--primary)]">Résumé</p>
-              <h2 className="mt-1 text-base font-semibold">Inscription en cours</h2>
-            </div>
-            <span className="rounded-full bg-[var(--primary)]/10 px-2.5 py-1 text-xs font-bold text-[var(--primary)]">
-              Étape {step}/3
-            </span>
-          </div>
-
-          <div className="mt-4 space-y-3">
-            {lineSummaries.map((line) => (
-              <div key={line.key} className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 text-sm">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-semibold">{line.title}</p>
-                  <span className={`rounded-full px-2 py-0.5 text-[0.65rem] font-bold ${line.missing.length ? "bg-amber-100 text-amber-800" : "bg-green-100 text-green-800"}`}>
-                    {line.missing.length ? "À compléter" : "Prêt"}
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-[var(--muted-foreground)]">{line.groupName}</p>
-                <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">{line.planName}</p>
-                {line.issue ? <p className="mt-2 text-xs font-medium text-red-600">{line.issue}</p> : null}
-              </div>
-            ))}
-          </div>
-
-          {missingSummary.length > 0 ? (
-            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-              <p className="font-bold">À compléter</p>
-              <ul className="mt-1 space-y-1">
-                {missingSummary.slice(0, 4).map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <div className="mt-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs font-medium text-green-900">
-              Les lignes sont prêtes pour le devis.
-            </div>
-          )}
-
-          <dl className="mt-4 divide-y divide-[var(--border)] text-sm">
-            <div className="flex items-center justify-between gap-3 py-2">
-              <dt className="text-[var(--muted-foreground)]">Offre</dt>
-              <dd className="text-right font-medium">{selectedOffer?.name ?? "Aucune"}</dd>
-            </div>
-            <div className="flex items-center justify-between gap-3 py-2">
-              <dt className="text-[var(--muted-foreground)]">Total devis</dt>
-              <dd className="text-right font-bold">{quote ? formatMoney(quote.totalFinalCents) : "À calculer"}</dd>
-            </div>
-            <div className="flex items-center justify-between gap-3 py-2">
-              <dt className="text-[var(--muted-foreground)]">À encaisser</dt>
-              <dd className="text-right font-bold text-[var(--primary)]">{quote ? formatMoney(quotePaidCents) : "À calculer"}</dd>
-            </div>
-            <div className="flex items-center justify-between gap-3 py-2">
-              <dt className="text-[var(--muted-foreground)]">Reste après paiement</dt>
-              <dd className={`text-right font-bold ${quote && quoteBalanceCents > 0 ? "text-[var(--warning)]" : "text-[var(--success)]"}`}>
-                {quote ? formatMoney(quoteBalanceCents) : "À calculer"}
-              </dd>
-            </div>
-          </dl>
-        </aside>
+        <EnrollmentSummarySidebar
+          step={step}
+          lineSummaries={lineSummaries}
+          missingSummary={missingSummary}
+          offerName={selectedOffer?.name ?? "Aucune"}
+          quoteTotalLabel={quote ? formatMoney(quote.totalFinalCents) : "À calculer"}
+          quotePaidLabel={quote ? formatMoney(quotePaidCents) : "À calculer"}
+          quoteBalanceLabel={quote ? formatMoney(quoteBalanceCents) : "À calculer"}
+          hasQuote={Boolean(quote)}
+          hasBalanceDue={quoteBalanceCents > 0}
+        />
       </div>
     </form>
   );
