@@ -32,9 +32,10 @@ export function isReminderCooldownActive(lastReminderAt: Date | null, now = new 
 
 export async function getLastReminderDatesByMemberIds(
   memberIds: string[],
+  options: { tenantId?: string } = {},
 ): Promise<Map<string, Date>> {
   if (memberIds.length === 0) return new Map();
-  const tenantId = getRequiredTenantId();
+  const tenantId = options.tenantId ?? getRequiredTenantId();
 
   const logs = await prisma.auditLog.findMany({
     where: {
@@ -58,11 +59,11 @@ export async function getLastReminderDatesByMemberIds(
 
 export async function enrichDebtsWithReminderMeta(
   debts: MemberDebtRow[],
-  options: { now?: Date } = {},
+  options: { now?: Date; tenantId?: string } = {},
 ): Promise<DashboardDebtReminderRow[]> {
   const now = options.now ?? new Date();
-  const lastReminders = await getLastReminderDatesByMemberIds(debts.map((debt) => debt.memberId));
-  const tenantId = getRequiredTenantId();
+  const tenantId = options.tenantId ?? getRequiredTenantId();
+  const lastReminders = await getLastReminderDatesByMemberIds(debts.map((debt) => debt.memberId), { tenantId });
 
   const members = await prisma.member.findMany({
     where: { tenantId, id: { in: debts.map((debt) => debt.memberId) } },

@@ -244,7 +244,7 @@ export default async function Home() {
   sevenDaysFromToday.setUTCDate(sevenDaysFromToday.getUTCDate() + 7);
 
   try {
-    const clubSettings = await getClubSettings();
+    const clubSettings = await getClubSettings({ tenantId });
 
     const [
       fetchedActiveMembers,
@@ -395,7 +395,7 @@ export default async function Home() {
       debtThresholdCents: clubSettings.debtAlertThresholdCents,
       now,
     }).slice(0, 15);
-    debts = await enrichDebtsWithReminderMeta(rawDebts, { now });
+    debts = await enrichDebtsWithReminderMeta(rawDebts, { now, tenantId });
     emailConfigured = isPaymentReminderEmailConfigured();
 
     const operationalSessions = fetchedSessions.map((session) => {

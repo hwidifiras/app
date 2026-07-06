@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_WORKING_DAYS, normalizeWorkingDays, type ClubDay } from "@/lib/club-working-days";
-import { getTenantId } from "@/lib/tenant-context";
+import { getTenantContext, getTenantId, withTenantContext } from "@/lib/tenant-context";
 
 export type ClubSettingsData = {
   id: string;
@@ -132,8 +132,21 @@ export async function writeClubLogoUrl(clubLogoUrl: string): Promise<void> {
   await prisma.clubSettings.create({ data: { ...(tenantId ? { tenantId } : {}), clubLogoUrl } });
 }
 
-export async function getClubSettings(): Promise<ClubSettingsData> {
-  const tenantId = getTenantId();
+export async function getClubSettings(options: { tenantId?: string | null } = {}): Promise<ClubSettingsData> {
+  const tenantId = options.tenantId ?? getTenantId();
+
+  if (options.tenantId) {
+    const currentContext = getTenantContext();
+    return withTenantContext(
+      {
+        tenantId: options.tenantId,
+        tenantSlug: currentContext?.tenantSlug ?? "unknown",
+        host: currentContext?.host,
+      },
+      () => getClubSettings({ tenantId: null }),
+    );
+  }
+
   const row = await prisma.clubSettings.findFirst({
     where: tenantId ? { tenantId } : { tenantId: null },
   });
