@@ -12,100 +12,10 @@ import {
   coachSportOverrideAuditDetails,
   validateCoachSportEligibility,
 } from "@/lib/coach-qualification-policy";
+import { groupAuditSnapshot, readGroupIdFromBody, toGroupDto } from "@/lib/group-route-helpers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-type DayOfWeekValue =
-  | "MONDAY"
-  | "TUESDAY"
-  | "WEDNESDAY"
-  | "THURSDAY"
-  | "FRIDAY"
-  | "SATURDAY"
-  | "SUNDAY";
-
-type GroupAuditSource = {
-  id: string;
-  name: string;
-  groupType: string;
-  genderPolicy: string;
-  sportId: string;
-  coachId: string;
-  capacity: number;
-  room: string | null;
-  isActive: boolean;
-  sport?: { name: string } | null;
-  coach?: { firstName: string; lastName: string } | null;
-};
-
-function groupAuditSnapshot(group: GroupAuditSource) {
-  return {
-    id: group.id,
-    name: group.name,
-    groupType: group.groupType,
-    genderPolicy: group.genderPolicy,
-    sportId: group.sportId,
-    sportName: group.sport?.name ?? null,
-    coachId: group.coachId,
-    coachName: group.coach ? `${group.coach.firstName} ${group.coach.lastName}` : null,
-    capacity: group.capacity,
-    room: group.room,
-    isActive: group.isActive,
-  };
-}
-
-function toGroupDto(group: {
-  id: string;
-  name: string;
-  groupType: "KIDS" | "ADULTS" | "MIXED";
-  genderPolicy: "MALE_ONLY" | "FEMALE_ONLY" | "MIXED";
-  sportId: string;
-  coachId: string;
-  capacity: number;
-  room: string | null;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  sport: { name: string };
-  coach: { firstName: string; lastName: string };
-  schedules: {
-    id: string;
-    dayOfWeek: DayOfWeekValue;
-    startTime: string;
-    durationMinutes: number;
-    effectiveFrom: Date;
-    effectiveTo: Date | null;
-    createdAt: Date;
-  }[];
-  _count?: { members: number };
-}) {
-  return {
-    id: group.id,
-    name: group.name,
-    activeMembers: group._count?.members ?? 0,
-    groupType: group.groupType,
-    genderPolicy: group.genderPolicy,
-    sportId: group.sportId,
-    sportName: group.sport.name,
-    coachId: group.coachId,
-    coachName: `${group.coach.firstName} ${group.coach.lastName}`,
-    capacity: group.capacity,
-    room: group.room,
-    isActive: group.isActive,
-    schedules: group.schedules.map((s) => ({
-      id: s.id,
-      dayOfWeek: s.dayOfWeek,
-      startTime: s.startTime,
-      durationMinutes: s.durationMinutes,
-      effectiveFrom: s.effectiveFrom.toISOString(),
-      effectiveTo: s.effectiveTo?.toISOString() ?? null,
-      createdAt: s.createdAt.toISOString(),
-    })),
-    createdAt: group.createdAt.toISOString(),
-    updatedAt: group.updatedAt.toISOString(),
-  };
-}
 
 export async function GET(request: Request) {
   let actor;
@@ -276,15 +186,11 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "JSON invalide" }, { status: 400 });
   }
 
-  if (typeof body !== "object" || body === null || !("groupId" in body)) {
-    return NextResponse.json({ error: "groupId requis" }, { status: 400 });
+  const parsedGroupId = readGroupIdFromBody(body);
+  if (!parsedGroupId.ok) {
+    return NextResponse.json({ error: parsedGroupId.error }, { status: 400 });
   }
-
-  const groupId = (body as { groupId?: unknown }).groupId;
-
-  if (typeof groupId !== "string" || groupId.trim().length === 0) {
-    return NextResponse.json({ error: "groupId invalide" }, { status: 400 });
-  }
+  const groupId = parsedGroupId.groupId;
 
   const updatePayload = updateGroupSchema.safeParse((body as Record<string, unknown>).payload);
 
@@ -570,15 +476,11 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "JSON invalide" }, { status: 400 });
   }
 
-  if (typeof body !== "object" || body === null || !("groupId" in body)) {
-    return NextResponse.json({ error: "groupId requis" }, { status: 400 });
+  const parsedGroupId = readGroupIdFromBody(body);
+  if (!parsedGroupId.ok) {
+    return NextResponse.json({ error: parsedGroupId.error }, { status: 400 });
   }
-
-  const groupId = (body as { groupId?: unknown }).groupId;
-
-  if (typeof groupId !== "string" || groupId.trim().length === 0) {
-    return NextResponse.json({ error: "groupId invalide" }, { status: 400 });
-  }
+  const groupId = parsedGroupId.groupId;
 
   try {
     const deactivated = await prisma.$transaction(async (tx) => {
