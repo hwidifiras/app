@@ -1,14 +1,15 @@
 import { beforeEach } from "vitest";
 
-process.env.NODE_ENV = "test";
-process.env.DATABASE_URL =
-  process.env.TEST_DATABASE_URL || "postgresql://gymday:gymday@localhost:5432/gymday_test?schema=public";
-process.env.AUTH_SECRET = "test-secret";
-process.env.APP_TIMEZONE = "Africa/Tunis";
-process.env.SAAS_ROOT_DOMAIN = "localhost";
-process.env.DEFAULT_TENANT_SLUG = "we-discipline";
-process.env.RESEND_API_KEY = "";
-process.env.PASSWORD_RESET_FROM = "";
+Object.assign(process.env, {
+  NODE_ENV: "test",
+  DATABASE_URL: process.env.TEST_DATABASE_URL || "postgresql://gymday:gymday@localhost:5432/gymday_test?schema=public",
+  AUTH_SECRET: "test-secret",
+  APP_TIMEZONE: "Africa/Tunis",
+  SAAS_ROOT_DOMAIN: "localhost",
+  DEFAULT_TENANT_SLUG: "we-discipline",
+  RESEND_API_KEY: "",
+  PASSWORD_RESET_FROM: "",
+});
 
 export const TEST_TENANT_ID = "tenant_test";
 export const TEST_TENANT_SLUG = "we-discipline";
