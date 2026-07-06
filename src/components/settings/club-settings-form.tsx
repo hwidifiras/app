@@ -3,19 +3,18 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { ClubAlertsSection } from "@/components/settings/club-alerts-section";
+import { ClubCheckinRulesSection } from "@/components/settings/club-checkin-rules-section";
 import { ClubIdentitySection } from "@/components/settings/club-identity-section";
 import { ClubPlanningRulesSection } from "@/components/settings/club-planning-rules-section";
 import { ClubReceiptSettings } from "@/components/settings/club-receipt-settings";
-import { SettingsToggleRow } from "@/components/settings/settings-toggle-row";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
-import { FormActions, FormField, FormGrid, FormSection, FormSectionNav } from "@/components/ui/form-layout";
-import { FieldControl } from "@/components/ui/field-control";
+import { FormActions, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import {
   DEFAULT_WORKING_DAYS,
   WORKING_DAY_ORDER,
   type ClubDay,
 } from "@/lib/club-working-days";
-import { MONEY_INPUT_SUFFIX } from "@/lib/money";
 
 export type ClubSettingsFormData = {
   clubName: string;
@@ -277,35 +276,14 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
         onRemoveLogo={() => void removeLogo()}
       />
 
-      <FormSection
-        id="club-checkin"
-        title="Pointage & paiements"
-        description="Définissez ce que l'équipe peut accepter pendant le pointage."
-      >
-        <div className="space-y-3">
-          <SettingsToggleRow
-            id="allowPartialPayment"
-            label="Pointage avec paiement partiel"
-            description="Un membre ayant payé une partie de son abonnement peut être pointé présent."
-            checked={allowPartialPayment}
-            onChange={setAllowPartialPayment}
-          />
-          <SettingsToggleRow
-            id="allowWithoutSubscription"
-            label="Autoriser exceptionnellement sans abonnement"
-            description="L'équipe pourra enregistrer un passage motivé pour une personne sans abonnement actif."
-            checked={allowWithoutSubscription}
-            onChange={setAllowWithoutSubscription}
-          />
-          <SettingsToggleRow
-            id="absentConsumesSession"
-            label="Une absence consomme une séance"
-            description="Lorsqu'elle est activée, une absence déduit une séance du quota restant."
-            checked={absentConsumesSession}
-            onChange={setAbsentConsumesSession}
-          />
-        </div>
-      </FormSection>
+      <ClubCheckinRulesSection
+        allowPartialPayment={allowPartialPayment}
+        allowWithoutSubscription={allowWithoutSubscription}
+        absentConsumesSession={absentConsumesSession}
+        onAllowPartialPaymentChange={setAllowPartialPayment}
+        onAllowWithoutSubscriptionChange={setAllowWithoutSubscription}
+        onAbsentConsumesSessionChange={setAbsentConsumesSession}
+      />
 
       <ClubPlanningRulesSection
         workingDays={workingDays}
@@ -316,50 +294,12 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
         onAllowCoachConcurrentSameRoomQualifiedChange={setAllowCoachConcurrentSameRoomQualified}
       />
 
-      <FormSection
-        id="club-alerts"
-        title="Alertes et remises"
-        description="Réglez les montants visibles et la marge de remise accordée à l'équipe."
-      >
-        <FormGrid>
-          <FormField
-            label="Afficher les dettes à partir de"
-            htmlFor="debtThreshold"
-            hint="Laissez vide ou saisissez 0 pour afficher toutes les dettes."
-          >
-            <FieldControl suffix={MONEY_INPUT_SUFFIX}>
-              <input
-                id="debtThreshold"
-                type="text"
-                inputMode="decimal"
-                className="field pr-10"
-                value={debtThresholdAmount}
-                onChange={(e) => setDebtThresholdAmount(e.target.value)}
-                placeholder="0"
-              />
-            </FieldControl>
-          </FormField>
-          <FormField
-            label="Réduction maximale de l'équipe"
-            htmlFor="maxStaffDiscount"
-            hint="Limite appliquée aux comptes non administrateurs."
-          >
-            <FieldControl suffix="%">
-              <input
-                id="maxStaffDiscount"
-                type="number"
-                min={0}
-                max={100}
-                step={1}
-                className="field pr-10"
-                value={maxStaffDiscountPercent}
-                onChange={(e) => setMaxStaffDiscountPercent(e.target.value)}
-                required
-              />
-            </FieldControl>
-          </FormField>
-        </FormGrid>
-      </FormSection>
+      <ClubAlertsSection
+        debtThresholdAmount={debtThresholdAmount}
+        maxStaffDiscountPercent={maxStaffDiscountPercent}
+        onDebtThresholdAmountChange={setDebtThresholdAmount}
+        onMaxStaffDiscountPercentChange={setMaxStaffDiscountPercent}
+      />
 
       <FormSection
         id="club-receipts"
