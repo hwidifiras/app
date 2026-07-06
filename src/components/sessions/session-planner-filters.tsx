@@ -5,6 +5,7 @@ import {
   FilterField,
   ListSearch,
   MobileFiltersButton,
+  MobileFilterSheet,
 } from "@/components/ui/list-controls";
 import type { SessionStatusDto } from "@/types/session";
 
@@ -106,5 +107,67 @@ export function PlanningFiltersToolbar({
         </div>
       ) : null}
     </div>
+  );
+}
+
+type PlanningMobileFilterSheetProps = {
+  open: boolean;
+  onClose: () => void;
+  onReset: () => void;
+  activeFilterCount: number;
+  resultCount: number;
+  groupId: string;
+  groupsOptions: Array<{ id: string; name: string }>;
+  onGroupChange: (groupId: string) => void;
+  dayFilter: string;
+  onDayFilterChange: (value: string) => void;
+  statusFilter: "ALL" | SessionStatusDto;
+  onStatusFilterChange: (value: "ALL" | SessionStatusDto) => void;
+};
+
+export function PlanningMobileFilterSheet({
+  open,
+  onClose,
+  onReset,
+  activeFilterCount,
+  resultCount,
+  groupId,
+  groupsOptions,
+  onGroupChange,
+  dayFilter,
+  onDayFilterChange,
+  statusFilter,
+  onStatusFilterChange,
+}: PlanningMobileFilterSheetProps) {
+  return (
+    <MobileFilterSheet
+      open={open}
+      onClose={onClose}
+      onReset={onReset}
+      activeCount={activeFilterCount}
+      resultCount={resultCount}
+      title="Filtrer le planning"
+    >
+      <FilterField label="Groupe">
+        <select value={groupId} onChange={(event) => onGroupChange(event.target.value)} className="field">
+          <option value="">Tous les groupes</option>
+          {groupsOptions.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+        </select>
+      </FilterField>
+      <FilterField label="Jour">
+        <select value={dayFilter} onChange={(event) => onDayFilterChange(event.target.value)} className="field">
+          <option value="ALL">Tous les jours</option>
+          <option value="1">Lundi</option><option value="2">Mardi</option><option value="3">Mercredi</option>
+          <option value="4">Jeudi</option><option value="5">Vendredi</option><option value="6">Samedi</option><option value="0">Dimanche</option>
+        </select>
+      </FilterField>
+      <FilterField label="Statut">
+        <select value={statusFilter} onChange={(event) => onStatusFilterChange(event.target.value as "ALL" | SessionStatusDto)} className="field">
+          <option value="ALL">Tous les statuts</option>
+          <option value="PLANNED">Planifiées</option><option value="RESCHEDULED">Reportées</option>
+          <option value="CANCELLED">Annulées</option><option value="COMPLETED">Terminées</option>
+        </select>
+      </FilterField>
+    </MobileFilterSheet>
   );
 }
