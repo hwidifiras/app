@@ -415,3 +415,17 @@ The SaaS staging stack at `/opt/we-discipline-saas-staging` is now on `codex/pha
 - Smoke checks: `/login` returns `200`; unauthenticated `/settings/club`, `/payments`, and `/subscriptions` redirect to `/login`.
 
 Authenticated browser QA on staging is still pending.
+
+## Authenticated Staging QA Checkpoint
+
+The staging stack was updated to commit `51f2692` and authenticated QA was run through the local tunnel at `http://127.0.0.1:3002`.
+
+- Added `AUTH_COOKIE_SECURE=false` support for the private staging compose stack so production-mode staging can be tested over the internal HTTP tunnel. Production remains secure by default unless this env var is explicitly overridden.
+- Fixed `/api/setup-guide` by passing the authenticated tenant id into setup progress calculations; authenticated shell probes now return `200` for `/api/account`, `/api/notifications`, `/api/setup-guide`, `/api/navigation-badges`, and `/api/club-settings`.
+- Fixed dashboard degraded mode by passing the authenticated tenant id into dashboard settings and payment-reminder enrichment helpers.
+- Verified authenticated `/` returns `200` without degraded-mode copy or `TENANT_CONTEXT_REQUIRED`.
+- Fresh staging logs after the final deploy show app start/migration output only; no tenant-context runtime error was reproduced.
+- Captured current-branch screenshots at desktop `1440x900` and mobile `390x844` for: `/`, `/members`, `/subscriptions`, `/sessions`, `/payments/new`, `/enrollment`, `/settings`, `/settings/club`, `/settings/schedules`, `/settings/users`, `/settings/data-import`, and `/logs`.
+- Screenshot automation recorded `0` horizontal-overflow or application-error flags across 24 captures.
+
+Raw screenshots and `qa-results.json` are stored locally under ignored folder `screenshots/product-readiness-staging-2026-07-06/` to avoid committing client data.
