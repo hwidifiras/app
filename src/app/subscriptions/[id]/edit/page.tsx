@@ -4,8 +4,10 @@ import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { SubscriptionEditForm } from "@/components/subscriptions/subscription-edit-form";
+import { MemberEnrollmentRecoveryPanel } from "@/components/members/member-enrollment-recovery-panel";
 import { sumLedgerRows } from "@/lib/payment-ledger";
 import { getAuthUser } from "@/lib/request-user";
+import { getEnrollmentRecoveryCandidatesForSubscription } from "@/lib/enrollment-recovery";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -57,6 +59,10 @@ export default async function EditSubscriptionPage({ params }: { params: Promise
           select: { id: true, name: true, price: true, totalSessions: true, validityDays: true },
         }),
       ];
+  const enrollmentRecoveryCandidates = await getEnrollmentRecoveryCandidatesForSubscription(
+    subscription.id,
+    authUser.tenantId,
+  );
 
   return (
     <main className="app-shell py-4 md:py-8">
@@ -73,22 +79,38 @@ export default async function EditSubscriptionPage({ params }: { params: Promise
         description="Ajuster dates, formule, séances ou statut avec motif quand une valeur sensible change."
       />
 
-      <section className="panel p-4 sm:p-6">
-        <SubscriptionEditForm
-          subscription={{
-            id: subscription.id,
-            memberName: `${subscription.member.firstName} ${subscription.member.lastName}`,
-            planId: subscription.planId,
-            startDate: subscription.startDate.toISOString(),
-            endDate: subscription.endDate?.toISOString() ?? null,
-            amount: subscription.amount,
-            totalPaid: sumLedgerRows(subscription.payments),
-            remainingSessions: subscription.remainingSessions,
-            status: subscription.status,
-          }}
-          plansOptions={plansOptions}
-        />
-      </section>
+      <div className="space-y-4">
+        <section className="panel p-4 sm:p-6">
+          <SubscriptionEditForm
+            subscription={{
+              id: subscription.id,
+              memberName: `${subscription.member.firstName} ${subscription.member.lastName}`,
+              planId: subscription.planId,
+              startDate: subscription.startDate.toISOString(),
+              endDate: subscription.endDate?.toISOString() ?? null,
+              amount: subscription.amount,
+              totalPaid: sumLedgerRows(subscription.payments),
+              remainingSessions: subscription.remainingSessions,
+              status: subscription.status,
+            }}
+            plansOptions={plansOptions}
+          />
+        </section>
+
+        <section className="panel border-blue-100 bg-blue-50/35 p-4 sm:p-5">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--primary)]">
+            Annulation inscription
+          </p>
+          <h2 className="mt-1 text-sm font-semibold text-[var(--foreground)]">
+            Revenir sur l&apos;inscription complète
+          </h2>
+          <p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">
+            Si cet abonnement vient d&apos;une inscription récente encore inutilisée, annulez tout le lot avec motif:
+            paiements inversés, reçus annulés, abonnement résilié et affectation fermée.
+          </p>
+          <MemberEnrollmentRecoveryPanel candidates={enrollmentRecoveryCandidates} />
+        </section>
+      </div>
     </main>
   );
 }

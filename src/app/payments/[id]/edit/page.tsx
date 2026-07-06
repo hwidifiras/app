@@ -3,8 +3,10 @@ import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { PaymentEditForm } from "@/components/payments/payment-edit-form";
+import { MemberEnrollmentRecoveryPanel } from "@/components/members/member-enrollment-recovery-panel";
 import { buildReceiptDeliveryStatus, RECEIPT_EMAIL_AUDIT_ACTIONS } from "@/lib/receipt-delivery-status";
 import { getAuthUser } from "@/lib/request-user";
+import { getEnrollmentRecoveryCandidatesForSubscription } from "@/lib/enrollment-recovery";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -31,11 +33,18 @@ export default async function EditPaymentPage({ params }: { params: Promise<{ id
   let hasError = false;
   let payment: Awaited<ReturnType<typeof getPayment>> = null;
   let receiptDeliveryLogs: Awaited<ReturnType<typeof getReceiptDeliveryLogs>> = [];
+  let enrollmentRecoveryCandidates: Awaited<ReturnType<typeof getEnrollmentRecoveryCandidatesForSubscription>> = [];
 
   try {
     payment = await getPayment(id, authUser.tenantId);
     if (payment?.receipt) {
       receiptDeliveryLogs = await getReceiptDeliveryLogs(payment.receipt.id, authUser.tenantId);
+    }
+    if (payment?.memberSubscription.id) {
+      enrollmentRecoveryCandidates = await getEnrollmentRecoveryCandidatesForSubscription(
+        payment.memberSubscription.id,
+        authUser.tenantId,
+      );
     }
   } catch {
     hasError = true;
@@ -73,13 +82,29 @@ export default async function EditPaymentPage({ params }: { params: Promise<{ id
         description="Créer une correction tracée avec le motif et le nouveau montant."
       />
 
-      <PaymentEditForm
-        payment={{
-          ...payment,
-          paymentDate: payment.paymentDate.toISOString(),
-        }}
-        receiptDeliveryLogs={receiptDeliveryLogs}
-      />
+      <div className="space-y-4">
+        <PaymentEditForm
+          payment={{
+            ...payment,
+            paymentDate: payment.paymentDate.toISOString(),
+          }}
+          receiptDeliveryLogs={receiptDeliveryLogs}
+        />
+
+        <section className="panel border-blue-100 bg-blue-50/35 p-4 sm:p-5">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--primary)]">
+            Annulation inscription
+          </p>
+          <h2 className="mt-1 text-sm font-semibold text-[var(--foreground)]">
+            Revenir sur l&apos;inscription complète
+          </h2>
+          <p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">
+            Si ce paiement appartient à une inscription récente encore inutilisée, annulez tout le lot avec motif:
+            paiement inversé, reçu annulé, abonnement résilié et affectation fermée.
+          </p>
+          <MemberEnrollmentRecoveryPanel candidates={enrollmentRecoveryCandidates} />
+        </section>
+      </div>
     </main>
   );
 }

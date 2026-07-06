@@ -146,3 +146,45 @@ export async function getEnrollmentRecoveryCandidatesForMember(
 
   return candidates;
 }
+
+export async function getEnrollmentRecoveryCandidatesForSubscription(
+  subscriptionId: string,
+  tenantId?: string | null,
+): Promise<EnrollmentRecoveryCandidate[]> {
+  const logs = await prisma.auditLog.findMany({
+    where: {
+      tenantId: tenantId ?? undefined,
+      action: "ENROLLMENT_APPLIED",
+      entityType: "Enrollment",
+      details: { contains: subscriptionId },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 8,
+  });
+
+  const candidates: EnrollmentRecoveryCandidate[] = [];
+
+  for (const log of logs) {
+    const details = parseEnrollmentRecoveryDetails(log.details);
+    if (!details || !details.subscriptionIds.includes(subscriptionId)) continue;
+
+    const alreadyVoided = await isEnrollmentRecoveryVoided(details.recoveryKey, tenantId);
+    const blockedReason = alreadyVoided
+      ? "Inscription déjà annulée avec trace."
+      : await prisma.$transaction((tx) => getEnrollmentRevertBlockReason(tx, details.undoSnapshot, tenantId));
+
+    candidates.push({
+      auditLogId: log.id,
+      recoveryKey: details.recoveryKey,
+      createdAt: log.createdAt.toISOString(),
+      memberIds: details.memberIds,
+      subscriptionIds: details.subscriptionIds,
+      summary: details.summary,
+      totalFinalCents: details.totalFinalCents,
+      blockedReason,
+      alreadyVoided,
+    });
+  }
+
+  return candidates;
+}
