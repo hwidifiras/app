@@ -543,11 +543,12 @@ describe("temporary data import", () => {
         "Déjà payé",
         "Séances restantes",
       ],
-      ["", "", "", "", "", "", "", "", "", "", "", "", ""],
+      ["", "", "", "", "", "", "", "", "", "", "", "", "", ""],
       [
         "Amine",
         "Client",
         "Adulte",
+        "Homme",
         "0612349999",
         "",
         "2026-06-01",
@@ -576,6 +577,7 @@ describe("temporary data import", () => {
         "Prénom",
         "Nom",
         "Type membre",
+        "Genre",
         "Téléphone",
         "Téléphone parent",
         "Date inscription",
@@ -3485,7 +3487,8 @@ describe("enrollment revert", () => {
     const groupMember = await prisma.groupMember.findUnique({
       where: { tenantId_groupId_memberId: { tenantId: TEST_TENANT_ID, groupId: fx.adultBjj.id, memberId: fx.adult.id } },
     });
-    expect(groupMember).toBeNull();
+    expect(groupMember).toMatchObject({ status: "INACTIVE" });
+    expect(groupMember?.endDate).toBeInstanceOf(Date);
   });
 
   it("reverts a discounted renewal and restores the previous subscription", async () => {
