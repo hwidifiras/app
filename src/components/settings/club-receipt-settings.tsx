@@ -1,6 +1,7 @@
 "use client";
 
-import { QrCode, ReceiptText, ShieldCheck } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, QrCode, ReceiptText, ShieldCheck } from "lucide-react";
 
 import { SettingsToggleRow } from "@/components/settings/settings-toggle-row";
 import { FormField, FormGrid } from "@/components/ui/form-layout";
@@ -39,117 +40,149 @@ export function ClubReceiptSettings({
   onReceiptEmailDefaultChange: (value: boolean) => void;
   onReceiptPrintDefaultChange: (value: boolean) => void;
 }) {
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const prefix = receiptPrefix.trim().toUpperCase() || "WD";
   const parsedSequence = Number.parseInt(nextReceiptSequence, 10);
   const sequence = Number.isFinite(parsedSequence) && parsedSequence > 0 ? parsedSequence : 1;
   const sampleReceiptNumber = `${prefix}-${new Date().getFullYear()}-${String(sequence).padStart(6, "0")}`;
   const sampleVerificationCode = "A1B2C3D4E5";
-  const deliveryMode = receiptEmailDefault
-    ? "Email automatique si l'eleve a un email"
-    : "Email envoye manuellement";
-  const printMode = receiptPrintDefault ? "Impression proposee apres paiement" : "Impression ouverte a la demande";
+  const deliveryMode = receiptEmailDefault ? "Automatique si email" : "Manuel";
+  const printMode = receiptPrintDefault ? "Après paiement" : "À la demande";
 
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="min-w-0 space-y-3">
-        <FormGrid>
-          <FormField
-            label="Prefixe des recus"
-            htmlFor="receiptPrefix"
-            hint="Exemple: WD donne WD-2026-000001."
-          >
-            <input
-              id="receiptPrefix"
-              className="field uppercase"
-              value={receiptPrefix}
-              onChange={(event) => onReceiptPrefixChange(event.target.value.toUpperCase())}
-              maxLength={10}
-              required
-            />
-          </FormField>
-          <FormField
-            label="Prochain numero"
-            htmlFor="nextReceiptSequence"
-            hint="Augmente automatiquement apres chaque paiement."
-          >
-            <input
-              id="nextReceiptSequence"
-              type="number"
-              min={1}
-              step={1}
-              className="field"
-              value={nextReceiptSequence}
-              onChange={(event) => onNextReceiptSequenceChange(event.target.value)}
-              required
-            />
-          </FormField>
-          <FormField
-            label="Texte en bas du recu"
-            htmlFor="receiptFooter"
-            hint="Conditions, merci, cachet du club ou mention administrative."
-            className="md:col-span-2"
-          >
-            <textarea
-              id="receiptFooter"
-              className="field min-h-24"
-              value={receiptFooter}
-              onChange={(event) => onReceiptFooterChange(event.target.value)}
-              maxLength={500}
-            />
-          </FormField>
-          <FormField
-            label="Nom légal sur reçu"
-            htmlFor="receiptLegalName"
-            hint="Facultatif: raison sociale ou nom administratif imprimé sur les reçus."
-          >
-            <input
-              id="receiptLegalName"
-              className="field"
-              value={receiptLegalName}
-              onChange={(event) => onReceiptLegalNameChange(event.target.value)}
-              maxLength={160}
-              placeholder="Ex. Association Sportive..."
-            />
-          </FormField>
-          <FormField
-            label="Identifiant fiscal"
-            htmlFor="receiptTaxId"
-            hint="Facultatif: matricule fiscal, identifiant association ou référence administrative."
-          >
-            <input
-              id="receiptTaxId"
-              className="field"
-              value={receiptTaxId}
-              onChange={(event) => onReceiptTaxIdChange(event.target.value)}
-              maxLength={80}
-              placeholder="Ex. MF / ID..."
-            />
-          </FormField>
-        </FormGrid>
+      <div className="min-w-0 space-y-4">
+        <div className="rounded-lg border border-blue-100 bg-blue-50/70 p-3 text-sm leading-relaxed text-blue-950">
+          <p className="font-bold uppercase tracking-[0.14em] text-[var(--primary)]">Reçu simple et vérifiable</p>
+          <p className="mt-1">
+            Choisissez ce qui se passe après un encaissement. Les numéros, codes et QR restent disponibles dans les
+            options avancées.
+          </p>
+        </div>
+
         <div className="grid gap-3 md:grid-cols-2">
           <SettingsToggleRow
             id="receiptPrintDefault"
-            label="Proposer l'impression apres paiement"
-            description="Affiche un lien direct vers le recu imprimable apres un encaissement."
+            label="Proposer l'impression après paiement"
+            description="Affiche un lien direct vers le reçu imprimable après un encaissement."
             checked={receiptPrintDefault}
             onChange={onReceiptPrintDefaultChange}
           />
           <SettingsToggleRow
             id="receiptEmailDefault"
-            label="Envoi email par defaut"
-            description="Apres un encaissement, le recu est envoye automatiquement si le membre possede un email."
+            label="Envoyer par email si possible"
+            description="Envoie le reçu automatiquement quand le membre possède une adresse email."
             checked={receiptEmailDefault}
             onChange={onReceiptEmailDefaultChange}
           />
         </div>
-        <div className="rounded-lg border border-blue-100 bg-blue-50/70 p-3 text-xs leading-relaxed text-blue-950">
-          <p className="font-bold uppercase tracking-[0.14em] text-[var(--primary)]">Règle de confiance</p>
-          <ul className="mt-2 space-y-1.5">
-            <li>Chaque reçu déjà émis reste figé et vérifiable avec son numéro et son code.</li>
-            <li>Ces réglages changent seulement les prochains reçus créés après enregistrement.</li>
-            <li>Modifiez le prochain numéro seulement après reprise manuelle ou alignement comptable.</li>
-            <li>L&apos;email automatique ajoute une trace d&apos;envoi, mais ne bloque pas l&apos;encaissement.</li>
-          </ul>
+
+        <FormField
+          label="Message en bas du reçu"
+          htmlFor="receiptFooter"
+          hint="Conditions, merci, cachet du club ou mention administrative."
+        >
+          <textarea
+            id="receiptFooter"
+            className="field min-h-24"
+            value={receiptFooter}
+            onChange={(event) => onReceiptFooterChange(event.target.value)}
+            maxLength={500}
+          />
+        </FormField>
+
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)]">
+          <button
+            type="button"
+            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+            aria-expanded={advancedOpen}
+            onClick={() => setAdvancedOpen((open) => !open)}
+          >
+            <span>
+              <span className="block text-sm font-bold text-[var(--foreground)]">Options avancées</span>
+              <span className="mt-0.5 block text-xs text-[var(--muted-foreground)]">
+                Numérotation, nom légal et identifiant fiscal.
+              </span>
+            </span>
+            <ChevronDown
+              className={`size-4 shrink-0 text-[var(--muted-foreground)] transition-transform ${
+                advancedOpen ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          {advancedOpen ? (
+            <div className="border-t border-[var(--border)] p-4">
+              <FormGrid>
+                <FormField
+                  label="Préfixe des reçus"
+                  htmlFor="receiptPrefix"
+                  hint="Exemple: WD donne WD-2026-000001."
+                >
+                  <input
+                    id="receiptPrefix"
+                    className="field uppercase"
+                    value={receiptPrefix}
+                    onChange={(event) => onReceiptPrefixChange(event.target.value.toUpperCase())}
+                    maxLength={10}
+                    required
+                  />
+                </FormField>
+                <FormField
+                  label="Prochain numéro"
+                  htmlFor="nextReceiptSequence"
+                  hint="Augmente automatiquement après chaque paiement."
+                >
+                  <input
+                    id="nextReceiptSequence"
+                    type="number"
+                    min={1}
+                    step={1}
+                    className="field"
+                    value={nextReceiptSequence}
+                    onChange={(event) => onNextReceiptSequenceChange(event.target.value)}
+                    required
+                  />
+                </FormField>
+                <FormField
+                  label="Nom légal sur reçu"
+                  htmlFor="receiptLegalName"
+                  hint="Facultatif: raison sociale ou nom administratif imprimé sur les reçus."
+                >
+                  <input
+                    id="receiptLegalName"
+                    className="field"
+                    value={receiptLegalName}
+                    onChange={(event) => onReceiptLegalNameChange(event.target.value)}
+                    maxLength={160}
+                    placeholder="Ex. Association Sportive..."
+                  />
+                </FormField>
+                <FormField
+                  label="Identifiant fiscal"
+                  htmlFor="receiptTaxId"
+                  hint="Facultatif: matricule fiscal, identifiant association ou référence administrative."
+                >
+                  <input
+                    id="receiptTaxId"
+                    className="field"
+                    value={receiptTaxId}
+                    onChange={(event) => onReceiptTaxIdChange(event.target.value)}
+                    maxLength={80}
+                    placeholder="Ex. MF / ID..."
+                  />
+                </FormField>
+              </FormGrid>
+
+              <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/70 p-3 text-xs leading-relaxed text-blue-950">
+                <p className="font-bold uppercase tracking-[0.14em] text-[var(--primary)]">Confiance</p>
+                <p className="mt-1">
+                  Les reçus déjà émis restent inchangés et vérifiables. Le prochain numéro doit être modifié seulement
+                  après reprise manuelle ou alignement comptable.
+                </p>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -160,10 +193,10 @@ export function ClubReceiptSettings({
           </div>
           <div className="min-w-0">
             <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-[var(--primary)]">
-              Apercu recu
+              Aperçu reçu
             </p>
             <p className="mt-1 text-lg font-black text-[var(--foreground)]">{sampleReceiptNumber}</p>
-            <p className="mt-1 text-xs text-[var(--muted-foreground)]">{clubName.trim() || "Nom du club a completer"}</p>
+            <p className="mt-1 text-xs text-[var(--muted-foreground)]">{clubName.trim() || "Nom du club à compléter"}</p>
             {receiptLegalName.trim() ? (
               <p className="mt-1 text-xs font-semibold text-[var(--foreground)]">{receiptLegalName.trim()}</p>
             ) : null}
@@ -176,7 +209,7 @@ export function ClubReceiptSettings({
         <div className="mt-4 rounded-lg border border-[var(--border)] bg-white p-3 text-xs">
           <div className="grid grid-cols-2 gap-2">
             <PreviewLine label="Membre" value="Élève exemple" />
-            <PreviewLine label="Formule" value="Mensuel · Discipline" />
+            <PreviewLine label="Formule" value="Mensuel - Discipline" />
             <PreviewLine label="Paiement" value={formatMoney(4000)} />
             <PreviewLine label="Reste" value={formatMoney(0)} />
           </div>
@@ -188,10 +221,10 @@ export function ClubReceiptSettings({
               <div className="min-w-0">
                 <p className="font-bold text-[#0B1220]">Vérification publique</p>
                 <p className="mt-1 text-[var(--muted-foreground)]">
-                  Numéro + code: <span className="font-mono text-[#0B1220]">{sampleVerificationCode}</span>
+                  QR + code: <span className="font-mono text-[#0B1220]">{sampleVerificationCode}</span>
                 </p>
-                <p className="mt-1 break-all font-mono text-[0.65rem] text-[var(--muted-foreground)]">
-                  /receipts/verify?receiptNumber={sampleReceiptNumber}&code={sampleVerificationCode}
+                <p className="mt-1 text-[var(--muted-foreground)]">
+                  Le QR confirme le statut du reçu sur une page publique.
                 </p>
               </div>
             </div>
@@ -210,7 +243,7 @@ export function ClubReceiptSettings({
         </div>
 
         <dl className="mt-4 space-y-2 text-xs">
-          <ReceiptModeLine icon={<ShieldCheck className="size-4" />} label="Sécurité" value="Numéro + code + QR" />
+          <ReceiptModeLine icon={<ShieldCheck className="size-4" />} label="Sécurité" value="QR + code" />
           <ReceiptModeLine label="Impression" value={printMode} />
           <ReceiptModeLine label="Email" value={deliveryMode} />
         </dl>

@@ -304,7 +304,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
       <FormSection
         id="club-receipts"
         title="Reçus de paiement"
-        description="Configurez la numérotation, le texte affiché et le comportement d'impression ou d'envoi."
+        description="Choisissez ce qui se passe après un encaissement et gardez les options avancées à part."
       >
         <ClubReceiptSettings
           clubName={clubName}
