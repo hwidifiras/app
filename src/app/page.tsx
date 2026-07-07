@@ -56,6 +56,20 @@ import { cn } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+type DebtAgingBucket = {
+  label: string;
+  amount: number;
+  subscriptions: number;
+  tone: "green" | "amber" | "red";
+};
+
+type SalesBreakdownItem = {
+  label: string;
+  sublabel: string;
+  amount: number;
+  subscriptions: number;
+};
+
 function MembersOverviewPanel({
   activeMembers,
   newMembersThisMonth,
@@ -182,6 +196,8 @@ function SalesSnapshotPanel({
   renewalSalesToday,
   newSalesMonth,
   renewalSalesMonth,
+  debtAgingBuckets,
+  topSalesItems,
 }: {
   salesToday: number;
   salesTodayCount: number;
@@ -192,6 +208,8 @@ function SalesSnapshotPanel({
   renewalSalesToday: number;
   newSalesMonth: number;
   renewalSalesMonth: number;
+  debtAgingBuckets: DebtAgingBucket[];
+  topSalesItems: SalesBreakdownItem[];
 }) {
   const moneyStats = [
     {
@@ -290,6 +308,74 @@ function SalesSnapshotPanel({
           })}
         </div>
 
+        <div className="grid gap-2 lg:grid-cols-2">
+          <div className="rounded-lg border border-[#E2E8F0] bg-white p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[#2563EB]">
+                  Impayés
+                </p>
+                <h3 className="text-sm font-semibold text-[#0B1220]">Par ancienneté</h3>
+              </div>
+              <Link href="/subscriptions" className="text-xs font-semibold text-[#2563EB] hover:underline">
+                Relancer
+              </Link>
+            </div>
+            <div className="mt-3 space-y-2">
+              {debtAgingBuckets.map((bucket) => {
+                const tone = dashboardToneStyles[bucket.tone];
+                return (
+                  <div key={bucket.label} className={cn("rounded-lg border px-3 py-2", tone.soft, tone.border)}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-[#0B1220]">{bucket.label}</span>
+                      <span className={cn("rounded-full px-2 py-0.5 text-[0.66rem] font-semibold", tone.badge)}>
+                        {bucket.subscriptions}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm font-bold text-[#0B1220]">{formatMoney(bucket.amount)}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-[#E2E8F0] bg-white p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[#2563EB]">
+                  Ventes
+                </p>
+                <h3 className="text-sm font-semibold text-[#0B1220]">Top ce mois</h3>
+              </div>
+              <Link href="/subscription-plans" className="text-xs font-semibold text-[#2563EB] hover:underline">
+                Formules
+              </Link>
+            </div>
+            {topSalesItems.length === 0 ? (
+              <div className="mt-3 rounded-lg border border-dashed border-[#D8E2F0] bg-[#F8FAFC] px-3 py-5 text-center text-xs text-[#64748B]">
+                Aucune vente ce mois.
+              </div>
+            ) : (
+              <ul className="mt-3 space-y-2">
+                {topSalesItems.map((item) => (
+                  <li key={`${item.label}-${item.sublabel}`} className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-semibold text-[#0B1220]">{item.label}</p>
+                        <p className="mt-0.5 truncate text-[0.68rem] text-[#64748B]">{item.sublabel}</p>
+                      </div>
+                      <p className="shrink-0 text-sm font-bold text-[#0B1220]">{formatMoney(item.amount)}</p>
+                    </div>
+                    <p className="mt-1 text-[0.68rem] text-[#64748B]">
+                      {item.subscriptions} abonnement{item.subscriptions > 1 ? "s" : ""}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+
         <div className="rounded-lg border border-dashed border-[#D8E2F0] bg-[#F8FAFC] px-3 py-2 text-xs leading-5 text-[#475569]">
           Ventes = abonnements créés. Encaissé = paiements réellement reçus. Total ventes ce mois :
           <span className="font-semibold text-[#0B1220]"> {formatMoney(salesMonth)}</span>.
@@ -348,6 +434,12 @@ export default async function Home() {
   let renewalSalesToday = 0;
   let newSalesMonth = 0;
   let renewalSalesMonth = 0;
+  let debtAgingBuckets: DebtAgingBucket[] = [
+    { label: "0-7 jours", amount: 0, subscriptions: 0, tone: "green" },
+    { label: "8-30 jours", amount: 0, subscriptions: 0, tone: "amber" },
+    { label: "30+ jours", amount: 0, subscriptions: 0, tone: "red" },
+  ];
+  let topSalesItems: SalesBreakdownItem[] = [];
   let cashMethodStats: CashMethodStat[] = [];
   let cashTrend: CashTrendDay[] = [];
   let recentMembers: RecentMemberPreview[] = [];
@@ -417,6 +509,7 @@ export default async function Home() {
         select: {
           id: true,
           amount: true,
+          createdAt: true,
           memberId: true,
           status: true,
           startDate: true,
@@ -438,6 +531,8 @@ export default async function Home() {
           createdAt: true,
           memberId: true,
           member: { select: { joinedAt: true } },
+          plan: { select: { name: true } },
+          sport: { select: { name: true } },
           payments: { where: { tenantId }, select: { amount: true } },
         },
       }),
@@ -551,6 +646,44 @@ export default async function Home() {
     renewalSalesToday = Math.max(0, salesSubscriptionsToday.length - newSalesToday);
     newSalesMonth = monthNewMemberIds.size;
     renewalSalesMonth = Math.max(0, fetchedSalesSubscriptions.length - newSalesMonth);
+
+    const debtAgingMap = {
+      recent: { label: "0-7 jours", amount: 0, subscriptions: 0, tone: "green" as const },
+      warning: { label: "8-30 jours", amount: 0, subscriptions: 0, tone: "amber" as const },
+      late: { label: "30+ jours", amount: 0, subscriptions: 0, tone: "red" as const },
+    };
+
+    for (const subscription of fetchedSubscriptions) {
+      const paid = subscription.payments.reduce((sum, payment) => sum + payment.amount, 0);
+      const outstanding = Math.max(0, subscription.amount - paid);
+      if (outstanding <= 0) continue;
+
+      const ageInDays = Math.max(
+        0,
+        Math.floor((today.getTime() - subscription.createdAt.getTime()) / (1000 * 60 * 60 * 24)),
+      );
+      const bucket = ageInDays <= 7 ? debtAgingMap.recent : ageInDays <= 30 ? debtAgingMap.warning : debtAgingMap.late;
+      bucket.amount += outstanding;
+      bucket.subscriptions += 1;
+    }
+    debtAgingBuckets = [debtAgingMap.recent, debtAgingMap.warning, debtAgingMap.late];
+
+    const salesByPlan = new Map<string, SalesBreakdownItem>();
+    for (const subscription of fetchedSalesSubscriptions) {
+      const key = `${subscription.plan.name}::${subscription.sport.name}`;
+      const existing = salesByPlan.get(key) ?? {
+        label: subscription.plan.name,
+        sublabel: subscription.sport.name,
+        amount: 0,
+        subscriptions: 0,
+      };
+      existing.amount += subscription.amount;
+      existing.subscriptions += 1;
+      salesByPlan.set(key, existing);
+    }
+    topSalesItems = Array.from(salesByPlan.values())
+      .sort((left, right) => right.amount - left.amount || right.subscriptions - left.subscriptions)
+      .slice(0, 3);
 
     const methodStats = new Map<string, CashMethodStat>();
     for (const payment of paymentsToday) {
@@ -747,6 +880,8 @@ export default async function Home() {
               renewalSalesToday={renewalSalesToday}
               newSalesMonth={newSalesMonth}
               renewalSalesMonth={renewalSalesMonth}
+              debtAgingBuckets={debtAgingBuckets}
+              topSalesItems={topSalesItems}
             />
           </div>
         </section>
