@@ -10,13 +10,38 @@ type MemberDangerActionsProps = {
   memberId: string;
   memberName: string;
   status: "ACTIVE" | "ARCHIVED";
+  canPermanentDelete?: boolean;
 };
 
-export function MemberDangerActions({ memberId, memberName, status }: MemberDangerActionsProps) {
+type DangerAction = "archive" | "permanent";
+
+function permanentDeleteMessage(result: { error?: string; details?: { blockers?: Record<string, number> } }) {
+  const blockers = result.details?.blockers;
+  if (!blockers) return result.error ?? "Erreur lors de la suppression définitive";
+
+  const labels: Record<string, string> = {
+    groupAssignments: "affectation(s)",
+    subscriptions: "abonnement(s)",
+    attendances: "pointage(s)",
+  };
+  const activeBlockers = Object.entries(blockers)
+    .filter(([, value]) => value > 0)
+    .map(([key, value]) => `${value} ${labels[key] ?? key}`);
+
+  if (activeBlockers.length === 0) return result.error ?? "Suppression bloquée";
+  return `${result.error ?? "Suppression bloquée"} Historique détecté : ${activeBlockers.join(", ")}.`;
+}
+
+export function MemberDangerActions({
+  memberId,
+  memberName,
+  status,
+  canPermanentDelete = false,
+}: MemberDangerActionsProps) {
   const router = useRouter();
-  const [loading, setLoading] = useState<"archive" | null>(null);
+  const [loading, setLoading] = useState<DangerAction | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [pendingAction, setPendingAction] = useState<"archive" | null>(null);
+  const [pendingAction, setPendingAction] = useState<DangerAction | null>(null);
 
   async function archiveMember() {
     setLoading("archive");
@@ -42,6 +67,29 @@ export function MemberDangerActions({ memberId, memberName, status }: MemberDang
     router.refresh();
   }
 
+  async function permanentlyDeleteMember() {
+    setLoading("permanent");
+    setMessage(null);
+
+    const response = await fetch(`/api/members/${encodeURIComponent(memberId)}?mode=permanent`, {
+      method: "DELETE",
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      setMessage(permanentDeleteMessage(result));
+      setLoading(null);
+      return;
+    }
+
+    setPendingAction(null);
+    setMessage("Membre supprimé définitivement");
+    setLoading(null);
+    router.push("/members");
+    router.refresh();
+  }
+
   const busy = loading !== null;
 
   return (
@@ -60,9 +108,26 @@ export function MemberDangerActions({ memberId, memberName, status }: MemberDang
           disabled={busy || status === "ARCHIVED"}
           className="btn btn-danger btn-block-mobile min-h-11 sm:w-auto"
         >
-          {loading === "archive" ? "Résiliation…" : status === "ARCHIVED" ? "Déjà résilié" : "Résilier le membre"}
+          {loading === "archive" ? "Résiliation..." : status === "ARCHIVED" ? "Déjà résilié" : "Résilier le membre"}
         </button>
+        {canPermanentDelete ? (
+          <button
+            type="button"
+            onClick={() => setPendingAction("permanent")}
+            disabled={busy}
+            className="btn btn-ghost btn-block-mobile min-h-11 border border-[var(--danger)]/30 text-[var(--danger)] hover:bg-[var(--danger)]/10 sm:w-auto"
+          >
+            {loading === "permanent" ? "Suppression..." : "Supprimer définitivement"}
+          </button>
+        ) : null}
       </div>
+
+      {canPermanentDelete ? (
+        <p className="mt-3 text-xs leading-5 text-[var(--muted-foreground)]">
+          Suppression définitive admin uniquement pour doublon ou erreur de saisie. Elle est bloquée si le membre a une
+          affectation, un abonnement ou un pointage.
+        </p>
+      ) : null}
 
       <ConfirmDialog
         open={pendingAction === "archive"}
@@ -72,6 +137,15 @@ export function MemberDangerActions({ memberId, memberName, status }: MemberDang
         loading={loading === "archive"}
         onCancel={() => setPendingAction(null)}
         onConfirm={archiveMember}
+      />
+      <ConfirmDialog
+        open={pendingAction === "permanent"}
+        title="Supprimer définitivement ce membre ?"
+        description={`${memberName} sera effacé du dossier si aucun historique métier n'existe. Cette action ne remplace pas la résiliation pour un vrai élève.`}
+        confirmLabel="Supprimer"
+        loading={loading === "permanent"}
+        onCancel={() => setPendingAction(null)}
+        onConfirm={permanentlyDeleteMember}
       />
     </section>
   );

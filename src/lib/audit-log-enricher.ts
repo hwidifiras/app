@@ -384,9 +384,21 @@ export async function enrichAuditLogPresentation(
         where: { ...tenantWhere(tenantId), id: log.entityId },
         select: { firstName: true, lastName: true, phone: true, email: true },
       });
-      if (member) {
-        rows.push({ label: "Élève", value: `${memberLabel(member)} · ${member.phone}` });
-        if (member.email) rows.push({ label: "Email", value: member.email });
+      const deletedMember =
+        typeof details?.firstName === "string" &&
+        typeof details.lastName === "string" &&
+        typeof details.phone === "string"
+          ? {
+              firstName: details.firstName,
+              lastName: details.lastName,
+              phone: details.phone,
+              email: typeof details.email === "string" ? details.email : null,
+            }
+          : null;
+      const visibleMember = member ?? deletedMember;
+      if (visibleMember) {
+        rows.push({ label: "Élève", value: `${memberLabel(visibleMember)} · ${visibleMember.phone}` });
+        if (visibleMember.email) rows.push({ label: "Email", value: visibleMember.email });
       }
       if (log.action === "MEMBER_UPDATED" && Array.isArray(details?.fields)) {
         rows.push({
@@ -396,6 +408,12 @@ export async function enrichAuditLogPresentation(
       }
       if (log.action === "MEMBER_ARCHIVED" && details?.archivedAt) {
         rows.push({ label: "Archivé le", value: formatDateFr(details.archivedAt) });
+      }
+      if (log.action === "MEMBER_DELETED" && details?.deletedAt) {
+        rows.push({ label: "Supprimé le", value: formatDateFr(details.deletedAt) });
+      }
+      if (log.action === "MEMBER_DELETED" && details?.reason) {
+        rows.push({ label: "Motif", value: String(details.reason) });
       }
       if (rows.length) sections.push({ title: "Élève", rows });
       break;

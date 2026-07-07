@@ -1,12 +1,23 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
+import { requireAdmin } from "@/lib/request-user";
 import { updateMemberSchema } from "@/lib/schemas/member";
 import { expireStaleSubscriptions } from "@/lib/membership-rules";
 import { checkGroupMemberCompatibility } from "@/lib/demographics";
 import { memberProfileCompletionError } from "@/lib/member-profile-policy";
 
 export const runtime = "nodejs";
+
+type PermanentDeleteBlockers = {
+  groupAssignments: number;
+  subscriptions: number;
+  attendances: number;
+};
+
+function hasPermanentDeleteBlockers(blockers: PermanentDeleteBlockers) {
+  return blockers.groupAssignments > 0 || blockers.subscriptions > 0 || blockers.attendances > 0;
+}
 
 export async function GET(
   _request: Request,
@@ -121,14 +132,146 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
+  const mode = new URL(_request.url).searchParams.get("mode");
+
+  if (mode === "permanent") {
+    let admin;
+    try {
+      admin = await requireAdmin(_request);
+    } catch (e) {
+      return jsonAuthFailureResponse(e);
+    }
+
+    try {
+      const result = await prisma.$transaction(async (tx) => {
+        const member = await tx.member.findFirst({
+          where: { id, tenantId: admin.tenantId },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+            email: true,
+            status: true,
+            householdLink: { select: { householdId: true } },
+          },
+        });
+
+        if (!member) {
+          return { kind: "not-found" as const };
+        }
+
+        const [groupAssignments, subscriptions, attendances] = await Promise.all([
+          tx.groupMember.count({ where: { tenantId: admin.tenantId, memberId: id } }),
+          tx.memberSubscription.count({ where: { tenantId: admin.tenantId, memberId: id } }),
+          tx.attendance.count({ where: { tenantId: admin.tenantId, memberId: id } }),
+        ]);
+
+        const blockers = { groupAssignments, subscriptions, attendances };
+        if (hasPermanentDeleteBlockers(blockers)) {
+          return { kind: "blocked" as const, blockers };
+        }
+
+        const deletedAt = new Date();
+        const householdId = member.householdLink?.householdId ?? null;
+
+        await tx.auditLog.create({
+          data: {
+            tenantId: admin.tenantId,
+            action: "MEMBER_DELETED",
+            entityType: "Member",
+            entityId: member.id,
+            userId: admin.id,
+            details: JSON.stringify({
+              tenantId: admin.tenantId,
+              firstName: member.firstName,
+              lastName: member.lastName,
+              phone: member.phone,
+              email: member.email,
+              status: member.status,
+              deletedAt: deletedAt.toISOString(),
+              reason: "Suppression définitive admin d'un dossier sans historique métier",
+            }),
+          },
+        });
+
+        await tx.member.delete({ where: { id: member.id } });
+
+        if (householdId) {
+          const remainingHouseholdMembers = await tx.householdMember.count({
+            where: { tenantId: admin.tenantId, householdId },
+          });
+          if (remainingHouseholdMembers === 0) {
+            await tx.household.deleteMany({
+              where: { tenantId: admin.tenantId, id: householdId },
+            });
+          }
+        }
+
+        return {
+          kind: "deleted" as const,
+          member: {
+            id: member.id,
+            firstName: member.firstName,
+            lastName: member.lastName,
+          },
+          deletedAt,
+        };
+      });
+
+      if (result.kind === "not-found") {
+        return NextResponse.json(
+          { error: "Membre introuvable" },
+          { status: 404 },
+        );
+      }
+
+      if (result.kind === "blocked") {
+        return NextResponse.json(
+          {
+            error:
+              "Suppression définitive bloquée : ce membre a déjà un historique. Utilisez la résiliation pour conserver les traces.",
+            details: { blockers: result.blockers },
+          },
+          { status: 409 },
+        );
+      }
+
+      return NextResponse.json({
+        data: {
+          id: result.member.id,
+          deleted: true,
+          deletedAt: result.deletedAt.toISOString(),
+        },
+      });
+    } catch (error) {
+      const errorCode =
+        typeof error === "object" && error !== null && "code" in error
+          ? (error as { code?: string }).code
+          : null;
+
+      if (errorCode === "P2003") {
+        return NextResponse.json(
+          {
+            error:
+              "Suppression définitive bloquée : ce membre est encore lié à des données métier. Utilisez la résiliation.",
+          },
+          { status: 409 },
+        );
+      }
+
+      console.error("DELETE /api/members/[id]?mode=permanent error:", error);
+      return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    }
+  }
+
   let actor;
   try {
     actor = await requirePermission(_request, "members.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
-
-  const { id } = await params;
 
   try {
     const now = new Date();

@@ -405,6 +405,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                 memberId={member.id}
                 memberName={`${member.firstName} ${member.lastName}`}
                 status={member.status}
+                canPermanentDelete={authUser.role === "ADMIN"}
               />
             </div>
           </aside>
