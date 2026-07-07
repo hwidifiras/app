@@ -40,17 +40,28 @@ import {
   isPrismaErrorCode,
   readAttendanceIdFromBody,
 } from "@/lib/attendance-route-helpers";
+import { withTenantContext } from "@/lib/tenant-context";
 
 export const runtime = "nodejs";
 
+type AttendanceActor = Awaited<ReturnType<typeof requirePermission>>;
+
+function tenantContextFor(actor: AttendanceActor) {
+  return { tenantId: actor.tenantId, tenantSlug: actor.tenantSlug };
+}
+
 export async function GET(request: Request) {
-  let actor;
+  let actor: AttendanceActor;
   try {
     actor = await requirePermission(request, "attendance.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
 
+  return withTenantContext(tenantContextFor(actor), () => handleGet(request, actor));
+}
+
+async function handleGet(request: Request, actor: AttendanceActor) {
   const { searchParams } = new URL(request.url);
   const sessionId = searchParams.get("sessionId")?.trim();
   const memberId = searchParams.get("memberId")?.trim();
@@ -80,13 +91,17 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  let actor;
+  let actor: AttendanceActor;
   try {
     actor = await requirePermission(request, "attendance.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
 
+  return withTenantContext(tenantContextFor(actor), () => handlePost(request, actor));
+}
+
+async function handlePost(request: Request, actor: AttendanceActor) {
   let body: unknown;
 
   try {
@@ -391,12 +406,17 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  let actor;
+  let actor: AttendanceActor;
   try {
     actor = await requirePermission(request, "attendance.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
+
+  return withTenantContext(tenantContextFor(actor), () => handlePatch(request, actor));
+}
+
+async function handlePatch(request: Request, actor: AttendanceActor) {
   let body: unknown;
 
   try {
@@ -651,12 +671,17 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  let actor;
+  let actor: AttendanceActor;
   try {
     actor = await requirePermission(request, "attendance.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
+
+  return withTenantContext(tenantContextFor(actor), () => handleDelete(request, actor));
+}
+
+async function handleDelete(request: Request, actor: AttendanceActor) {
   let body: unknown;
 
   try {
