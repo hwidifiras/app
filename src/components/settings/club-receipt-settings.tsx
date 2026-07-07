@@ -41,10 +41,15 @@ export function ClubReceiptSettings({
   onReceiptPrintDefaultChange: (value: boolean) => void;
 }) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [nextNumberTouched, setNextNumberTouched] = useState(false);
   const prefix = receiptPrefix.trim().toUpperCase() || "WD";
   const parsedSequence = Number.parseInt(nextReceiptSequence, 10);
   const sequence = Number.isFinite(parsedSequence) && parsedSequence > 0 ? parsedSequence : 1;
   const sampleReceiptNumber = `${prefix}-${new Date().getFullYear()}-${String(sequence).padStart(6, "0")}`;
+  const previousSequence = sequence > 1 ? sequence - 1 : null;
+  const lastReceiptNumber = previousSequence
+    ? `${prefix}-${new Date().getFullYear()}-${String(previousSequence).padStart(6, "0")}`
+    : "Aucun reçu émis";
   const sampleVerificationCode = "A1B2C3D4E5";
   const deliveryMode = receiptEmailDefault ? "Automatique si email" : "Manuel";
   const printMode = receiptPrintDefault ? "Après paiement" : "À la demande";
@@ -70,26 +75,12 @@ export function ClubReceiptSettings({
           />
           <SettingsToggleRow
             id="receiptEmailDefault"
-            label="Envoyer par email si possible"
-            description="Envoie le reçu automatiquement quand le membre possède une adresse email."
+            label="Envoyer automatiquement par email"
+            description="Uniquement si le membre a une adresse email."
             checked={receiptEmailDefault}
             onChange={onReceiptEmailDefaultChange}
           />
         </div>
-
-        <FormField
-          label="Message en bas du reçu"
-          htmlFor="receiptFooter"
-          hint="Conditions, merci, cachet du club ou mention administrative."
-        >
-          <textarea
-            id="receiptFooter"
-            className="field min-h-24"
-            value={receiptFooter}
-            onChange={(event) => onReceiptFooterChange(event.target.value)}
-            maxLength={500}
-          />
-        </FormField>
 
         <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)]">
           <button
@@ -101,7 +92,7 @@ export function ClubReceiptSettings({
             <span>
               <span className="block text-sm font-bold text-[var(--foreground)]">Options avancées</span>
               <span className="mt-0.5 block text-xs text-[var(--muted-foreground)]">
-                Numérotation, nom légal et identifiant fiscal.
+                Message du reçu, numérotation, nom légal et identifiant fiscal.
               </span>
             </span>
             <ChevronDown
@@ -113,6 +104,21 @@ export function ClubReceiptSettings({
 
           {advancedOpen ? (
             <div className="border-t border-[var(--border)] p-4">
+              <FormField
+                label="Message en bas du reçu"
+                htmlFor="receiptFooter"
+                hint="Conditions, merci, cachet du club ou mention administrative."
+                className="mb-4"
+              >
+                <textarea
+                  id="receiptFooter"
+                  className="field min-h-24"
+                  value={receiptFooter}
+                  onChange={(event) => onReceiptFooterChange(event.target.value)}
+                  maxLength={500}
+                />
+              </FormField>
+
               <FormGrid>
                 <FormField
                   label="Préfixe des reçus"
@@ -131,7 +137,7 @@ export function ClubReceiptSettings({
                 <FormField
                   label="Prochain numéro"
                   htmlFor="nextReceiptSequence"
-                  hint="Augmente automatiquement après chaque paiement."
+                  hint={`Dernier reçu émis: ${lastReceiptNumber}.`}
                 >
                   <input
                     id="nextReceiptSequence"
@@ -140,9 +146,17 @@ export function ClubReceiptSettings({
                     step={1}
                     className="field"
                     value={nextReceiptSequence}
-                    onChange={(event) => onNextReceiptSequenceChange(event.target.value)}
+                    onChange={(event) => {
+                      setNextNumberTouched(true);
+                      onNextReceiptSequenceChange(event.target.value);
+                    }}
                     required
                   />
+                  {nextNumberTouched ? (
+                    <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
+                      À modifier seulement après reprise ou correction comptable.
+                    </p>
+                  ) : null}
                 </FormField>
                 <FormField
                   label="Nom légal sur reçu"
@@ -186,7 +200,7 @@ export function ClubReceiptSettings({
         </div>
       </div>
 
-      <aside className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-4 shadow-[var(--shadow-panel)]">
+      <aside className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-4 shadow-[var(--shadow-panel)] xl:sticky xl:top-4 xl:self-start">
         <div className="flex items-start gap-3">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)]/10 text-[var(--primary)]">
             <ReceiptText className="size-5" />

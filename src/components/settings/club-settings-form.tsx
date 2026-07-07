@@ -303,7 +303,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
 
       <FormSection
         id="club-receipts"
-        title="Reçus de paiement"
+        title="Reçus"
         description="Choisissez ce qui se passe après un encaissement et gardez les options avancées à part."
       >
         <ClubReceiptSettings
