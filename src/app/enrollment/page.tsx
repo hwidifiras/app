@@ -1,5 +1,6 @@
 import { EnrollmentWizard } from "@/components/enrollment/enrollment-wizard";
 import { PageHeader } from "@/components/ui/page-header";
+import { getClubSettings } from "@/lib/club-settings";
 
 export default async function EnrollmentPage({
   searchParams,
@@ -8,6 +9,7 @@ export default async function EnrollmentPage({
 }) {
   const { memberId, offerId, step } = await searchParams;
   const initialStep = step === "2" || step === "3" ? Number(step) : 1;
+  const settings = await getClubSettings();
 
   return (
     <main className="app-shell py-4 md:py-8">
@@ -20,6 +22,7 @@ export default async function EnrollmentPage({
         initialMemberId={memberId ?? ""}
         initialOfferId={offerId ?? ""}
         initialStep={initialStep}
+        receiptPrintDefault={settings.receiptPrintDefault}
       />
     </main>
   );

@@ -40,6 +40,7 @@ type OfferOption = OfferLike;
 
 type EnrollmentCompletion = {
   memberIds: string[];
+  receipts: Array<{ id: string; receiptNumber: string }>;
   undoSnapshot: EnrollmentUndoSnapshot;
   recoveryKey?: string | null;
 };
@@ -48,10 +49,12 @@ export function EnrollmentWizard({
   initialMemberId = "",
   initialOfferId = "",
   initialStep = 1,
+  receiptPrintDefault = true,
 }: {
   initialMemberId?: string;
   initialOfferId?: string;
   initialStep?: number;
+  receiptPrintDefault?: boolean;
 }) {
   const router = useRouter();
   const [step, setStep] = useState(initialStep >= 2 && initialStep <= 3 ? initialStep : 1);
@@ -200,6 +203,7 @@ export function EnrollmentWizard({
     const data = await res.json() as {
       data?: {
         memberIds: string[];
+        receipts?: Array<{ id: string; receiptNumber: string }>;
         undoSnapshot: EnrollmentUndoSnapshot;
         recoveryKey?: string | null;
       };
@@ -212,9 +216,10 @@ export function EnrollmentWizard({
     }
 
     const memberIds = data.data?.memberIds ?? [];
+    const receipts = data.data?.receipts ?? [];
     const undoSnapshot = data.data?.undoSnapshot;
     setCompleted(true);
-    setCompletion(undoSnapshot ? { memberIds, undoSnapshot, recoveryKey: data.data?.recoveryKey ?? null } : null);
+    setCompletion(undoSnapshot ? { memberIds, receipts, undoSnapshot, recoveryKey: data.data?.recoveryKey ?? null } : null);
     setVoidReason("");
     setMessage("Inscription confirmée.");
     router.refresh();
@@ -400,6 +405,8 @@ export function EnrollmentWizard({
       {completion ? (
         <EnrollmentCompletionPanel
           memberIds={completion.memberIds}
+          receipts={completion.receipts}
+          receiptPrintDefault={receiptPrintDefault}
           voidReason={voidReason}
           voiding={voiding}
           onVoidReasonChange={setVoidReason}

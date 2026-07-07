@@ -66,6 +66,7 @@ export async function POST(request: Request) {
         const result = await prisma.$transaction(async (tx) => {
           const subscriptionIds: string[] = [];
           const memberIds: string[] = [];
+          const receipts: Array<{ id: string; receiptNumber: string }> = [];
           const undoSnapshot = emptyEnrollmentUndoSnapshot();
           const recoveryKey = randomUUID();
 
@@ -232,6 +233,7 @@ export async function POST(request: Request) {
                   },
                 });
                 const receipt = await issueReceiptForPayment(tx, payment.id, actor.id, actor.tenantId);
+                receipts.push({ id: receipt.id, receiptNumber: receipt.receiptNumber });
                 await tx.auditLog.create({
                   data: {
                     tenantId: actor.tenantId,
@@ -298,6 +300,7 @@ export async function POST(request: Request) {
                   },
                 });
                 const receipt = await issueReceiptForPayment(tx, payment.id, actor.id, actor.tenantId);
+                receipts.push({ id: receipt.id, receiptNumber: receipt.receiptNumber });
                 await tx.auditLog.create({
                   data: {
                     tenantId: actor.tenantId,
@@ -412,6 +415,7 @@ export async function POST(request: Request) {
             subscriptionIds,
             offerApplicationId,
             quote,
+            receipts,
             undoSnapshot,
             recoveryKey,
           };

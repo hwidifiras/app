@@ -6,6 +6,8 @@ import { FormField } from "@/components/ui/form-layout";
 
 type EnrollmentCompletionPanelProps = {
   memberIds: string[];
+  receipts: Array<{ id: string; receiptNumber: string }>;
+  receiptPrintDefault: boolean;
   voidReason: string;
   voiding: boolean;
   onVoidReasonChange: (value: string) => void;
@@ -14,6 +16,8 @@ type EnrollmentCompletionPanelProps = {
 
 export function EnrollmentCompletionPanel({
   memberIds,
+  receipts,
+  receiptPrintDefault,
   voidReason,
   voiding,
   onVoidReasonChange,
@@ -44,6 +48,32 @@ export function EnrollmentCompletionPanel({
           Voir fiche
         </Link>
       </div>
+      {receipts.length > 0 ? (
+        <div className="mt-4 border-t border-[var(--success)]/25 pt-3">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--success)]">Reçus prêts</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {receiptPrintDefault ? (
+              receipts.map((receipt) => (
+                <Link
+                  key={receipt.id}
+                  href={`/receipts/${receipt.id}`}
+                  className="btn btn-secondary btn-block-mobile"
+                  prefetch={false}
+                >
+                  Imprimer {receipt.receiptNumber}
+                </Link>
+              ))
+            ) : (
+              <p className="text-sm text-[var(--muted-foreground)]">
+                Reçu créé et disponible dans l&apos;historique caisse.
+              </p>
+            )}
+            <Link href="/payments" className="text-sm font-medium text-[var(--primary)] hover:underline" prefetch={false}>
+              Historique caisse
+            </Link>
+          </div>
+        </div>
+      ) : null}
       <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
         <FormField
           label="Motif d'annulation"
