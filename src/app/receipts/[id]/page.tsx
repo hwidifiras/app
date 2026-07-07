@@ -20,7 +20,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
 
   if (!authUser) {
     return (
-      <main className="app-shell py-4 md:py-8 print:bg-white print:p-0">
+      <main data-receipt-print-page className="app-shell py-4 md:py-8 print:bg-white print:p-0">
         <PageHeader
           overline="Caisse"
           title="Reçu indisponible"
@@ -69,7 +69,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
   const verificationQrDataUrl = await buildReceiptVerificationQrDataUrl(verificationUrl);
 
   return (
-    <main className="app-shell py-4 md:py-8 print:bg-white print:p-0">
+    <main data-receipt-print-page className="app-shell py-4 md:py-8 print:bg-white print:p-0">
       <div className="print:hidden">
         <PageHeader
           overline="Caisse"

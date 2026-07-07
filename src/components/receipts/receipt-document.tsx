@@ -45,7 +45,10 @@ export function ReceiptDocument({
     : snapshot.member.name;
 
   return (
-    <article className="mx-auto max-w-3xl rounded-lg border border-[var(--border)] bg-white p-5 shadow-[var(--shadow-panel)] print:border-0 print:p-0 print:shadow-none">
+    <article
+      data-receipt-document
+      className="mx-auto max-w-3xl rounded-lg border border-[var(--border)] bg-white p-5 text-[#0B1220] shadow-[var(--shadow-panel)] print:max-w-none print:rounded-none print:border-0 print:p-0 print:shadow-none"
+    >
       <header className="flex flex-col gap-4 border-b border-[var(--border)] pb-5 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--primary)]">Recu de paiement</p>

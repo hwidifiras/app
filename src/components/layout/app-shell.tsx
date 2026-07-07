@@ -88,6 +88,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/accueil/") ||
     pathname === "/homepage" ||
     pathname.startsWith("/homepage/");
+  const isReceiptRoute = pathname.startsWith("/receipts/");
 
   if (isAuthRoute || isMarketingRoute) {
     return <div className="relative min-h-screen">{children}</div>;
@@ -96,15 +97,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <SidebarContext.Provider value={{ collapsed, toggleCollapsed, displayMode, setDisplayMode }}>
       <AppShellDataProvider>
-        <a href="#main-content" className="skip-link">
+        <a href="#main-content" className="skip-link print:hidden">
           Aller au contenu
         </a>
         <MobileNav />
-        <div className={`grid min-h-screen ${collapsed ? "lg:grid-cols-[72px_1fr]" : "lg:grid-cols-[232px_1fr]"}`}>
+        <div
+          data-app-shell-layout={isReceiptRoute ? "receipt" : undefined}
+          className={`grid min-h-screen ${collapsed ? "lg:grid-cols-[72px_1fr]" : "lg:grid-cols-[232px_1fr]"} ${isReceiptRoute ? "print:block print:min-h-0" : ""}`}
+        >
           <AppSidebar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
-          <div className="flex min-w-0 flex-col bg-[var(--background)]">
+          <div
+            data-app-shell-content={isReceiptRoute ? "receipt" : undefined}
+            className={`flex min-w-0 flex-col bg-[var(--background)] ${isReceiptRoute ? "print:block print:bg-white" : ""}`}
+          >
             <DesktopTopNav />
-            <div id="main-content" tabIndex={-1}>
+            <div id="main-content" tabIndex={-1} className={isReceiptRoute ? "print:block" : undefined}>
               {children}
             </div>
           </div>

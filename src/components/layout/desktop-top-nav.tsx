@@ -36,7 +36,10 @@ export function DesktopTopNav() {
     pathname === "/" ? "Accueil" : pageLabels.find((item) => pathname.startsWith(item.prefix))?.label ?? "Gestion";
 
   return (
-    <header className="sticky top-0 z-40 hidden border-b border-[var(--border)] bg-[var(--surface)]/96 backdrop-blur lg:block">
+    <header
+      data-app-top-nav
+      className="sticky top-0 z-40 hidden border-b border-[var(--border)] bg-[var(--surface)]/96 backdrop-blur print:hidden lg:block"
+    >
       <div className="flex min-h-[3.5rem] items-center justify-between gap-4 px-5 py-2">
         <div className="min-w-0">
           <p className="text-[0.62rem] font-bold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">

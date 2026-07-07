@@ -210,7 +210,10 @@ export function AppSidebar({
   );
 
   return (
-    <aside className="sidebar-scroll hidden border-b border-[var(--border)] bg-[var(--surface)]/96 backdrop-blur lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:overflow-y-auto lg:overscroll-y-contain lg:border-r lg:border-b-0">
+    <aside
+      data-app-sidebar
+      className="sidebar-scroll hidden border-b border-[var(--border)] bg-[var(--surface)]/96 backdrop-blur print:hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:overflow-y-auto lg:overscroll-y-contain lg:border-r lg:border-b-0"
+    >
       <div
         className={cn(
           "border-b border-[var(--border)] py-3",

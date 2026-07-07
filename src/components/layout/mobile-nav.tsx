@@ -60,7 +60,7 @@ export function MobileNav() {
   }, [open]);
 
   return (
-    <>
+    <div data-app-mobile-nav className="print:hidden lg:hidden">
       <div className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)]/96 px-2.5 py-2 shadow-[var(--shadow-panel)] backdrop-blur lg:hidden">
         <Link
           href="/"
@@ -153,7 +153,7 @@ export function MobileNav() {
       </div>
 
       <div className="h-[53px] sm:h-[57px] lg:hidden" />
-    </>
+    </div>
   );
 }
 

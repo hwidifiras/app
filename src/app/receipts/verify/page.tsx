@@ -47,9 +47,9 @@ export default async function ReceiptVerifyPage({
     : undefined;
 
   return (
-    <main className="min-h-screen bg-[#F6F9FF] px-4 py-8 text-[#0B1220] sm:px-6">
-      <div className="mx-auto max-w-3xl">
-        <section className="mb-5 rounded-lg border border-[var(--border)] bg-white p-5 shadow-[var(--shadow-panel)]">
+    <main data-receipt-print-page className="min-h-screen bg-[#F6F9FF] px-4 py-8 text-[#0B1220] print:min-h-0 print:bg-white print:p-0 sm:px-6">
+      <div className="mx-auto max-w-3xl print:max-w-none">
+        <section className="mb-5 rounded-lg border border-[var(--border)] bg-white p-5 shadow-[var(--shadow-panel)] print:hidden">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#2563EB]">Verification recu</p>
           <h1 className="mt-2 text-2xl font-black tracking-normal">Verifier un recu We Discipline</h1>
           <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">

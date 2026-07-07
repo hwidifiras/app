@@ -193,6 +193,61 @@ a {
   }
 }
 
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    min-width: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+  }
+
+  body {
+    color: #0b1220 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  [data-app-mobile-nav],
+  [data-app-sidebar],
+  [data-app-top-nav],
+  .skip-link,
+  .print-hidden {
+    display: none !important;
+  }
+
+  [data-app-shell-layout="receipt"],
+  [data-app-shell-content="receipt"],
+  #main-content,
+  [data-receipt-print-page] {
+    display: block !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  [data-receipt-document] {
+    width: 100% !important;
+    max-width: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  [data-receipt-document] section,
+  [data-receipt-document] header,
+  [data-receipt-document] footer {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
 .panel {
   background: var(--surface);
   border: 1px solid color-mix(in srgb, var(--border) 88%, var(--surface-raised) 12%);
