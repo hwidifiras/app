@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Activity,
   Banknote,
+  Building2,
   CalendarDays,
   CalendarClock,
   CalendarRange,
@@ -18,8 +19,8 @@ import {
   Dumbbell,
   Import,
   LayoutDashboard,
+  Settings,
   ShieldCheck,
-  SlidersHorizontal,
   User,
   UserPlus,
   Users,
@@ -82,8 +83,8 @@ export const clubSection: NavSection = {
 export const settingsSection: NavSection = {
   title: "Réglages",
   items: [
-    { href: "/settings", label: "Vue d'ensemble", icon: SlidersHorizontal },
-    { href: "/settings/club", label: "Club", icon: SlidersHorizontal },
+    { href: "/settings", label: "Vue d'ensemble", icon: Settings },
+    { href: "/settings/club", label: "Club", icon: Building2 },
     { href: "/settings/schedules", label: "Horaires & saisons", icon: CalendarClock },
     { href: "/subscription-plans", label: "Formules", icon: ClipboardCheck },
     { href: "/offers", label: "Offres", icon: CreditCard },
@@ -276,7 +277,7 @@ export function AppSidebar({
             title={collapsed ? settingsSection.title : undefined}
           >
             {collapsed ? (
-              <SlidersHorizontal className="size-[1.1rem] shrink-0 opacity-60" />
+              <Settings className="size-[1.1rem] shrink-0 opacity-60" />
             ) : (
               <>
                 <span className="hidden text-[0.6rem] font-bold uppercase tracking-[0.16em] lg:block">
