@@ -145,7 +145,7 @@ export function ClubReceiptSettings({
         <div className="rounded-lg border border-blue-100 bg-blue-50/70 p-3 text-xs leading-relaxed text-blue-950">
           <p className="font-bold uppercase tracking-[0.14em] text-[var(--primary)]">Règle de confiance</p>
           <ul className="mt-2 space-y-1.5">
-            <li>Chaque reçu déjà émis garde son snapshot, son hash, son numéro et son code de vérification.</li>
+            <li>Chaque reçu déjà émis reste figé et vérifiable avec son numéro et son code.</li>
             <li>Ces réglages changent seulement les prochains reçus créés après enregistrement.</li>
             <li>Modifiez le prochain numéro seulement après reprise manuelle ou alignement comptable.</li>
             <li>L&apos;email automatique ajoute une trace d&apos;envoi, mais ne bloque pas l&apos;encaissement.</li>
@@ -204,18 +204,18 @@ export function ClubReceiptSettings({
             </div>
           ) : null}
 
-          <p className="mt-3 font-mono text-[0.65rem] text-[var(--muted-foreground)]">
-            Hash: sha256-exemple-non-modifiable
+          <p className="mt-3 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
+            Reçu vérifiable
           </p>
         </div>
 
         <dl className="mt-4 space-y-2 text-xs">
-          <ReceiptModeLine icon={<ShieldCheck className="size-4" />} label="Sécurité" value="Snapshot + code + hash" />
+          <ReceiptModeLine icon={<ShieldCheck className="size-4" />} label="Sécurité" value="Numéro + code + QR" />
           <ReceiptModeLine label="Impression" value={printMode} />
           <ReceiptModeLine label="Email" value={deliveryMode} />
         </dl>
         <p className="mt-3 text-xs leading-relaxed text-[var(--muted-foreground)]">
-          Les recus deja emis gardent leur snapshot. Changer ces reglages affecte seulement les prochains paiements.
+          Les reçus déjà émis restent inchangés. Changer ces réglages affecte seulement les prochains paiements.
         </p>
       </aside>
     </div>

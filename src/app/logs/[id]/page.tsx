@@ -119,19 +119,18 @@ export default async function LogDetailPage({ params }: { params: Promise<{ id: 
               <dd className="mt-0.5 text-sm font-medium text-[var(--foreground)]">
                 {relatedHref ? (
                   <Link href={relatedHref} prefetch={false} className="inline-flex items-center gap-1.5 text-[var(--primary)] hover:underline">
-                    Ouvrir l&apos;objet lié <ExternalLink className="size-3.5" />
+                    Ouvrir l&apos;élément lié <ExternalLink className="size-3.5" />
                   </Link>
                 ) : (
-                  log.entityType
+                  "Information conservée"
                 )}
-                <span className="mt-0.5 block break-all text-xs font-normal text-[var(--muted-foreground)]">
-                  {log.entityType} · {log.entityId}
-                </span>
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Action technique</dt>
-              <dd className="mt-0.5 break-all text-sm font-medium text-[var(--foreground)]">{log.action}</dd>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Type</dt>
+              <dd className="mt-0.5 text-sm font-medium text-[var(--foreground)]">
+                {log.userId ? "Action utilisateur" : "Action automatique"}
+              </dd>
             </div>
           </dl>
         </div>
@@ -164,7 +163,7 @@ export default async function LogDetailPage({ params }: { params: Promise<{ id: 
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Règle</dt>
               <dd className="mt-0.5 text-[var(--foreground)]">
-                {policy?.normalUserCopy ?? "Action conservée pour audit"}
+                {policy?.normalUserCopy ?? "Action conservée dans le journal"}
               </dd>
             </div>
             <div>

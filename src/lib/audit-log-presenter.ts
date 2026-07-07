@@ -234,16 +234,36 @@ function buildEnrollmentSections(details: Record<string, unknown>): AuditDetailS
   return rows.length ? [{ title: "Résumé de l'inscription", rows }] : [];
 }
 
+const HIDDEN_GENERIC_DETAIL_KEYS = new Set([
+  "tenantId",
+  "tenantSlug",
+  "payload",
+  "undoSnapshot",
+  "quoteSnapshot",
+  "recoveryKey",
+  "contentHash",
+]);
+
+function shouldHideGenericDetail(key: string): boolean {
+  if (HIDDEN_GENERIC_DETAIL_KEYS.has(key)) return true;
+  return key.endsWith("Id") || key.endsWith("Ids");
+}
+
 function buildGenericSections(details: Record<string, unknown>): AuditDetailSection[] {
   const rows: AuditDetailRow[] = [];
 
   for (const [key, value] of Object.entries(details)) {
     if (key === "before" || key === "after") continue;
+    if (shouldHideGenericDetail(key)) continue;
     let display: string;
     if (key === "amount" && typeof value === "number") {
       display = formatMoneyFromCents(value) ?? String(value);
+    } else if (value === "" || value === null || value === undefined) {
+      display = "—";
+    } else if (Array.isArray(value)) {
+      display = `${value.length} élément(s)`;
     } else if (typeof value === "object") {
-      display = JSON.stringify(value);
+      display = "Information conservée dans le journal";
     } else {
       display = String(value);
     }

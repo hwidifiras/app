@@ -195,7 +195,7 @@ export async function enrichAuditLogPresentation(
       }
 
       if (log.action === "MEMBER_SUBSCRIPTION_UPDATED" && details?.payload) {
-        rows.push({ label: "Champs modifiés", value: "Voir historique technique" });
+        rows.push({ label: "Champs modifiés", value: "Historique conservé dans le journal" });
       }
 
       if (rows.length) sections.push({ title: "Abonnement", rows });
@@ -508,7 +508,7 @@ async function buildEntityRow(log: AuditLogRow): Promise<AuditDetailRow | null> 
   };
   const label = labels[log.entityType];
   if (!label) return null;
-  return { label: "Référence système", value: `${label} · ${log.entityId}` };
+  return { label: "Référence support", value: `${label} · référence conservée` };
 }
 
 function buildEnrichedContext(

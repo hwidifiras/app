@@ -146,7 +146,7 @@ export function ReceiptDocument({
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#2563EB]">Verification publique</p>
             <p className="mt-1 font-semibold text-[#0B1220]">
-              Scanner ce QR confirme le numero, le code, le statut et le hash du recu.
+              Scanner ce QR confirme le numero, le code et le statut du recu.
             </p>
             <p className="mt-2 break-all font-mono text-xs text-[var(--muted-foreground)]">{verificationUrl}</p>
           </div>
@@ -161,7 +161,6 @@ export function ReceiptDocument({
           </p>
         ) : null}
         {snapshot.club.footer ? <p className="mt-1">{snapshot.club.footer}</p> : null}
-        <p className="mt-1 font-mono text-[0.68rem]">Hash: {snapshot.receipt.contentHash}</p>
       </footer>
     </article>
   );
