@@ -25,6 +25,7 @@ function serializeSettings(settings: Awaited<ReturnType<typeof getClubSettings>>
     workingDays: settings.workingDays,
     maxStaffDiscountPercent: settings.maxStaffDiscountPercent,
     debtAlertThresholdCents: settings.debtAlertThresholdCents,
+    dashboardShowCommercialInsights: settings.dashboardShowCommercialInsights,
     receiptPrefix: settings.receiptPrefix,
     nextReceiptSequence: settings.nextReceiptSequence,
     receiptFooter: settings.receiptFooter,
@@ -197,6 +198,9 @@ export async function PATCH(request: Request) {
         : {}),
       ...(data.debtAlertThresholdCents !== undefined
         ? { debtAlertThresholdCents: data.debtAlertThresholdCents }
+        : {}),
+      ...(data.dashboardShowCommercialInsights !== undefined
+        ? { dashboardShowCommercialInsights: data.dashboardShowCommercialInsights }
         : {}),
       ...(data.receiptPrefix !== undefined ? { receiptPrefix: data.receiptPrefix.toUpperCase() } : {}),
       ...(data.nextReceiptSequence !== undefined ? { nextReceiptSequence: data.nextReceiptSequence } : {}),

@@ -116,6 +116,7 @@ const CLUB_FIELD_LABELS: Record<string, string> = {
   allowCoachConcurrentSameRoomQualified: "Coach multi-groupes meme salle",
   allowPublicRegister: "Inscription publique",
   workingDays: "Jours d'ouverture",
+  dashboardShowCommercialInsights: "Suivi commercial dashboard",
   receiptPrefix: "Prefixe recu",
   nextReceiptSequence: "Prochain numero recu",
   receiptFooter: "Texte bas de recu",

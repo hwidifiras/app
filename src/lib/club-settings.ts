@@ -19,6 +19,7 @@ export type ClubSettingsData = {
   workingDays: ClubDay[];
   maxStaffDiscountPercent: number;
   debtAlertThresholdCents: number;
+  dashboardShowCommercialInsights: boolean;
   receiptPrefix: string;
   nextReceiptSequence: number;
   receiptFooter: string;
@@ -44,6 +45,7 @@ const DEFAULTS = {
   workingDays: [...DEFAULT_WORKING_DAYS],
   maxStaffDiscountPercent: 30,
   debtAlertThresholdCents: 0,
+  dashboardShowCommercialInsights: true,
   receiptPrefix: "WD",
   nextReceiptSequence: 1,
   receiptFooter: "",
@@ -91,6 +93,10 @@ function normalizeClubSettings(row: Record<string, unknown>): ClubSettingsData {
       typeof row.debtAlertThresholdCents === "number"
         ? row.debtAlertThresholdCents
         : DEFAULTS.debtAlertThresholdCents,
+    dashboardShowCommercialInsights:
+      typeof row.dashboardShowCommercialInsights === "boolean"
+        ? row.dashboardShowCommercialInsights
+        : DEFAULTS.dashboardShowCommercialInsights,
     receiptPrefix: typeof row.receiptPrefix === "string" ? row.receiptPrefix : DEFAULTS.receiptPrefix,
     nextReceiptSequence:
       typeof row.nextReceiptSequence === "number" && row.nextReceiptSequence > 0

@@ -8,6 +8,7 @@ import { ClubCheckinRulesSection } from "@/components/settings/club-checkin-rule
 import { ClubIdentitySection } from "@/components/settings/club-identity-section";
 import { ClubPlanningRulesSection } from "@/components/settings/club-planning-rules-section";
 import { ClubReceiptSettings } from "@/components/settings/club-receipt-settings";
+import { SettingsToggleRow } from "@/components/settings/settings-toggle-row";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import {
@@ -31,6 +32,7 @@ export type ClubSettingsFormData = {
   workingDays: ClubDay[];
   maxStaffDiscountPercent: number;
   debtAlertThresholdCents: number;
+  dashboardShowCommercialInsights: boolean;
   receiptPrefix: string;
   nextReceiptSequence: number;
   receiptFooter: string;
@@ -82,6 +84,9 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
     String(initial.maxStaffDiscountPercent),
   );
   const [debtThresholdAmount, setDebtThresholdAmount] = useState(centsToMoneyInput(initial.debtAlertThresholdCents));
+  const [dashboardShowCommercialInsights, setDashboardShowCommercialInsights] = useState(
+    initial.dashboardShowCommercialInsights,
+  );
   const [receiptPrefix, setReceiptPrefix] = useState(initial.receiptPrefix || "WD");
   const [nextReceiptSequence, setNextReceiptSequence] = useState(String(initial.nextReceiptSequence || 1));
   const [receiptFooter, setReceiptFooter] = useState(initial.receiptFooter || "");
@@ -140,6 +145,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
         workingDays,
         maxStaffDiscountPercent: discount,
         debtAlertThresholdCents,
+        dashboardShowCommercialInsights,
         receiptPrefix: receiptPrefix.trim().toUpperCase(),
         nextReceiptSequence: receiptSequence,
         receiptFooter: receiptFooter.trim(),
@@ -182,6 +188,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
     setWorkingDays(json.data.workingDays?.length ? json.data.workingDays : [...DEFAULT_WORKING_DAYS]);
     setMaxStaffDiscountPercent(String(json.data.maxStaffDiscountPercent));
     setDebtThresholdAmount(centsToMoneyInput(json.data.debtAlertThresholdCents));
+    setDashboardShowCommercialInsights(json.data.dashboardShowCommercialInsights !== false);
     setReceiptPrefix(json.data.receiptPrefix ?? "WD");
     setNextReceiptSequence(String(json.data.nextReceiptSequence ?? 1));
     setReceiptFooter(json.data.receiptFooter ?? "");
@@ -259,6 +266,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
           { href: "#club-checkin", label: "Pointage" },
           { href: "#club-planning", label: "Planning" },
           { href: "#club-alerts", label: "Alertes" },
+          { href: "#club-dashboard", label: "Dashboard" },
           { href: "#club-receipts", label: "Reçus" },
         ]}
       />
@@ -300,6 +308,20 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
         onDebtThresholdAmountChange={setDebtThresholdAmount}
         onMaxStaffDiscountPercentChange={setMaxStaffDiscountPercent}
       />
+
+      <FormSection
+        id="club-dashboard"
+        title="Dashboard"
+        description="Choisissez les blocs visibles sur l'accueil de la réception."
+      >
+        <SettingsToggleRow
+          id="dashboardShowCommercialInsights"
+          label="Afficher le suivi commercial"
+          description="Affiche les cartes ventes, impayés, meilleures formules, remises et reçus sur le dashboard."
+          checked={dashboardShowCommercialInsights}
+          onChange={setDashboardShowCommercialInsights}
+        />
+      </FormSection>
 
       <FormSection
         id="club-receipts"

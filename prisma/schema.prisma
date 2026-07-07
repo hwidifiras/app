@@ -229,6 +229,7 @@ model ClubSettings {
   workingDays                           DayOfWeek[] @default([MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY])
   maxStaffDiscountPercent               Int         @default(30)
   debtAlertThresholdCents               Int         @default(0)
+  dashboardShowCommercialInsights       Boolean     @default(true)
   receiptPrefix                         String      @default("WD")
   nextReceiptSequence                   Int         @default(1)
   receiptFooter                         String      @default("")

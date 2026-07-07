@@ -90,6 +90,7 @@ export default async function SettingsClubPage() {
             workingDays: settings.workingDays,
             maxStaffDiscountPercent: settings.maxStaffDiscountPercent,
             debtAlertThresholdCents: settings.debtAlertThresholdCents,
+            dashboardShowCommercialInsights: settings.dashboardShowCommercialInsights,
             receiptPrefix: settings.receiptPrefix,
             nextReceiptSequence: settings.nextReceiptSequence,
             receiptFooter: settings.receiptFooter,

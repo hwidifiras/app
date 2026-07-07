@@ -568,6 +568,7 @@ export default async function Home() {
   let finalizationSessions: TodaySession[] = [];
   let priorityItems: PriorityItem[] = [];
   let emailConfigured = false;
+  let dashboardShowCommercialInsights = true;
 
   const now = new Date();
   const today = utcDateOnlyForTimeZone(now);
@@ -585,6 +586,7 @@ export default async function Home() {
 
   try {
     const clubSettings = await getClubSettings({ tenantId });
+    dashboardShowCommercialInsights = clubSettings.dashboardShowCommercialInsights;
 
     const [
       fetchedActiveMembers,
@@ -1030,21 +1032,23 @@ export default async function Home() {
           />
         </section>
 
-        <SalesSnapshotPanel
-          salesToday={salesToday}
-          salesTodayCount={salesTodayCount}
-          salesMonth={salesMonth}
-          revenueToday={revenueToday}
-          remainingOnTodaySales={remainingOnTodaySales}
-          newSalesToday={newSalesToday}
-          renewalSalesToday={renewalSalesToday}
-          newSalesMonth={newSalesMonth}
-          renewalSalesMonth={renewalSalesMonth}
-          debtAgingBuckets={debtAgingBuckets}
-          topSalesItems={topSalesItems}
-          discountSnapshot={discountSnapshot}
-          receiptSnapshot={receiptSnapshot}
-        />
+        {dashboardShowCommercialInsights ? (
+          <SalesSnapshotPanel
+            salesToday={salesToday}
+            salesTodayCount={salesTodayCount}
+            salesMonth={salesMonth}
+            revenueToday={revenueToday}
+            remainingOnTodaySales={remainingOnTodaySales}
+            newSalesToday={newSalesToday}
+            renewalSalesToday={renewalSalesToday}
+            newSalesMonth={newSalesMonth}
+            renewalSalesMonth={renewalSalesMonth}
+            debtAgingBuckets={debtAgingBuckets}
+            topSalesItems={topSalesItems}
+            discountSnapshot={discountSnapshot}
+            receiptSnapshot={receiptSnapshot}
+          />
+        ) : null}
 
         <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(24rem,0.85fr)]">
           <TodayWorkPanel todaySessions={todaySessions} priorityItems={priorityItems} />
