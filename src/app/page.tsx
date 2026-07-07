@@ -70,6 +70,20 @@ type SalesBreakdownItem = {
   subscriptions: number;
 };
 
+type DiscountSnapshot = {
+  catalogueMonth: number;
+  discountMonth: number;
+  discountedSubscriptions: number;
+  discountRatePercent: number | null;
+};
+
+type ReceiptSnapshot = {
+  paymentCountMonth: number;
+  issuedMonth: number;
+  missingMonth: number;
+  voidedMonth: number;
+};
+
 function MembersOverviewPanel({
   activeMembers,
   newMembersThisMonth,
@@ -198,6 +212,8 @@ function SalesSnapshotPanel({
   renewalSalesMonth,
   debtAgingBuckets,
   topSalesItems,
+  discountSnapshot,
+  receiptSnapshot,
 }: {
   salesToday: number;
   salesTodayCount: number;
@@ -210,6 +226,8 @@ function SalesSnapshotPanel({
   renewalSalesMonth: number;
   debtAgingBuckets: DebtAgingBucket[];
   topSalesItems: SalesBreakdownItem[];
+  discountSnapshot: DiscountSnapshot;
+  receiptSnapshot: ReceiptSnapshot;
 }) {
   const moneyStats = [
     {
@@ -376,6 +394,88 @@ function SalesSnapshotPanel({
           </div>
         </div>
 
+        <div className="grid gap-2 lg:grid-cols-2">
+          <div className="rounded-lg border border-[#E2E8F0] bg-white p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[#2563EB]">
+                  Offres
+                </p>
+                <h3 className="text-sm font-semibold text-[#0B1220]">Remises ce mois</h3>
+              </div>
+              <Link href="/offers" className="text-xs font-semibold text-[#2563EB] hover:underline">
+                Offres
+              </Link>
+            </div>
+            <div className="mt-3 rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] px-3 py-3">
+              <p className="text-lg font-bold leading-tight text-[#0B1220]">
+                {formatMoney(discountSnapshot.discountMonth)}
+              </p>
+              <p className="mt-1 text-xs text-[#475569]">
+                {discountSnapshot.discountedSubscriptions} abonnement
+                {discountSnapshot.discountedSubscriptions > 1 ? "s" : ""} avec remise
+              </p>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <div className="rounded-lg bg-[#F8FAFC] px-3 py-2">
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
+                  Catalogue
+                </p>
+                <p className="mt-1 text-sm font-bold text-[#0B1220]">{formatMoney(discountSnapshot.catalogueMonth)}</p>
+              </div>
+              <div className="rounded-lg bg-[#F8FAFC] px-3 py-2">
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
+                  Taux
+                </p>
+                <p className="mt-1 text-sm font-bold text-[#0B1220]">
+                  {discountSnapshot.discountRatePercent === null ? "—" : `${discountSnapshot.discountRatePercent}%`}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-[#E2E8F0] bg-white p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[#2563EB]">
+                  Reçus
+                </p>
+                <h3 className="text-sm font-semibold text-[#0B1220]">Traçabilité ce mois</h3>
+              </div>
+              <Link href="/payments" className="text-xs font-semibold text-[#2563EB] hover:underline">
+                Caisse
+              </Link>
+            </div>
+            <div
+              className={cn(
+                "mt-3 rounded-lg border px-3 py-3",
+                receiptSnapshot.missingMonth > 0
+                  ? "border-[#FECACA] bg-[#FEF2F2]"
+                  : "border-[#A7F3D0] bg-[#ECFDF5]",
+              )}
+            >
+              <p className="text-lg font-bold leading-tight text-[#0B1220]">
+                {receiptSnapshot.issuedMonth}/{receiptSnapshot.paymentCountMonth}
+              </p>
+              <p className="mt-1 text-xs text-[#475569]">paiements avec reçu émis</p>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <div className="rounded-lg bg-[#F8FAFC] px-3 py-2">
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
+                  À vérifier
+                </p>
+                <p className="mt-1 text-sm font-bold text-[#0B1220]">{receiptSnapshot.missingMonth}</p>
+              </div>
+              <div className="rounded-lg bg-[#F8FAFC] px-3 py-2">
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
+                  Annulés
+                </p>
+                <p className="mt-1 text-sm font-bold text-[#0B1220]">{receiptSnapshot.voidedMonth}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="rounded-lg border border-dashed border-[#D8E2F0] bg-[#F8FAFC] px-3 py-2 text-xs leading-5 text-[#475569]">
           Ventes = abonnements créés. Encaissé = paiements réellement reçus. Total ventes ce mois :
           <span className="font-semibold text-[#0B1220]"> {formatMoney(salesMonth)}</span>.
@@ -440,6 +540,18 @@ export default async function Home() {
     { label: "30+ jours", amount: 0, subscriptions: 0, tone: "red" },
   ];
   let topSalesItems: SalesBreakdownItem[] = [];
+  let discountSnapshot: DiscountSnapshot = {
+    catalogueMonth: 0,
+    discountMonth: 0,
+    discountedSubscriptions: 0,
+    discountRatePercent: null,
+  };
+  let receiptSnapshot: ReceiptSnapshot = {
+    paymentCountMonth: 0,
+    issuedMonth: 0,
+    missingMonth: 0,
+    voidedMonth: 0,
+  };
   let cashMethodStats: CashMethodStat[] = [];
   let cashTrend: CashTrendDay[] = [];
   let recentMembers: RecentMemberPreview[] = [];
@@ -481,6 +593,7 @@ export default async function Home() {
       fetchedPaymentWindow,
       fetchedSubscriptions,
       fetchedSalesSubscriptions,
+      fetchedReceiptWindow,
       fetchedSessions,
       fetchedRecentMembers,
     ] = await Promise.all([
@@ -528,12 +641,25 @@ export default async function Home() {
         select: {
           id: true,
           amount: true,
+          listPriceCents: true,
+          discountCents: true,
           createdAt: true,
           memberId: true,
           member: { select: { joinedAt: true } },
           plan: { select: { name: true } },
           sport: { select: { name: true } },
           payments: { where: { tenantId }, select: { amount: true } },
+        },
+      }),
+      prisma.receipt.findMany({
+        where: {
+          tenantId,
+          issuedAt: { gte: monthStart, lt: tomorrow },
+        },
+        select: {
+          id: true,
+          status: true,
+          payment: { select: { amount: true, entryType: true } },
         },
       }),
       prisma.session.findMany({
@@ -637,6 +763,39 @@ export default async function Home() {
     salesToday = salesSubscriptionsToday.reduce((sum, subscription) => sum + subscription.amount, 0);
     salesTodayCount = salesSubscriptionsToday.length;
     salesMonth = fetchedSalesSubscriptions.reduce((sum, subscription) => sum + subscription.amount, 0);
+    const catalogueMonth = fetchedSalesSubscriptions.reduce((sum, subscription) => {
+      const cataloguePrice = subscription.listPriceCents ?? subscription.amount + subscription.discountCents;
+      return sum + Math.max(cataloguePrice, subscription.amount);
+    }, 0);
+    const discountMonth = fetchedSalesSubscriptions.reduce((sum, subscription) => {
+      const cataloguePrice = subscription.listPriceCents ?? subscription.amount + subscription.discountCents;
+      return sum + Math.max(0, cataloguePrice - subscription.amount);
+    }, 0);
+    const discountedSubscriptions = fetchedSalesSubscriptions.filter((subscription) => {
+      const cataloguePrice = subscription.listPriceCents ?? subscription.amount + subscription.discountCents;
+      return Math.max(0, cataloguePrice - subscription.amount) > 0;
+    }).length;
+    discountSnapshot = {
+      catalogueMonth,
+      discountMonth,
+      discountedSubscriptions,
+      discountRatePercent: catalogueMonth > 0 ? Math.round((discountMonth / catalogueMonth) * 100) : null,
+    };
+
+    const paymentCountMonth = paymentsThisMonth.filter(
+      (payment) => payment.entryType === "PAYMENT" && payment.amount > 0,
+    ).length;
+    const paymentReceiptsMonth = fetchedReceiptWindow.filter(
+      (receipt) => receipt.payment.entryType === "PAYMENT" && receipt.payment.amount > 0,
+    );
+    const issuedReceiptsMonth = paymentReceiptsMonth.filter((receipt) => receipt.status === "ISSUED").length;
+    receiptSnapshot = {
+      paymentCountMonth,
+      issuedMonth: issuedReceiptsMonth,
+      missingMonth: Math.max(0, paymentCountMonth - issuedReceiptsMonth),
+      voidedMonth: paymentReceiptsMonth.filter((receipt) => receipt.status === "VOIDED").length,
+    };
+
     const paidOnTodaySales = salesSubscriptionsToday.reduce(
       (sum, subscription) => sum + subscription.payments.reduce((paymentSum, payment) => paymentSum + payment.amount, 0),
       0,
@@ -882,6 +1041,8 @@ export default async function Home() {
               renewalSalesMonth={renewalSalesMonth}
               debtAgingBuckets={debtAgingBuckets}
               topSalesItems={topSalesItems}
+              discountSnapshot={discountSnapshot}
+              receiptSnapshot={receiptSnapshot}
             />
           </div>
         </section>
