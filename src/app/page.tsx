@@ -4,6 +4,7 @@ import {
   CalendarClock,
   ClipboardCheck,
   CreditCard,
+  Repeat2,
   UserPlus,
   UsersRound,
   Wallet,
@@ -171,6 +172,133 @@ function MembersOverviewPanel({
   );
 }
 
+function SalesSnapshotPanel({
+  salesToday,
+  salesTodayCount,
+  salesMonth,
+  revenueToday,
+  remainingOnTodaySales,
+  newSalesToday,
+  renewalSalesToday,
+  newSalesMonth,
+  renewalSalesMonth,
+}: {
+  salesToday: number;
+  salesTodayCount: number;
+  salesMonth: number;
+  revenueToday: number;
+  remainingOnTodaySales: number;
+  newSalesToday: number;
+  renewalSalesToday: number;
+  newSalesMonth: number;
+  renewalSalesMonth: number;
+}) {
+  const moneyStats = [
+    {
+      label: "Ventes aujourd'hui",
+      value: formatMoney(salesToday),
+      detail: `${salesTodayCount} abonnement${salesTodayCount > 1 ? "s" : ""} créé${salesTodayCount > 1 ? "s" : ""}`,
+      tone: "blue" as const,
+    },
+    {
+      label: "Encaissé aujourd'hui",
+      value: formatMoney(revenueToday),
+      detail: "Paiements réellement reçus",
+      tone: "green" as const,
+    },
+    {
+      label: "Reste ventes du jour",
+      value: formatMoney(remainingOnTodaySales),
+      detail: "À encaisser sur les ventes du jour",
+      tone: remainingOnTodaySales > 0 ? ("amber" as const) : ("green" as const),
+    },
+  ];
+
+  const flowStats = [
+    {
+      label: "Nouvelles inscriptions",
+      icon: UserPlus,
+      today: newSalesToday,
+      month: newSalesMonth,
+      tone: "blue" as const,
+    },
+    {
+      label: "Renouvellements",
+      icon: Repeat2,
+      today: renewalSalesToday,
+      month: renewalSalesMonth,
+      tone: "slate" as const,
+    },
+  ];
+
+  return (
+    <DashboardPanel labelledBy="dashboard-sales-title" className="min-w-0">
+      <DashboardSectionHeader
+        titleId="dashboard-sales-title"
+        title="Ventes vs encaissé"
+        eyebrow="Suivi commercial"
+        action={
+          <Link href="/subscriptions" className="text-xs font-semibold text-[#2563EB] hover:underline">
+            Abonnements
+          </Link>
+        }
+      />
+      <div className="space-y-3 p-3">
+        <div className="grid gap-2 md:grid-cols-3">
+          {moneyStats.map((stat) => {
+            const tone = dashboardToneStyles[stat.tone];
+            return (
+              <div key={stat.label} className={cn("rounded-lg border px-3 py-3", tone.soft, tone.border)}>
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[#64748B]">
+                  {stat.label}
+                </p>
+                <p className="mt-2 text-lg font-bold leading-tight text-[#0B1220]">{stat.value}</p>
+                <p className="mt-1 text-xs leading-snug text-[#475569]">{stat.detail}</p>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-2">
+          {flowStats.map((stat) => {
+            const tone = dashboardToneStyles[stat.tone];
+            const Icon = stat.icon;
+            return (
+              <div key={stat.label} className="rounded-lg border border-[#E2E8F0] bg-white px-3 py-3">
+                <div className="flex items-center gap-2">
+                  <span className={cn("flex size-8 items-center justify-center rounded-lg", tone.soft, tone.text)}>
+                    <Icon className="size-4" />
+                  </span>
+                  <p className="text-sm font-semibold text-[#0B1220]">{stat.label}</p>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className="rounded-lg bg-[#F8FAFC] px-3 py-2">
+                    <p className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
+                      Aujourd&apos;hui
+                    </p>
+                    <p className="mt-1 text-lg font-bold text-[#0B1220]">{stat.today}</p>
+                  </div>
+                  <div className="rounded-lg bg-[#F8FAFC] px-3 py-2">
+                    <p className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
+                      Ce mois
+                    </p>
+                    <p className="mt-1 text-lg font-bold text-[#0B1220]">{stat.month}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="rounded-lg border border-dashed border-[#D8E2F0] bg-[#F8FAFC] px-3 py-2 text-xs leading-5 text-[#475569]">
+          Ventes = abonnements créés. Encaissé = paiements réellement reçus. Total ventes ce mois :
+          <span className="font-semibold text-[#0B1220]"> {formatMoney(salesMonth)}</span>.
+        </div>
+      </div>
+    </DashboardPanel>
+  );
+}
+
 function formatDateFr(value: Date) {
   return value.toLocaleDateString("fr-FR", {
     day: "numeric",
@@ -212,6 +340,14 @@ export default async function Home() {
   let averagePaymentToday = 0;
   let correctionsToday = 0;
   let reversalsToday = 0;
+  let salesToday = 0;
+  let salesTodayCount = 0;
+  let salesMonth = 0;
+  let remainingOnTodaySales = 0;
+  let newSalesToday = 0;
+  let renewalSalesToday = 0;
+  let newSalesMonth = 0;
+  let renewalSalesMonth = 0;
   let cashMethodStats: CashMethodStat[] = [];
   let cashTrend: CashTrendDay[] = [];
   let recentMembers: RecentMemberPreview[] = [];
@@ -252,6 +388,7 @@ export default async function Home() {
       fetchedSessionsToday,
       fetchedPaymentWindow,
       fetchedSubscriptions,
+      fetchedSalesSubscriptions,
       fetchedSessions,
       fetchedRecentMembers,
     ] = await Promise.all([
@@ -286,6 +423,21 @@ export default async function Home() {
           endDate: true,
           member: { select: { firstName: true, lastName: true, phone: true } },
           plan: { select: { name: true } },
+          payments: { where: { tenantId }, select: { amount: true } },
+        },
+      }),
+      prisma.memberSubscription.findMany({
+        where: {
+          tenantId,
+          status: { in: ["ACTIVE", "EXPIRED"] },
+          createdAt: { gte: monthStart, lt: tomorrow },
+        },
+        select: {
+          id: true,
+          amount: true,
+          createdAt: true,
+          memberId: true,
+          member: { select: { joinedAt: true } },
           payments: { where: { tenantId }, select: { amount: true } },
         },
       }),
@@ -372,6 +524,33 @@ export default async function Home() {
       positivePaymentsToday.length > 0 ? Math.round(sumPaymentAmounts(positivePaymentsToday) / positivePaymentsToday.length) : 0;
     correctionsToday = paymentsToday.filter((payment) => payment.entryType === "CORRECTION").length;
     reversalsToday = paymentsToday.filter((payment) => payment.entryType === "REVERSAL").length;
+
+    const salesSubscriptionsToday = fetchedSalesSubscriptions.filter(
+      (subscription) => subscription.createdAt >= today && subscription.createdAt < tomorrow,
+    );
+    const todayNewMemberIds = new Set(
+      salesSubscriptionsToday
+        .filter((subscription) => subscription.member.joinedAt >= today && subscription.member.joinedAt < tomorrow)
+        .map((subscription) => subscription.memberId),
+    );
+    const monthNewMemberIds = new Set(
+      fetchedSalesSubscriptions
+        .filter((subscription) => subscription.member.joinedAt >= monthStart && subscription.member.joinedAt < tomorrow)
+        .map((subscription) => subscription.memberId),
+    );
+
+    salesToday = salesSubscriptionsToday.reduce((sum, subscription) => sum + subscription.amount, 0);
+    salesTodayCount = salesSubscriptionsToday.length;
+    salesMonth = fetchedSalesSubscriptions.reduce((sum, subscription) => sum + subscription.amount, 0);
+    const paidOnTodaySales = salesSubscriptionsToday.reduce(
+      (sum, subscription) => sum + subscription.payments.reduce((paymentSum, payment) => paymentSum + payment.amount, 0),
+      0,
+    );
+    remainingOnTodaySales = Math.max(0, salesToday - paidOnTodaySales);
+    newSalesToday = todayNewMemberIds.size;
+    renewalSalesToday = Math.max(0, salesSubscriptionsToday.length - newSalesToday);
+    newSalesMonth = monthNewMemberIds.size;
+    renewalSalesMonth = Math.max(0, fetchedSalesSubscriptions.length - newSalesMonth);
 
     const methodStats = new Map<string, CashMethodStat>();
     for (const payment of paymentsToday) {
@@ -547,16 +726,29 @@ export default async function Home() {
 
         <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(24rem,0.85fr)]">
           <CashTrendPanel trend={cashTrend} weekTotal={revenueWeek} />
-          <CashRegisterPanel
-            totalToday={revenueToday}
-            paymentCountToday={paymentCountToday}
-            averagePaymentToday={averagePaymentToday}
-            weekTotal={revenueWeek}
-            monthTotal={revenueMonth}
-            methodStats={cashMethodStats}
-            correctionsToday={correctionsToday}
-            reversalsToday={reversalsToday}
-          />
+          <div className="grid gap-4">
+            <CashRegisterPanel
+              totalToday={revenueToday}
+              paymentCountToday={paymentCountToday}
+              averagePaymentToday={averagePaymentToday}
+              weekTotal={revenueWeek}
+              monthTotal={revenueMonth}
+              methodStats={cashMethodStats}
+              correctionsToday={correctionsToday}
+              reversalsToday={reversalsToday}
+            />
+            <SalesSnapshotPanel
+              salesToday={salesToday}
+              salesTodayCount={salesTodayCount}
+              salesMonth={salesMonth}
+              revenueToday={revenueToday}
+              remainingOnTodaySales={remainingOnTodaySales}
+              newSalesToday={newSalesToday}
+              renewalSalesToday={renewalSalesToday}
+              newSalesMonth={newSalesMonth}
+              renewalSalesMonth={renewalSalesMonth}
+            />
+          </div>
         </section>
 
         <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(24rem,0.85fr)]">
