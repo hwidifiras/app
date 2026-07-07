@@ -24,6 +24,10 @@ alone without help.
 - Server-side disposable PostgreSQL test run passed 16 test files and 163 tests
   after adding the working-day closure, planning conflict preference, and receipt
   verification/voiding regressions.
+- Browser-click staging smoke passed basic enrollment, enrollment recovery from
+  the success panel, payment creation, printable receipt load, and public receipt
+  verification. The public verification smoke found a tenant-context bug, which
+  was fixed before this checkpoint.
 - Money, payment correction/reversal, receipts, enrollment recovery,
   subscription guards, attendance policy, and tenant isolation have meaningful
   automated coverage.
@@ -41,8 +45,8 @@ alone without help.
   creation/editing and planning conflict review.
 - Settings pages are functional and much improved, but not all share one
   excellent guided configuration pattern yet.
-- Receipt email delivery plus print/copy actions need a fresh safe browser smoke
-  before being advertised as a polished tenant feature.
+- Receipt email delivery plus print/copy button state still need a focused safe
+  browser smoke before being advertised as a polished tenant feature.
 - Accessibility has earlier automated proof, but no current manual screen-reader
   traversal.
 - SaaS billing, self-serve onboarding, production cutover, and final tenant
@@ -54,8 +58,12 @@ alone without help.
   not reachable.
 - Server-side disposable PostgreSQL testing is the valid test path for this
   branch.
-- Latest server run: commit `0618588`, disposable `gymday_saas_test`, 7
-  migrations applied, 16 test files passed, 163 tests passed.
+- Latest deployed/tested staging checkpoint: commit `180f0f5`.
+- Latest server run: disposable `gymday_test_codex_*`, 7 migrations applied, 16
+  test files passed, 163 tests passed. The temporary test database was dropped
+  after the run.
+- Temporary browser-QA records matching `auditclick-*` and `auditpay-*` were
+  removed from staging after smoke verification.
 - Raw screenshots are intentionally ignored by Git because they may contain
   client data.
 - No production data mutation is required for the remaining QA; use temporary
@@ -67,14 +75,14 @@ alone without help.
 | --- | --- | --- |
 | First-client guided handoff | Go | Core flows are coherent and tested enough, with known caveats. |
 | Manual demo to another dojo owner | Go with prepared data | Daily flows look sellable; setup should be guided live. |
-| Paid SaaS pilot with manual onboarding | Conditional go | Server proof is strong; still needs final browser-click smoke on enrollment, payment/receipt actions, pointage drawer, and planning conflict UX. |
+| Paid SaaS pilot with manual onboarding | Conditional go | Server proof is strong and basic enrollment/payment/receipt browser smoke passed; still needs final browser-click smoke on receipt delivery buttons, pointage drawer, and planning conflict UX. |
 | Self-serve SaaS launch | No-go | Needs onboarding, billing, stronger setup guidance, and operations playbook. |
 | Production cutover to multitenant stack | No-go in this checkpoint | Cutover is separate and requires backup, migration verification, staging smoke, and rollback plan. |
 
 ## Next Optimal Fix Order
 
-1. Finish manual browser-click QA for enrollment, payment/receipt actions,
-   planning conflict UX, working-day blocking UX, and the pointage drawer.
+1. Finish manual browser-click QA for receipt delivery buttons, planning conflict
+   UX, working-day blocking UX, and the pointage drawer.
 2. Make coach assignment and group eligibility obvious in group create/edit,
    coaches, and selected-session details.
 3. Standardize settings pages with shared rule/impact/danger patterns.

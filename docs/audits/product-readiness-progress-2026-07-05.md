@@ -116,7 +116,8 @@ Make the dojo / martial-arts SaaS safe to sell and hand over:
 - Screenshot evidence remains local/ignored at `screenshots/product-readiness-staging-2026-07-06/`.
 - Raw screenshot QA: 24 desktop/mobile captures, 0 detected horizontal-overflow screens, 0 application-error screens.
 - Additional remaining-gap screenshot QA is stored locally/ignored at `screenshots/product-readiness-staging-2026-07-07-remaining-partials/`: 20 desktop/mobile captures across member detail, enrollment, payment, groups, group schedules, group edit, coaches, users, and data import, with 0 detected horizontal-overflow screens and 0 application-error screens.
-- Server test evidence: commit `0618588`, disposable PostgreSQL database `gymday_saas_test`, 7 migrations applied, 16 test files passed, 163 tests passed.
+- Server test evidence: latest staging checkpoint `180f0f5`, disposable PostgreSQL database `gymday_test_codex_*`, 7 migrations applied, 16 test files passed, 163 tests passed; the temporary test database was dropped after verification.
+- Browser-click smoke evidence: temporary staging enrollment and payment flows reached success, enrollment recovery from the success panel passed, a receipt was issued and loaded, and public receipt verification returned `HTTP 200` with the expected receipt/status after the explicit-tenant lookup fix. Temporary `auditclick-*` and `auditpay-*` records were cleaned from staging.
 - Additional coverage confirmed in this checkpoint: closing a club working day is rejected when future sessions or active horaires still exist on that day; planning conflict preferences prove shared-room and same-room qualified-coach cases; receipt verification proves issued receipts can be looked up by number/code, preserve legal/payment snapshot data, and become voided after payment correction or reversal; pointage policy tests prove partial-payment permission, present/absent consumption, override reason/limit, finalized-session reopen, and PATCH/create rule parity; enrollment/payment route tests prove enrollment apply with payment/group assignment, unsafe-revert blocking, overpayment rejection, exact remaining payment, ledger rows, and receipt issuance.
 
 ## Remaining Priority List
@@ -140,6 +141,7 @@ Highest-risk routes to re-check next:
 - session edit reason UX for broad permanent changes is implemented;
 - group schedule generation preview and future-session effects;
 - subscription browser QA and copy polish after the latest edit/cancel audit pass;
+- receipt print/copy/email delivery button smoke in a browser that exposes those states;
 - offer browser QA after the usage-count/deactivation clarity pass;
 - data import rollback boundaries.
 
@@ -442,9 +444,11 @@ Raw screenshots and `qa-results.json` are stored locally under ignored folder `s
 
 ## Server Test Checkpoint
 
-The local PostgreSQL blocker was bypassed safely by running tests on the VPS against the separate disposable database `gymday_saas_test`, not the staging data database.
+The local PostgreSQL blocker was bypassed safely by running tests on the VPS
+against separate disposable databases, not the staging data database.
 
-- Reset `gymday_saas_test` with `prisma migrate reset --force --skip-seed` from a throwaway container.
+- Reset disposable `gymday_saas_test` / `gymday_test_codex_*` databases with
+  `prisma migrate reset --force --skip-seed` from throwaway containers.
 - Applied all seven PostgreSQL migrations successfully.
 - Fixed stale test cleanup/fixtures after the receipt, demographic, soft-deactivation, and enrollment-recovery changes:
   - scenario cleanup deletes receipts before payments;
@@ -452,6 +456,8 @@ The local PostgreSQL blocker was bypassed safely by running tests on the VPS aga
   - import fixtures include gender and kid/adult-compatible groups;
   - catalog delete expectations assert soft deactivation;
   - enrollment recovery tests provide a reason and expect assignments to close instead of disappear.
-- Latest result: `16` test files passed, `163` tests passed at commit `0618588`.
+- Historical result: `16` test files passed, `163` tests passed at commit `0618588`.
+- Latest result: `16` test files passed, `163` tests passed at commit `180f0f5`.
 
-This test run did not reset or mutate `gymday_saas_staging`.
+These test runs did not reset or mutate `gymday_saas_staging`; the temporary
+`gymday_test_codex_*` database was dropped after the latest run.
