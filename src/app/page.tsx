@@ -1018,34 +1018,33 @@ export default async function Home() {
 
         <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(24rem,0.85fr)]">
           <CashTrendPanel trend={cashTrend} weekTotal={revenueWeek} />
-          <div className="grid gap-4">
-            <CashRegisterPanel
-              totalToday={revenueToday}
-              paymentCountToday={paymentCountToday}
-              averagePaymentToday={averagePaymentToday}
-              weekTotal={revenueWeek}
-              monthTotal={revenueMonth}
-              methodStats={cashMethodStats}
-              correctionsToday={correctionsToday}
-              reversalsToday={reversalsToday}
-            />
-            <SalesSnapshotPanel
-              salesToday={salesToday}
-              salesTodayCount={salesTodayCount}
-              salesMonth={salesMonth}
-              revenueToday={revenueToday}
-              remainingOnTodaySales={remainingOnTodaySales}
-              newSalesToday={newSalesToday}
-              renewalSalesToday={renewalSalesToday}
-              newSalesMonth={newSalesMonth}
-              renewalSalesMonth={renewalSalesMonth}
-              debtAgingBuckets={debtAgingBuckets}
-              topSalesItems={topSalesItems}
-              discountSnapshot={discountSnapshot}
-              receiptSnapshot={receiptSnapshot}
-            />
-          </div>
+          <CashRegisterPanel
+            totalToday={revenueToday}
+            paymentCountToday={paymentCountToday}
+            averagePaymentToday={averagePaymentToday}
+            weekTotal={revenueWeek}
+            monthTotal={revenueMonth}
+            methodStats={cashMethodStats}
+            correctionsToday={correctionsToday}
+            reversalsToday={reversalsToday}
+          />
         </section>
+
+        <SalesSnapshotPanel
+          salesToday={salesToday}
+          salesTodayCount={salesTodayCount}
+          salesMonth={salesMonth}
+          revenueToday={revenueToday}
+          remainingOnTodaySales={remainingOnTodaySales}
+          newSalesToday={newSalesToday}
+          renewalSalesToday={renewalSalesToday}
+          newSalesMonth={newSalesMonth}
+          renewalSalesMonth={renewalSalesMonth}
+          debtAgingBuckets={debtAgingBuckets}
+          topSalesItems={topSalesItems}
+          discountSnapshot={discountSnapshot}
+          receiptSnapshot={receiptSnapshot}
+        />
 
         <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(24rem,0.85fr)]">
           <TodayWorkPanel todaySessions={todaySessions} priorityItems={priorityItems} />
