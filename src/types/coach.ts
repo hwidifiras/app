@@ -4,6 +4,7 @@ export type CoachDto = {
   lastName: string;
   phone: string;
   email: string | null;
+  birthDate: string | null;
   isActive: boolean;
   sportId: string | null;
   sportName: string | null;

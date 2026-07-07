@@ -94,6 +94,7 @@ export async function POST(request: Request) {
   }
 
   const emailValue = parsed.data.email?.trim() || null;
+  const birthDateValue = parsed.data.birthDate ? new Date(parsed.data.birthDate) : null;
   const sportIdValue = parsed.data.sportId && parsed.data.sportId.trim().length > 0 ? parsed.data.sportId : null;
   const qualifiedSportIds = normalizeCoachSportIds(parsed.data.qualifiedSportIds, sportIdValue);
 
@@ -116,6 +117,7 @@ export async function POST(request: Request) {
           lastName: parsed.data.lastName,
           phone: parsed.data.phone,
           email: emailValue,
+          birthDate: birthDateValue,
           sportId: sportIdValue,
           qualifications: {
             create: qualifiedSportIds.map((qualifiedSportId) => ({
@@ -204,6 +206,8 @@ export async function PATCH(request: Request) {
   }
 
   const payload = updatePayload.data;
+  const birthDateValue =
+    payload.birthDate === undefined ? undefined : payload.birthDate ? new Date(payload.birthDate) : null;
   const sportIdValue =
     payload.sportId === undefined ? undefined : payload.sportId && payload.sportId.trim().length > 0 ? payload.sportId : null;
   const qualificationReplacementIds =
@@ -255,6 +259,7 @@ export async function PATCH(request: Request) {
               : payload.email === "" || payload.email === null
                 ? null
                 : payload.email,
+          birthDate: birthDateValue,
           sportId: sportIdValue,
           isActive: payload.isActive,
         },

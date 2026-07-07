@@ -24,11 +24,25 @@ type CoachManagerProps = {
   sportsOptions: SportDto[];
 };
 
+function dateInputToIso(value: string) {
+  return value ? new Date(`${value}T00:00:00`).toISOString() : null;
+}
+
+function isoToDateInput(value: string | null) {
+  return value ? value.split("T")[0] : "";
+}
+
+function formatDateForSearch(value: string | null) {
+  if (!value) return "";
+  return new Date(value).toLocaleDateString("fr-FR");
+}
+
 export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProps) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [sportId, setSportId] = useState("");
   const [qualifiedSportIds, setQualifiedSportIds] = useState<string[]>([]);
   const [sports, setSports] = useState<SportDto[]>(sportsOptions);
@@ -40,6 +54,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
   const [editLastName, setEditLastName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [editBirthDate, setEditBirthDate] = useState("");
   const [editSportId, setEditSportId] = useState("");
   const [editQualifiedSportIds, setEditQualifiedSportIds] = useState<string[]>([]);
   const [editIsActive, setEditIsActive] = useState(true);
@@ -77,6 +92,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
         coach.lastName,
         coach.phone,
         coach.email ?? "",
+        formatDateForSearch(coach.birthDate),
         coach.sportName ?? "",
         qualifiedSportNames(coach),
       ].some((value) => value.toLocaleLowerCase("fr").includes(query)),
@@ -106,6 +122,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
         lastName,
         phone,
         email,
+        birthDate: dateInputToIso(birthDate),
         sportId,
         qualifiedSportIds: withPrimarySport(qualifiedSportIds, sportId),
       }),
@@ -124,6 +141,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
     setLastName("");
     setPhone("");
     setEmail("");
+    setBirthDate("");
     setSportId("");
     setQualifiedSportIds([]);
     await reloadCoaches();
@@ -136,6 +154,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
     setEditLastName(coach.lastName);
     setEditPhone(coach.phone);
     setEditEmail(coach.email ?? "");
+    setEditBirthDate(isoToDateInput(coach.birthDate));
     setEditSportId(coach.sportId ?? "");
     setEditQualifiedSportIds(coach.qualifiedSportIds);
     setEditIsActive(coach.isActive);
@@ -148,6 +167,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
     setEditLastName("");
     setEditPhone("");
     setEditEmail("");
+    setEditBirthDate("");
     setEditSportId("");
     setEditQualifiedSportIds([]);
     setEditIsActive(true);
@@ -167,6 +187,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
           lastName: editLastName,
           phone: editPhone,
           email: editEmail,
+          birthDate: dateInputToIso(editBirthDate),
           sportId: editSportId,
           qualifiedSportIds: withPrimarySport(editQualifiedSportIds, editSportId),
           isActive: editIsActive,
@@ -290,6 +311,15 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                   type="email"
                 />
               </FormField>
+              <FormField label="Date de naissance" htmlFor="coach-birth-date" hint="Optionnel">
+                <input
+                  id="coach-birth-date"
+                  value={birthDate}
+                  onChange={(e) => setBirthDate(e.target.value)}
+                  className="field"
+                  type="date"
+                />
+              </FormField>
             </FormGrid>
             <FormField label="Spécialité principale" htmlFor="coach-sport" hint="Sert de repère dans les groupes et le planning.">
               <select
@@ -374,6 +404,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                 editLastName={editLastName}
                 editPhone={editPhone}
                 editEmail={editEmail}
+                editBirthDate={editBirthDate}
                 editSportId={editSportId}
                 editQualifiedSportIds={editQualifiedSportIds}
                 editIsActive={editIsActive}
@@ -386,6 +417,7 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
                 onEditLastNameChange={setEditLastName}
                 onEditPhoneChange={setEditPhone}
                 onEditEmailChange={setEditEmail}
+                onEditBirthDateChange={setEditBirthDate}
                 onEditSportIdChange={setEditSportId}
                 onEditQualifiedSportIdsChange={setEditQualifiedSportIds}
                 onEditIsActiveChange={setEditIsActive}

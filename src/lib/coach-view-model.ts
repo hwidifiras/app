@@ -6,6 +6,7 @@ export type CoachViewModelInput = {
   lastName: string;
   phone: string;
   email: string | null;
+  birthDate: Date | null;
   isActive: boolean;
   sportId: string | null;
   createdAt: Date;
@@ -61,6 +62,7 @@ export function buildCoachDto(coach: CoachViewModelInput): CoachDto {
     lastName: coach.lastName,
     phone: coach.phone,
     email: coach.email,
+    birthDate: coach.birthDate?.toISOString() ?? null,
     isActive: coach.isActive,
     sportId: coach.sportId,
     sportName: coach.sport?.name ?? null,

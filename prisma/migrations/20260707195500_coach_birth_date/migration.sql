@@ -1,0 +1,1 @@
+ALTER TABLE "Coach" ADD COLUMN "birthDate" TIMESTAMP(3);

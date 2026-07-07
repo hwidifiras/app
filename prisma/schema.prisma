@@ -323,6 +323,7 @@ model Coach {
   lastName       String
   phone          String
   email          String?
+  birthDate      DateTime?
   isActive       Boolean                   @default(true)
   sportId        String?
   sport          Sport?                    @relation(fields: [sportId], references: [id], onDelete: SetNull)

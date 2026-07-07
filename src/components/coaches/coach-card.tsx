@@ -18,6 +18,7 @@ type CoachCardProps = {
   editLastName: string;
   editPhone: string;
   editEmail: string;
+  editBirthDate: string;
   editSportId: string;
   editQualifiedSportIds: string[];
   editIsActive: boolean;
@@ -30,6 +31,7 @@ type CoachCardProps = {
   onEditLastNameChange: (value: string) => void;
   onEditPhoneChange: (value: string) => void;
   onEditEmailChange: (value: string) => void;
+  onEditBirthDateChange: (value: string) => void;
   onEditSportIdChange: (value: string) => void;
   onEditQualifiedSportIdsChange: (value: string[]) => void;
   onEditIsActiveChange: (value: boolean) => void;
@@ -44,6 +46,7 @@ export function CoachCard({
   editLastName,
   editPhone,
   editEmail,
+  editBirthDate,
   editSportId,
   editQualifiedSportIds,
   editIsActive,
@@ -56,10 +59,15 @@ export function CoachCard({
   onEditLastNameChange,
   onEditPhoneChange,
   onEditEmailChange,
+  onEditBirthDateChange,
   onEditSportIdChange,
   onEditQualifiedSportIdsChange,
   onEditIsActiveChange,
 }: CoachCardProps) {
+  const birthDateLabel = coach.birthDate
+    ? new Date(coach.birthDate).toLocaleDateString("fr-FR")
+    : null;
+
   return (
     <li className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5">
       {editing ? (
@@ -91,6 +99,14 @@ export function CoachCard({
             onChange={(e) => onEditEmailChange(e.target.value)}
             placeholder="Email"
             className="field text-xs"
+            type="email"
+          />
+          <input
+            aria-label="Date de naissance du coach"
+            value={editBirthDate}
+            onChange={(e) => onEditBirthDateChange(e.target.value)}
+            className="field text-xs"
+            type="date"
           />
           <select
             aria-label="Spécialité principale du coach"
@@ -174,6 +190,11 @@ export function CoachCard({
                   {coach.phone}
                   {coach.email ? ` · ${coach.email}` : ""}
                 </p>
+                {birthDateLabel ? (
+                  <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
+                    Né(e) le {birthDateLabel}
+                  </p>
+                ) : null}
                 <div className="mt-2">
                   <CoachSpecialtyChips coach={coach} />
                 </div>
