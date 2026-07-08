@@ -105,7 +105,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Discipline introuvable ou inactive" }, { status: 400 });
   }
 
-  const planCapError = await validatePlanSessionsPerWeekForSport(sportId, parsed.data.sessionsPerWeek);
+  const planCapError = await validatePlanSessionsPerWeekForSport(
+    sportId,
+    parsed.data.sessionsPerWeek,
+    new Date(),
+    actor.tenantId,
+  );
   if (planCapError) {
     return NextResponse.json({ error: planCapError, code: "PLAN_EXCEEDS_SPORT_STANDARD" }, { status: 409 });
   }
@@ -219,7 +224,12 @@ export async function PATCH(request: Request) {
 
     if (payload.sessionsPerWeek !== undefined) {
       const sportId = payload.sportId && payload.sportId !== "" ? payload.sportId : currentPlan.sportId;
-      const planCapError = await validatePlanSessionsPerWeekForSport(sportId, payload.sessionsPerWeek);
+      const planCapError = await validatePlanSessionsPerWeekForSport(
+        sportId,
+        payload.sessionsPerWeek,
+        new Date(),
+        actor.tenantId,
+      );
       if (planCapError) {
         return NextResponse.json({ error: planCapError, code: "PLAN_EXCEEDS_SPORT_STANDARD" }, { status: 409 });
       }

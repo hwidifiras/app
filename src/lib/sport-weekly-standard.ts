@@ -29,8 +29,12 @@ function countSchedulesActiveInWeek(
 }
 
 /** Max weekly schedule slots among active groups for a sport. */
-export async function getSportMaxWeeklySessions(sportId: string, referenceDate: Date = new Date()): Promise<number | null> {
-  const tenantId = getRequiredTenantId();
+export async function getSportMaxWeeklySessions(
+  sportId: string,
+  referenceDate: Date = new Date(),
+  tenantIdOverride?: string,
+): Promise<number | null> {
+  const tenantId = tenantIdOverride ?? getRequiredTenantId();
   const { start, end } = getWeekRangeUtc(referenceDate);
   const groups = await prisma.group.findMany({
     where: { tenantId, sportId, isActive: true },
@@ -50,8 +54,12 @@ export async function getSportMaxWeeklySessions(sportId: string, referenceDate: 
   return Math.max(...counts, 0);
 }
 
-export async function getGroupWeeklyScheduleCount(groupId: string, referenceDate: Date = new Date()): Promise<number> {
-  const tenantId = getRequiredTenantId();
+export async function getGroupWeeklyScheduleCount(
+  groupId: string,
+  referenceDate: Date = new Date(),
+  tenantIdOverride?: string,
+): Promise<number> {
+  const tenantId = tenantIdOverride ?? getRequiredTenantId();
   const { start, end } = getWeekRangeUtc(referenceDate);
   const schedules = await prisma.groupSchedule.findMany({
     where: { tenantId, groupId, ...scheduleWindowWhere(start, end) },
@@ -64,8 +72,9 @@ export async function validatePlanSessionsPerWeekForSport(
   sportId: string,
   sessionsPerWeek: number,
   referenceDate: Date = new Date(),
+  tenantIdOverride?: string,
 ): Promise<string | null> {
-  const sportMax = await getSportMaxWeeklySessions(sportId, referenceDate);
+  const sportMax = await getSportMaxWeeklySessions(sportId, referenceDate, tenantIdOverride);
 
   if (sportMax === null || sportMax === 0) {
     return null;
