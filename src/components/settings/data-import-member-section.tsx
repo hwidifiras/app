@@ -9,18 +9,15 @@ export type DataImportMemberDraft = {
   address: string;
   parentName: string;
   parentPhone: string;
-  joinedAt: string;
 };
 
 type DataImportMemberSectionProps = {
   member: DataImportMemberDraft;
-  cutoverDate: string;
   onMemberChange: <K extends keyof DataImportMemberDraft>(key: K, value: DataImportMemberDraft[K]) => void;
 };
 
 export function DataImportMemberSection({
   member,
-  cutoverDate,
   onMemberChange,
 }: DataImportMemberSectionProps) {
   return (
@@ -88,17 +85,6 @@ export function DataImportMemberSection({
             className="field mt-1"
             value={member.email}
             onChange={(event) => onMemberChange("email", event.target.value)}
-          />
-        </label>
-        <label className="text-sm font-medium">
-          Inscrit au club depuis *
-          <input
-            type="date"
-            className="field mt-1"
-            value={member.joinedAt}
-            max={cutoverDate}
-            onChange={(event) => onMemberChange("joinedAt", event.target.value)}
-            required
           />
         </label>
         {member.memberType === "KID" ? (

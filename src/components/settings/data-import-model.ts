@@ -17,14 +17,6 @@ export type PlanOption = {
   validityDays: number;
 };
 
-export type SessionOption = {
-  id: string;
-  groupId: string;
-  groupName: string;
-  sessionDate: string;
-  startTime: string;
-};
-
 export type DataImportPreview = {
   memberPhone: string;
   memberName: string;

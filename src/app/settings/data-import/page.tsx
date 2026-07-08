@@ -2,7 +2,6 @@ import { DataImportWizard } from "@/components/settings/data-import-wizard";
 import { SettingsMetric } from "@/components/settings/settings-hub";
 import { PageHeader } from "@/components/ui/page-header";
 import { ReceptionInfoCard } from "@/components/ui/reception-info-card";
-import { getWeekRangeUtc } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/request-user";
 
@@ -24,9 +23,7 @@ export default async function DataImportPage() {
     );
   }
 
-  const now = new Date();
-  const { start } = getWeekRangeUtc(now);
-  const [groups, plans, sessions] = await Promise.all([
+  const [groups, plans] = await Promise.all([
     prisma.group.findMany({
       where: { tenantId: authUser.tenantId, isActive: true },
       orderBy: { name: "asc" },
@@ -50,49 +47,34 @@ export default async function DataImportPage() {
         validityDays: true,
       },
     }),
-    prisma.session.findMany({
-      where: {
-        tenantId: authUser.tenantId,
-        sessionDate: { gte: start, lte: now },
-        status: { not: "CANCELLED" },
-      },
-      orderBy: [{ sessionDate: "asc" }, { startTime: "asc" }],
-      select: {
-        id: true,
-        groupId: true,
-        sessionDate: true,
-        startTime: true,
-        group: { select: { name: true } },
-      },
-    }),
   ]);
 
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
         overline="Réglages"
-        title="Import ancien fichier"
-        description="Importer l'état réel d'un adhérent actif depuis un registre papier ou Excel, sans recréer artificiellement un abonnement neuf."
+        title="Reprise des anciens membres"
+        description="Démarrez proprement avec l'état réel du club: groupe actuel, formule, validité, séances restantes et solde."
       />
 
       <section className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <SettingsMetric label="Groupes actifs" value={groups.length} detail="Cibles disponibles" />
         <SettingsMetric label="Formules" value={plans.length} detail="Compatibles par discipline" />
-        <SettingsMetric label="Pointages récents" value={sessions.length} detail="Séances de la semaine" />
+        <SettingsMetric label="Dates à saisir" value="1" detail="Date de reprise globale" />
         <SettingsMetric label="Fenêtre" value="4 heures" detail="Mode temporaire admin" />
       </section>
 
       <section className="mb-5 grid gap-3 lg:grid-cols-2">
         <ReceptionInfoCard title="Quand utiliser cette page" variant="info">
           <p>
-            Utilisez la reprise uniquement pour migrer un membre déjà actif depuis un ancien registre. Pour une nouvelle
-            vente normale, utilisez plutôt Inscrire ou Encaisser.
+            Utilisez la reprise pour les membres déjà actifs dans le club. Ne cherchez pas l&apos;historique exact: saisissez
+            seulement la situation réelle au jour de bascule.
           </p>
         </ReceptionInfoCard>
-        <ReceptionInfoCard title="Sécurité" variant="warning">
+        <ReceptionInfoCard title="Ce qui est créé" variant="warning">
           <p>
-            Vérifiez toujours le résumé avant application. L&apos;annulation reste disponible seulement tant qu&apos;aucune
-            nouvelle activité n&apos;est liée au membre importé.
+            L&apos;application crée le membre, son groupe actuel et son abonnement actif à partir de la date de reprise. Les
+            dettes viennent de la différence entre montant à suivre et déjà payé.
           </p>
         </ReceptionInfoCard>
       </section>
@@ -107,13 +89,6 @@ export default async function DataImportPage() {
             sportName: group.sport.name,
           }))}
           plans={plans}
-          sessions={sessions.map((session) => ({
-            id: session.id,
-            groupId: session.groupId,
-            groupName: session.group.name,
-            sessionDate: session.sessionDate.toISOString(),
-            startTime: session.startTime,
-          }))}
         />
       </div>
     </main>

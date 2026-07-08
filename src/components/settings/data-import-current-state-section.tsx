@@ -8,13 +8,10 @@ export type DataImportCurrentStateValues = {
   cutoverDate: string;
   groupId: string;
   planId: string;
-  assignmentStartDate: string;
-  subscriptionStartDate: string;
   subscriptionEndDate: string;
   remainingSessions: string;
   amount: string;
   paid: string;
-  paymentDate: string;
   paymentMethod: string;
   note: string;
 };
@@ -43,12 +40,15 @@ export function DataImportCurrentStateSection({
   return (
     <section id="reprise-current" className="form-section-anchor panel p-4 sm:p-6">
       <div className="mb-5">
-        <p className="text-xs font-bold uppercase tracking-wider text-[var(--primary)]">2. État réel</p>
-        <h2 className="mt-1 text-lg font-semibold">Affectation et abonnement en cours</h2>
+        <p className="text-xs font-bold uppercase tracking-wider text-[var(--primary)]">2. État initial</p>
+        <h2 className="mt-1 text-lg font-semibold">Situation réelle au démarrage</h2>
+        <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+          Ne cherchez pas l&apos;ancienne date d&apos;inscription. La date de reprise devient le point de départ propre dans le logiciel.
+        </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <label className="text-sm font-medium">
-          Date de bascule *
+          Date de reprise *
           <input
             type="date"
             className="field mt-1"
@@ -87,29 +87,7 @@ export function DataImportCurrentStateSection({
           </select>
         </label>
         <label className="text-sm font-medium">
-          Affecté au groupe depuis *
-          <input
-            type="date"
-            className="field mt-1"
-            value={values.assignmentStartDate}
-            max={values.cutoverDate}
-            onChange={(event) => onFieldChange("assignmentStartDate", event.target.value)}
-            required
-          />
-        </label>
-        <label className="text-sm font-medium">
-          Début abonnement *
-          <input
-            type="date"
-            className="field mt-1"
-            value={values.subscriptionStartDate}
-            max={values.cutoverDate}
-            onChange={(event) => onFieldChange("subscriptionStartDate", event.target.value)}
-            required
-          />
-        </label>
-        <label className="text-sm font-medium">
-          Fin abonnement *
+          Valable jusqu&apos;au *
           <input
             type="date"
             className="field mt-1"
@@ -123,7 +101,7 @@ export function DataImportCurrentStateSection({
           Séances restantes *
           <input
             type="number"
-            min="1"
+            min="0"
             max={selectedPlan?.totalSessions}
             className="field mt-1"
             value={values.remainingSessions}
@@ -132,7 +110,7 @@ export function DataImportCurrentStateSection({
           />
         </label>
         <label className="text-sm font-medium">
-          Montant total dû (TND) *
+          Montant à suivre (TND) *
           <input
             type="number"
             min="0"
@@ -153,16 +131,6 @@ export function DataImportCurrentStateSection({
             value={values.paid}
             onChange={(event) => onFieldChange("paid", event.target.value)}
             required
-          />
-        </label>
-        <label className="text-sm font-medium">
-          Date du solde repris
-          <input
-            type="date"
-            className="field mt-1"
-            value={values.paymentDate}
-            max={values.cutoverDate}
-            onChange={(event) => onFieldChange("paymentDate", event.target.value)}
           />
         </label>
         <label className="text-sm font-medium">

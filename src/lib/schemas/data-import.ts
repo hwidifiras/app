@@ -51,7 +51,7 @@ export const dataImportPayloadSchema = z
     subscriptionEndDate: z.string().datetime("Date de fin invalide"),
     amountCents: z.number().int().min(0),
     paidCents: z.number().int().min(0),
-    remainingSessions: z.number().int().min(1),
+    remainingSessions: z.number().int().min(0),
     paymentDate: optionalDate,
     paymentMethod: z.string().trim().max(50).optional().or(z.literal("")),
     note: z.string().trim().min(3, "Note de reprise requise").max(500),

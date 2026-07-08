@@ -26,12 +26,12 @@ export function DataImportBulkSection({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-wider text-[var(--primary)]">Import Excel</p>
-          <h2 className="mt-1 text-lg font-semibold">Import en masse</h2>
+          <h2 className="mt-1 text-lg font-semibold">Reprise Excel simplifiée</h2>
           <p className="mt-1 max-w-3xl text-sm text-[var(--muted-foreground)]">
-            Utilisez le modèle, gardez les noms de groupes/formules tels qu&apos;ils existent dans le club, puis lancez la prévalidation avant d&apos;importer.
+            Utilisez le modèle avec la situation actuelle des membres: groupe, formule, validité, séances restantes et paiement déjà reçu.
           </p>
           <p className="mt-2 max-w-3xl rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-800">
-            Aucun code membre à inventer : le modèle commence par Prénom et l&apos;application génère une référence pendant Vérifier Excel.
+            Une seule date est demandée dans l&apos;écran: la date de reprise. Le fichier ne doit pas inventer de date d&apos;inscription ou de début de groupe.
           </p>
         </div>
         <a href={templateUrl} className="btn btn-ghost btn-block-mobile" download>

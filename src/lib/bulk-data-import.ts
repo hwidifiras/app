@@ -111,8 +111,8 @@ const HEADER_ALIASES: Record<HeaderKey, string[]> = {
   planName: ["planname", "formule", "plan", "abonnement"],
   assignmentStartDate: ["assignmentstartdate", "dateaffectation", "debutgroupe"],
   subscriptionStartDate: ["subscriptionstartdate", "debutabonnement"],
-  subscriptionEndDate: ["subscriptionenddate", "finabonnement"],
-  amount: ["amount", "montant", "montanttotal", "montantabonnement", "montantdu", "prix", "total"],
+  subscriptionEndDate: ["subscriptionenddate", "finabonnement", "valablejusquau", "validite", "datefin"],
+  amount: ["amount", "montant", "montanttotal", "montantabonnement", "montantdu", "montantasuivre", "prix", "total"],
   paid: ["paid", "paye", "dejapaye"],
   remainingSessions: ["remainingsessions", "seancesrestantes", "reste"],
   paymentDate: ["paymentdate", "datepaiement", "datereglement"],
@@ -344,7 +344,17 @@ async function prepareBulkImport(buffer: Buffer, fileName: string, fallbackCutov
   if (rows.length === 0) throw new Error("BULK_IMPORT_EMPTY_WORKBOOK");
 
   const headerIndex = buildHeaderIndex(rows[0]);
-  const requiredHeaders: HeaderKey[] = ["firstName", "lastName", "memberType", "groupName", "planName"];
+  const requiredHeaders: HeaderKey[] = [
+    "firstName",
+    "lastName",
+    "memberType",
+    "groupName",
+    "planName",
+    "subscriptionEndDate",
+    "amount",
+    "paid",
+    "remainingSessions",
+  ];
   const missingHeaders = requiredHeaders.filter((header) => !headerIndex.has(header));
   if (missingHeaders.length > 0) {
     throw new Error(`BULK_IMPORT_MISSING_HEADERS:${missingHeaders.join(",")}`);
@@ -399,19 +409,30 @@ async function prepareBulkImport(buffer: Buffer, fileName: string, fallbackCutov
     }
 
     const cutoverDate = fallbackCutoverIso;
-    const joinedAt = parseDate(readCell(row, headerIndex, "joinedAt")) ?? fallbackCutoverIso;
-    const subscriptionStartDate = parseDate(readCell(row, headerIndex, "subscriptionStartDate")) ?? joinedAt;
+    const joinedAt = fallbackCutoverIso;
+    const subscriptionStartDate = fallbackCutoverIso;
     const subscriptionEndDate =
       parseDate(readCell(row, headerIndex, "subscriptionEndDate")) ??
       (typeof planMatch === "string" ? null : addDaysIso(subscriptionStartDate, planMatch.validityDays ?? 30));
-    const assignmentStartDate = parseDate(readCell(row, headerIndex, "assignmentStartDate")) ?? subscriptionStartDate;
-    const amountCents =
-      parseMoneyCents(readCell(row, headerIndex, "amount")) ??
-      (typeof planMatch === "string" ? 0 : planMatch.price ?? 0);
-    const paidCents = parseMoneyCents(readCell(row, headerIndex, "paid")) ?? 0;
-    const remainingSessions =
-      parseInteger(readCell(row, headerIndex, "remainingSessions")) ??
-      (typeof planMatch === "string" ? 0 : planMatch.totalSessions ?? 0);
+    const assignmentStartDate = fallbackCutoverIso;
+    const amountCell = readCell(row, headerIndex, "amount");
+    const parsedAmountCents = parseMoneyCents(amountCell);
+    const amountCents = parsedAmountCents ?? 0;
+    if (parsedAmountCents === null) {
+      errors.push("Montant a suivre requis");
+    }
+    const paidCell = readCell(row, headerIndex, "paid");
+    const parsedPaidCents = parseMoneyCents(paidCell);
+    const paidCents = parsedPaidCents ?? 0;
+    if (parsedPaidCents === null) {
+      errors.push("Deja paye requis (mettez 0 si rien n'a ete paye)");
+    }
+    const remainingSessionsCell = readCell(row, headerIndex, "remainingSessions");
+    const parsedRemainingSessions = parseInteger(remainingSessionsCell);
+    const remainingSessions = parsedRemainingSessions ?? 0;
+    if (parsedRemainingSessions === null) {
+      errors.push("Seances restantes requises (mettez 0 si aucune)");
+    }
     const paymentDate = parseDate(readCell(row, headerIndex, "paymentDate")) ?? fallbackCutoverIso;
 
     if (!subscriptionEndDate) errors.push("Date fin abonnement invalide");

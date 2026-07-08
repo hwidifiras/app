@@ -144,9 +144,6 @@ export async function inspectDataImport(payload: DataImportPayload): Promise<Imp
   if (payload.paidCents === 0) {
     warnings.push("Aucun règlement historique ne sera créé.");
   }
-  if (payload.attendances.length === 0 && cutoverDate.getUTCDay() !== 1) {
-    warnings.push("Aucune présence antérieure n'est renseignée pour la semaine de bascule.");
-  }
 
   return {
     memberPhone,

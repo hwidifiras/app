@@ -14,6 +14,10 @@ const bulkImportHeaderLabels: Record<string, string> = {
   memberType: "Type membre",
   groupName: "Groupe",
   planName: "Formule",
+  subscriptionEndDate: "Valable jusqu'au",
+  amount: "Montant a suivre",
+  paid: "Deja paye",
+  remainingSessions: "Seances restantes",
 };
 
 async function adminOrResponse(request: Request) {

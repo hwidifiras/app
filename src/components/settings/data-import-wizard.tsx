@@ -4,10 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-import {
-  DataImportAttendanceSection,
-  type DataImportAttendanceChoice,
-} from "@/components/settings/data-import-attendance-section";
 import { DataImportBulkSection } from "@/components/settings/data-import-bulk-section";
 import {
   DataImportCurrentStateSection,
@@ -34,17 +30,14 @@ import {
   type DataImportPreview,
   type GroupOption,
   type PlanOption,
-  type SessionOption,
 } from "./data-import-model";
 
 export function DataImportWizard({
   groups,
   plans,
-  sessions,
 }: {
   groups: GroupOption[];
   plans: PlanOption[];
-  sessions: SessionOption[];
 }) {
   const router = useRouter();
   const [status, setStatus] = useState<ImportStatus>({
@@ -71,31 +64,22 @@ export function DataImportWizard({
     address: "",
     parentName: "",
     parentPhone: "",
-    joinedAt: DATA_IMPORT_TODAY,
   });
   const [groupId, setGroupId] = useState("");
   const [planId, setPlanId] = useState("");
   const [cutoverDate, setCutoverDate] = useState(DATA_IMPORT_TODAY);
-  const [assignmentStartDate, setAssignmentStartDate] = useState(DATA_IMPORT_TODAY);
-  const [subscriptionStartDate, setSubscriptionStartDate] = useState(DATA_IMPORT_TODAY);
   const [subscriptionEndDate, setSubscriptionEndDate] = useState("");
   const [amount, setAmount] = useState("");
   const [paid, setPaid] = useState("");
   const [remainingSessions, setRemainingSessions] = useState("");
-  const [paymentDate, setPaymentDate] = useState(DATA_IMPORT_TODAY);
   const [paymentMethod, setPaymentMethod] = useState("REPRISE_PAPIER");
-  const [note, setNote] = useState("Import ancien fichier depuis le registre papier");
-  const [attendanceStatuses, setAttendanceStatuses] = useState<
-    Record<string, "PRESENT" | "ABSENT">
-  >({});
+  const [note, setNote] = useState("Reprise simple des anciens membres");
 
   const selectedGroup = groups.find((group) => group.id === groupId);
   const compatiblePlans = selectedGroup
     ? plans.filter((plan) => plan.sportId === selectedGroup.sportId)
     : [];
   const selectedPlan = plans.find((plan) => plan.id === planId);
-  const eligibleSessions = sessions.filter((session) => session.groupId === groupId);
-
   const expiresLabel = status.expiresAt
     ? new Date(status.expiresAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
     : null;
@@ -105,40 +89,33 @@ export function DataImportWizard({
       cutoverDate: isoDate(cutoverDate),
       member: {
         ...member,
-        joinedAt: isoDate(member.joinedAt),
+        joinedAt: isoDate(cutoverDate),
         birthDate: member.birthDate ? isoDate(member.birthDate) : "",
       },
       groupId,
       planId,
-      assignmentStartDate: isoDate(assignmentStartDate),
-      subscriptionStartDate: isoDate(subscriptionStartDate),
+      assignmentStartDate: isoDate(cutoverDate),
+      subscriptionStartDate: isoDate(cutoverDate),
       subscriptionEndDate: subscriptionEndDate ? isoDate(subscriptionEndDate) : "",
       amountCents: moneyInputToCents(amount),
       paidCents: moneyInputToCents(paid),
       remainingSessions: Math.max(0, Math.round(Number(remainingSessions) || 0)),
-      paymentDate: paymentDate ? isoDate(paymentDate) : "",
+      paymentDate: moneyInputToCents(paid) > 0 ? isoDate(cutoverDate) : "",
       paymentMethod,
       note,
-      attendances: Object.entries(attendanceStatuses).map(([sessionId, attendanceStatus]) => ({
-        sessionId,
-        status: attendanceStatus,
-      })),
+      attendances: [],
     }),
     [
       amount,
-      assignmentStartDate,
-      attendanceStatuses,
       cutoverDate,
       groupId,
       member,
       note,
       paid,
-      paymentDate,
       paymentMethod,
       planId,
       remainingSessions,
       subscriptionEndDate,
-      subscriptionStartDate,
     ],
   );
 
@@ -173,7 +150,6 @@ export function DataImportWizard({
   function selectGroup(nextGroupId: string) {
     setGroupId(nextGroupId);
     setPlanId("");
-    setAttendanceStatuses({});
     invalidatePreview();
   }
 
@@ -183,20 +159,10 @@ export function DataImportWizard({
     if (plan) {
       setAmount((plan.price / 100).toFixed(2));
       setRemainingSessions(String(plan.totalSessions));
-      const start = new Date(`${subscriptionStartDate}T00:00:00.000Z`);
+      const start = new Date(`${cutoverDate}T00:00:00.000Z`);
       start.setUTCDate(start.getUTCDate() + plan.validityDays);
       setSubscriptionEndDate(start.toISOString().slice(0, 10));
     }
-    invalidatePreview();
-  }
-
-  function updateAttendanceStatus(sessionId: string, choice: DataImportAttendanceChoice) {
-    setAttendanceStatuses((current) => {
-      const next = { ...current };
-      if (choice === "NONE") delete next[sessionId];
-      else next[sessionId] = choice;
-      return next;
-    });
     invalidatePreview();
   }
 
@@ -205,13 +171,10 @@ export function DataImportWizard({
       cutoverDate: setCutoverDate,
       groupId: setGroupId,
       planId: setPlanId,
-      assignmentStartDate: setAssignmentStartDate,
-      subscriptionStartDate: setSubscriptionStartDate,
       subscriptionEndDate: setSubscriptionEndDate,
       remainingSessions: setRemainingSessions,
       amount: setAmount,
       paid: setPaid,
-      paymentDate: setPaymentDate,
       paymentMethod: setPaymentMethod,
       note: setNote,
     };
@@ -383,14 +346,12 @@ export function DataImportWizard({
           <FormSectionNav
             items={[
               { href: "#reprise-identity", label: "Identité" },
-              { href: "#reprise-current", label: "État réel" },
-              { href: "#reprise-attendance", label: "Pointages" },
+              { href: "#reprise-current", label: "État initial" },
             ]}
           />
 
           <DataImportMemberSection
             member={member}
-            cutoverDate={cutoverDate}
             onMemberChange={updateMember}
           />
 
@@ -402,25 +363,16 @@ export function DataImportWizard({
               cutoverDate,
               groupId,
               planId,
-              assignmentStartDate,
-              subscriptionStartDate,
               subscriptionEndDate,
               remainingSessions,
               amount,
               paid,
-              paymentDate,
               paymentMethod,
               note,
             }}
             onFieldChange={updateCurrentStateField}
             onGroupChange={selectGroup}
             onPlanChange={selectPlan}
-          />
-
-          <DataImportAttendanceSection
-            eligibleSessions={eligibleSessions}
-            attendanceStatuses={attendanceStatuses}
-            onStatusChange={updateAttendanceStatus}
           />
 
           <DataImportPreviewSummary preview={preview} />
