@@ -13,10 +13,12 @@ type PermanentDeleteBlockers = {
   groupAssignments: number;
   subscriptions: number;
   attendances: number;
+  payments: number;
+  receipts: number;
 };
 
 function hasPermanentDeleteBlockers(blockers: PermanentDeleteBlockers) {
-  return blockers.groupAssignments > 0 || blockers.subscriptions > 0 || blockers.attendances > 0;
+  return blockers.attendances > 0 || blockers.payments > 0 || blockers.receipts > 0;
 }
 
 export async function GET(
@@ -162,13 +164,28 @@ export async function DELETE(
           return { kind: "not-found" as const };
         }
 
-        const [groupAssignments, subscriptions, attendances] = await Promise.all([
+        const [groupAssignments, subscriptions, attendances, payments, receipts] = await Promise.all([
           tx.groupMember.count({ where: { tenantId: admin.tenantId, memberId: id } }),
           tx.memberSubscription.count({ where: { tenantId: admin.tenantId, memberId: id } }),
           tx.attendance.count({ where: { tenantId: admin.tenantId, memberId: id } }),
+          tx.payment.count({
+            where: {
+              tenantId: admin.tenantId,
+              memberSubscription: { tenantId: admin.tenantId, memberId: id },
+            },
+          }),
+          tx.receipt.count({
+            where: {
+              tenantId: admin.tenantId,
+              payment: {
+                tenantId: admin.tenantId,
+                memberSubscription: { tenantId: admin.tenantId, memberId: id },
+              },
+            },
+          }),
         ]);
 
-        const blockers = { groupAssignments, subscriptions, attendances };
+        const blockers = { groupAssignments, subscriptions, attendances, payments, receipts };
         if (hasPermanentDeleteBlockers(blockers)) {
           return { kind: "blocked" as const, blockers };
         }
@@ -194,6 +211,14 @@ export async function DELETE(
               reason: "Suppression définitive admin d'un dossier sans historique métier",
             }),
           },
+        });
+
+        await tx.groupMember.deleteMany({
+          where: { tenantId: admin.tenantId, memberId: member.id },
+        });
+
+        await tx.memberSubscription.deleteMany({
+          where: { tenantId: admin.tenantId, memberId: member.id },
         });
 
         await tx.member.delete({ where: { id: member.id } });
@@ -231,7 +256,7 @@ export async function DELETE(
         return NextResponse.json(
           {
             error:
-              "Suppression définitive bloquée : ce membre a déjà un historique. Utilisez la résiliation pour conserver les traces.",
+              "Suppression définitive bloquée : ce membre a déjà un pointage, un paiement ou un reçu. Utilisez la résiliation pour conserver les traces.",
             details: { blockers: result.blockers },
           },
           { status: 409 },

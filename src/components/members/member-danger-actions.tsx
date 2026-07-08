@@ -20,12 +20,12 @@ function permanentDeleteMessage(result: { error?: string; details?: { blockers?:
   if (!blockers) return result.error ?? "Erreur lors de la suppression définitive";
 
   const labels: Record<string, string> = {
-    groupAssignments: "affectation(s)",
-    subscriptions: "abonnement(s)",
     attendances: "pointage(s)",
+    payments: "paiement(s)",
+    receipts: "recu(s)",
   };
   const activeBlockers = Object.entries(blockers)
-    .filter(([, value]) => value > 0)
+    .filter(([key, value]) => key in labels && value > 0)
     .map(([key, value]) => `${value} ${labels[key] ?? key}`);
 
   if (activeBlockers.length === 0) return result.error ?? "Suppression bloquée";
@@ -124,8 +124,8 @@ export function MemberDangerActions({
 
       {canPermanentDelete ? (
         <p className="mt-3 text-xs leading-5 text-[var(--muted-foreground)]">
-          Suppression définitive admin uniquement pour doublon ou erreur de saisie. Elle est bloquée si le membre a une
-          affectation, un abonnement ou un pointage.
+          Suppression définitive admin pour doublon ou donnée de test. Elle supprime aussi les affectations et abonnements
+          sans paiement, mais reste bloquée si le membre a un pointage, un paiement ou un reçu.
         </p>
       ) : null}
 
@@ -141,7 +141,7 @@ export function MemberDangerActions({
       <ConfirmDialog
         open={pendingAction === "permanent"}
         title="Supprimer définitivement ce membre ?"
-        description={`${memberName} sera effacé du dossier si aucun historique métier n'existe. Cette action ne remplace pas la résiliation pour un vrai élève.`}
+        description={`${memberName} sera effacé si aucun pointage, paiement ou reçu n'existe. Les affectations et abonnements sans paiement seront nettoyés aussi.`}
         confirmLabel="Supprimer"
         loading={loading === "permanent"}
         onCancel={() => setPendingAction(null)}
