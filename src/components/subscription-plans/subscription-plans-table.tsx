@@ -167,7 +167,7 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
             const isExpanded = expandedPlanIds.includes(plan.id);
             return (
               <DataTableRow key={plan.id} expanded={isExpanded}>
-                <Td label="Formule" primary className="min-w-[12rem] font-medium text-foreground">
+                <Td primary className="min-w-[12rem] font-medium text-foreground">
                   {plan.name}
                   <p className="mt-0.5 line-clamp-2 text-xs font-normal text-muted-foreground">
                     {plan.description?.trim() || plan.sport?.name || "Sans description"}
