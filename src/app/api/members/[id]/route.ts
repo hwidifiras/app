@@ -6,6 +6,7 @@ import { updateMemberSchema } from "@/lib/schemas/member";
 import { expireStaleSubscriptions } from "@/lib/membership-rules";
 import { checkGroupMemberCompatibility } from "@/lib/demographics";
 import { memberProfileCompletionError } from "@/lib/member-profile-policy";
+import { isTechnicalAdmin } from "@/lib/technical-admin";
 
 export const runtime = "nodejs";
 
@@ -19,6 +20,10 @@ type PermanentDeleteBlockers = {
 
 function hasPermanentDeleteBlockers(blockers: PermanentDeleteBlockers) {
   return blockers.attendances > 0 || blockers.payments > 0 || blockers.receipts > 0;
+}
+
+function normalizeConfirmation(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
 export async function GET(
@@ -136,6 +141,231 @@ export async function DELETE(
 ) {
   const { id } = await params;
   const mode = new URL(_request.url).searchParams.get("mode");
+
+  if (mode === "test-purge") {
+    let admin;
+    try {
+      admin = await requireAdmin(_request);
+    } catch (e) {
+      return jsonAuthFailureResponse(e);
+    }
+
+    if (!isTechnicalAdmin(admin)) {
+      return NextResponse.json({ error: "Accès technique refusé" }, { status: 403 });
+    }
+
+    let body: unknown = {};
+    try {
+      body = await _request.json();
+    } catch {
+      body = {};
+    }
+
+    const confirmation =
+      typeof body === "object" && body !== null && "confirmation" in body
+        ? String((body as { confirmation?: unknown }).confirmation ?? "")
+        : "";
+    const reason =
+      typeof body === "object" && body !== null && "reason" in body
+        ? String((body as { reason?: unknown }).reason ?? "").trim()
+        : "";
+
+    try {
+      const result = await prisma.$transaction(async (tx) => {
+        const member = await tx.member.findFirst({
+          where: { id, tenantId: admin.tenantId },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+            email: true,
+            status: true,
+            archivedAt: true,
+            householdLink: { select: { householdId: true } },
+          },
+        });
+
+        if (!member) {
+          return { kind: "not-found" as const };
+        }
+
+        if (member.status !== "ARCHIVED") {
+          return { kind: "not-archived" as const };
+        }
+
+        const memberName = `${member.firstName} ${member.lastName}`.trim();
+        if (normalizeConfirmation(confirmation) !== normalizeConfirmation(memberName)) {
+          return { kind: "bad-confirmation" as const, memberName };
+        }
+
+        const subscriptions = await tx.memberSubscription.findMany({
+          where: { tenantId: admin.tenantId, memberId: member.id },
+          select: { id: true },
+        });
+        const subscriptionIds = subscriptions.map((subscription) => subscription.id);
+        const payments = subscriptionIds.length
+          ? await tx.payment.findMany({
+              where: { tenantId: admin.tenantId, memberSubscriptionId: { in: subscriptionIds } },
+              select: { id: true },
+            })
+          : [];
+        const paymentIds = payments.map((payment) => payment.id);
+        const receipts = paymentIds.length
+          ? await tx.receipt.findMany({
+              where: { tenantId: admin.tenantId, paymentId: { in: paymentIds } },
+              select: { id: true },
+            })
+          : [];
+        const receiptIds = receipts.map((receipt) => receipt.id);
+        const attendances = await tx.attendance.findMany({
+          where: { tenantId: admin.tenantId, memberId: member.id },
+          select: { id: true },
+        });
+        const attendanceIds = attendances.map((attendance) => attendance.id);
+        const groupAssignments = await tx.groupMember.findMany({
+          where: { tenantId: admin.tenantId, memberId: member.id },
+          select: { id: true },
+        });
+        const groupAssignmentIds = groupAssignments.map((assignment) => assignment.id);
+        const householdId = member.householdLink?.householdId ?? null;
+
+        const referencedIds = [
+          member.id,
+          ...groupAssignmentIds,
+          ...subscriptionIds,
+          ...paymentIds,
+          ...receiptIds,
+          ...attendanceIds,
+        ];
+
+        await tx.auditLog.deleteMany({
+          where: {
+            tenantId: admin.tenantId,
+            OR: [
+              { entityId: { in: referencedIds } },
+              ...referencedIds.map((referencedId) => ({
+                details: { contains: referencedId },
+              })),
+            ],
+          },
+        });
+
+        if (receiptIds.length > 0) {
+          await tx.receipt.deleteMany({
+            where: { tenantId: admin.tenantId, id: { in: receiptIds } },
+          });
+        }
+
+        if (paymentIds.length > 0) {
+          await tx.payment.deleteMany({
+            where: { tenantId: admin.tenantId, id: { in: paymentIds } },
+          });
+        }
+
+        if (attendanceIds.length > 0) {
+          await tx.attendance.deleteMany({
+            where: { tenantId: admin.tenantId, id: { in: attendanceIds } },
+          });
+        }
+
+        if (groupAssignmentIds.length > 0) {
+          await tx.groupMember.deleteMany({
+            where: { tenantId: admin.tenantId, id: { in: groupAssignmentIds } },
+          });
+        }
+
+        if (subscriptionIds.length > 0) {
+          await tx.memberSubscription.updateMany({
+            where: { tenantId: admin.tenantId, id: { in: subscriptionIds } },
+            data: { offerApplicationId: null },
+          });
+          await tx.memberSubscription.deleteMany({
+            where: { tenantId: admin.tenantId, id: { in: subscriptionIds } },
+          });
+        }
+
+        await tx.member.delete({ where: { id: member.id } });
+
+        if (householdId) {
+          const remainingHouseholdMembers = await tx.householdMember.count({
+            where: { tenantId: admin.tenantId, householdId },
+          });
+          if (remainingHouseholdMembers === 0) {
+            await tx.household.deleteMany({
+              where: { tenantId: admin.tenantId, id: householdId },
+            });
+          }
+        }
+
+        const purgedAt = new Date();
+        await tx.auditLog.create({
+          data: {
+            tenantId: admin.tenantId,
+            action: "TECHNICAL_TEST_MEMBER_PURGED",
+            entityType: "TechnicalCleanup",
+            entityId: "test-member-purge",
+            userId: admin.id,
+            details: JSON.stringify({
+              tenantId: admin.tenantId,
+              purgedAt: purgedAt.toISOString(),
+              reason: reason || "Purge technique de données de test",
+              counts: {
+                members: 1,
+                groupAssignments: groupAssignmentIds.length,
+                subscriptions: subscriptionIds.length,
+                payments: paymentIds.length,
+                receipts: receiptIds.length,
+                attendances: attendanceIds.length,
+                removedAuditReferences: referencedIds.length,
+              },
+            }),
+          },
+        });
+
+        return {
+          kind: "purged" as const,
+          purgedAt,
+          counts: {
+            groupAssignments: groupAssignmentIds.length,
+            subscriptions: subscriptionIds.length,
+            payments: paymentIds.length,
+            receipts: receiptIds.length,
+            attendances: attendanceIds.length,
+          },
+        };
+      });
+
+      if (result.kind === "not-found") {
+        return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
+      }
+
+      if (result.kind === "not-archived") {
+        return NextResponse.json(
+          { error: "Purge technique refusée : résiliez d'abord ce membre." },
+          { status: 409 },
+        );
+      }
+
+      if (result.kind === "bad-confirmation") {
+        return NextResponse.json(
+          { error: `Confirmation incorrecte. Tapez exactement : ${result.memberName}` },
+          { status: 400 },
+        );
+      }
+
+      return NextResponse.json({
+        data: {
+          purged: true,
+          purgedAt: result.purgedAt.toISOString(),
+          counts: result.counts,
+        },
+      });
+    } catch (error) {
+      console.error("DELETE /api/members/[id]?mode=test-purge error:", error);
+      return NextResponse.json({ error: "Erreur serveur lors de la purge technique" }, { status: 500 });
+    }
+  }
 
   if (mode === "permanent") {
     let admin;

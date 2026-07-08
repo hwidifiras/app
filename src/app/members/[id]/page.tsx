@@ -23,6 +23,7 @@ import { formatRoomLabel } from "@/lib/group-room";
 import { getEnrollmentRecoveryCandidatesForMember } from "@/lib/enrollment-recovery";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/request-user";
+import { isTechnicalAdmin } from "@/lib/technical-admin";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -406,6 +407,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                 memberName={`${member.firstName} ${member.lastName}`}
                 status={member.status}
                 canPermanentDelete={authUser.role === "ADMIN"}
+                canTechnicalPurge={isTechnicalAdmin(authUser)}
               />
             </div>
           </aside>

@@ -11,9 +11,10 @@ type MemberDangerActionsProps = {
   memberName: string;
   status: "ACTIVE" | "ARCHIVED";
   canPermanentDelete?: boolean;
+  canTechnicalPurge?: boolean;
 };
 
-type DangerAction = "archive" | "permanent";
+type DangerAction = "archive" | "permanent" | "technical-purge";
 
 function permanentDeleteMessage(result: { error?: string; details?: { blockers?: Record<string, number> } }) {
   const blockers = result.details?.blockers;
@@ -37,11 +38,14 @@ export function MemberDangerActions({
   memberName,
   status,
   canPermanentDelete = false,
+  canTechnicalPurge = false,
 }: MemberDangerActionsProps) {
   const router = useRouter();
   const [loading, setLoading] = useState<DangerAction | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<DangerAction | null>(null);
+  const [technicalConfirmation, setTechnicalConfirmation] = useState("");
+  const [technicalReason, setTechnicalReason] = useState("Données de test à retirer des chiffres réels du club");
 
   async function archiveMember() {
     setLoading("archive");
@@ -90,6 +94,34 @@ export function MemberDangerActions({
     router.refresh();
   }
 
+  async function purgeTechnicalTestMember() {
+    setLoading("technical-purge");
+    setMessage(null);
+
+    const response = await fetch(`/api/members/${encodeURIComponent(memberId)}?mode=test-purge`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        confirmation: technicalConfirmation,
+        reason: technicalReason,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      setMessage(result.error ?? "Erreur lors de la purge technique");
+      setLoading(null);
+      return;
+    }
+
+    setPendingAction(null);
+    setMessage("Données de test purgées des chiffres du club");
+    setLoading(null);
+    router.push("/members");
+    router.refresh();
+  }
+
   const busy = loading !== null;
 
   return (
@@ -120,6 +152,19 @@ export function MemberDangerActions({
             {loading === "permanent" ? "Suppression..." : "Supprimer définitivement"}
           </button>
         ) : null}
+        {canTechnicalPurge && status === "ARCHIVED" ? (
+          <button
+            type="button"
+            onClick={() => {
+              setTechnicalConfirmation("");
+              setPendingAction("technical-purge");
+            }}
+            disabled={busy}
+            className="btn btn-danger btn-block-mobile min-h-11 sm:w-auto"
+          >
+            {loading === "technical-purge" ? "Purge..." : "Purger données de test"}
+          </button>
+        ) : null}
       </div>
 
       {canPermanentDelete ? (
@@ -147,6 +192,67 @@ export function MemberDangerActions({
         onCancel={() => setPendingAction(null)}
         onConfirm={permanentlyDeleteMember}
       />
+      {pendingAction === "technical-purge" ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/55 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !loading) setPendingAction(null);
+          }}
+        >
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="technical-purge-title"
+            className="max-h-[min(90dvh,40rem)] w-full overflow-y-auto rounded-t-lg border border-[var(--danger)]/30 bg-[var(--surface)] p-4 shadow-[var(--shadow-floating)] sm:max-w-lg sm:rounded-lg sm:p-5"
+          >
+            <h2 id="technical-purge-title" className="text-base font-semibold text-[var(--danger)]">
+              Purge technique de données de test
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">
+              Cette action supprime le membre résilié et ses traces de test: pointages, abonnements, paiements, reçus,
+              affectations et logs liés. Les chiffres du club seront recalculés comme si ce test n&apos;avait jamais existé.
+            </p>
+            <div className="mt-4 rounded-lg border border-[var(--danger)]/25 bg-[var(--danger)]/5 p-3 text-sm leading-6 text-[var(--danger)]">
+              À utiliser uniquement pour vos données de test. Ne pas utiliser pour un vrai adhérent.
+            </div>
+            <label className="mt-4 block text-sm font-medium">
+              Motif technique
+              <textarea
+                className="field mt-1 min-h-20"
+                value={technicalReason}
+                onChange={(event) => setTechnicalReason(event.target.value)}
+              />
+            </label>
+            <label className="mt-4 block text-sm font-medium">
+              Tapez exactement <span className="font-bold">{memberName}</span>
+              <input
+                className="field mt-1"
+                value={technicalConfirmation}
+                onChange={(event) => setTechnicalConfirmation(event.target.value)}
+                autoFocus
+              />
+            </label>
+            <div className="mt-5 grid gap-2 sm:flex sm:flex-row-reverse">
+              <button
+                type="button"
+                onClick={() => void purgeTechnicalTestMember()}
+                disabled={loading === "technical-purge" || technicalConfirmation.trim() !== memberName.trim()}
+                className="btn btn-danger min-h-11 sm:min-w-40"
+              >
+                {loading === "technical-purge" ? "Purge..." : "Purger le test"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setPendingAction(null)}
+                disabled={loading === "technical-purge"}
+                className="btn btn-ghost min-h-11 sm:min-w-28"
+              >
+                Annuler
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }

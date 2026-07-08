@@ -90,6 +90,7 @@ const ACTION_LABELS: Record<string, string> = {
   MEMBER_ARCHIVED: "Élève archivé (résiliation)",
   MEMBER_UPDATED: "Fiche élève modifiée",
   MEMBER_DELETED: "Élève supprimé définitivement",
+  TECHNICAL_TEST_MEMBER_PURGED: "Purge technique de données test",
   USER_CREATED: "Compte utilisateur créé",
   USER_UPDATED: "Compte utilisateur modifié",
   USER_REGISTERED: "Nouveau compte inscrit",
