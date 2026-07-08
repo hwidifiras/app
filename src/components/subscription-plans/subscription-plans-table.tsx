@@ -3,11 +3,21 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { ChevronDown, CreditCard, RotateCcw } from "lucide-react";
+import { CircleOff, CreditCard, Pencil, RotateCcw } from "lucide-react";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  DataTable,
+  DataTableBody,
+  DataTableHead,
+  DataTableRow,
+  MobileRowToggle,
+  TableActionsCell,
+  Td,
+  Th,
+} from "@/components/ui/responsive-table";
 import {
   FilterField,
   ListSearch,
@@ -79,12 +89,12 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
     const result = await response.json();
 
     if (!response.ok) {
-      setMessage(result.error ?? "Erreur lors de la desactivation");
+      setMessage(result.error ?? "Erreur lors de la désactivation");
       setLoadingId(null);
       return;
     }
 
-    setMessage("Formule desactivee avec succes");
+    setMessage("Formule désactivée avec succès");
     setPendingDeletePlan(null);
     setLoadingId(null);
     router.refresh();
@@ -116,7 +126,7 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
           </div>
         </div>
         <p className="mt-2 text-xs text-[var(--muted-foreground)]">
-          {filteredPlans.length} plan{filteredPlans.length > 1 ? "s" : ""} affiché{filteredPlans.length > 1 ? "s" : ""}
+          {filteredPlans.length} formule{filteredPlans.length > 1 ? "s" : ""} affichée{filteredPlans.length > 1 ? "s" : ""}
         </p>
       </div>
 
@@ -125,11 +135,11 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
         <EmptyState
           className="m-3"
           icon={<CreditCard className="size-8 opacity-45" />}
-          title={plans.length === 0 ? "Aucun plan" : "Aucun résultat"}
+          title={plans.length === 0 ? "Aucune formule" : "Aucun résultat"}
           message={plans.length === 0 ? "Créez la première formule proposée aux membres." : "Modifiez la recherche ou le statut."}
           action={
             plans.length === 0 ? (
-              <Link href="/subscription-plans/new" className="btn btn-primary">Créer un plan</Link>
+              <Link href="/subscription-plans/new" className="btn btn-primary">Créer une formule</Link>
             ) : (
               <button type="button" onClick={() => { setSearchTerm(""); setStatusFilter("ALL"); }} className="btn btn-ghost">
                 Réinitialiser
@@ -138,74 +148,81 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
           }
         />
       ) : (
-      <div className="data-table overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3 text-left font-semibold">Nom</th>
-              <th className="px-4 py-3 text-left font-semibold">Description</th>
-              <th className="px-4 py-3 text-right font-semibold">Prix</th>
-              <th className="px-4 py-3 text-center font-semibold">/ semaine</th>
-              <th className="px-4 py-3 text-center font-semibold">/ mois (×4)</th>
-              <th className="px-4 py-3 text-center font-semibold">Validité</th>
-              <th className="px-4 py-3 text-center font-semibold">Sport</th>
-              <th className="px-4 py-3 text-center font-semibold">Statut</th>
-              <th className="px-4 py-3 text-center font-semibold">Souscriptions</th>
-              <th className="px-4 py-3 text-right font-semibold">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {pagination.pageItems.map((plan) => (
-              <tr
-                key={plan.id}
-                className={`mobile-collapsible-row hover:bg-[var(--surface-soft)] ${expandedPlanIds.includes(plan.id) ? "is-expanded" : ""}`}
-              >
-                <td className="data-table-primary px-4 py-3 font-medium" data-label="Nom">{plan.name}</td>
-                <td className="px-4 py-3 text-muted-foreground mobile-detail-cell" data-label="Description">{plan.description ?? "—"}</td>
-                <td className="px-4 py-3 text-right" data-label="Prix">
+      <DataTable className="rounded-none border-0 shadow-none">
+        <DataTableHead>
+          <tr>
+            <Th className="min-w-[12rem]">Formule</Th>
+            <Th className="min-w-[7rem] text-right">Prix</Th>
+            <Th className="min-w-[8rem] text-center">Quota</Th>
+            <Th className="hidden min-w-[7rem] text-center sm:table-cell">Validité</Th>
+            <Th className="hidden min-w-[9rem] text-center md:table-cell">Discipline</Th>
+            <Th className="min-w-[7rem] text-center">Statut</Th>
+            <Th className="hidden min-w-[7rem] text-center lg:table-cell">Ventes</Th>
+            <Th className="hidden text-right md:table-cell">Actions</Th>
+            <Th className="px-2 text-center md:hidden"> </Th>
+          </tr>
+        </DataTableHead>
+        <DataTableBody>
+          {pagination.pageItems.map((plan) => {
+            const isExpanded = expandedPlanIds.includes(plan.id);
+            return (
+              <DataTableRow key={plan.id} expanded={isExpanded}>
+                <Td label="Formule" primary className="min-w-[12rem] font-medium text-foreground">
+                  {plan.name}
+                  <p className="mt-0.5 line-clamp-2 text-xs font-normal text-muted-foreground">
+                    {plan.description?.trim() || plan.sport?.name || "Sans description"}
+                  </p>
+                </Td>
+                <Td label="Prix" className="whitespace-nowrap text-right font-semibold">
                   {formatMoney(plan.price)}
-                </td>
-                <td className="px-4 py-3 text-center mobile-detail-cell" data-label="/ semaine">{plan.sessionsPerWeek ?? "—"}</td>
-                <td className="px-4 py-3 text-center mobile-detail-cell" data-label="/ mois">{plan.totalSessions}</td>
-                <td className="px-4 py-3 text-center mobile-detail-cell" data-label="Validité">{plan.validityDays}j</td>
-                <td className="px-4 py-3 text-center mobile-detail-cell" data-label="Sport">{plan.sport?.name ?? "—"}</td>
-                <td className="px-4 py-3 text-center" data-label="Statut">
-                  <StatusBadge variant={plan.isActive ? "success" : "muted"}>{plan.isActive ? "Actif" : "Inactif"}</StatusBadge>
-                </td>
-                <td className="px-4 py-3 text-center mobile-detail-cell" data-label="Souscriptions">{plan._count.subscriptions}</td>
-                <td className="px-4 py-3 text-right card-actions-cell" data-label="Actions">
-                  <div className="card-actions-stack">
+                </Td>
+                <Td label="Quota" mobileDetail className="text-center">
+                  <span className="font-medium">{plan.sessionsPerWeek ?? "—"}/sem.</span>
+                  <p className="text-xs text-muted-foreground">{plan.totalSessions} séances / mois</p>
+                </Td>
+                <Td label="Validité" mobileDetail className="hidden whitespace-nowrap text-center sm:table-cell">
+                  {plan.validityDays} jours
+                </Td>
+                <Td label="Discipline" mobileDetail className="hidden text-center md:table-cell">
+                  {plan.sport?.name ?? "—"}
+                </Td>
+                <Td label="Statut" className="text-center">
+                  <StatusBadge variant={plan.isActive ? "success" : "muted"}>
+                    {plan.isActive ? "Actif" : "Inactif"}
+                  </StatusBadge>
+                </Td>
+                <Td label="Ventes" mobileDetail className="hidden text-center lg:table-cell">
+                  {plan._count.subscriptions}
+                </Td>
+                <TableActionsCell>
+                  <div className="flex flex-nowrap items-center justify-end gap-1">
                     <Link
                       href={`/subscription-plans/${plan.id}/edit`}
                       prefetch={false}
-                      className="btn btn-ghost md:min-h-0 md:px-2 md:py-1 md:text-xs"
+                      className="btn btn-ghost btn-sm inline-flex size-9 items-center justify-center p-0"
+                      title="Modifier"
+                      aria-label="Modifier"
                     >
-                      Modifier
+                      <Pencil className="size-4" />
                     </Link>
                     <button
                       type="button"
                       onClick={() => setPendingDeletePlan(plan)}
-                      disabled={loadingId === plan.id}
-                      className="btn btn-ghost border-[var(--danger)]/30 text-[var(--danger)] md:min-h-0 md:px-2 md:py-1 md:text-xs"
+                      disabled={loadingId === plan.id || !plan.isActive}
+                      className="btn btn-ghost btn-sm inline-flex size-9 items-center justify-center border-[var(--warning)]/35 p-0 text-[var(--warning)] disabled:cursor-not-allowed disabled:opacity-45"
+                      title={plan.isActive ? "Désactiver" : "Déjà inactive"}
+                      aria-label="Désactiver"
                     >
-                      {loadingId === plan.id ? "..." : "Desactiver"}
+                      <CircleOff className="size-4" />
                     </button>
                   </div>
-                  <button
-                    type="button"
-                    className="mobile-card-toggle md:hidden"
-                    onClick={() => toggleExpand(plan.id)}
-                    aria-expanded={expandedPlanIds.includes(plan.id)}
-                  >
-                    {expandedPlanIds.includes(plan.id) ? "Réduire" : "Infos"}
-                    <ChevronDown className={`size-3 transition-transform ${expandedPlanIds.includes(plan.id) ? "rotate-180" : ""}`} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                </TableActionsCell>
+                <MobileRowToggle expanded={isExpanded} onToggle={() => toggleExpand(plan.id)} />
+              </DataTableRow>
+            );
+          })}
+        </DataTableBody>
+      </DataTable>
       )}
 
       <Pagination
@@ -235,9 +252,9 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
 
       <ConfirmDialog
         open={pendingDeletePlan !== null}
-        title="Desactiver cette formule ?"
-        description={`La formule « ${pendingDeletePlan?.name ?? ""} » sera retiree des nouvelles ventes sans effacer l'historique.`}
-        confirmLabel="Desactiver la formule"
+        title="Désactiver cette formule ?"
+        description={`La formule « ${pendingDeletePlan?.name ?? ""} » sera retirée des nouvelles ventes sans effacer l'historique.`}
+        confirmLabel="Désactiver la formule"
         loading={loadingId === pendingDeletePlan?.id}
         onCancel={() => setPendingDeletePlan(null)}
         onConfirm={() => pendingDeletePlan ? deletePlan(pendingDeletePlan.id) : undefined}
