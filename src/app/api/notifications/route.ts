@@ -81,7 +81,13 @@ export async function GET(request: Request) {
                   name: true,
                   members: {
                     where: { tenantId },
-                    select: { memberId: true, startDate: true, endDate: true },
+                    select: {
+                      memberId: true,
+                      status: true,
+                      startDate: true,
+                      endDate: true,
+                      member: { select: { status: true } },
+                    },
                   },
                 },
               },

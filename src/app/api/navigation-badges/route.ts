@@ -78,7 +78,16 @@ export async function GET(request: Request) {
               endTime: true,
               group: {
                 select: {
-                  members: { where: { tenantId }, select: { memberId: true, startDate: true, endDate: true } },
+                  members: {
+                    where: { tenantId },
+                    select: {
+                      memberId: true,
+                      status: true,
+                      startDate: true,
+                      endDate: true,
+                      member: { select: { status: true } },
+                    },
+                  },
                 },
               },
               attendances: { select: { memberId: true } },

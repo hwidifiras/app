@@ -54,18 +54,65 @@ describe("session lifecycle", () => {
         [
           {
             memberId: "active-then",
+            status: "ACTIVE",
             startDate: new Date("2026-05-01T00:00:00.000Z"),
             endDate: new Date("2026-06-12T00:00:00.000Z"),
+            member: { status: "ACTIVE" },
           },
           {
             memberId: "joined-later",
+            status: "ACTIVE",
             startDate: new Date("2026-06-12T00:00:00.000Z"),
             endDate: null,
+            member: { status: "ACTIVE" },
           },
         ],
         sessionDate,
       ),
     ).toEqual(["active-then"]);
+  });
+
+  it("excludes assignments closed by same-day member resignation", () => {
+    const sessionDate = new Date("2026-06-11T00:00:00.000Z");
+    expect(
+      expectedMemberIdsAtSession(
+        [
+          {
+            memberId: "resigned-today",
+            status: "INACTIVE",
+            startDate: new Date("2026-05-01T00:00:00.000Z"),
+            endDate: new Date("2026-06-11T13:00:00.000Z"),
+            member: { status: "ARCHIVED" },
+          },
+          {
+            memberId: "still-active",
+            status: "ACTIVE",
+            startDate: new Date("2026-05-01T00:00:00.000Z"),
+            endDate: null,
+            member: { status: "ACTIVE" },
+          },
+        ],
+        sessionDate,
+      ),
+    ).toEqual(["still-active"]);
+  });
+
+  it("does not count archived members even if an old assignment still has no end date", () => {
+    const sessionDate = new Date("2026-06-11T00:00:00.000Z");
+    expect(
+      expectedMemberIdsAtSession(
+        [
+          {
+            memberId: "archived",
+            status: "ACTIVE",
+            startDate: new Date("2026-05-01T00:00:00.000Z"),
+            endDate: null,
+            member: { status: "ARCHIVED" },
+          },
+        ],
+        sessionDate,
+      ),
+    ).toEqual([]);
   });
 
   it("compares the session end in the club timezone", () => {

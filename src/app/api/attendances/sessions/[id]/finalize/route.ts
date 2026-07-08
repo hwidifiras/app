@@ -41,7 +41,13 @@ export async function POST(
       group: {
         select: {
           members: {
-            select: { memberId: true, startDate: true, endDate: true },
+            select: {
+              memberId: true,
+              status: true,
+              startDate: true,
+              endDate: true,
+              member: { select: { status: true } },
+            },
           },
         },
       },

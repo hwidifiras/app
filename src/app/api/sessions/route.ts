@@ -48,7 +48,13 @@ function toSessionDto(session: {
   group: {
     name: string;
     sportId: string;
-    members: Array<{ memberId: string; startDate: Date; endDate: Date | null }>;
+    members: Array<{
+      memberId: string;
+      status: "ACTIVE" | "INACTIVE";
+      startDate: Date;
+      endDate: Date | null;
+      member: { status: "ACTIVE" | "ARCHIVED" };
+    }>;
   };
   coach: { firstName: string; lastName: string } | null;
   attendances: Array<{ memberId: string }>;
@@ -122,7 +128,13 @@ export async function GET(request: Request) {
           name: true,
           sportId: true,
           members: {
-            select: { memberId: true, startDate: true, endDate: true },
+            select: {
+              memberId: true,
+              status: true,
+              startDate: true,
+              endDate: true,
+              member: { select: { status: true } },
+            },
           },
         },
       },

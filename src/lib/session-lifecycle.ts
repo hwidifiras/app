@@ -8,8 +8,10 @@ export type SessionOperationalStatus =
 
 type AssignmentWindow = {
   memberId: string;
+  status: "ACTIVE" | "INACTIVE";
   startDate: Date;
   endDate: Date | null;
+  member: { status: "ACTIVE" | "ARCHIVED" };
 };
 
 function currentMinutesInTimeZone(now: Date, timeZone: string): number {
@@ -49,6 +51,9 @@ export function expectedMemberIdsAtSession(
   const day = utcDateOnlyForTimeZone(sessionDate);
   return assignments
     .filter((assignment) => {
+      if (assignment.status !== "ACTIVE" || assignment.member.status !== "ACTIVE") {
+        return false;
+      }
       const start = utcDateOnlyForTimeZone(assignment.startDate);
       const end = assignment.endDate ? utcDateOnlyForTimeZone(assignment.endDate) : null;
       return start <= day && (!end || end >= day);

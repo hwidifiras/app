@@ -82,7 +82,7 @@ export default async function SessionAttendanceDetailPage({
               member: { tenantId: authUser.tenantId, status: "ACTIVE" },
             },
             include: {
-              member: { select: { id: true, firstName: true, lastName: true } },
+              member: { select: { id: true, firstName: true, lastName: true, status: true } },
             },
             orderBy: { member: { lastName: "asc" } },
           },
