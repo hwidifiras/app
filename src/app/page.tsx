@@ -84,6 +84,55 @@ type ReceiptSnapshot = {
   voidedMonth: number;
 };
 
+type DataConfidenceItem = {
+  id: string;
+  title: string;
+  detail: string;
+  href: string;
+  actionLabel: string;
+};
+
+function DataConfidencePanel({ items }: { items: DataConfidenceItem[] }) {
+  if (items.length === 0) return null;
+
+  return (
+    <DashboardPanel labelledBy="dashboard-data-confidence-title" className="border-[#FDE68A] bg-[#FFFBEB]">
+      <DashboardSectionHeader
+        titleId="dashboard-data-confidence-title"
+        title="Données à vérifier"
+        eyebrow="Confiance"
+        action={
+          <Link href="/settings" className="text-xs font-semibold text-[#B45309] hover:underline">
+            Réglages
+          </Link>
+        }
+      />
+      <div className="grid gap-2 p-3 md:grid-cols-2">
+        {items.slice(0, 4).map((item) => (
+          <div key={item.id} className="rounded-lg border border-[#FDE68A] bg-white px-3 py-3">
+            <div className="flex items-start gap-2.5">
+              <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#FFFBEB] text-[#B45309]">
+                <AlertCircle className="size-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-[#0B1220]">{item.title}</p>
+                <p className="mt-1 text-xs leading-5 text-[#64748B]">{item.detail}</p>
+                <Link
+                  href={item.href}
+                  prefetch={false}
+                  className="mt-2 inline-flex min-h-8 items-center rounded-lg border border-[#FDE68A] bg-[#FFFBEB] px-3 text-xs font-semibold text-[#92400E] transition hover:bg-[#FEF3C7]"
+                >
+                  {item.actionLabel}
+                </Link>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </DashboardPanel>
+  );
+}
+
 function MembersOverviewPanel({
   activeMembers,
   newMembersThisMonth,
@@ -194,6 +243,46 @@ function MembersOverviewPanel({
               ))}
             </ul>
           )}
+        </div>
+      </div>
+    </DashboardPanel>
+  );
+}
+
+function CommercialQuietStatePanel() {
+  return (
+    <DashboardPanel labelledBy="dashboard-commercial-quiet-title" className="min-w-0">
+      <DashboardSectionHeader
+        titleId="dashboard-commercial-quiet-title"
+        title="Activité commerciale"
+        eyebrow="Pilotage"
+        action={
+          <Link href="/subscriptions" className="text-xs font-semibold text-[#2563EB] hover:underline">
+            Abonnements
+          </Link>
+        }
+      />
+      <div className="grid gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        <div className="rounded-lg border border-dashed border-[#D8E2F0] bg-[#F8FAFC] px-4 py-4">
+          <p className="text-sm font-semibold text-[#0B1220]">Aucune activité commerciale ce mois.</p>
+          <p className="mt-1 text-xs leading-5 text-[#64748B]">
+            Les ventes, remises et reçus apparaîtront ici dès qu&apos;une inscription, un renouvellement ou un
+            encaissement sera créé.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
+          <Link
+            href="/enrollment"
+            className="inline-flex min-h-9 items-center justify-center rounded-lg bg-[#2563EB] px-3 text-sm font-semibold !text-white transition hover:bg-[#1D4ED8]"
+          >
+            Inscrire
+          </Link>
+          <Link
+            href="/payments/new"
+            className="inline-flex min-h-9 items-center justify-center rounded-lg border border-[#D8E2F0] bg-white px-3 text-sm font-semibold text-[#0B1220] transition hover:border-[#2563EB] hover:text-[#2563EB]"
+          >
+            Encaisser
+          </Link>
         </div>
       </div>
     </DashboardPanel>
@@ -567,6 +656,7 @@ export default async function Home() {
   let todaySessions: TodaySession[] = [];
   let finalizationSessions: TodaySession[] = [];
   let priorityItems: PriorityItem[] = [];
+  let dataConfidenceItems: DataConfidenceItem[] = [];
   let emailConfigured = false;
   let dashboardShowCommercialInsights = true;
 
@@ -905,6 +995,45 @@ export default async function Home() {
       .sort((left, right) => left.startTime.localeCompare(right.startTime))
       .slice(0, 6);
 
+    const zeroExpectedToday = todaySessions.filter((session) => session.expectedMemberCount === 0);
+    const missingCoachToday = todaySessions.filter((session) => !session.coachName);
+    dataConfidenceItems = [
+      ...(sessionsToday > 0 && activeMembers === 0
+        ? [
+            {
+              id: "active-members-empty-with-sessions",
+              title: "Séances sans élèves actifs",
+              detail:
+                "Le planning contient des séances, mais aucun membre actif n'est compté. Vérifiez les inscriptions ou les membres résiliés avant la remise au client.",
+              href: "/members",
+              actionLabel: "Vérifier les membres",
+            },
+          ]
+        : []),
+      ...(zeroExpectedToday.length > 0
+        ? [
+            {
+              id: "today-sessions-without-expected-members",
+              title: "Groupes sans élèves attendus",
+              detail: `${zeroExpectedToday.length} séance${zeroExpectedToday.length > 1 ? "s" : ""} aujourd'hui n'a aucun élève attendu. Cela peut venir d'assignations fermées ou d'un groupe vide.`,
+              href: "/groups",
+              actionLabel: "Vérifier les groupes",
+            },
+          ]
+        : []),
+      ...(missingCoachToday.length > 0
+        ? [
+            {
+              id: "today-sessions-without-coach",
+              title: "Coach manquant sur le planning",
+              detail: `${missingCoachToday.length} séance${missingCoachToday.length > 1 ? "s" : ""} aujourd'hui n'a pas de coach affiché.`,
+              href: "/sessions",
+              actionLabel: "Ouvrir le planning",
+            },
+          ]
+        : []),
+    ];
+
     finalizationSessions = operationalSessions
       .filter((session) => session.operationalStatus === "NEEDS_FINALIZATION")
       .sort((left, right) => {
@@ -964,6 +1093,24 @@ export default async function Home() {
     console.error("Dashboard degraded mode:", error);
   }
 
+  const hasCommercialActivity =
+    salesToday > 0 ||
+    salesTodayCount > 0 ||
+    salesMonth > 0 ||
+    revenueToday !== 0 ||
+    revenueMonth !== 0 ||
+    remainingOnTodaySales > 0 ||
+    newSalesMonth > 0 ||
+    renewalSalesMonth > 0 ||
+    debtAgingBuckets.some((bucket) => bucket.amount > 0 || bucket.subscriptions > 0) ||
+    topSalesItems.length > 0 ||
+    discountSnapshot.discountMonth > 0 ||
+    discountSnapshot.discountedSubscriptions > 0 ||
+    receiptSnapshot.paymentCountMonth > 0 ||
+    receiptSnapshot.issuedMonth > 0 ||
+    receiptSnapshot.missingMonth > 0 ||
+    receiptSnapshot.voidedMonth > 0;
+
   return (
     <main
       className="app-shell relative overflow-hidden text-[#111827] dark:bg-[#0B1220] dark:text-slate-100"
@@ -974,7 +1121,7 @@ export default async function Home() {
     >
       <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-5">
         <header
-          className="relative overflow-hidden rounded-lg bg-[#0B1220] px-4 py-5 text-white shadow-[0_18px_48px_rgba(37,99,235,0.20)] sm:px-6 lg:min-h-[12.25rem] lg:px-7 lg:py-7"
+          className="relative overflow-hidden rounded-lg bg-[#0B1220] px-4 py-4 text-white shadow-[0_18px_48px_rgba(37,99,235,0.20)] sm:px-6 lg:min-h-[11.5rem] lg:px-7 lg:py-6"
           style={{
             backgroundImage:
               "linear-gradient(90deg, rgba(8,22,58,0.94) 0%, rgba(12,43,104,0.78) 38%, rgba(12,44,101,0.24) 66%, rgba(7,18,48,0.50) 100%), linear-gradient(180deg, rgba(7,18,48,0.08) 0%, rgba(7,18,48,0.50) 100%), url('/we-discipline/wide-dojo-interior.webp')",
@@ -987,27 +1134,27 @@ export default async function Home() {
               <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#93C5FD]">
                 Tableau de bord
               </p>
-              <h1 className="mt-2 text-3xl font-bold leading-tight tracking-normal sm:text-4xl">
+              <h1 className="mt-2 text-2xl font-bold leading-tight tracking-normal sm:text-4xl">
                 Aujourd&apos;hui au club
               </h1>
-              <p className="mt-4 max-w-xl text-sm leading-7 text-blue-50 sm:text-base">
+              <p className="mt-3 max-w-xl text-sm leading-6 text-blue-50 sm:text-base sm:leading-7">
                 Les séances à pointer, les encaissements à suivre et les priorités qui demandent une action.
               </p>
             </div>
             <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[32rem]">
-              <div className="rounded-lg border border-white/18 bg-[#061A3D]/70 px-4 py-3 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur">
+              <div className="rounded-lg border border-white/18 bg-[#061A3D]/70 px-3 py-2.5 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur sm:px-4 sm:py-3">
                 <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-blue-200">
                   Date
                 </p>
                 <p className="mt-2 text-sm font-bold capitalize text-white">{formatLongDateFr(today)}</p>
               </div>
-              <div className="rounded-lg border border-white/18 bg-[#061A3D]/70 px-4 py-3 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur">
+              <div className="rounded-lg border border-white/18 bg-[#061A3D]/70 px-3 py-2.5 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur sm:px-4 sm:py-3">
                 <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-blue-200">
                   Séances
                 </p>
                 <p className="mt-2 text-sm font-bold text-white">{sessionsToday} aujourd&apos;hui</p>
               </div>
-              <div className="rounded-lg border border-white/18 bg-[#061A3D]/70 px-4 py-3 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur">
+              <div className="rounded-lg border border-white/18 bg-[#061A3D]/70 px-3 py-2.5 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur sm:px-4 sm:py-3">
                 <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-blue-200">
                   Membres
                 </p>
@@ -1025,7 +1172,7 @@ export default async function Home() {
         ) : null}
 
         <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(24rem,0.85fr)]">
-          <CashTrendPanel trend={cashTrend} weekTotal={revenueWeek} />
+          <TodayWorkPanel todaySessions={todaySessions} priorityItems={priorityItems} />
           <CashRegisterPanel
             totalToday={revenueToday}
             paymentCountToday={paymentCountToday}
@@ -1038,26 +1185,10 @@ export default async function Home() {
           />
         </section>
 
-        {dashboardShowCommercialInsights ? (
-          <SalesSnapshotPanel
-            salesToday={salesToday}
-            salesTodayCount={salesTodayCount}
-            salesMonth={salesMonth}
-            revenueToday={revenueToday}
-            remainingOnTodaySales={remainingOnTodaySales}
-            newSalesToday={newSalesToday}
-            renewalSalesToday={renewalSalesToday}
-            newSalesMonth={newSalesMonth}
-            renewalSalesMonth={renewalSalesMonth}
-            debtAgingBuckets={debtAgingBuckets}
-            topSalesItems={topSalesItems}
-            discountSnapshot={discountSnapshot}
-            receiptSnapshot={receiptSnapshot}
-          />
-        ) : null}
+        <DataConfidencePanel items={dataConfidenceItems} />
 
         <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(24rem,0.85fr)]">
-          <TodayWorkPanel todaySessions={todaySessions} priorityItems={priorityItems} />
+          <CashTrendPanel trend={cashTrend} weekTotal={revenueWeek} />
           <MembersOverviewPanel
             activeMembers={activeMembers}
             newMembersThisMonth={newMembersThisMonth}
@@ -1066,6 +1197,28 @@ export default async function Home() {
             recentMembers={recentMembers}
           />
         </section>
+
+        {dashboardShowCommercialInsights ? (
+          hasCommercialActivity ? (
+            <SalesSnapshotPanel
+              salesToday={salesToday}
+              salesTodayCount={salesTodayCount}
+              salesMonth={salesMonth}
+              revenueToday={revenueToday}
+              remainingOnTodaySales={remainingOnTodaySales}
+              newSalesToday={newSalesToday}
+              renewalSalesToday={renewalSalesToday}
+              newSalesMonth={newSalesMonth}
+              renewalSalesMonth={renewalSalesMonth}
+              debtAgingBuckets={debtAgingBuckets}
+              topSalesItems={topSalesItems}
+              discountSnapshot={discountSnapshot}
+              receiptSnapshot={receiptSnapshot}
+            />
+          ) : (
+            <CommercialQuietStatePanel />
+          )
+        ) : null}
 
         {debts.length > 0 ? (
           <DashboardPanel labelledBy="dashboard-debts-title" className="min-w-0">

@@ -69,7 +69,7 @@ export function MobileNav() {
           <ClubBrandMark size="sm" />
         </Link>
         <div className="flex items-center gap-1.5 sm:gap-2">
-          <SetupGuide variant="header" />
+          <SetupGuide variant="header" className="hidden min-[430px]:block" />
           <AppRefreshButton />
           <NotificationCenter />
           <UserAccountMenu onNavigate={close} />
@@ -94,7 +94,7 @@ export function MobileNav() {
         )}
       >
         <nav className="sidebar-scroll flex h-full flex-col gap-1 overflow-y-auto overscroll-y-contain px-3 pb-24 pt-4">
-          <div className="shrink-0" />
+          <SetupGuide variant="bar" className="mb-2 rounded-lg border border-[var(--primary)]/20" />
 
           {navSections.map((section) => (
             <div key={section.title}>
