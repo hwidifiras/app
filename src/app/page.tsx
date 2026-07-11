@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import {
   AlertCircle,
   CalendarClock,
@@ -25,6 +26,12 @@ import {
   type RecentMemberPreview,
 } from "@/components/dashboard/dashboard-model";
 import { getClubSettings } from "@/lib/club-settings";
+import {
+  canUseDashboardViewOverride,
+  getDashboardWidgetVisibility,
+  resolveDashboardMode,
+  type DashboardPreferenceSettings,
+} from "@/lib/dashboard-preferences";
 import {
   computeFinanceSnapshot,
   computeMemberDebts,
@@ -589,7 +596,104 @@ function formatLongDateFr(value: Date) {
   });
 }
 
-export default async function Home() {
+function DashboardGridRow({
+  children,
+  variant = "balanced",
+}: {
+  children: ReactNode[];
+  variant?: "balanced" | "wideLeft" | "wideRight";
+}) {
+  const visibleChildren = children.filter(Boolean);
+  if (visibleChildren.length === 0) return null;
+
+  const columns =
+    visibleChildren.length === 1
+      ? ""
+      : variant === "wideLeft"
+        ? "xl:grid-cols-[minmax(0,1.25fr)_minmax(24rem,0.85fr)]"
+        : variant === "wideRight"
+          ? "xl:grid-cols-[minmax(24rem,0.85fr)_minmax(0,1.25fr)]"
+          : "xl:grid-cols-2";
+
+  return (
+    <section className={cn("grid items-start gap-4", columns)}>
+      {visibleChildren.map((child, index) => (
+        <div key={index} className="min-w-0">
+          {child}
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function DashboardViewSwitcher({ mode, canSwitch }: { mode: "RECEPTION" | "PILOTAGE"; canSwitch: boolean }) {
+  if (!canSwitch) return null;
+
+  const options = [
+    { mode: "RECEPTION" as const, label: "Reception", href: "/?view=reception" },
+    { mode: "PILOTAGE" as const, label: "Pilotage", href: "/?view=pilotage" },
+  ];
+
+  return (
+    <nav
+      aria-label="Vue dashboard"
+      className="flex w-full flex-wrap items-center justify-between gap-3 rounded-lg border border-[#DDE7F4] bg-white/90 px-3 py-2 shadow-[0_12px_30px_rgba(15,23,42,0.045)]"
+    >
+      <div className="min-w-0">
+        <p className="text-xs font-semibold text-[#0B1220]">Lecture du dashboard</p>
+        <p className="text-xs text-[#64748B]">Reception pour le quotidien, pilotage pour les indicateurs.</p>
+      </div>
+      <div className="inline-flex rounded-lg border border-[#DDE7F4] bg-[#F8FAFC] p-1">
+        {options.map((option) => {
+          const selected = mode === option.mode;
+          return (
+            <Link
+              key={option.mode}
+              href={option.href}
+              prefetch={false}
+              aria-current={selected ? "page" : undefined}
+              className={cn(
+                "min-h-9 rounded-md px-3 py-2 text-xs font-semibold transition",
+                selected ? "bg-[#2563EB] text-white shadow-sm" : "text-[#475569] hover:bg-white hover:text-[#0B1220]",
+              )}
+            >
+              {option.label}
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
+function EmptyDashboardConfigurationPanel({ isAdmin }: { isAdmin: boolean }) {
+  return (
+    <DashboardPanel labelledBy="dashboard-empty-config-title" className="min-w-0">
+      <div className="p-5 text-center">
+        <p id="dashboard-empty-config-title" className="text-base font-semibold text-[#0B1220]">
+          Dashboard configure sans blocs
+        </p>
+        <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-[#64748B]">
+          {isAdmin
+            ? "Activez au moins un bloc dans les reglages du club pour retrouver une vue exploitable."
+            : "Dashboard configure par l'administrateur."}
+        </p>
+        {isAdmin ? (
+          <Link href="/settings/club#club-dashboard" className="btn btn-primary mt-4 inline-flex" prefetch={false}>
+            Ouvrir les reglages
+          </Link>
+        ) : null}
+      </div>
+    </DashboardPanel>
+  );
+}
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams?: Promise<{ view?: string }>;
+}) {
+  const dashboardParams = searchParams ? await searchParams : {};
   const authUser = await getAuthUser();
 
   if (!authUser) {
@@ -658,7 +762,16 @@ export default async function Home() {
   let priorityItems: PriorityItem[] = [];
   let dataConfidenceItems: DataConfidenceItem[] = [];
   let emailConfigured = false;
-  let dashboardShowCommercialInsights = true;
+  let dashboardPreferences: DashboardPreferenceSettings = {
+    dashboardDefaultMode: "AUTO",
+    dashboardShowTodaySessions: true,
+    dashboardShowCashToday: true,
+    dashboardShowDataConfidence: true,
+    dashboardShowCashTrend: true,
+    dashboardShowMembersOverview: true,
+    dashboardShowCommercialInsights: true,
+    dashboardShowDetailedDebts: true,
+  };
 
   const now = new Date();
   const today = utcDateOnlyForTimeZone(now);
@@ -676,7 +789,16 @@ export default async function Home() {
 
   try {
     const clubSettings = await getClubSettings({ tenantId });
-    dashboardShowCommercialInsights = clubSettings.dashboardShowCommercialInsights;
+    dashboardPreferences = {
+      dashboardDefaultMode: clubSettings.dashboardDefaultMode,
+      dashboardShowTodaySessions: clubSettings.dashboardShowTodaySessions,
+      dashboardShowCashToday: clubSettings.dashboardShowCashToday,
+      dashboardShowDataConfidence: clubSettings.dashboardShowDataConfidence,
+      dashboardShowCashTrend: clubSettings.dashboardShowCashTrend,
+      dashboardShowMembersOverview: clubSettings.dashboardShowMembersOverview,
+      dashboardShowCommercialInsights: clubSettings.dashboardShowCommercialInsights,
+      dashboardShowDetailedDebts: clubSettings.dashboardShowDetailedDebts,
+    };
 
     const [
       fetchedActiveMembers,
@@ -1111,6 +1233,100 @@ export default async function Home() {
     receiptSnapshot.missingMonth > 0 ||
     receiptSnapshot.voidedMonth > 0;
 
+  const dashboardMode = resolveDashboardMode({
+    defaultMode: dashboardPreferences.dashboardDefaultMode,
+    role: authUser.role,
+    permissions: authUser.permissions,
+    queryView: dashboardParams.view,
+  });
+  const canSwitchDashboardView = canUseDashboardViewOverride(authUser.role, authUser.permissions);
+  const dashboardVisibility = getDashboardWidgetVisibility(
+    dashboardPreferences,
+    dashboardMode,
+    authUser.role,
+    authUser.permissions,
+  );
+
+  const todayPanel = dashboardVisibility.todaySessions ? (
+    <TodayWorkPanel todaySessions={todaySessions} priorityItems={priorityItems} />
+  ) : null;
+  const cashPanel = dashboardVisibility.cashToday ? (
+    <CashRegisterPanel
+      totalToday={revenueToday}
+      paymentCountToday={paymentCountToday}
+      averagePaymentToday={averagePaymentToday}
+      weekTotal={revenueWeek}
+      monthTotal={revenueMonth}
+      methodStats={cashMethodStats}
+      correctionsToday={correctionsToday}
+      reversalsToday={reversalsToday}
+    />
+  ) : null;
+  const dataConfidencePanel =
+    dashboardVisibility.dataConfidence && dataConfidenceItems.length > 0 ? (
+      <DataConfidencePanel items={dataConfidenceItems} />
+    ) : null;
+  const cashTrendPanel = dashboardVisibility.cashTrend ? (
+    <CashTrendPanel trend={cashTrend} weekTotal={revenueWeek} />
+  ) : null;
+  const membersOverviewPanel = dashboardVisibility.membersOverview ? (
+    <MembersOverviewPanel
+      activeMembers={activeMembers}
+      newMembersThisMonth={newMembersThisMonth}
+      expiringSoon={finance.expiringIn7Days}
+      pendingPayment={finance.debtorsCount}
+      recentMembers={recentMembers}
+    />
+  ) : null;
+  const commercialPanel = dashboardVisibility.commercialInsights ? (
+    hasCommercialActivity ? (
+      <SalesSnapshotPanel
+        salesToday={salesToday}
+        salesTodayCount={salesTodayCount}
+        salesMonth={salesMonth}
+        revenueToday={revenueToday}
+        remainingOnTodaySales={remainingOnTodaySales}
+        newSalesToday={newSalesToday}
+        renewalSalesToday={renewalSalesToday}
+        newSalesMonth={newSalesMonth}
+        renewalSalesMonth={renewalSalesMonth}
+        debtAgingBuckets={debtAgingBuckets}
+        topSalesItems={topSalesItems}
+        discountSnapshot={discountSnapshot}
+        receiptSnapshot={receiptSnapshot}
+      />
+    ) : (
+      <CommercialQuietStatePanel />
+    )
+  ) : null;
+  const detailedDebtsPanel =
+    dashboardVisibility.detailedDebts && debts.length > 0 ? (
+      <DashboardPanel labelledBy="dashboard-debts-title" className="min-w-0">
+        <DashboardSectionHeader
+          titleId="dashboard-debts-title"
+          title="ImpayÃ©s dÃ©taillÃ©s"
+          eyebrow="Relances"
+          action={
+            <Link href="/subscriptions" className="text-xs font-semibold text-[#2563EB] hover:underline">
+              Abonnements
+            </Link>
+          }
+        />
+        <div className="p-3">
+          <DashboardDebtsSection debts={debts} emailConfigured={emailConfigured} />
+        </div>
+      </DashboardPanel>
+    ) : null;
+  const visibleDashboardPanels = [
+    todayPanel,
+    cashPanel,
+    dataConfidencePanel,
+    cashTrendPanel,
+    membersOverviewPanel,
+    commercialPanel,
+    detailedDebtsPanel,
+  ].filter(Boolean).length;
+
   return (
     <main
       className="app-shell relative overflow-hidden text-[#111827] dark:bg-[#0B1220] dark:text-slate-100"
@@ -1171,72 +1387,27 @@ export default async function Home() {
           </div>
         ) : null}
 
-        <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(24rem,0.85fr)]">
-          <TodayWorkPanel todaySessions={todaySessions} priorityItems={priorityItems} />
-          <CashRegisterPanel
-            totalToday={revenueToday}
-            paymentCountToday={paymentCountToday}
-            averagePaymentToday={averagePaymentToday}
-            weekTotal={revenueWeek}
-            monthTotal={revenueMonth}
-            methodStats={cashMethodStats}
-            correctionsToday={correctionsToday}
-            reversalsToday={reversalsToday}
-          />
-        </section>
+        <DashboardViewSwitcher mode={dashboardMode} canSwitch={canSwitchDashboardView} />
 
-        <DataConfidencePanel items={dataConfidenceItems} />
+        {visibleDashboardPanels === 0 ? (
+          <EmptyDashboardConfigurationPanel isAdmin={authUser.role === "ADMIN"} />
+        ) : dashboardMode === "PILOTAGE" ? (
+          <>
+            <DashboardGridRow variant="balanced">{[cashPanel, cashTrendPanel]}</DashboardGridRow>
+            <DashboardGridRow variant="wideLeft">{[membersOverviewPanel, todayPanel]}</DashboardGridRow>
+            {dataConfidencePanel}
+            {commercialPanel}
+            {detailedDebtsPanel}
+          </>
+        ) : (
+          <>
+            <DashboardGridRow variant="wideLeft">{[todayPanel, cashPanel]}</DashboardGridRow>
+            {dataConfidencePanel}
+            <DashboardGridRow variant="balanced">{[cashTrendPanel, membersOverviewPanel]}</DashboardGridRow>
+            {detailedDebtsPanel}
+          </>
+        )}
 
-        <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(24rem,0.85fr)]">
-          <CashTrendPanel trend={cashTrend} weekTotal={revenueWeek} />
-          <MembersOverviewPanel
-            activeMembers={activeMembers}
-            newMembersThisMonth={newMembersThisMonth}
-            expiringSoon={finance.expiringIn7Days}
-            pendingPayment={finance.debtorsCount}
-            recentMembers={recentMembers}
-          />
-        </section>
-
-        {dashboardShowCommercialInsights ? (
-          hasCommercialActivity ? (
-            <SalesSnapshotPanel
-              salesToday={salesToday}
-              salesTodayCount={salesTodayCount}
-              salesMonth={salesMonth}
-              revenueToday={revenueToday}
-              remainingOnTodaySales={remainingOnTodaySales}
-              newSalesToday={newSalesToday}
-              renewalSalesToday={renewalSalesToday}
-              newSalesMonth={newSalesMonth}
-              renewalSalesMonth={renewalSalesMonth}
-              debtAgingBuckets={debtAgingBuckets}
-              topSalesItems={topSalesItems}
-              discountSnapshot={discountSnapshot}
-              receiptSnapshot={receiptSnapshot}
-            />
-          ) : (
-            <CommercialQuietStatePanel />
-          )
-        ) : null}
-
-        {debts.length > 0 ? (
-          <DashboardPanel labelledBy="dashboard-debts-title" className="min-w-0">
-            <DashboardSectionHeader
-              titleId="dashboard-debts-title"
-              title="Impayés détaillés"
-              eyebrow="Relances"
-              action={
-                <Link href="/subscriptions" className="text-xs font-semibold text-[#2563EB] hover:underline">
-                  Abonnements
-                </Link>
-              }
-            />
-            <div className="p-3">
-              <DashboardDebtsSection debts={debts} emailConfigured={emailConfigured} />
-            </div>
-          </DashboardPanel>
-        ) : null}
       </div>
     </main>
   );

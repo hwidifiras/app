@@ -25,7 +25,14 @@ function serializeSettings(settings: Awaited<ReturnType<typeof getClubSettings>>
     workingDays: settings.workingDays,
     maxStaffDiscountPercent: settings.maxStaffDiscountPercent,
     debtAlertThresholdCents: settings.debtAlertThresholdCents,
+    dashboardDefaultMode: settings.dashboardDefaultMode,
+    dashboardShowTodaySessions: settings.dashboardShowTodaySessions,
+    dashboardShowCashToday: settings.dashboardShowCashToday,
+    dashboardShowDataConfidence: settings.dashboardShowDataConfidence,
+    dashboardShowCashTrend: settings.dashboardShowCashTrend,
+    dashboardShowMembersOverview: settings.dashboardShowMembersOverview,
     dashboardShowCommercialInsights: settings.dashboardShowCommercialInsights,
+    dashboardShowDetailedDebts: settings.dashboardShowDetailedDebts,
     receiptPrefix: settings.receiptPrefix,
     nextReceiptSequence: settings.nextReceiptSequence,
     receiptFooter: settings.receiptFooter,
@@ -199,8 +206,23 @@ export async function PATCH(request: Request) {
       ...(data.debtAlertThresholdCents !== undefined
         ? { debtAlertThresholdCents: data.debtAlertThresholdCents }
         : {}),
+      ...(data.dashboardDefaultMode !== undefined ? { dashboardDefaultMode: data.dashboardDefaultMode } : {}),
+      ...(data.dashboardShowTodaySessions !== undefined
+        ? { dashboardShowTodaySessions: data.dashboardShowTodaySessions }
+        : {}),
+      ...(data.dashboardShowCashToday !== undefined ? { dashboardShowCashToday: data.dashboardShowCashToday } : {}),
+      ...(data.dashboardShowDataConfidence !== undefined
+        ? { dashboardShowDataConfidence: data.dashboardShowDataConfidence }
+        : {}),
+      ...(data.dashboardShowCashTrend !== undefined ? { dashboardShowCashTrend: data.dashboardShowCashTrend } : {}),
+      ...(data.dashboardShowMembersOverview !== undefined
+        ? { dashboardShowMembersOverview: data.dashboardShowMembersOverview }
+        : {}),
       ...(data.dashboardShowCommercialInsights !== undefined
         ? { dashboardShowCommercialInsights: data.dashboardShowCommercialInsights }
+        : {}),
+      ...(data.dashboardShowDetailedDebts !== undefined
+        ? { dashboardShowDetailedDebts: data.dashboardShowDetailedDebts }
         : {}),
       ...(data.receiptPrefix !== undefined ? { receiptPrefix: data.receiptPrefix.toUpperCase() } : {}),
       ...(data.nextReceiptSequence !== undefined ? { nextReceiptSequence: data.nextReceiptSequence } : {}),
@@ -209,6 +231,7 @@ export async function PATCH(request: Request) {
       ...(data.receiptPrintDefault !== undefined ? { receiptPrintDefault: data.receiptPrintDefault } : {}),
     },
   });
+  const after = await getClubSettings();
 
   await prisma.auditLog.create({
     data: {
@@ -220,11 +243,10 @@ export async function PATCH(request: Request) {
       details: JSON.stringify({
         tenantId: admin.tenantId,
         before: serializeSettings(before),
-        after: serializeSettings(updated),
+        after: serializeSettings(after),
       }),
     },
   });
 
-  const settings = await getClubSettings();
-  return NextResponse.json({ data: serializeSettings(settings) });
+  return NextResponse.json({ data: serializeSettings(after) });
 }

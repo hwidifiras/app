@@ -5,10 +5,10 @@ import { useState } from "react";
 
 import { ClubAlertsSection } from "@/components/settings/club-alerts-section";
 import { ClubCheckinRulesSection } from "@/components/settings/club-checkin-rules-section";
+import { ClubDashboardSection } from "@/components/settings/club-dashboard-section";
 import { ClubIdentitySection } from "@/components/settings/club-identity-section";
 import { ClubPlanningRulesSection } from "@/components/settings/club-planning-rules-section";
 import { ClubReceiptSettings } from "@/components/settings/club-receipt-settings";
-import { SettingsToggleRow } from "@/components/settings/settings-toggle-row";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import {
@@ -16,6 +16,7 @@ import {
   WORKING_DAY_ORDER,
   type ClubDay,
 } from "@/lib/club-working-days";
+import { normalizeDashboardDefaultMode, type DashboardDefaultMode } from "@/lib/dashboard-preferences";
 
 export type ClubSettingsFormData = {
   clubName: string;
@@ -32,7 +33,14 @@ export type ClubSettingsFormData = {
   workingDays: ClubDay[];
   maxStaffDiscountPercent: number;
   debtAlertThresholdCents: number;
+  dashboardDefaultMode: DashboardDefaultMode;
+  dashboardShowTodaySessions: boolean;
+  dashboardShowCashToday: boolean;
+  dashboardShowDataConfidence: boolean;
+  dashboardShowCashTrend: boolean;
+  dashboardShowMembersOverview: boolean;
   dashboardShowCommercialInsights: boolean;
+  dashboardShowDetailedDebts: boolean;
   receiptPrefix: string;
   nextReceiptSequence: number;
   receiptFooter: string;
@@ -84,9 +92,18 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
     String(initial.maxStaffDiscountPercent),
   );
   const [debtThresholdAmount, setDebtThresholdAmount] = useState(centsToMoneyInput(initial.debtAlertThresholdCents));
+  const [dashboardDefaultMode, setDashboardDefaultMode] = useState(
+    normalizeDashboardDefaultMode(initial.dashboardDefaultMode),
+  );
+  const [dashboardShowTodaySessions, setDashboardShowTodaySessions] = useState(initial.dashboardShowTodaySessions);
+  const [dashboardShowCashToday, setDashboardShowCashToday] = useState(initial.dashboardShowCashToday);
+  const [dashboardShowDataConfidence, setDashboardShowDataConfidence] = useState(initial.dashboardShowDataConfidence);
+  const [dashboardShowCashTrend, setDashboardShowCashTrend] = useState(initial.dashboardShowCashTrend);
+  const [dashboardShowMembersOverview, setDashboardShowMembersOverview] = useState(initial.dashboardShowMembersOverview);
   const [dashboardShowCommercialInsights, setDashboardShowCommercialInsights] = useState(
     initial.dashboardShowCommercialInsights,
   );
+  const [dashboardShowDetailedDebts, setDashboardShowDetailedDebts] = useState(initial.dashboardShowDetailedDebts);
   const [receiptPrefix, setReceiptPrefix] = useState(initial.receiptPrefix || "WD");
   const [nextReceiptSequence, setNextReceiptSequence] = useState(String(initial.nextReceiptSequence || 1));
   const [receiptFooter, setReceiptFooter] = useState(initial.receiptFooter || "");
@@ -145,7 +162,14 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
         workingDays,
         maxStaffDiscountPercent: discount,
         debtAlertThresholdCents,
+        dashboardDefaultMode,
+        dashboardShowTodaySessions,
+        dashboardShowCashToday,
+        dashboardShowDataConfidence,
+        dashboardShowCashTrend,
+        dashboardShowMembersOverview,
         dashboardShowCommercialInsights,
+        dashboardShowDetailedDebts,
         receiptPrefix: receiptPrefix.trim().toUpperCase(),
         nextReceiptSequence: receiptSequence,
         receiptFooter: receiptFooter.trim(),
@@ -188,7 +212,14 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
     setWorkingDays(json.data.workingDays?.length ? json.data.workingDays : [...DEFAULT_WORKING_DAYS]);
     setMaxStaffDiscountPercent(String(json.data.maxStaffDiscountPercent));
     setDebtThresholdAmount(centsToMoneyInput(json.data.debtAlertThresholdCents));
+    setDashboardDefaultMode(normalizeDashboardDefaultMode(json.data.dashboardDefaultMode));
+    setDashboardShowTodaySessions(json.data.dashboardShowTodaySessions !== false);
+    setDashboardShowCashToday(json.data.dashboardShowCashToday !== false);
+    setDashboardShowDataConfidence(json.data.dashboardShowDataConfidence !== false);
+    setDashboardShowCashTrend(json.data.dashboardShowCashTrend !== false);
+    setDashboardShowMembersOverview(json.data.dashboardShowMembersOverview !== false);
     setDashboardShowCommercialInsights(json.data.dashboardShowCommercialInsights !== false);
+    setDashboardShowDetailedDebts(json.data.dashboardShowDetailedDebts !== false);
     setReceiptPrefix(json.data.receiptPrefix ?? "WD");
     setNextReceiptSequence(String(json.data.nextReceiptSequence ?? 1));
     setReceiptFooter(json.data.receiptFooter ?? "");
@@ -309,20 +340,24 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
         onMaxStaffDiscountPercentChange={setMaxStaffDiscountPercent}
       />
 
-      <FormSection
-        id="club-dashboard"
-        title="Dashboard"
-        description="Choisissez les blocs visibles sur l'accueil de la réception."
-      >
-        <SettingsToggleRow
-          id="dashboardShowCommercialInsights"
-          label="Afficher le suivi commercial"
-          description="Affiche les cartes ventes, impayés, meilleures formules, remises et reçus sur le dashboard."
-          checked={dashboardShowCommercialInsights}
-          onChange={setDashboardShowCommercialInsights}
-        />
-      </FormSection>
-
+      <ClubDashboardSection
+        dashboardDefaultMode={dashboardDefaultMode}
+        dashboardShowTodaySessions={dashboardShowTodaySessions}
+        dashboardShowCashToday={dashboardShowCashToday}
+        dashboardShowDataConfidence={dashboardShowDataConfidence}
+        dashboardShowCashTrend={dashboardShowCashTrend}
+        dashboardShowMembersOverview={dashboardShowMembersOverview}
+        dashboardShowCommercialInsights={dashboardShowCommercialInsights}
+        dashboardShowDetailedDebts={dashboardShowDetailedDebts}
+        onDashboardDefaultModeChange={setDashboardDefaultMode}
+        onDashboardShowTodaySessionsChange={setDashboardShowTodaySessions}
+        onDashboardShowCashTodayChange={setDashboardShowCashToday}
+        onDashboardShowDataConfidenceChange={setDashboardShowDataConfidence}
+        onDashboardShowCashTrendChange={setDashboardShowCashTrend}
+        onDashboardShowMembersOverviewChange={setDashboardShowMembersOverview}
+        onDashboardShowCommercialInsightsChange={setDashboardShowCommercialInsights}
+        onDashboardShowDetailedDebtsChange={setDashboardShowDetailedDebts}
+      />
       <FormSection
         id="club-receipts"
         title="Reçus"

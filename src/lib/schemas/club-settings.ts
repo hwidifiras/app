@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { CLUB_DAY_VALUES } from "@/lib/club-working-days";
+import { DASHBOARD_DEFAULT_MODES } from "@/lib/dashboard-preferences";
 
 const clubLogoUrlSchema = z
   .string()
@@ -32,7 +33,14 @@ export const updateClubSettingsSchema = z.object({
   workingDays: z.array(z.enum(CLUB_DAY_VALUES)).min(1).optional(),
   maxStaffDiscountPercent: z.number().int().min(0).max(100).optional(),
   debtAlertThresholdCents: z.number().int().min(0).max(100_000_000).optional(),
+  dashboardDefaultMode: z.enum(DASHBOARD_DEFAULT_MODES).optional(),
+  dashboardShowTodaySessions: z.boolean().optional(),
+  dashboardShowCashToday: z.boolean().optional(),
+  dashboardShowDataConfidence: z.boolean().optional(),
+  dashboardShowCashTrend: z.boolean().optional(),
+  dashboardShowMembersOverview: z.boolean().optional(),
   dashboardShowCommercialInsights: z.boolean().optional(),
+  dashboardShowDetailedDebts: z.boolean().optional(),
   receiptPrefix: receiptPrefixSchema.optional(),
   nextReceiptSequence: z.number().int().min(1).max(999_999_999).optional(),
   receiptFooter: z.string().trim().max(500).optional(),

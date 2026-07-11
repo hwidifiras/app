@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_WORKING_DAYS, normalizeWorkingDays, type ClubDay } from "@/lib/club-working-days";
+import { normalizeDashboardDefaultMode, type DashboardDefaultMode } from "@/lib/dashboard-preferences";
 import { getTenantContext, getTenantId, withTenantContext } from "@/lib/tenant-context";
 
 export type ClubSettingsData = {
@@ -19,7 +20,14 @@ export type ClubSettingsData = {
   workingDays: ClubDay[];
   maxStaffDiscountPercent: number;
   debtAlertThresholdCents: number;
+  dashboardDefaultMode: DashboardDefaultMode;
+  dashboardShowTodaySessions: boolean;
+  dashboardShowCashToday: boolean;
+  dashboardShowDataConfidence: boolean;
+  dashboardShowCashTrend: boolean;
+  dashboardShowMembersOverview: boolean;
   dashboardShowCommercialInsights: boolean;
+  dashboardShowDetailedDebts: boolean;
   receiptPrefix: string;
   nextReceiptSequence: number;
   receiptFooter: string;
@@ -45,7 +53,14 @@ const DEFAULTS = {
   workingDays: [...DEFAULT_WORKING_DAYS],
   maxStaffDiscountPercent: 30,
   debtAlertThresholdCents: 0,
+  dashboardDefaultMode: "AUTO" as DashboardDefaultMode,
+  dashboardShowTodaySessions: true,
+  dashboardShowCashToday: true,
+  dashboardShowDataConfidence: true,
+  dashboardShowCashTrend: true,
+  dashboardShowMembersOverview: true,
   dashboardShowCommercialInsights: true,
+  dashboardShowDetailedDebts: true,
   receiptPrefix: "WD",
   nextReceiptSequence: 1,
   receiptFooter: "",
@@ -93,10 +108,35 @@ function normalizeClubSettings(row: Record<string, unknown>): ClubSettingsData {
       typeof row.debtAlertThresholdCents === "number"
         ? row.debtAlertThresholdCents
         : DEFAULTS.debtAlertThresholdCents,
+    dashboardDefaultMode: normalizeDashboardDefaultMode(row.dashboardDefaultMode),
+    dashboardShowTodaySessions:
+      typeof row.dashboardShowTodaySessions === "boolean"
+        ? row.dashboardShowTodaySessions
+        : DEFAULTS.dashboardShowTodaySessions,
+    dashboardShowCashToday:
+      typeof row.dashboardShowCashToday === "boolean"
+        ? row.dashboardShowCashToday
+        : DEFAULTS.dashboardShowCashToday,
+    dashboardShowDataConfidence:
+      typeof row.dashboardShowDataConfidence === "boolean"
+        ? row.dashboardShowDataConfidence
+        : DEFAULTS.dashboardShowDataConfidence,
+    dashboardShowCashTrend:
+      typeof row.dashboardShowCashTrend === "boolean"
+        ? row.dashboardShowCashTrend
+        : DEFAULTS.dashboardShowCashTrend,
+    dashboardShowMembersOverview:
+      typeof row.dashboardShowMembersOverview === "boolean"
+        ? row.dashboardShowMembersOverview
+        : DEFAULTS.dashboardShowMembersOverview,
     dashboardShowCommercialInsights:
       typeof row.dashboardShowCommercialInsights === "boolean"
         ? row.dashboardShowCommercialInsights
         : DEFAULTS.dashboardShowCommercialInsights,
+    dashboardShowDetailedDebts:
+      typeof row.dashboardShowDetailedDebts === "boolean"
+        ? row.dashboardShowDetailedDebts
+        : DEFAULTS.dashboardShowDetailedDebts,
     receiptPrefix: typeof row.receiptPrefix === "string" ? row.receiptPrefix : DEFAULTS.receiptPrefix,
     nextReceiptSequence:
       typeof row.nextReceiptSequence === "number" && row.nextReceiptSequence > 0
