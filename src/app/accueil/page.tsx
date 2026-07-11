@@ -9,19 +9,20 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://wediscipline.com"),
+  metadataBase: new URL("https://we-discipline.com"),
   title: "We Discipline | Plateforme de gestion pour clubs d'arts martiaux",
   description:
-    "We Discipline aide les dojos, sensei et clubs d'arts martiaux à gérer élèves, présences, paiements, grades, compétitions et communauté depuis une seule plateforme.",
+    "We Discipline aide les clubs d'arts martiaux en Tunisie à gérer pointage, abonnements, caisse, groupes, coachs, élèves, reçus et communication.",
   alternates: {
     canonical: "/accueil",
   },
   openGraph: {
-    title: "We Discipline | Bâtissez des champions. Gérez votre académie.",
+    title: "We Discipline | Gérez votre club d'arts martiaux avec discipline.",
     description:
-      "La plateforme SaaS premium pensée pour les académies d'arts martiaux, du premier cours au passage de ceinture noire.",
+      "Plateforme de gestion pour clubs d'arts martiaux en Tunisie: pointage, abonnements, caisse, groupes, coachs, élèves, reçus et progression.",
     type: "website",
     locale: "fr_FR",
+    url: "/accueil",
     images: [
       {
         url: "/we-discipline/coach-portrait.webp",
@@ -40,15 +41,19 @@ const jsonLd = {
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   description:
-    "Plateforme de gestion pour académies d'arts martiaux: élèves, présences, abonnements, paiements, grades, compétitions et communication.",
+    "Plateforme de gestion pour clubs d'arts martiaux en Tunisie: pointage, abonnements, caisse, groupes, coachs, élèves, reçus, progression et communication.",
   offers: {
-    "@type": "Offer",
-    price: "29",
-    priceCurrency: "EUR",
+    "@type": "AggregateOffer",
+    lowPrice: "49",
+    highPrice: "349",
+    priceCurrency: "TND",
+    offerCount: "6",
   },
+  areaServed: "TN",
+  inLanguage: "fr-FR",
   audience: {
     "@type": "Audience",
-    audienceType: "Propriétaires d'académies, coaches, sensei et managers de clubs sportifs",
+    audienceType: "Propriétaires de clubs d'arts martiaux, coachs, sensei et managers de clubs sportifs",
   },
 };
 
