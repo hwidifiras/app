@@ -133,6 +133,7 @@ describe("gym access integration", () => {
       create: { id: "tenant_gym_other", slug: "gym-other-club", name: "Other gym" },
       update: { status: "ACTIVE" },
     });
+    setFallbackTenantContext({ tenantId: otherTenant.id, tenantSlug: otherTenant.slug, host: "gym-other-club.test.local" });
     const foreignMember = await prisma.member.create({
       data: {
         tenantId: otherTenant.id,
@@ -141,6 +142,7 @@ describe("gym access integration", () => {
         phone: `foreign-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       },
     });
+    setFallbackTenantContext({ tenantId: TENANT_ID, tenantSlug: TENANT_SLUG, host: "test.local" });
     const settings = await getClubSettings({ tenantId: TENANT_ID });
     const decision = await prisma.$transaction((tx) =>
       evaluateGymAccess(tx, { tenantId: TENANT_ID, memberId: foreignMember.id, settings }),
