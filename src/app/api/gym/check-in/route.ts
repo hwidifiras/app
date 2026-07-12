@@ -75,7 +75,7 @@ export async function POST(request: Request) {
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`${actor.tenantId}:${parsed.data.memberId}`}))`;
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${actor.tenantId}:${parsed.data.memberId}`}))`;
       const decision = await evaluateGymAccess(tx, {
         tenantId: actor.tenantId,
         memberId: parsed.data.memberId,

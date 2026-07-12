@@ -66,7 +66,7 @@ export async function PATCH(request: Request) {
 
   try {
     const reversal = await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`${actor.tenantId}:${parsed.data.visitId}`}))`;
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${actor.tenantId}:${parsed.data.visitId}`}))`;
       const original = await tx.gymVisit.findFirst({
         where: { id: parsed.data.visitId, tenantId: actor.tenantId, entryType: "CHECK_IN" },
         include: { corrections: { where: { entryType: "REVERSAL" }, select: { id: true } } },
