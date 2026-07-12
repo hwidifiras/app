@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { CheckCircle2, Clock3, Dumbbell, Search, ShieldAlert, XCircle } from "lucide-react";
 
 import { formatMoney } from "@/lib/money";
@@ -23,7 +22,7 @@ type AccessDecision = {
   } | null;
 };
 
-export function GymCheckInPanel({ canManageVisits = false }: { canManageVisits?: boolean }) {
+export function GymCheckInPanel() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<AccessDecision[]>([]);
   const [loading, setLoading] = useState(false);
@@ -192,11 +191,6 @@ export function GymCheckInPanel({ canManageVisits = false }: { canManageVisits?:
         })}
       </div>
 
-      {canManageVisits ? (
-        <div className="flex justify-end">
-          <Link href="/gym/visits" className="btn btn-ghost">Voir l&apos;historique des accès</Link>
-        </div>
-      ) : null}
     </div>
   );
 }

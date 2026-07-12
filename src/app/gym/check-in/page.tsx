@@ -33,7 +33,7 @@ export default async function GymCheckInPage() {
         description="Vérifiez le pass et enregistrez l'entrée du membre."
         actions={canManageVisits ? <Link href="/gym/visits" className="btn btn-ghost"><History className="size-4" /> Historique</Link> : undefined}
       />
-      <GymCheckInPanel canManageVisits={canManageVisits} />
+      <GymCheckInPanel />
     </main>
   );
 }
