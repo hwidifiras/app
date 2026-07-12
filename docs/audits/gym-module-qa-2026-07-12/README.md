@@ -52,4 +52,4 @@ Screenshots:
 
 ## Release State
 
-SaaS staging runs the branch with GYM disabled for the existing tenant. Production rollout remains gated on a production backup and controlled deployment. The first client must remain module-disabled after deployment and activation still requires explicit approval.
+SaaS staging runs the branch with GYM disabled for the existing tenant. The current live `dojo-saas-app` still uses SQLite (`file:/app/data/prod.db`) from the older production repository, so this PostgreSQL module must not be deployed into that container in isolation. Production promotion belongs to the controlled SQLite-to-PostgreSQL cutover. After cutover, the first client remains module-disabled because no `TenantModule` row is created; activation still requires explicit approval.
