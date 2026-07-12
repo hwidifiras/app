@@ -1,9 +1,12 @@
 import { z } from "zod";
 
+import { createMemberSchema } from "@/lib/schemas/member";
+
 const subscriptionStatusEnum = z.enum(["DRAFT", "ACTIVE", "EXPIRED", "CANCELLED"]);
 
 export const createMemberSubscriptionSchema = z.object({
-  memberId: z.string().trim().min(1, "Membre requis"),
+  memberId: z.string().trim().min(1, "Membre requis").optional(),
+  newMember: createMemberSchema.optional(),
   planId: z.string().trim().min(1, "Plan requis"),
   startDate: z.string().datetime("Date de début invalide"),
   carryOverRemainingSessions: z.boolean().optional(),
@@ -14,6 +17,10 @@ export const createMemberSubscriptionSchema = z.object({
     .max(8)
     .refine((ids) => new Set(ids).size === ids.length, "Un groupe ne peut etre selectionne qu'une fois")
     .optional(),
+}).superRefine((value, ctx) => {
+  if (Boolean(value.memberId) === Boolean(value.newMember)) {
+    ctx.addIssue({ code: "custom", path: ["memberId"], message: "Choisissez un membre existant ou creez-en un nouveau" });
+  }
 });
 
 export type CreateMemberSubscriptionInput = z.infer<typeof createMemberSubscriptionSchema>;

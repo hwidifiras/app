@@ -84,4 +84,20 @@ describe("gym module safeguards", () => {
     });
     expect(parsed.success).toBe(false);
   });
+
+  it("accepts exactly one member source for access enrollment", () => {
+    const newMember = {
+      firstName: "Nouveau",
+      lastName: "Membre",
+      phone: "99123456",
+      email: "",
+      memberType: "ADULT" as const,
+      gender: "MALE" as const,
+      birthDate: "1995-01-01T00:00:00.000Z",
+    };
+    const base = { planId: "gym-plan", startDate: "2026-07-12T08:00:00.000Z" };
+    expect(createMemberSubscriptionSchema.safeParse({ ...base, newMember }).success).toBe(true);
+    expect(createMemberSubscriptionSchema.safeParse({ ...base, memberId: "member-1", newMember }).success).toBe(false);
+    expect(createMemberSubscriptionSchema.safeParse(base).success).toBe(false);
+  });
 });

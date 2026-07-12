@@ -6,6 +6,7 @@ import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FieldControl } from "@/components/ui/field-control";
 import { FormActions, FormField, FormGrid, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import { SubscriptionBillingSummary } from "@/components/ui/reception-info-card";
+import { AccessMemberFields, EMPTY_ACCESS_MEMBER, type AccessNewMember } from "@/components/subscriptions/access-member-fields";
 import { formatMoney, MONEY_INPUT_SUFFIX } from "@/lib/money";
 
 type MemberOption = { id: string; firstName: string; lastName: string; phone: string };
@@ -36,6 +37,8 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
   const initialPlan = plansOptions.find((plan) => plan.planKind === initialPlanKind);
   const initialStartDate = new Date().toISOString().split("T")[0];
   const [memberId, setMemberId] = useState(initialMemberId);
+  const [memberMode, setMemberMode] = useState<"EXISTING" | "NEW">("EXISTING");
+  const [newMember, setNewMember] = useState<AccessNewMember>(EMPTY_ACCESS_MEMBER);
   const [planId, setPlanId] = useState(initialPlan?.id ?? "");
   const [startDate, setStartDate] = useState(initialStartDate);
   const [endDate, setEndDate] = useState(() => {
@@ -163,7 +166,13 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        memberId,
+        memberId: memberMode === "EXISTING" ? memberId : undefined,
+        newMember: memberMode === "NEW" ? {
+          ...newMember,
+          birthDate: new Date(newMember.birthDate).toISOString(),
+          parentName: newMember.memberType === "KID" ? newMember.parentName : undefined,
+          parentPhone: newMember.memberType === "KID" ? newMember.parentPhone : undefined,
+        } : undefined,
         planId,
         startDate: new Date(startDate).toISOString(),
         carryOverRemainingSessions: carryOverRemainingSessions || undefined,
@@ -201,7 +210,11 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
       <div className="grid min-w-0 items-start gap-4 lg:grid-cols-12">
         <div className="space-y-4 lg:col-span-8">
           <FormSection id="renew-member" title="1. Dossier" description="Sélectionnez le membre avant de créer la nouvelle période.">
-            <FormField label="Membre *">
+            <div className="mb-4 grid grid-cols-2 gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-1">
+              <button type="button" className={`min-h-10 rounded-lg text-sm font-semibold ${memberMode === "EXISTING" ? "bg-[var(--surface)] text-[var(--primary)] shadow-sm" : "text-[var(--muted-foreground)]"}`} onClick={() => setMemberMode("EXISTING")}>Membre existant</button>
+              <button type="button" className={`min-h-10 rounded-lg text-sm font-semibold ${memberMode === "NEW" ? "bg-[var(--surface)] text-[var(--primary)] shadow-sm" : "text-[var(--muted-foreground)]"}`} onClick={() => { setMemberMode("NEW"); handleMemberChange(""); }}>Nouveau membre</button>
+            </div>
+            {memberMode === "EXISTING" ? <FormField label="Membre *">
               <select value={memberId} onChange={(e) => handleMemberChange(e.target.value)} className="field" required>
                 <option value="">Sélectionner un membre</option>
                 {membersOptions.map((m) => (
@@ -210,9 +223,9 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
                   </option>
                 ))}
               </select>
-            </FormField>
+            </FormField> : <AccessMemberFields value={newMember} onChange={setNewMember} />}
 
-            <div className="mt-4 border-t border-[var(--border)] pt-3">
+            {memberMode === "EXISTING" ? <div className="mt-4 border-t border-[var(--border)] pt-3">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
                 Abonnement actuel
               </p>
@@ -234,7 +247,7 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
               ) : (
                 <p className="text-sm text-[var(--muted-foreground)]">Aucun abonnement existant.</p>
               )}
-            </div>
+            </div> : null}
           </FormSection>
 
           <FormSection id="renew-plan" title="2. Nouvelle formule" description="Choisissez le quota et la période à ouvrir.">
@@ -333,7 +346,9 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
               <div className="flex items-start justify-between gap-3 py-2.5">
                 <dt className="text-[var(--muted-foreground)]">Membre</dt>
                 <dd className="text-right font-medium">
-                  {selectedMember ? `${selectedMember.firstName} ${selectedMember.lastName}` : "Non sélectionné"}
+                  {memberMode === "NEW"
+                    ? `${newMember.firstName} ${newMember.lastName}`.trim() || "Nouveau membre"
+                    : selectedMember ? `${selectedMember.firstName} ${selectedMember.lastName}` : "Non sélectionné"}
                 </dd>
               </div>
               <div className="flex items-start justify-between gap-3 py-2.5">

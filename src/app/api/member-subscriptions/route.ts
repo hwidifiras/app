@@ -18,6 +18,8 @@ import { createSubscriptionFromPlan } from "@/lib/subscription-service";
 import { sumLedgerRows } from "@/lib/payment-ledger";
 import { issueReceiptForPayment } from "@/lib/receipts";
 import { isTenantModuleEnabled } from "@/lib/tenant-modules";
+import { resolveMemberPhone } from "@/lib/member-phone";
+import { memberAuditSnapshot } from "@/lib/member-audit";
 
 export const runtime = "nodejs";
 
@@ -133,20 +135,24 @@ export async function POST(request: Request) {
     );
   }
 
-  const { memberId, planId, startDate, carryOverRemainingSessions, paymentCents, paymentMethod, groupIds = [] } =
+  const { memberId: requestedMemberId, newMember, planId, startDate, carryOverRemainingSessions, paymentCents, paymentMethod, groupIds = [] } =
     parsed.data;
   const start = new Date(startDate);
 
   try {
-    const memberExists = await prisma.member.findFirst({
-      where: { id: memberId, tenantId: actor.tenantId },
-    });
-    if (!memberExists) {
+    const memberExists = requestedMemberId ? await prisma.member.findFirst({
+      where: { id: requestedMemberId, tenantId: actor.tenantId },
+    }) : null;
+    if (requestedMemberId && !memberExists) {
       return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
     }
-    if (memberExists.status !== "ACTIVE") {
+    if (memberExists && memberExists.status !== "ACTIVE") {
       return NextResponse.json({ error: "Impossible de creer un abonnement pour un membre archive" }, { status: 409 });
     }
+    const memberProfile = memberExists ?? {
+      memberType: newMember!.memberType,
+      gender: newMember!.gender,
+    };
 
     const plan = await prisma.subscriptionPlan.findFirst({
       where: { id: planId, tenantId: actor.tenantId },
@@ -177,20 +183,22 @@ export async function POST(request: Request) {
       }
       const end = computeEndDate(start, plan.validityDays);
       for (const group of selectedGroups) {
-        const compatibility = checkGroupMemberCompatibility({ groupType: group.groupType, genderPolicy: group.genderPolicy, memberType: memberExists.memberType, gender: memberExists.gender });
+        const compatibility = checkGroupMemberCompatibility({ groupType: group.groupType, genderPolicy: group.genderPolicy, memberType: memberProfile.memberType, gender: memberProfile.gender });
         if (!compatibility.ok) return NextResponse.json({ error: compatibility.message }, { status: 409 });
-        const alreadyAssigned = await prisma.groupMember.findFirst({ where: { tenantId: actor.tenantId, memberId, groupId: group.id, status: "ACTIVE" }, select: { id: true } });
+        const alreadyAssigned = requestedMemberId ? await prisma.groupMember.findFirst({ where: { tenantId: actor.tenantId, memberId: requestedMemberId, groupId: group.id, status: "ACTIVE" }, select: { id: true } }) : null;
         if (!alreadyAssigned && group._count.members >= group.capacity) return NextResponse.json({ error: `Le groupe "${group.name}" est complet` }, { status: 409 });
-        const conflict = await checkScheduleConflictForMember(memberId, group.id, start, end);
-        if (!conflict.ok) return NextResponse.json({ error: conflict.error }, { status: 409 });
+        if (requestedMemberId) {
+          const conflict = await checkScheduleConflictForMember(requestedMemberId, group.id, start, end);
+          if (!conflict.ok) return NextResponse.json({ error: conflict.error }, { status: 409 });
+        }
       }
     }
 
-    if (plan.sportId) {
+    if (plan.sportId && requestedMemberId) {
       const incompatibleGroup = await prisma.groupMember.findFirst({
         where: {
           tenantId: actor.tenantId,
-          memberId,
+          memberId: requestedMemberId,
           status: "ACTIVE",
           group: { sportId: { not: plan.sportId } },
         },
@@ -211,6 +219,36 @@ export async function POST(request: Request) {
     }
 
     const subscription = await prisma.$transaction(async (tx) => {
+      let memberId = requestedMemberId ?? "";
+      if (newMember) {
+        const createdMember = await tx.member.create({
+          data: {
+            tenantId: actor.tenantId,
+            firstName: newMember.firstName,
+            lastName: newMember.lastName,
+            phone: resolveMemberPhone(newMember),
+            email: newMember.email?.trim() || null,
+            memberType: newMember.memberType,
+            gender: newMember.gender,
+            birthDate: new Date(newMember.birthDate),
+            address: newMember.address?.trim() || null,
+            parentName: newMember.parentName?.trim() || null,
+            parentPhone: newMember.parentPhone?.trim() || null,
+            parentAddress: newMember.parentAddress?.trim() || null,
+          },
+        });
+        memberId = createdMember.id;
+        await tx.auditLog.create({
+          data: {
+            tenantId: actor.tenantId,
+            action: "MEMBER_CREATED",
+            entityType: "Member",
+            entityId: createdMember.id,
+            userId: actor.id,
+            details: JSON.stringify({ source: "access-enrollment", after: memberAuditSnapshot(createdMember) }),
+          },
+        });
+      }
       const created = await createSubscriptionFromPlan(
         tx,
         {
