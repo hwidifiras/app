@@ -23,8 +23,9 @@
 - `npx prisma validate`: passed.
 - `npm run lint`: passed.
 - `npm run build`: passed locally and in Docker.
-- Gym-focused PostgreSQL tests: `10 / 10` passed before the final enrollment correction.
-- New-member source schema tests: passed.
+- Final PostgreSQL suite: `19 / 19` files and `180 / 180` tests passed.
+- Gym-focused tests: `11 / 11` passed, including database policy and cross-tenant cases.
+- New-member source and atomic enrollment checks: passed.
 - Import template tests: `4 / 4` passed after refreshing the stale reprise workbook.
 - `npm audit --omit=dev`: `0 vulnerabilities`.
 
@@ -51,4 +52,4 @@ Screenshots:
 
 ## Release State
 
-SaaS staging runs the branch with GYM disabled for the existing tenant. Production rollout remains gated on final full-suite execution, removal of disposable QA resources, a production backup, and explicit activation approval. The first client must remain module-disabled after deployment.
+SaaS staging runs the branch with GYM disabled for the existing tenant. Production rollout remains gated on a production backup and controlled deployment. The first client must remain module-disabled after deployment and activation still requires explicit approval.
