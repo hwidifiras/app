@@ -36,7 +36,7 @@ export default async function DataImportPage() {
       },
     }),
     prisma.subscriptionPlan.findMany({
-      where: { tenantId: authUser.tenantId, isActive: true },
+      where: { tenantId: authUser.tenantId, isActive: true, planKind: "CLASS", sportId: { not: null } },
       orderBy: { name: "asc" },
       select: {
         id: true,
@@ -88,7 +88,7 @@ export default async function DataImportPage() {
             sportId: group.sportId,
             sportName: group.sport.name,
           }))}
-          plans={plans}
+          plans={plans.filter((plan): plan is typeof plan & { sportId: string } => Boolean(plan.sportId))}
         />
       </div>
     </main>

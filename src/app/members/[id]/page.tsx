@@ -139,7 +139,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
   const subscriptionCards = member.subscriptions.map((subscription) => ({
     id: subscription.id,
     planName: subscription.plan.name,
-    sportName: subscription.sport.name,
+    sportName: subscription.sport?.name ?? "Acces salle",
     status: subscription.status,
     startDate: subscription.startDate,
     endDate: subscription.endDate,

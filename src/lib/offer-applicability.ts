@@ -82,7 +82,9 @@ export async function getMemberOfferContext(memberId: string, tenantId?: string)
         })
       : 1;
 
-  const activeSportNames = [...new Set(activeSubscriptions.map((sub) => sub.sport.name))];
+  const activeSportNames = [
+    ...new Set(activeSubscriptions.map((sub) => sub.sport?.name).filter((name): name is string => Boolean(name))),
+  ];
 
   const applicableOffers = offers
     .map((offer) => {

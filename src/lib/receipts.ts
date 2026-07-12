@@ -205,7 +205,7 @@ export async function issueReceiptForPayment(
     subscription: {
       id: payment.memberSubscription.id,
       planName: payment.memberSubscription.plan.name,
-      sportName: payment.memberSubscription.sport.name,
+      sportName: payment.memberSubscription.sport?.name ?? "Acces salle",
       amountCents: payment.memberSubscription.amount,
       startDate: payment.memberSubscription.startDate.toISOString(),
       endDate: payment.memberSubscription.endDate?.toISOString() ?? null,

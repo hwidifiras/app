@@ -207,7 +207,7 @@ export default async function AttendanceTodayPage({
                 remainingSessions: sub.remainingSessions,
                 amount: sub.amount,
                 totalPaid,
-                plan: sub.plan,
+                plan: { ...sub.plan, sportId: sub.plan.sportId ?? sessionSportId },
               });
               if (!paymentCheck.allowed) continue;
 

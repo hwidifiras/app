@@ -46,7 +46,7 @@ export async function GET(
       return {
         id: s.id,
         sportId: s.sportId,
-        sportName: s.sport.name,
+        sportName: s.sport?.name ?? "Acces salle",
         planName: s.plan.name,
         amount: s.amount,
         listPriceCents: s.listPriceCents,

@@ -34,6 +34,10 @@ export const TENANT_SCOPED_MODELS = new Set([
   "Offer",
   "OfferApplication",
   "Attendance",
+  "TenantModule",
+  "PlanEntitlement",
+  "SubscriptionEntitlement",
+  "GymVisit",
   "AuditLog",
 ]);
 

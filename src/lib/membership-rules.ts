@@ -186,11 +186,11 @@ export async function resolveActiveSubscription(
   if (!sub) return null;
   return {
     id: sub.id,
-    sportId: sub.sportId,
+    sportId,
     remainingSessions: sub.remainingSessions,
     amount: sub.amount,
     totalPaid: getTotalPaid(sub.payments),
-    plan: sub.plan,
+    plan: { ...sub.plan, sportId: sub.plan.sportId ?? sportId },
   };
 }
 
@@ -225,11 +225,11 @@ export async function resolveSubscriptionForAttendance(
   }
   return {
     id: sub.id,
-    sportId: sub.sportId,
+    sportId,
     remainingSessions: sub.remainingSessions,
     amount: sub.amount,
     totalPaid: getTotalPaid(sub.payments),
-    plan: sub.plan,
+    plan: { ...sub.plan, sportId: sub.plan.sportId ?? sportId },
   };
 }
 
@@ -300,7 +300,7 @@ type ResolvedLine = {
   memberType: MemberTypeValue;
   memberGender: GenderValue;
   group: { id: string; name: string; sportId: string; sport: { name: string }; capacity: number; groupType: GroupTypeValue; genderPolicy: GroupGenderPolicyValue; isActive: boolean; _count: { members: number } };
-  plan: SubscriptionPlan & { sport: { name: string } };
+  plan: SubscriptionPlan & { sportId: string; sport: { name: string } };
   startDate: Date;
   endDate: Date;
   listPrice: number;
@@ -351,7 +351,9 @@ async function resolveEnrollmentLines(lines: EnrollmentLineInput[], startDateInp
       where: { id: line.planId, tenantId },
       include: { sport: { select: { name: true } } },
     });
-    if (!plan || !plan.isActive) throw new Error(`LINE_${i}:PLAN_INVALID`);
+    if (!plan || !plan.isActive || plan.planKind !== "CLASS" || !plan.sportId || !plan.sport) {
+      throw new Error(`LINE_${i}:PLAN_INVALID`);
+    }
     if (plan.sportId !== group.sportId) throw new Error(`LINE_${i}:PLAN_SPORT_MISMATCH`);
 
     const endDate = computeEndDate(startDate, plan.validityDays);
@@ -511,7 +513,7 @@ export async function buildEnrollmentQuote(
       select: { sportId: true },
     });
     const hasOther =
-      existingSports.some((s) => !sportsInQuote.has(s.sportId)) || sportsInQuote.size > 1;
+      existingSports.some((s) => Boolean(s.sportId && !sportsInQuote.has(s.sportId))) || sportsInQuote.size > 1;
     secondSportEligible.set(mid, hasOther);
   }
 

@@ -20,7 +20,7 @@ type SubscriptionPlanAuditSnapshot = {
   sessionsPerWeek: number | null;
   validityDays: number;
   isActive: boolean;
-  sportId: string;
+  sportId: string | null;
   sport?: { name: string } | null;
 };
 
@@ -224,12 +224,14 @@ export async function PATCH(request: Request) {
 
     if (payload.sessionsPerWeek !== undefined) {
       const sportId = payload.sportId && payload.sportId !== "" ? payload.sportId : currentPlan.sportId;
-      const planCapError = await validatePlanSessionsPerWeekForSport(
-        sportId,
-        payload.sessionsPerWeek,
-        new Date(),
-        actor.tenantId,
-      );
+      const planCapError = sportId
+        ? await validatePlanSessionsPerWeekForSport(
+            sportId,
+            payload.sessionsPerWeek,
+            new Date(),
+            actor.tenantId,
+          )
+        : null;
       if (planCapError) {
         return NextResponse.json({ error: planCapError, code: "PLAN_EXCEEDS_SPORT_STANDARD" }, { status: 409 });
       }

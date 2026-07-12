@@ -5,6 +5,8 @@ export const ROUTE_PERMISSION_RULES: Array<{ paths: string[]; permission: Permis
   { paths: ["/attendance", "/api/attendances"], permission: "attendance.manage" },
   { paths: ["/payments", "/receipts", "/api/payments", "/api/receipts"], permission: "payments.manage" },
   { paths: ["/offers", "/api/offers"], permission: "offers.manage" },
+  { paths: ["/gym/check-in", "/api/gym/check-in"], permission: "gym.checkin" },
+  { paths: ["/gym", "/api/gym"], permission: "gym.manage" },
   {
     paths: [
       "/sports",

@@ -28,6 +28,11 @@ export type ClubSettingsData = {
   dashboardShowMembersOverview: boolean;
   dashboardShowCommercialInsights: boolean;
   dashboardShowDetailedDebts: boolean;
+  dashboardShowGymOverview: boolean;
+  gymAllowCheckInWithPartialPayment: boolean;
+  gymDuplicateScanWindowMinutes: number;
+  gymDailyVisitLimit: number | null;
+  gymAllowExceptionalAccess: boolean;
   receiptPrefix: string;
   nextReceiptSequence: number;
   receiptFooter: string;
@@ -61,6 +66,11 @@ const DEFAULTS = {
   dashboardShowMembersOverview: true,
   dashboardShowCommercialInsights: true,
   dashboardShowDetailedDebts: true,
+  dashboardShowGymOverview: true,
+  gymAllowCheckInWithPartialPayment: true,
+  gymDuplicateScanWindowMinutes: 2,
+  gymDailyVisitLimit: null,
+  gymAllowExceptionalAccess: true,
   receiptPrefix: "WD",
   nextReceiptSequence: 1,
   receiptFooter: "",
@@ -137,6 +147,24 @@ function normalizeClubSettings(row: Record<string, unknown>): ClubSettingsData {
       typeof row.dashboardShowDetailedDebts === "boolean"
         ? row.dashboardShowDetailedDebts
         : DEFAULTS.dashboardShowDetailedDebts,
+    dashboardShowGymOverview:
+      typeof row.dashboardShowGymOverview === "boolean"
+        ? row.dashboardShowGymOverview
+        : DEFAULTS.dashboardShowGymOverview,
+    gymAllowCheckInWithPartialPayment:
+      typeof row.gymAllowCheckInWithPartialPayment === "boolean"
+        ? row.gymAllowCheckInWithPartialPayment
+        : DEFAULTS.gymAllowCheckInWithPartialPayment,
+    gymDuplicateScanWindowMinutes:
+      typeof row.gymDuplicateScanWindowMinutes === "number"
+        ? row.gymDuplicateScanWindowMinutes
+        : DEFAULTS.gymDuplicateScanWindowMinutes,
+    gymDailyVisitLimit:
+      typeof row.gymDailyVisitLimit === "number" ? row.gymDailyVisitLimit : DEFAULTS.gymDailyVisitLimit,
+    gymAllowExceptionalAccess:
+      typeof row.gymAllowExceptionalAccess === "boolean"
+        ? row.gymAllowExceptionalAccess
+        : DEFAULTS.gymAllowExceptionalAccess,
     receiptPrefix: typeof row.receiptPrefix === "string" ? row.receiptPrefix : DEFAULTS.receiptPrefix,
     nextReceiptSequence:
       typeof row.nextReceiptSequence === "number" && row.nextReceiptSequence > 0

@@ -1049,10 +1049,11 @@ export default async function Home({
 
     const salesByPlan = new Map<string, SalesBreakdownItem>();
     for (const subscription of fetchedSalesSubscriptions) {
-      const key = `${subscription.plan.name}::${subscription.sport.name}`;
+      const sportName = subscription.sport?.name ?? "Acces salle";
+      const key = `${subscription.plan.name}::${sportName}`;
       const existing = salesByPlan.get(key) ?? {
         label: subscription.plan.name,
-        sublabel: subscription.sport.name,
+        sublabel: sportName,
         amount: 0,
         subscriptions: 0,
       };

@@ -5,6 +5,8 @@ export const PERMISSIONS = [
   "payments.manage",
   "catalog.manage",
   "offers.manage",
+  "gym.checkin",
+  "gym.manage",
 ] as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[number];
@@ -16,6 +18,8 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   "payments.manage": "Encaissements",
   "catalog.manage": "Catalogue club",
   "offers.manage": "Offres",
+  "gym.checkin": "Acces salle",
+  "gym.manage": "Gestion salle",
 };
 
 export const FULL_STAFF_PERMISSIONS: PermissionKey[] = [...PERMISSIONS];

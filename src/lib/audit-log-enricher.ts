@@ -132,7 +132,7 @@ export async function enrichAuditLogPresentation(
             label: "Inscriptions",
             list: subs.map((s) => {
               const name = memberLabel(s.member);
-              return `${name} — ${s.plan.sport.name} · ${s.plan.name}`;
+              return `${name} — ${s.plan.sport?.name ?? "Acces salle"} · ${s.plan.name}`;
             }),
           });
         } else if (members.size > 0) {
@@ -181,7 +181,7 @@ export async function enrichAuditLogPresentation(
 
       if (sub) {
         rows.push({ label: "Élève", value: `${memberLabel(sub.member)} · ${sub.member.phone}` });
-        rows.push({ label: "Formule", value: `${sub.plan.sport.name} — ${sub.plan.name}` });
+        rows.push({ label: "Formule", value: `${sub.plan.sport?.name ?? "Acces salle"} — ${sub.plan.name}` });
         const amount = formatMoneyFromCents(sub.amount);
         if (amount) rows.push({ label: "Montant abonnement", value: amount });
         if (details?.startDate) rows.push({ label: "Début", value: formatDateFr(details.startDate) });

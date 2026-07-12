@@ -33,6 +33,11 @@ function serializeSettings(settings: Awaited<ReturnType<typeof getClubSettings>>
     dashboardShowMembersOverview: settings.dashboardShowMembersOverview,
     dashboardShowCommercialInsights: settings.dashboardShowCommercialInsights,
     dashboardShowDetailedDebts: settings.dashboardShowDetailedDebts,
+    dashboardShowGymOverview: settings.dashboardShowGymOverview,
+    gymAllowCheckInWithPartialPayment: settings.gymAllowCheckInWithPartialPayment,
+    gymDuplicateScanWindowMinutes: settings.gymDuplicateScanWindowMinutes,
+    gymDailyVisitLimit: settings.gymDailyVisitLimit,
+    gymAllowExceptionalAccess: settings.gymAllowExceptionalAccess,
     receiptPrefix: settings.receiptPrefix,
     nextReceiptSequence: settings.nextReceiptSequence,
     receiptFooter: settings.receiptFooter,
@@ -223,6 +228,19 @@ export async function PATCH(request: Request) {
         : {}),
       ...(data.dashboardShowDetailedDebts !== undefined
         ? { dashboardShowDetailedDebts: data.dashboardShowDetailedDebts }
+        : {}),
+      ...(data.dashboardShowGymOverview !== undefined
+        ? { dashboardShowGymOverview: data.dashboardShowGymOverview }
+        : {}),
+      ...(data.gymAllowCheckInWithPartialPayment !== undefined
+        ? { gymAllowCheckInWithPartialPayment: data.gymAllowCheckInWithPartialPayment }
+        : {}),
+      ...(data.gymDuplicateScanWindowMinutes !== undefined
+        ? { gymDuplicateScanWindowMinutes: data.gymDuplicateScanWindowMinutes }
+        : {}),
+      ...(data.gymDailyVisitLimit !== undefined ? { gymDailyVisitLimit: data.gymDailyVisitLimit } : {}),
+      ...(data.gymAllowExceptionalAccess !== undefined
+        ? { gymAllowExceptionalAccess: data.gymAllowExceptionalAccess }
         : {}),
       ...(data.receiptPrefix !== undefined ? { receiptPrefix: data.receiptPrefix.toUpperCase() } : {}),
       ...(data.nextReceiptSequence !== undefined ? { nextReceiptSequence: data.nextReceiptSequence } : {}),

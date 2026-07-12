@@ -366,12 +366,14 @@ async function prepareBulkImport(buffer: Buffer, fileName: string, fallbackCutov
       select: { id: true, name: true, sportId: true },
     }),
     prisma.subscriptionPlan.findMany({
-      where: { tenantId, isActive: true },
+      where: { tenantId, isActive: true, planKind: "CLASS", sportId: { not: null } },
       select: { id: true, name: true, sportId: true, price: true, totalSessions: true, validityDays: true },
     }),
   ]);
   const groupLookup = makeLookup(groups);
-  const planLookup = makeLookup(plans);
+  const planLookup = makeLookup(
+    plans.filter((plan): plan is typeof plan & { sportId: string } => Boolean(plan.sportId)),
+  );
   const preparedRows: PreparedRow[] = [];
   const seenPhones = new Map<string, number>();
   const seenExternalIds = new Map<string, number>();

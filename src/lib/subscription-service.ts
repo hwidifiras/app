@@ -57,6 +57,9 @@ export async function createSubscriptionFromPlan(
   input: SubscriptionFromPlanInput,
   options?: { carryOverRemainingSessions?: boolean },
 ) {
+  if (!input.plan.sportId) {
+    throw new Error("CLASS_PLAN_SPORT_REQUIRED");
+  }
   const snapshot = await expireActiveSubscriptionForSportWithSnapshot(
     tx,
     input.memberId,

@@ -23,7 +23,7 @@ type SubscriptionAuditSnapshotInput = {
   id: string;
   memberId: string;
   planId: string;
-  sportId: string;
+  sportId: string | null;
   startDate: Date;
   endDate: Date | null;
   amount: number;
@@ -398,7 +398,7 @@ export async function PATCH(request: Request) {
       nextSportId = planExists.sportId;
     }
 
-    if (payload.planId && nextSportId !== existing.sportId) {
+    if (payload.planId && nextSportId && nextSportId !== existing.sportId) {
       const incompatibleAssignment = await prisma.groupMember.findFirst({
         where: {
           tenantId: actor.tenantId,

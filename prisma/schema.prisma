@@ -110,6 +110,36 @@ enum OfferKind {
   FIXED_OFF
 }
 
+enum PlanKind {
+  CLASS
+  GYM
+  MIXED
+}
+
+enum EntitlementType {
+  CLASS_SESSIONS
+  GYM_ACCESS
+}
+
+enum GymAccessMode {
+  UNLIMITED
+  VISIT_QUOTA
+}
+
+enum GymVisitEntryType {
+  CHECK_IN
+  REVERSAL
+}
+
+enum TenantModuleKey {
+  GYM
+}
+
+enum TenantModuleStatus {
+  ENABLED
+  DISABLED
+}
+
 model Tenant {
   id                    String                    @id @default(cuid())
   slug                  String                    @unique
@@ -141,6 +171,10 @@ model Tenant {
   offerApplications     OfferApplication[]
   attendances           Attendance[]
   auditLogs             AuditLog[]
+  modules               TenantModule[]
+  planEntitlements      PlanEntitlement[]
+  subscriptionEntitlements SubscriptionEntitlement[]
+  gymVisits             GymVisit[]
   createdAt             DateTime                  @default(now())
   updatedAt             DateTime                  @updatedAt
 }
@@ -157,6 +191,7 @@ model User {
   permissions         UserPermission[]
   notificationReads   NotificationRead[]
   passwordResetTokens PasswordResetToken[]
+  gymVisitsChecked    GymVisit[]           @relation("GymVisitCheckedBy")
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 
@@ -237,6 +272,11 @@ model ClubSettings {
   dashboardShowMembersOverview           Boolean     @default(true)
   dashboardShowCommercialInsights       Boolean     @default(true)
   dashboardShowDetailedDebts             Boolean     @default(true)
+  dashboardShowGymOverview               Boolean     @default(true)
+  gymAllowCheckInWithPartialPayment       Boolean     @default(true)
+  gymDuplicateScanWindowMinutes           Int         @default(2)
+  gymDailyVisitLimit                      Int?
+  gymAllowExceptionalAccess               Boolean     @default(true)
   receiptPrefix                         String      @default("WD")
   nextReceiptSequence                   Int         @default(1)
   receiptFooter                         String      @default("")
@@ -264,6 +304,7 @@ model Member {
   groups        GroupMember[]
   subscriptions MemberSubscription[]
   attendances   Attendance[]
+  gymVisits     GymVisit[]
   householdLink HouseholdMember?
   joinedAt      DateTime             @default(now())
   archivedAt    DateTime?
@@ -315,6 +356,8 @@ model Sport {
   subscriptionPlans   SubscriptionPlan[]
   memberSubscriptions MemberSubscription[]
   offers              Offer[]
+  planEntitlements    PlanEntitlement[]
+  subscriptionEntitlements SubscriptionEntitlement[]
   createdAt           DateTime                  @default(now())
   updatedAt           DateTime                  @updatedAt
 
@@ -491,8 +534,10 @@ model SubscriptionPlan {
   sessionsPerWeek Int?
   validityDays    Int
   isActive        Boolean              @default(true)
-  sportId         String
-  sport           Sport                @relation(fields: [sportId], references: [id], onDelete: Restrict)
+  planKind         PlanKind             @default(CLASS)
+  sportId          String?
+  sport            Sport?               @relation(fields: [sportId], references: [id], onDelete: Restrict)
+  entitlements     PlanEntitlement[]
   subscriptions   MemberSubscription[]
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
@@ -509,8 +554,8 @@ model MemberSubscription {
   member             Member             @relation(fields: [memberId], references: [id], onDelete: Cascade)
   planId             String
   plan               SubscriptionPlan   @relation(fields: [planId], references: [id], onDelete: Restrict)
-  sportId            String
-  sport              Sport              @relation(fields: [sportId], references: [id], onDelete: Restrict)
+  sportId            String?
+  sport              Sport?             @relation(fields: [sportId], references: [id], onDelete: Restrict)
   startDate          DateTime
   endDate            DateTime?
   amount             Int
@@ -523,11 +568,63 @@ model MemberSubscription {
   status             SubscriptionStatus @default(DRAFT)
   payments           Payment[]
   attendances        Attendance[]
+  entitlements       SubscriptionEntitlement[]
+  gymVisits          GymVisit[]
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
   @@index([tenantId])
   @@index([memberId, sportId, status])
+}
+
+model PlanEntitlement {
+  id                String           @id @default(cuid())
+  tenantId          String?
+  tenant            Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  planId            String
+  plan              SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  type              EntitlementType
+  sportId           String?
+  sport             Sport?           @relation(fields: [sportId], references: [id], onDelete: Restrict)
+  sessionsPerWeek   Int?
+  grantedUnits      Int?
+  gymAccessMode     GymAccessMode?
+  sortOrder         Int              @default(0)
+  subscriptionEntitlements SubscriptionEntitlement[]
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([tenantId])
+  @@index([planId])
+  @@index([sportId])
+}
+
+model SubscriptionEntitlement {
+  id                   String             @id @default(cuid())
+  tenantId             String?
+  tenant               Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberSubscriptionId String
+  memberSubscription   MemberSubscription @relation(fields: [memberSubscriptionId], references: [id], onDelete: Cascade)
+  planEntitlementId    String?
+  planEntitlement      PlanEntitlement?   @relation(fields: [planEntitlementId], references: [id], onDelete: SetNull)
+  type                 EntitlementType
+  sportId              String?
+  sport                Sport?             @relation(fields: [sportId], references: [id], onDelete: Restrict)
+  sessionsPerWeek      Int?
+  grantedUnits         Int?
+  remainingUnits       Int?
+  gymAccessMode        GymAccessMode?
+  startDate            DateTime
+  endDate              DateTime?
+  attendances          Attendance[]
+  gymVisits            GymVisit[]
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@index([tenantId])
+  @@index([memberSubscriptionId])
+  @@index([planEntitlementId])
+  @@index([sportId, type])
 }
 
 model Payment {
@@ -629,6 +726,8 @@ model Attendance {
   member               Member              @relation(fields: [memberId], references: [id], onDelete: Cascade)
   memberSubscriptionId String?
   memberSubscription   MemberSubscription? @relation(fields: [memberSubscriptionId], references: [id], onDelete: SetNull)
+  subscriptionEntitlementId String?
+  subscriptionEntitlement SubscriptionEntitlement? @relation(fields: [subscriptionEntitlementId], references: [id], onDelete: SetNull)
   status               AttendanceStatus
   overrideReason       String?
   checkedBy            String?
@@ -638,6 +737,50 @@ model Attendance {
 
   @@unique([tenantId, sessionId, memberId])
   @@index([tenantId])
+  @@index([subscriptionEntitlementId])
+}
+
+model TenantModule {
+  id         String             @id @default(cuid())
+  tenantId   String
+  tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  moduleKey  TenantModuleKey
+  status     TenantModuleStatus @default(ENABLED)
+  enabledAt  DateTime?
+  disabledAt DateTime?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  @@unique([tenantId, moduleKey])
+  @@index([tenantId, status])
+}
+
+model GymVisit {
+  id                        String               @id @default(cuid())
+  tenantId                  String
+  tenant                    Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberId                  String
+  member                    Member               @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  memberSubscriptionId      String
+  memberSubscription        MemberSubscription   @relation(fields: [memberSubscriptionId], references: [id], onDelete: Restrict)
+  subscriptionEntitlementId String
+  subscriptionEntitlement   SubscriptionEntitlement @relation(fields: [subscriptionEntitlementId], references: [id], onDelete: Restrict)
+  entryType                 GymVisitEntryType    @default(CHECK_IN)
+  correctsVisitId           String?
+  correctsVisit             GymVisit?            @relation("GymVisitCorrections", fields: [correctsVisitId], references: [id], onDelete: Restrict)
+  corrections               GymVisit[]           @relation("GymVisitCorrections")
+  unitsDelta                Int                  @default(0)
+  checkedAt                 DateTime             @default(now())
+  checkedById               String?
+  checkedBy                 User?                @relation("GymVisitCheckedBy", fields: [checkedById], references: [id], onDelete: SetNull)
+  overrideReason            String?
+  correctionReason          String?
+  createdAt                 DateTime             @default(now())
+
+  @@index([tenantId, checkedAt])
+  @@index([memberId, checkedAt])
+  @@index([subscriptionEntitlementId])
+  @@index([correctsVisitId])
 }
 
 model AuditLog {

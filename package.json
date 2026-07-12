@@ -20,6 +20,7 @@
     "admin:create": "node scripts/create-admin.mjs",
     "admin:create:dev": "node scripts/with-dev-env.mjs scripts/create-admin.mjs",
     "tenant:create": "node scripts/create-tenant.mjs",
+    "tenant:module": "node scripts/set-tenant-module.mjs",
     "saas:migrate:sqlite": "node scripts/migrate-sqlite-to-postgres.mjs",
     "saas:verify:migration": "node scripts/verify-saas-migration.mjs",
     "email:test": "npx tsx scripts/test-resend.ts",
