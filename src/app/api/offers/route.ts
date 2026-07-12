@@ -97,6 +97,7 @@ export async function POST(request: Request) {
         name: parsed.data.name,
         description: parsed.data.description?.trim() || null,
         kind: parsed.data.kind,
+        planScope: parsed.data.planScope,
         isActive: parsed.data.isActive ?? true,
         rules: serializeOfferRules(resolvedRules),
         ...structured,

@@ -7,6 +7,7 @@ import { ClubAlertsSection } from "@/components/settings/club-alerts-section";
 import { ClubCheckinRulesSection } from "@/components/settings/club-checkin-rules-section";
 import { ClubDashboardSection } from "@/components/settings/club-dashboard-section";
 import { ClubIdentitySection } from "@/components/settings/club-identity-section";
+import { ClubGymRulesSection } from "@/components/settings/club-gym-rules-section";
 import { ClubPlanningRulesSection } from "@/components/settings/club-planning-rules-section";
 import { ClubReceiptSettings } from "@/components/settings/club-receipt-settings";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
@@ -41,6 +42,11 @@ export type ClubSettingsFormData = {
   dashboardShowMembersOverview: boolean;
   dashboardShowCommercialInsights: boolean;
   dashboardShowDetailedDebts: boolean;
+  dashboardShowGymOverview: boolean;
+  gymAllowCheckInWithPartialPayment: boolean;
+  gymDuplicateScanWindowMinutes: number;
+  gymDailyVisitLimit: number | null;
+  gymAllowExceptionalAccess: boolean;
   receiptPrefix: string;
   nextReceiptSequence: number;
   receiptFooter: string;
@@ -50,6 +56,7 @@ export type ClubSettingsFormData = {
 
 type ClubSettingsFormProps = {
   initial: ClubSettingsFormData;
+  gymModuleEnabled?: boolean;
 };
 
 function centsToMoneyInput(cents: number): string {
@@ -65,7 +72,7 @@ function moneyInputToCents(value: string): number {
   return Math.round(amount * 100);
 }
 
-export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
+export function ClubSettingsForm({ initial, gymModuleEnabled = false }: ClubSettingsFormProps) {
   const router = useRouter();
   const [clubName, setClubName] = useState(initial.clubName);
   const [clubLogoUrl, setClubLogoUrl] = useState(initial.clubLogoUrl ?? "");
@@ -104,6 +111,11 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
     initial.dashboardShowCommercialInsights,
   );
   const [dashboardShowDetailedDebts, setDashboardShowDetailedDebts] = useState(initial.dashboardShowDetailedDebts);
+  const [dashboardShowGymOverview, setDashboardShowGymOverview] = useState(initial.dashboardShowGymOverview);
+  const [gymAllowPartialPayment, setGymAllowPartialPayment] = useState(initial.gymAllowCheckInWithPartialPayment);
+  const [gymDuplicateWindow, setGymDuplicateWindow] = useState(String(initial.gymDuplicateScanWindowMinutes));
+  const [gymDailyLimit, setGymDailyLimit] = useState(initial.gymDailyVisitLimit ? String(initial.gymDailyVisitLimit) : "");
+  const [gymAllowExceptionalAccess, setGymAllowExceptionalAccess] = useState(initial.gymAllowExceptionalAccess);
   const [receiptPrefix, setReceiptPrefix] = useState(initial.receiptPrefix || "WD");
   const [nextReceiptSequence, setNextReceiptSequence] = useState(String(initial.nextReceiptSequence || 1));
   const [receiptFooter, setReceiptFooter] = useState(initial.receiptFooter || "");
@@ -170,6 +182,11 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
         dashboardShowMembersOverview,
         dashboardShowCommercialInsights,
         dashboardShowDetailedDebts,
+        dashboardShowGymOverview,
+        gymAllowCheckInWithPartialPayment: gymAllowPartialPayment,
+        gymDuplicateScanWindowMinutes: Math.max(0, Number.parseInt(gymDuplicateWindow, 10) || 0),
+        gymDailyVisitLimit: gymDailyLimit.trim() ? Math.max(1, Number.parseInt(gymDailyLimit, 10) || 1) : null,
+        gymAllowExceptionalAccess,
         receiptPrefix: receiptPrefix.trim().toUpperCase(),
         nextReceiptSequence: receiptSequence,
         receiptFooter: receiptFooter.trim(),
@@ -220,6 +237,11 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
     setDashboardShowMembersOverview(json.data.dashboardShowMembersOverview !== false);
     setDashboardShowCommercialInsights(json.data.dashboardShowCommercialInsights !== false);
     setDashboardShowDetailedDebts(json.data.dashboardShowDetailedDebts !== false);
+    setDashboardShowGymOverview(json.data.dashboardShowGymOverview !== false);
+    setGymAllowPartialPayment(json.data.gymAllowCheckInWithPartialPayment !== false);
+    setGymDuplicateWindow(String(json.data.gymDuplicateScanWindowMinutes ?? 2));
+    setGymDailyLimit(json.data.gymDailyVisitLimit ? String(json.data.gymDailyVisitLimit) : "");
+    setGymAllowExceptionalAccess(json.data.gymAllowExceptionalAccess !== false);
     setReceiptPrefix(json.data.receiptPrefix ?? "WD");
     setNextReceiptSequence(String(json.data.nextReceiptSequence ?? 1));
     setReceiptFooter(json.data.receiptFooter ?? "");
@@ -295,6 +317,7 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
         items={[
           { href: "#club-identity", label: "Identité" },
           { href: "#club-checkin", label: "Pointage" },
+          ...(gymModuleEnabled ? [{ href: "#club-gym", label: "Salle" }] : []),
           { href: "#club-planning", label: "Planning" },
           { href: "#club-alerts", label: "Alertes" },
           { href: "#club-dashboard", label: "Dashboard" },
@@ -323,6 +346,21 @@ export function ClubSettingsForm({ initial }: ClubSettingsFormProps) {
         onAllowWithoutSubscriptionChange={setAllowWithoutSubscription}
         onAbsentConsumesSessionChange={setAbsentConsumesSession}
       />
+
+      {gymModuleEnabled ? (
+        <ClubGymRulesSection
+          allowPartialPayment={gymAllowPartialPayment}
+          allowExceptionalAccess={gymAllowExceptionalAccess}
+          duplicateWindowMinutes={gymDuplicateWindow}
+          dailyVisitLimit={gymDailyLimit}
+          showDashboardWidget={dashboardShowGymOverview}
+          onAllowPartialPaymentChange={setGymAllowPartialPayment}
+          onAllowExceptionalAccessChange={setGymAllowExceptionalAccess}
+          onDuplicateWindowMinutesChange={setGymDuplicateWindow}
+          onDailyVisitLimitChange={setGymDailyLimit}
+          onShowDashboardWidgetChange={setDashboardShowGymOverview}
+        />
+      ) : null}
 
       <ClubPlanningRulesSection
         workingDays={workingDays}

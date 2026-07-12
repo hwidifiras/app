@@ -6,8 +6,8 @@ import {
   updateSubscriptionPlanSchema,
 } from "@/lib/schemas/subscription-plan";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
-import { totalSessionsFromWeekly } from "@/lib/subscription-plan-utils";
 import { validatePlanSessionsPerWeekForSport } from "@/lib/sport-weekly-standard";
+import { isTenantModuleEnabled } from "@/lib/tenant-modules";
 
 export const runtime = "nodejs";
 
@@ -21,6 +21,7 @@ type SubscriptionPlanAuditSnapshot = {
   validityDays: number;
   isActive: boolean;
   sportId: string | null;
+  planKind: "CLASS" | "GYM" | "MIXED";
   sport?: { name: string } | null;
 };
 
@@ -36,6 +37,7 @@ function planAuditSnapshot(plan: SubscriptionPlanAuditSnapshot) {
     isActive: plan.isActive,
     sportId: plan.sportId,
     sportName: plan.sport?.name ?? null,
+    planKind: plan.planKind,
   };
 }
 
@@ -59,7 +61,10 @@ export async function GET(request: Request) {
       : { tenantId: actor.tenantId },
     orderBy: { createdAt: "desc" },
     take: 50,
-    include: { sport: { select: { id: true, name: true } } },
+    include: {
+      sport: { select: { id: true, name: true } },
+      entitlements: { include: { sport: { select: { id: true, name: true } } }, orderBy: { sortOrder: "asc" } },
+    },
   });
 
   return NextResponse.json({ data: plans });
@@ -93,26 +98,26 @@ export async function POST(request: Request) {
     );
   }
 
-  const descriptionValue = parsed.data.description?.trim() || null;
-
-  const sportId = parsed.data.sportId;
-  const sport = await prisma.sport.findFirst({
-    where: { id: sportId, tenantId: actor.tenantId, isActive: true },
+  if (parsed.data.planKind !== "CLASS" && !(await isTenantModuleEnabled(actor.tenantId, "GYM"))) {
+    return NextResponse.json({ error: "Le module salle n'est pas actif pour ce club" }, { status: 403 });
+  }
+  const classRights = parsed.data.entitlements.filter((item) => item.type === "CLASS_SESSIONS");
+  const sportIds = classRights.map((item) => item.sportId).filter((id): id is string => Boolean(id));
+  const sports = await prisma.sport.findMany({
+    where: { id: { in: sportIds }, tenantId: actor.tenantId, isActive: true },
     select: { id: true },
   });
-
-  if (!sport) {
+  if (sports.length !== new Set(sportIds).size) {
     return NextResponse.json({ error: "Discipline introuvable ou inactive" }, { status: 400 });
   }
-
-  const planCapError = await validatePlanSessionsPerWeekForSport(
-    sportId,
-    parsed.data.sessionsPerWeek,
-    new Date(),
-    actor.tenantId,
-  );
-  if (planCapError) {
-    return NextResponse.json({ error: planCapError, code: "PLAN_EXCEEDS_SPORT_STANDARD" }, { status: 409 });
+  for (const entitlement of classRights) {
+    const capError = await validatePlanSessionsPerWeekForSport(
+      entitlement.sportId as string,
+      entitlement.sessionsPerWeek as number,
+      new Date(),
+      actor.tenantId,
+    );
+    if (capError) return NextResponse.json({ error: capError, code: "PLAN_EXCEEDS_SPORT_STANDARD" }, { status: 409 });
   }
 
   try {
@@ -121,25 +126,27 @@ export async function POST(request: Request) {
         data: {
           tenantId: actor.tenantId,
           name: parsed.data.name,
-          description: descriptionValue,
+          description: parsed.data.description?.trim() || null,
           price: parsed.data.price,
           totalSessions: parsed.data.totalSessions,
           sessionsPerWeek: parsed.data.sessionsPerWeek ?? null,
           validityDays: parsed.data.validityDays,
-          sportId: parsed.data.sportId,
+          planKind: parsed.data.planKind,
+          sportId: parsed.data.sportId ?? null,
         },
         include: { sport: { select: { name: true } } },
       });
-
-      await tx.planEntitlement.create({
-        data: {
+      await tx.planEntitlement.createMany({
+        data: parsed.data.entitlements.map((item, index) => ({
           tenantId: actor.tenantId,
           planId: created.id,
-          type: "CLASS_SESSIONS",
-          sportId: created.sportId,
-          sessionsPerWeek: created.sessionsPerWeek,
-          grantedUnits: created.totalSessions,
-        },
+          type: item.type,
+          sportId: item.type === "CLASS_SESSIONS" ? item.sportId ?? null : null,
+          sessionsPerWeek: item.type === "CLASS_SESSIONS" ? item.sessionsPerWeek ?? null : null,
+          grantedUnits: item.gymAccessMode === "UNLIMITED" ? null : item.grantedUnits ?? null,
+          gymAccessMode: item.type === "GYM_ACCESS" ? item.gymAccessMode ?? null : null,
+          sortOrder: index,
+        })),
       });
 
       await tx.auditLog.create({
@@ -215,88 +222,74 @@ export async function PATCH(request: Request) {
   try {
     const currentPlan = await prisma.subscriptionPlan.findFirst({
       where: { id: planId, tenantId: actor.tenantId },
-      include: { sport: { select: { name: true } } },
+      include: { sport: { select: { name: true } }, entitlements: { orderBy: { sortOrder: "asc" } } },
     });
 
     if (!currentPlan) {
       return NextResponse.json({ error: "Plan introuvable" }, { status: 404 });
     }
 
-    if (payload.sportId) {
-      const sport = await prisma.sport.findFirst({
-        where: { id: payload.sportId, tenantId: actor.tenantId, isActive: true },
-        select: { id: true },
-      });
-
-      if (!sport) {
-        return NextResponse.json({ error: "Discipline introuvable ou inactive" }, { status: 400 });
-      }
+    const merged = createSubscriptionPlanSchema.safeParse({
+      name: payload.name ?? currentPlan.name,
+      description: payload.description === undefined ? currentPlan.description : payload.description,
+      price: payload.price ?? currentPlan.price,
+      planKind: payload.planKind ?? currentPlan.planKind,
+      validityDays: payload.validityDays ?? currentPlan.validityDays,
+      sportId: payload.sportId === undefined ? currentPlan.sportId ?? undefined : payload.sportId || undefined,
+      sessionsPerWeek: payload.sessionsPerWeek ?? currentPlan.sessionsPerWeek ?? undefined,
+      entitlements: payload.entitlements ?? currentPlan.entitlements.map((item) => ({
+        type: item.type,
+        sportId: item.sportId,
+        sessionsPerWeek: item.sessionsPerWeek,
+        grantedUnits: item.grantedUnits,
+        gymAccessMode: item.gymAccessMode,
+      })),
+    });
+    if (!merged.success) {
+      return NextResponse.json({ error: "Configuration de formule invalide", details: merged.error.flatten() }, { status: 400 });
     }
-
-    if (payload.sessionsPerWeek !== undefined) {
-      const sportId = payload.sportId && payload.sportId !== "" ? payload.sportId : currentPlan.sportId;
-      const planCapError = sportId
-        ? await validatePlanSessionsPerWeekForSport(
-            sportId,
-            payload.sessionsPerWeek,
-            new Date(),
-            actor.tenantId,
-          )
-        : null;
-      if (planCapError) {
-        return NextResponse.json({ error: planCapError, code: "PLAN_EXCEEDS_SPORT_STANDARD" }, { status: 409 });
-      }
+    if (merged.data.planKind !== "CLASS" && !(await isTenantModuleEnabled(actor.tenantId, "GYM"))) {
+      return NextResponse.json({ error: "Le module salle n'est pas actif pour ce club" }, { status: 403 });
+    }
+    const nextClassRights = merged.data.entitlements.filter((item) => item.type === "CLASS_SESSIONS");
+    const nextSportIds = nextClassRights.map((item) => item.sportId).filter((id): id is string => Boolean(id));
+    const validSports = await prisma.sport.count({ where: { id: { in: nextSportIds }, tenantId: actor.tenantId, isActive: true } });
+    if (validSports !== new Set(nextSportIds).size) return NextResponse.json({ error: "Discipline introuvable ou inactive" }, { status: 400 });
+    for (const entitlement of nextClassRights) {
+      const capError = await validatePlanSessionsPerWeekForSport(entitlement.sportId as string, entitlement.sessionsPerWeek as number, new Date(), actor.tenantId);
+      if (capError) return NextResponse.json({ error: capError, code: "PLAN_EXCEEDS_SPORT_STANDARD" }, { status: 409 });
     }
 
     const updated = await prisma.$transaction(async (tx) => {
       const next = await tx.subscriptionPlan.update({
         where: { id: planId },
         data: {
-          name: payload.name,
-          description:
-            payload.description === undefined
-              ? undefined
-              : payload.description === "" || payload.description === null
-                ? null
-                : payload.description,
-          price: payload.price,
-          totalSessions:
-            payload.sessionsPerWeek !== undefined
-              ? totalSessionsFromWeekly(payload.sessionsPerWeek)
-              : undefined,
-          sessionsPerWeek: payload.sessionsPerWeek,
-          validityDays: payload.validityDays,
+          name: merged.data.name,
+          description: merged.data.description?.trim() || null,
+          price: merged.data.price,
+          planKind: merged.data.planKind,
+          totalSessions: merged.data.totalSessions,
+          sessionsPerWeek: merged.data.sessionsPerWeek ?? null,
+          validityDays: merged.data.validityDays,
           isActive: payload.isActive,
-          sportId: payload.sportId === undefined ? undefined : payload.sportId === "" ? undefined : payload.sportId,
+          sportId: merged.data.sportId ?? null,
         },
         include: { sport: { select: { name: true } } },
       });
 
-      const entitlement = await tx.planEntitlement.findFirst({
-        where: { tenantId: actor.tenantId, planId, type: "CLASS_SESSIONS" },
-        select: { id: true },
+      await tx.planEntitlement.deleteMany({ where: { tenantId: actor.tenantId, planId } });
+      await tx.planEntitlement.createMany({
+        data: merged.data.entitlements.map((item, index) => ({
+          tenantId: actor.tenantId,
+          planId,
+          type: item.type,
+          sportId: item.type === "CLASS_SESSIONS" ? item.sportId ?? null : null,
+          sessionsPerWeek: item.type === "CLASS_SESSIONS" ? item.sessionsPerWeek ?? null : null,
+          grantedUnits: item.gymAccessMode === "UNLIMITED" ? null : item.grantedUnits ?? null,
+          gymAccessMode: item.type === "GYM_ACCESS" ? item.gymAccessMode ?? null : null,
+          sortOrder: index,
+        })),
       });
-      if (entitlement) {
-        await tx.planEntitlement.update({
-          where: { id: entitlement.id },
-          data: {
-            sportId: next.sportId,
-            sessionsPerWeek: next.sessionsPerWeek,
-            grantedUnits: next.totalSessions,
-          },
-        });
-      } else if (next.sportId) {
-        await tx.planEntitlement.create({
-          data: {
-            tenantId: actor.tenantId,
-            planId,
-            type: "CLASS_SESSIONS",
-            sportId: next.sportId,
-            sessionsPerWeek: next.sessionsPerWeek,
-            grantedUnits: next.totalSessions,
-          },
-        });
-      }
 
       await tx.auditLog.create({
         data: {

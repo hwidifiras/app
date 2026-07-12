@@ -37,6 +37,7 @@ export type NavItem = {
   icon: React.ComponentType<{ className?: string }>;
   adminOnly?: boolean;
   moduleKey?: "GYM";
+  permission?: string;
 };
 
 export type NavSection = {
@@ -50,7 +51,7 @@ export const dailySection: NavSection = {
     { href: "/", label: "Accueil", icon: LayoutDashboard },
     { href: "/attendance/today", label: "Pointage", icon: Clock },
     { href: "/sessions", label: "Planning", icon: CalendarRange },
-    { href: "/gym/check-in", label: "Acces salle", icon: Dumbbell, moduleKey: "GYM" },
+    { href: "/gym/check-in", label: "Acces salle", icon: Dumbbell, moduleKey: "GYM", permission: "gym.checkin" },
   ],
 };
 
@@ -253,7 +254,10 @@ export function AppSidebar({
                 {section.title}
               </p>
             ) : null}
-            {section.items.filter((item) => !item.moduleKey || enabledModules.has(item.moduleKey)).map((item) => (
+            {section.items.filter((item) =>
+              (!item.moduleKey || enabledModules.has(item.moduleKey)) &&
+              (!item.permission || role === "ADMIN" || account?.permissions.includes(item.permission)),
+            ).map((item) => (
               <NavLink
                 key={item.href}
                 item={item}

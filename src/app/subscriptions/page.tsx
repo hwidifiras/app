@@ -43,6 +43,9 @@ export default async function SubscriptionsPage() {
     totalPaid: number;
     remainingSessions: number;
     totalSessions: number;
+    planKind: "CLASS" | "GYM" | "MIXED";
+    rightsLabel: string;
+    lowUnits: boolean;
     createdAt: string;
   }> = [];
 
@@ -52,8 +55,9 @@ export default async function SubscriptionsPage() {
       orderBy: { createdAt: "desc" },
       include: {
         member: { select: { firstName: true, lastName: true, phone: true } },
-        plan: { select: { name: true, totalSessions: true } },
+        plan: { select: { name: true, planKind: true, totalSessions: true } },
         payments: { where: { tenantId: authUser.tenantId }, select: { amount: true } },
+        entitlements: { include: { sport: { select: { name: true } } }, orderBy: { createdAt: "asc" } },
       },
     });
 
@@ -72,6 +76,12 @@ export default async function SubscriptionsPage() {
       totalPaid: s.payments.reduce((sum, p) => sum + p.amount, 0),
       remainingSessions: s.remainingSessions,
       totalSessions: s.plan.totalSessions,
+      planKind: s.plan.planKind,
+      rightsLabel: s.entitlements.map((right) => right.type === "GYM_ACCESS"
+        ? right.gymAccessMode === "UNLIMITED" ? "Salle illimitée" : `Salle ${right.remainingUnits ?? 0}/${right.grantedUnits ?? 0}`
+        : `${right.sport?.name ?? "Cours"} ${right.remainingUnits ?? 0}/${right.grantedUnits ?? 0}`
+      ).join(" · ") || `${s.remainingSessions}/${s.plan.totalSessions} séances`,
+      lowUnits: s.entitlements.some((right) => right.remainingUnits !== null && right.remainingUnits <= 2),
       createdAt: s.createdAt.toISOString(),
     }));
   } catch (error) {

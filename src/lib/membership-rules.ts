@@ -461,6 +461,10 @@ function applyOfferToLines(
   const discounts = resolved.map(() => 0);
   const warnings: string[] = [];
   if (!offer || !offer.isActive) return { discounts, offerName: null, warnings };
+  if (offer.planScope !== "ALL" && resolved.some((line) => line.plan.planKind !== offer.planScope)) {
+    warnings.push("Cette offre ne s'applique pas au type de formule choisi");
+    return { discounts, offerName: offer.name, warnings };
+  }
 
   const rules = resolveOfferRules(offer);
   const listPrices = resolved.map((r) => r.listPrice);

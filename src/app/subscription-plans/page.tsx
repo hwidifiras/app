@@ -37,6 +37,14 @@ export default async function SubscriptionPlansPage() {
     isActive: boolean;
     createdAt: Date;
     sport: { id: string; name: string } | null;
+    planKind: "CLASS" | "GYM" | "MIXED";
+    entitlements: Array<{
+      type: "CLASS_SESSIONS" | "GYM_ACCESS";
+      grantedUnits: number | null;
+      sessionsPerWeek: number | null;
+      gymAccessMode: "UNLIMITED" | "VISIT_QUOTA" | null;
+      sport: { id: string; name: string } | null;
+    }>;
     _count: { subscriptions: number };
   }>;
   let hasError = false;
@@ -48,6 +56,7 @@ export default async function SubscriptionPlansPage() {
       include: {
         _count: { select: { subscriptions: true } },
         sport: { select: { id: true, name: true } },
+        entitlements: { include: { sport: { select: { id: true, name: true } } }, orderBy: { sortOrder: "asc" } },
       },
     });
   } catch {

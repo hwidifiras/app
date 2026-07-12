@@ -1,10 +1,11 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import {
   AlertCircle,
   CalendarClock,
   ClipboardCheck,
   CreditCard,
+  Dumbbell,
   Repeat2,
   UserPlus,
   UsersRound,
@@ -43,6 +44,7 @@ import { isPaymentReminderEmailConfigured } from "@/lib/email";
 import { enrichDebtsWithReminderMeta } from "@/lib/payment-reminders";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/request-user";
+import { isTenantModuleEnabled } from "@/lib/tenant-modules";
 import {
   deriveSessionLifecycle,
   expectedMemberIdsAtSession,
@@ -251,6 +253,24 @@ function MembersOverviewPanel({
             </ul>
           )}
         </div>
+      </div>
+    </DashboardPanel>
+  );
+}
+
+function DashboardMetric({ icon: Icon, label, value, tone }: { icon: ComponentType<{ className?: string }>; label: string; value: string; tone: "blue" | "green" | "amber" }) {
+  const toneClass = tone === "green" ? "text-emerald-600 bg-emerald-50" : tone === "amber" ? "text-amber-600 bg-amber-50" : "text-blue-600 bg-blue-50";
+  return <div className="rounded-lg border border-[#D8E2F0] bg-white p-3"><Icon className={`size-5 rounded-md p-0.5 ${toneClass}`} /><p className="mt-3 text-xl font-bold text-[#0B1220]">{value}</p><p className="text-xs text-slate-500">{label}</p></div>;
+}
+
+function GymOverviewPanel({ visitsToday, activePasses, expiringSoon }: { visitsToday: number; activePasses: number; expiringSoon: number }) {
+  return (
+    <DashboardPanel labelledBy="dashboard-gym-title">
+      <DashboardSectionHeader titleId="dashboard-gym-title" title="Accès salle" eyebrow="Module gym" action={<Link href="/gym/check-in" className="text-xs font-semibold text-[#2563EB] hover:underline">Pointer une entrée</Link>} />
+      <div className="grid gap-2 p-3 sm:grid-cols-3">
+        <DashboardMetric icon={Dumbbell} label="Entrées aujourd'hui" value={String(visitsToday)} tone="blue" />
+        <DashboardMetric icon={CreditCard} label="Pass actifs" value={String(activePasses)} tone="green" />
+        <DashboardMetric icon={CalendarClock} label="Expirent bientôt" value={String(expiringSoon)} tone={expiringSoon > 0 ? "amber" : "green"} />
       </div>
     </DashboardPanel>
   );
@@ -762,6 +782,9 @@ export default async function Home({
   let priorityItems: PriorityItem[] = [];
   let dataConfidenceItems: DataConfidenceItem[] = [];
   let emailConfigured = false;
+  let gymModuleEnabled = false;
+  let showGymOverview = true;
+  let gymStats = { visitsToday: 0, activePasses: 0, expiringSoon: 0 };
   let dashboardPreferences: DashboardPreferenceSettings = {
     dashboardDefaultMode: "AUTO",
     dashboardShowTodaySessions: true,
@@ -789,6 +812,8 @@ export default async function Home({
 
   try {
     const clubSettings = await getClubSettings({ tenantId });
+    gymModuleEnabled = await isTenantModuleEnabled(tenantId, "GYM");
+    showGymOverview = clubSettings.dashboardShowGymOverview;
     dashboardPreferences = {
       dashboardDefaultMode: clubSettings.dashboardDefaultMode,
       dashboardShowTodaySessions: clubSettings.dashboardShowTodaySessions,
@@ -799,6 +824,14 @@ export default async function Home({
       dashboardShowCommercialInsights: clubSettings.dashboardShowCommercialInsights,
       dashboardShowDetailedDebts: clubSettings.dashboardShowDetailedDebts,
     };
+    if (gymModuleEnabled) {
+      const [visitsToday, activePasses, expiringSoon] = await Promise.all([
+        prisma.gymVisit.count({ where: { tenantId, entryType: "CHECK_IN", checkedAt: { gte: today, lt: tomorrow }, corrections: { none: { entryType: "REVERSAL" } } } }),
+        prisma.subscriptionEntitlement.count({ where: { tenantId, type: "GYM_ACCESS", startDate: { lte: now }, OR: [{ endDate: null }, { endDate: { gte: now } }], memberSubscription: { status: "ACTIVE", member: { status: "ACTIVE" } } } }),
+        prisma.subscriptionEntitlement.count({ where: { tenantId, type: "GYM_ACCESS", endDate: { gte: now, lte: sevenDaysFromToday }, memberSubscription: { status: "ACTIVE", member: { status: "ACTIVE" } } } }),
+      ]);
+      gymStats = { visitsToday, activePasses, expiringSoon };
+    }
 
     const [
       fetchedActiveMembers,
@@ -1279,6 +1312,7 @@ export default async function Home({
       recentMembers={recentMembers}
     />
   ) : null;
+  const gymOverviewPanel = gymModuleEnabled && showGymOverview ? <GymOverviewPanel {...gymStats} /> : null;
   const commercialPanel = dashboardVisibility.commercialInsights ? (
     hasCommercialActivity ? (
       <SalesSnapshotPanel
@@ -1324,6 +1358,7 @@ export default async function Home({
     dataConfidencePanel,
     cashTrendPanel,
     membersOverviewPanel,
+    gymOverviewPanel,
     commercialPanel,
     detailedDebtsPanel,
   ].filter(Boolean).length;
@@ -1396,6 +1431,7 @@ export default async function Home({
           <>
             <DashboardGridRow variant="balanced">{[cashPanel, cashTrendPanel]}</DashboardGridRow>
             <DashboardGridRow variant="wideLeft">{[membersOverviewPanel, todayPanel]}</DashboardGridRow>
+            {gymOverviewPanel}
             {dataConfidencePanel}
             {commercialPanel}
             {detailedDebtsPanel}
@@ -1405,6 +1441,7 @@ export default async function Home({
             <DashboardGridRow variant="wideLeft">{[todayPanel, cashPanel]}</DashboardGridRow>
             {dataConfidencePanel}
             <DashboardGridRow variant="balanced">{[cashTrendPanel, membersOverviewPanel]}</DashboardGridRow>
+            {gymOverviewPanel}
             {detailedDebtsPanel}
           </>
         )}

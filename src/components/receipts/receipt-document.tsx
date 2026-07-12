@@ -93,6 +93,11 @@ export function ReceiptDocument({
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)]">Formule</p>
           <p className="mt-1 font-bold text-[#0B1220]">{snapshot.subscription.planName}</p>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">{snapshot.subscription.sportName}</p>
+          {snapshot.subscription.entitlements?.length ? (
+            <ul className="mt-2 space-y-1 text-xs text-[var(--muted-foreground)]">
+              {snapshot.subscription.entitlements.map((right) => <li key={`${right.label}-${right.detail}`}><strong className="text-[#0B1220]">{right.label}</strong> · {right.detail}</li>)}
+            </ul>
+          ) : null}
         </div>
         <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)]">Statut</p>

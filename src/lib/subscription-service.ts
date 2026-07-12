@@ -6,7 +6,7 @@ import { createSubscriptionEntitlementSnapshots } from "@/lib/subscription-entit
 export type SubscriptionFromPlanInput = {
   tenantId?: string;
   memberId: string;
-  plan: Pick<SubscriptionPlan, "id" | "sportId" | "price" | "totalSessions" | "validityDays">;
+  plan: Pick<SubscriptionPlan, "id" | "planKind" | "sportId" | "price" | "totalSessions" | "validityDays">;
   startDate: Date;
   amountCents?: number;
   carryOverSessions?: number;
@@ -22,7 +22,7 @@ export function buildSubscriptionData(input: SubscriptionFromPlanInput) {
     startDate: input.startDate,
     endDate: computeEndDate(input.startDate, input.plan.validityDays),
     amount: input.amountCents ?? input.plan.price,
-    remainingSessions: input.plan.totalSessions + carryOver,
+    remainingSessions: input.plan.planKind === "CLASS" ? input.plan.totalSessions + carryOver : 0,
     status: "ACTIVE" as const,
   };
 }
@@ -58,15 +58,32 @@ export async function createSubscriptionFromPlan(
   input: SubscriptionFromPlanInput,
   options?: { carryOverRemainingSessions?: boolean },
 ) {
-  if (!input.plan.sportId) {
-    throw new Error("CLASS_PLAN_SPORT_REQUIRED");
+  if (input.plan.planKind === "CLASS" && !input.plan.sportId) throw new Error("CLASS_PLAN_SPORT_REQUIRED");
+  let snapshot = { expiredId: null as string | null, remainingSessions: 0 };
+  if (input.plan.planKind === "CLASS" && input.plan.sportId) {
+    snapshot = await expireActiveSubscriptionForSportWithSnapshot(tx, input.memberId, input.plan.sportId, input.tenantId);
+  } else {
+    const tenantId = input.tenantId;
+    if (!tenantId) throw new Error("TENANT_REQUIRED");
+    const rights = await tx.planEntitlement.findMany({ where: { tenantId, planId: input.plan.id }, select: { type: true, sportId: true } });
+    const sportIds = rights.map((right) => right.sportId).filter((id): id is string => Boolean(id));
+    const includesGym = rights.some((right) => right.type === "GYM_ACCESS");
+    const overlapping = await tx.memberSubscription.findMany({
+      where: {
+        tenantId,
+        memberId: input.memberId,
+        status: "ACTIVE",
+        entitlements: { some: { OR: [
+          ...(sportIds.length > 0 ? [{ type: "CLASS_SESSIONS" as const, sportId: { in: sportIds } }] : []),
+          ...(includesGym ? [{ type: "GYM_ACCESS" as const }] : []),
+        ] } },
+      },
+      select: { id: true },
+    });
+    if (overlapping.length > 0) {
+      await tx.memberSubscription.updateMany({ where: { tenantId, id: { in: overlapping.map((item) => item.id) } }, data: { status: "EXPIRED" } });
+    }
   }
-  const snapshot = await expireActiveSubscriptionForSportWithSnapshot(
-    tx,
-    input.memberId,
-    input.plan.sportId,
-    input.tenantId,
-  );
   const carryOver =
     options?.carryOverRemainingSessions && snapshot.remainingSessions > 0 ? snapshot.remainingSessions : 0;
 

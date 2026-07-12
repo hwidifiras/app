@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { SubscriptionPlanForm } from "@/components/subscription-plans/subscription-plan-form";
 import { getAuthUser } from "@/lib/request-user";
+import { isTenantModuleEnabled } from "@/lib/tenant-modules";
 
 export default async function NewPlanPage() {
   const authUser = await getAuthUser();
@@ -21,6 +22,7 @@ export default async function NewPlanPage() {
       </main>
     );
   }
+  const gymModuleEnabled = await isTenantModuleEnabled(authUser.tenantId, "GYM");
 
   return (
     <main className="app-shell py-4 md:py-8">
@@ -35,7 +37,7 @@ export default async function NewPlanPage() {
       />
 
       <section className="panel p-4 sm:p-6">
-        <SubscriptionPlanForm mode="create" />
+        <SubscriptionPlanForm mode="create" gymModuleEnabled={gymModuleEnabled} />
       </section>
     </main>
   );

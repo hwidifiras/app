@@ -9,11 +9,15 @@ import {
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { requireAdmin } from "@/lib/request-user";
 import {
+  checkScheduleConflictForMember,
+  computeEndDate,
   expireStaleSubscriptions,
 } from "@/lib/membership-rules";
+import { checkGroupMemberCompatibility } from "@/lib/demographics";
 import { createSubscriptionFromPlan } from "@/lib/subscription-service";
 import { sumLedgerRows } from "@/lib/payment-ledger";
 import { issueReceiptForPayment } from "@/lib/receipts";
+import { isTenantModuleEnabled } from "@/lib/tenant-modules";
 
 export const runtime = "nodejs";
 
@@ -92,9 +96,10 @@ export async function GET(request: Request) {
       status: true,
       createdAt: true,
       member: { select: { id: true, firstName: true, lastName: true, phone: true } },
-      plan: { select: { id: true, name: true, price: true, totalSessions: true, sessionsPerWeek: true, validityDays: true } },
+      plan: { select: { id: true, name: true, planKind: true, price: true, totalSessions: true, sessionsPerWeek: true, validityDays: true } },
       sport: { select: { id: true, name: true } },
       payments: { select: { id: true, amount: true, paymentDate: true } },
+      entitlements: { include: { sport: { select: { id: true, name: true } } }, orderBy: { createdAt: "asc" } },
     },
     orderBy: { createdAt: "desc" },
     take: 100,
@@ -128,7 +133,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { memberId, planId, startDate, carryOverRemainingSessions, paymentCents, paymentMethod } =
+  const { memberId, planId, startDate, carryOverRemainingSessions, paymentCents, paymentMethod, groupIds = [] } =
     parsed.data;
   const start = new Date(startDate);
 
@@ -145,9 +150,40 @@ export async function POST(request: Request) {
 
     const plan = await prisma.subscriptionPlan.findFirst({
       where: { id: planId, tenantId: actor.tenantId },
+      include: { entitlements: true },
     });
     if (!plan) {
       return NextResponse.json({ error: "Plan introuvable" }, { status: 404 });
+    }
+    if (plan.planKind !== "CLASS" && !(await isTenantModuleEnabled(actor.tenantId, "GYM"))) {
+      return NextResponse.json({ error: "Le module salle n'est pas actif pour ce club" }, { status: 403 });
+    }
+    if (plan.planKind !== "MIXED" && groupIds.length > 0) {
+      return NextResponse.json({ error: "Les groupes sont reserves aux packs mixtes dans ce parcours" }, { status: 400 });
+    }
+    const classRights = plan.entitlements.filter((item) => item.type === "CLASS_SESSIONS");
+    const selectedGroups = plan.planKind === "MIXED" && groupIds.length > 0
+      ? await prisma.group.findMany({
+          where: { tenantId: actor.tenantId, id: { in: groupIds }, isActive: true },
+          include: { _count: { select: { members: { where: { tenantId: actor.tenantId, status: "ACTIVE" } } } } },
+        })
+      : [];
+    if (plan.planKind === "MIXED") {
+      if (selectedGroups.length !== groupIds.length) {
+        return NextResponse.json({ error: "Un groupe selectionne est introuvable ou inactif" }, { status: 400 });
+      }
+      if (selectedGroups.length !== classRights.length || classRights.some((right) => !selectedGroups.some((group) => group.sportId === right.sportId))) {
+        return NextResponse.json({ error: "Choisissez un groupe compatible pour chaque discipline du pack" }, { status: 400 });
+      }
+      const end = computeEndDate(start, plan.validityDays);
+      for (const group of selectedGroups) {
+        const compatibility = checkGroupMemberCompatibility({ groupType: group.groupType, genderPolicy: group.genderPolicy, memberType: memberExists.memberType, gender: memberExists.gender });
+        if (!compatibility.ok) return NextResponse.json({ error: compatibility.message }, { status: 409 });
+        const alreadyAssigned = await prisma.groupMember.findFirst({ where: { tenantId: actor.tenantId, memberId, groupId: group.id, status: "ACTIVE" }, select: { id: true } });
+        if (!alreadyAssigned && group._count.members >= group.capacity) return NextResponse.json({ error: `Le groupe "${group.name}" est complet` }, { status: 409 });
+        const conflict = await checkScheduleConflictForMember(memberId, group.id, start, end);
+        if (!conflict.ok) return NextResponse.json({ error: conflict.error }, { status: 409 });
+      }
     }
 
     if (plan.sportId) {
@@ -185,6 +221,14 @@ export async function POST(request: Request) {
         },
         { carryOverRemainingSessions: carryOverRemainingSessions === true },
       );
+
+      for (const group of selectedGroups) {
+        await tx.groupMember.upsert({
+          where: { tenantId_groupId_memberId: { tenantId: actor.tenantId, groupId: group.id, memberId } },
+          update: { status: "ACTIVE", startDate: start, endDate: created.endDate },
+          create: { tenantId: actor.tenantId, groupId: group.id, memberId, status: "ACTIVE", startDate: start, endDate: created.endDate },
+        });
+      }
 
       if (payCents > 0) {
         const payment = await tx.payment.create({
@@ -263,6 +307,7 @@ export async function POST(request: Request) {
         plan: { select: { id: true, name: true } },
         sport: { select: { id: true, name: true } },
         payments: { select: { id: true, amount: true, paymentDate: true } },
+        entitlements: { include: { sport: { select: { id: true, name: true } } }, orderBy: { createdAt: "asc" } },
       },
     });
 
@@ -337,6 +382,7 @@ export async function PATCH(request: Request) {
         remainingSessions: true,
         member: { select: { status: true } },
         payments: { select: { amount: true } },
+        plan: { select: { planKind: true } },
       },
     });
 
@@ -362,6 +408,7 @@ export async function PATCH(request: Request) {
         { error: "Le montant de l'abonnement ne peut pas etre inferieur au total deja paye" },
         { status: 409 },
       );
+
     }
 
     const planChanged = payload.planId !== undefined && payload.planId !== existing.planId;
@@ -387,15 +434,23 @@ export async function PATCH(request: Request) {
     }
 
     let nextSportId = existing.sportId;
+    let nextPlanKind = existing.plan.planKind;
     if (payload.planId) {
       const planExists = await prisma.subscriptionPlan.findFirst({
         where: { id: payload.planId, tenantId: actor.tenantId },
-        select: { id: true, sportId: true },
+        select: { id: true, sportId: true, planKind: true },
       });
       if (!planExists) {
         return NextResponse.json({ error: "Plan introuvable" }, { status: 404 });
       }
       nextSportId = planExists.sportId;
+      nextPlanKind = planExists.planKind;
+      if (planChanged && (existing.plan.planKind !== "CLASS" || nextPlanKind !== "CLASS")) {
+        return NextResponse.json(
+          { error: "Pour changer les droits d'un pass salle ou mixte, resiliez cet abonnement puis creez-en un nouveau" },
+          { status: 409 },
+        );
+      }
     }
 
     if (payload.planId && nextSportId && nextSportId !== existing.sportId) {
@@ -442,6 +497,15 @@ export async function PATCH(request: Request) {
             orderBy: { sortOrder: "asc" },
           })
         : null;
+      if (payload.startDate || payload.endDate !== undefined) {
+        await tx.subscriptionEntitlement.updateMany({
+          where: { tenantId: actor.tenantId, memberSubscriptionId: subscriptionId },
+          data: {
+            ...(payload.startDate ? { startDate: nextStartDate } : {}),
+            ...(payload.endDate !== undefined ? { endDate: nextEndDate } : {}),
+          },
+        });
+      }
       await tx.subscriptionEntitlement.updateMany({
         where: { tenantId: actor.tenantId, memberSubscriptionId: subscriptionId, type: "CLASS_SESSIONS" },
         data: {
@@ -453,8 +517,6 @@ export async function PATCH(request: Request) {
                 grantedUnits: nextPlanEntitlement.grantedUnits,
               }
             : {}),
-          ...(payload.startDate ? { startDate: nextStartDate } : {}),
-          ...(payload.endDate !== undefined ? { endDate: nextEndDate } : {}),
           ...(payload.remainingSessions !== undefined ? { remainingUnits: payload.remainingSessions } : {}),
         },
       });

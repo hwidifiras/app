@@ -9,6 +9,11 @@ export const createMemberSubscriptionSchema = z.object({
   carryOverRemainingSessions: z.boolean().optional(),
   paymentCents: z.number().int().min(0).optional(),
   paymentMethod: z.string().trim().max(40).optional(),
+  groupIds: z
+    .array(z.string().trim().min(1))
+    .max(8)
+    .refine((ids) => new Set(ids).size === ids.length, "Un groupe ne peut etre selectionne qu'une fois")
+    .optional(),
 });
 
 export type CreateMemberSubscriptionInput = z.infer<typeof createMemberSubscriptionSchema>;

@@ -67,6 +67,7 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
   const [minMembers, setMinMembers] = useState("2");
   const [maxMembers, setMaxMembers] = useState("");
   const [sportId, setSportId] = useState("");
+  const [planScope, setPlanScope] = useState<"ALL" | "CLASS" | "GYM" | "MIXED">("ALL");
   const [requiresHousehold, setRequiresHousehold] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -178,6 +179,7 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
       name,
       kind,
       isActive: true,
+      planScope,
     };
 
     if (kind === "PERCENT_OFF" || kind === "SECOND_DISCIPLINE") {
@@ -318,6 +320,15 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
               <option value="FIXED_OFF">Montant fixe offert par ligne (TND)</option>
               <option value="FAMILY_BUNDLE">Forfait famille (prix total)</option>
               <option value="SECOND_DISCIPLINE">Réduction 2e discipline (%)</option>
+            </select>
+          </label>
+          <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
+            Formules concernées
+            <select className="field" value={planScope} onChange={(event) => setPlanScope(event.target.value as typeof planScope)}>
+              <option value="ALL">Toutes les formules</option>
+              <option value="CLASS">Cours collectifs</option>
+              <option value="GYM">Accès salle</option>
+              <option value="MIXED">Packs mixtes</option>
             </select>
           </label>
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-sm">

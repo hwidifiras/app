@@ -39,6 +39,14 @@ type PlanRow = {
   isActive: boolean;
   createdAt: string | Date;
   sport: { id: string; name: string } | null;
+  planKind: "CLASS" | "GYM" | "MIXED";
+  entitlements: Array<{
+    type: "CLASS_SESSIONS" | "GYM_ACCESS";
+    grantedUnits: number | null;
+    sessionsPerWeek: number | null;
+    gymAccessMode: "UNLIMITED" | "VISIT_QUOTA" | null;
+    sport: { id: string; name: string } | null;
+  }>;
   _count: { subscriptions: number };
 };
 
@@ -165,26 +173,35 @@ export function SubscriptionPlansTable({ plans }: { plans: PlanRow[] }) {
         <DataTableBody>
           {pagination.pageItems.map((plan) => {
             const isExpanded = expandedPlanIds.includes(plan.id);
+            const classRights = plan.entitlements.filter((item) => item.type === "CLASS_SESSIONS");
+            const gymRight = plan.entitlements.find((item) => item.type === "GYM_ACCESS");
+            const quotaLabel = plan.planKind === "GYM"
+              ? gymRight?.gymAccessMode === "UNLIMITED" ? "Illimité" : `${gymRight?.grantedUnits ?? 0} visites`
+              : plan.planKind === "MIXED" ? `${classRights.length} cours + salle` : `${classRights[0]?.sessionsPerWeek ?? plan.sessionsPerWeek ?? 0}/sem.`;
+            const accessLabel = [
+              ...classRights.map((item) => item.sport?.name).filter(Boolean),
+              ...(gymRight ? ["Salle"] : []),
+            ].join(" + ") || "—";
             return (
               <DataTableRow key={plan.id} expanded={isExpanded}>
                 <Td primary className="min-w-[12rem] text-foreground">
                   <div className="font-semibold leading-snug">{plan.name}</div>
                   <p className="mt-0.5 line-clamp-2 text-xs font-normal text-muted-foreground">
-                    {plan.description?.trim() || plan.sport?.name || "Sans description"}
+                    {plan.description?.trim() || accessLabel}
                   </p>
                 </Td>
                 <Td label="Prix" className="whitespace-nowrap text-right font-semibold">
                   {formatMoney(plan.price)}
                 </Td>
                 <Td label="Quota" mobileDetail className="text-center">
-                  <span className="font-medium">{plan.sessionsPerWeek ?? "—"}/sem.</span>
-                  <p className="text-xs text-muted-foreground">{plan.totalSessions} séances / mois</p>
+                  <span className="font-medium">{quotaLabel}</span>
+                  <p className="text-xs text-muted-foreground">{plan.planKind === "CLASS" ? "Cours collectifs" : plan.planKind === "GYM" ? "Accès salle" : "Pack mixte"}</p>
                 </Td>
                 <Td label="Validité" mobileDetail className="hidden whitespace-nowrap text-center sm:table-cell">
                   {plan.validityDays} jours
                 </Td>
                 <Td label="Discipline" mobileDetail className="hidden text-center md:table-cell">
-                  {plan.sport?.name ?? "—"}
+                  {accessLabel}
                 </Td>
                 <Td label="Statut" className="text-center">
                   <StatusBadge variant={plan.isActive ? "success" : "muted"}>

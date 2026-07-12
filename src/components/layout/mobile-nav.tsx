@@ -102,7 +102,10 @@ export function MobileNav() {
               <p className="px-3 pt-2 text-[0.6rem] font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)] opacity-60">
                 {section.title}
               </p>
-              {section.items.filter((item) => !item.moduleKey || enabledModules.has(item.moduleKey)).map((item) => (
+              {section.items.filter((item) =>
+                (!item.moduleKey || enabledModules.has(item.moduleKey)) &&
+                (!item.permission || role === "ADMIN" || account?.permissions.includes(item.permission)),
+              ).map((item) => (
                 <NavLink key={item.href} item={item} pathname={pathname} onClick={close} badge={navBadges[item.href]} />
               ))}
             </div>

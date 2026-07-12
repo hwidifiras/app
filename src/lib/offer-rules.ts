@@ -28,7 +28,7 @@ export type ParsedOfferRules =
   | ReturnType<typeof percentOffRulesSchema.parse>
   | ReturnType<typeof fixedOffRulesSchema.parse>;
 
-export function buildCreateOfferRules(input: CreateOfferInput): ParsedOfferRules {
+export function buildCreateOfferRules(input: Omit<CreateOfferInput, "planScope"> & { planScope?: CreateOfferInput["planScope"] }): ParsedOfferRules {
   if (input.rules && Object.keys(input.rules).length > 0) {
     return parseOfferRules(input.kind, input.rules) as ParsedOfferRules;
   }

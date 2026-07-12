@@ -45,6 +45,7 @@ export type ReceiptSnapshot = {
     id: string;
     planName: string;
     sportName: string;
+    entitlements?: Array<{ label: string; detail: string }>;
     amountCents: number;
     startDate: string;
     endDate: string | null;
@@ -172,6 +173,7 @@ export async function issueReceiptForPayment(
           member: { select: { id: true, firstName: true, lastName: true, phone: true } },
           plan: { select: { name: true } },
           sport: { select: { name: true } },
+          entitlements: { include: { sport: { select: { name: true } } }, orderBy: { createdAt: "asc" } },
         },
       },
     },
@@ -206,6 +208,15 @@ export async function issueReceiptForPayment(
       id: payment.memberSubscription.id,
       planName: payment.memberSubscription.plan.name,
       sportName: payment.memberSubscription.sport?.name ?? "Acces salle",
+      entitlements: payment.memberSubscription.entitlements.map((right) => ({
+        label: right.type === "GYM_ACCESS" ? "Accès salle" : right.sport?.name ?? "Cours",
+        detail:
+          right.type === "GYM_ACCESS"
+            ? right.gymAccessMode === "UNLIMITED"
+              ? "Illimité"
+              : `${right.grantedUnits ?? 0} visites`
+            : `${right.grantedUnits ?? 0} séances · ${right.sessionsPerWeek ?? 0}/semaine`,
+      })),
       amountCents: payment.memberSubscription.amount,
       startDate: payment.memberSubscription.startDate.toISOString(),
       endDate: payment.memberSubscription.endDate?.toISOString() ?? null,

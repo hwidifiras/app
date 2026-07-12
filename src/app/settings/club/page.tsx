@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { CLUB_DAY_SHORT_LABELS } from "@/lib/club-working-days";
 import { getClubSettings } from "@/lib/club-settings";
 import { getAuthUser } from "@/lib/request-user";
+import { isTenantModuleEnabled } from "@/lib/tenant-modules";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -28,6 +29,7 @@ export default async function SettingsClubPage() {
   }
 
   const settings = await getClubSettings();
+  const gymModuleEnabled = await isTenantModuleEnabled(authUser.tenantId, "GYM");
   const workingDaysLabel = settings.workingDays
     .map((day) => CLUB_DAY_SHORT_LABELS[day])
     .join(", ");
@@ -75,6 +77,7 @@ export default async function SettingsClubPage() {
           </div>
 
         <ClubSettingsForm
+          gymModuleEnabled={gymModuleEnabled}
           initial={{
             clubName: settings.clubName,
             clubLogoUrl: settings.clubLogoUrl ?? "",
@@ -98,6 +101,11 @@ export default async function SettingsClubPage() {
             dashboardShowMembersOverview: settings.dashboardShowMembersOverview,
             dashboardShowCommercialInsights: settings.dashboardShowCommercialInsights,
             dashboardShowDetailedDebts: settings.dashboardShowDetailedDebts,
+            dashboardShowGymOverview: settings.dashboardShowGymOverview,
+            gymAllowCheckInWithPartialPayment: settings.gymAllowCheckInWithPartialPayment,
+            gymDuplicateScanWindowMinutes: settings.gymDuplicateScanWindowMinutes,
+            gymDailyVisitLimit: settings.gymDailyVisitLimit,
+            gymAllowExceptionalAccess: settings.gymAllowExceptionalAccess,
             receiptPrefix: settings.receiptPrefix,
             nextReceiptSequence: settings.nextReceiptSequence,
             receiptFooter: settings.receiptFooter,

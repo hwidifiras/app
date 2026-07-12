@@ -66,6 +66,7 @@ export async function PATCH(request: Request) {
 
   try {
     const reversal = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`${actor.tenantId}:${parsed.data.visitId}`}))`;
       const original = await tx.gymVisit.findFirst({
         where: { id: parsed.data.visitId, tenantId: actor.tenantId, entryType: "CHECK_IN" },
         include: { corrections: { where: { entryType: "REVERSAL" }, select: { id: true } } },
@@ -75,10 +76,11 @@ export async function PATCH(request: Request) {
 
       const restoreUnits = Math.max(0, -original.unitsDelta);
       if (restoreUnits > 0) {
-        await tx.subscriptionEntitlement.update({
-          where: { id: original.subscriptionEntitlementId },
+        const restored = await tx.subscriptionEntitlement.updateMany({
+          where: { id: original.subscriptionEntitlementId, tenantId: actor.tenantId },
           data: { remainingUnits: { increment: restoreUnits } },
         });
+        if (restored.count !== 1) throw new Error("ENTITLEMENT_SCOPE_MISMATCH");
       }
       const created = await tx.gymVisit.create({
         data: {

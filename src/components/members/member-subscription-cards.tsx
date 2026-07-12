@@ -17,6 +17,7 @@ type SubscriptionCard = {
   paidCents: number;
   remainingSessions: number;
   totalSessions: number;
+  rightsLabel: string;
 };
 
 function formatDate(date: Date | string) {
@@ -90,15 +91,7 @@ export function MemberSubscriptionCards({ subscriptions }: { subscriptions: Subs
               </div>
             </div>
 
-            {isActive ? (
-              <p className="mt-3 text-xs text-[var(--muted-foreground)]">
-                <span className={sub.remainingSessions > 0 ? "text-[var(--info)]" : "text-[var(--danger)]"}>
-                  {sub.remainingSessions}
-                </span>
-                {" / "}
-                {sub.totalSessions} séances restantes
-              </p>
-            ) : null}
+            {isActive ? <p className="mt-3 text-xs font-medium text-[var(--primary)]">{sub.rightsLabel}</p> : null}
 
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               {!isPaid ? (

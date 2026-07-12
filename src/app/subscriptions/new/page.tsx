@@ -11,9 +11,9 @@ export const revalidate = 0;
 export default async function NewSubscriptionPage({
   searchParams,
 }: {
-  searchParams: Promise<{ memberId?: string }>;
+  searchParams: Promise<{ memberId?: string; kind?: string }>;
 }) {
-  const { memberId: requestedMemberId } = await searchParams;
+  const { memberId: requestedMemberId, kind: requestedKind } = await searchParams;
   const authUser = await getAuthUser();
 
   if (!authUser) {
@@ -33,10 +33,11 @@ export default async function NewSubscriptionPage({
 
   let hasError = false;
   let membersOptions: Array<{ id: string; firstName: string; lastName: string; phone: string }> = [];
-  let plansOptions: Array<{ id: string; name: string; price: number; totalSessions: number; validityDays: number }> = [];
+  let plansOptions: Array<{ id: string; name: string; planKind: "CLASS" | "GYM" | "MIXED"; price: number; totalSessions: number; validityDays: number; entitlements: Array<{ type: "CLASS_SESSIONS" | "GYM_ACCESS"; grantedUnits: number | null; gymAccessMode: "UNLIMITED" | "VISIT_QUOTA" | null; sport: { id: string; name: string } | null }> }> = [];
+  let groupsOptions: Array<{ id: string; name: string; sportId: string; sportName: string }> = [];
 
   try {
-    const [members, plans] = await Promise.all([
+    const [members, plans, groups] = await Promise.all([
       prisma.member.findMany({
         where: { tenantId: authUser.tenantId, status: "ACTIVE" },
         orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
@@ -45,12 +46,18 @@ export default async function NewSubscriptionPage({
       prisma.subscriptionPlan.findMany({
         where: { tenantId: authUser.tenantId, isActive: true },
         orderBy: { name: "asc" },
-        select: { id: true, name: true, price: true, totalSessions: true, validityDays: true },
+        select: { id: true, name: true, planKind: true, price: true, totalSessions: true, validityDays: true, entitlements: { select: { type: true, grantedUnits: true, gymAccessMode: true, sport: { select: { id: true, name: true } } }, orderBy: { sortOrder: "asc" } } },
+      }),
+      prisma.group.findMany({
+        where: { tenantId: authUser.tenantId, isActive: true },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, sportId: true, sport: { select: { name: true } } },
       }),
     ]);
 
     membersOptions = members;
     plansOptions = plans;
+    groupsOptions = groups.map((group) => ({ id: group.id, name: group.name, sportId: group.sportId, sportName: group.sport.name }));
   } catch {
     hasError = true;
   }
@@ -92,6 +99,8 @@ export default async function NewSubscriptionPage({
         membersOptions={membersOptions}
         plansOptions={plansOptions}
         initialMemberId={membersOptions.some((member) => member.id === requestedMemberId) ? requestedMemberId : ""}
+        initialPlanKind={requestedKind === "GYM" || requestedKind === "MIXED" ? requestedKind : undefined}
+        groupsOptions={groupsOptions}
       />
     </main>
   );

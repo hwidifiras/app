@@ -79,6 +79,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
         include: {
           sport: { select: { id: true, name: true } },
           plan: { select: { name: true, price: true, totalSessions: true } },
+          entitlements: { include: { sport: { select: { name: true } } }, orderBy: { createdAt: "asc" } },
           payments: {
             where: { tenantId: authUser.tenantId },
             select: { amount: true, paymentDate: true },
@@ -147,6 +148,10 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
     paidCents: subscription.payments.reduce((sum, payment) => sum + payment.amount, 0),
     remainingSessions: subscription.remainingSessions,
     totalSessions: subscription.plan.totalSessions,
+    rightsLabel: subscription.entitlements.map((right) => right.type === "GYM_ACCESS"
+      ? right.gymAccessMode === "UNLIMITED" ? "Salle illimitée" : `Salle ${right.remainingUnits ?? 0}/${right.grantedUnits ?? 0}`
+      : `${right.sport?.name ?? "Cours"} ${right.remainingUnits ?? 0}/${right.grantedUnits ?? 0}`
+    ).join(" · ") || `${subscription.remainingSessions}/${subscription.plan.totalSessions} séances`,
   }));
 
   return (

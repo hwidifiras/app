@@ -41,13 +41,15 @@ export type SubscriptionRow = {
   totalPaid: number;
   remainingSessions: number;
   totalSessions: number;
+  planKind: "CLASS" | "GYM" | "MIXED";
+  rightsLabel: string;
+  lowUnits: boolean;
   createdAt: string;
 };
 
 type OperationalMode = "TO_COLLECT" | "TO_RENEW" | "ACTIVE" | "ALL";
 
 const RENEWAL_WINDOW_DAYS = 7;
-const LOW_SESSION_THRESHOLD = 2;
 
 function statusVariant(status: SubscriptionStatus) {
   switch (status) {
@@ -97,7 +99,7 @@ function daysUntilEnd(subscription: SubscriptionRow) {
 
 function needsRenewal(subscription: SubscriptionRow) {
   if (subscription.status !== "ACTIVE") return false;
-  return daysUntilEnd(subscription) <= RENEWAL_WINDOW_DAYS || subscription.remainingSessions <= LOW_SESSION_THRESHOLD;
+  return daysUntilEnd(subscription) <= RENEWAL_WINDOW_DAYS || subscription.lowUnits;
 }
 
 function chooseInitialMode(subscriptions: SubscriptionRow[]): OperationalMode {
@@ -330,13 +332,11 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
               <Td label="Statut" className="whitespace-nowrap">
                 <StatusBadge variant={statusVariant(sub.status)}>{statusLabel(sub.status)}</StatusBadge>
               </Td>
-              <Td label="Séances" mobileDetail className="hidden whitespace-nowrap text-center sm:table-cell">
-                <span className={sub.remainingSessions > 0 ? "text-[var(--primary)]" : "text-[var(--danger)]"}>
-                  {sub.remainingSessions} / {sub.totalSessions}
-                </span>
+              <Td label="Droits" mobileDetail className="hidden max-w-[15rem] text-center sm:table-cell">
+                <span className={sub.lowUnits ? "text-amber-700" : "text-[var(--primary)]"}>{sub.rightsLabel}</span>
               </Td>
-              <Td label="Séances" mobileDetail className="md:hidden">
-                {sub.remainingSessions} / {sub.totalSessions}
+              <Td label="Droits" mobileDetail className="md:hidden">
+                {sub.rightsLabel}
               </Td>
               <TableActionsCell>
                 {sub.status === "ACTIVE" && sub.totalPaid < sub.amount ? (

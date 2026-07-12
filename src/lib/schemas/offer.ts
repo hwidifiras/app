@@ -33,6 +33,7 @@ export const createOfferSchema = z
     name: z.string().trim().min(2).max(120),
     description: z.string().trim().max(500).optional().or(z.literal("")),
     kind: offerKindEnum,
+    planScope: z.enum(["ALL", "CLASS", "GYM", "MIXED"]).default("ALL"),
     isActive: z.boolean().optional(),
     percentOff: z.number().int().min(1).max(100).optional(),
     amountOffCents: z.number().int().min(1).optional(),

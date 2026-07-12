@@ -110,6 +110,13 @@ enum OfferKind {
   FIXED_OFF
 }
 
+enum OfferPlanScope {
+  ALL
+  CLASS
+  GYM
+  MIXED
+}
+
 enum PlanKind {
   CLASS
   GYM
@@ -681,6 +688,7 @@ model Offer {
   name              String
   description       String?
   kind              OfferKind
+  planScope         OfferPlanScope     @default(ALL)
   isActive          Boolean            @default(true)
   /// JSON snapshot kept in sync on write; structured columns are the source of truth.
   rules             String

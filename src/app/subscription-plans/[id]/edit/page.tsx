@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { SubscriptionPlanForm } from "@/components/subscription-plans/subscription-plan-form";
 import { getAuthUser } from "@/lib/request-user";
+import { isTenantModuleEnabled } from "@/lib/tenant-modules";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -44,6 +45,8 @@ export default async function EditSubscriptionPlanPage({
       validityDays: true,
       isActive: true,
       sportId: true,
+      planKind: true,
+      entitlements: { orderBy: { sortOrder: "asc" } },
     },
   });
 
@@ -60,6 +63,7 @@ export default async function EditSubscriptionPlanPage({
       </main>
     );
   }
+  const gymModuleEnabled = await isTenantModuleEnabled(authUser.tenantId, "GYM");
 
   return (
     <main className="app-shell py-4 md:py-8">
@@ -77,6 +81,7 @@ export default async function EditSubscriptionPlanPage({
         <SubscriptionPlanForm
           mode="edit"
           planId={plan.id}
+          gymModuleEnabled={gymModuleEnabled}
           initialValues={{
             name: plan.name,
             description: plan.description,
@@ -85,6 +90,8 @@ export default async function EditSubscriptionPlanPage({
             sessionsPerWeek: plan.sessionsPerWeek,
             validityDays: plan.validityDays,
             sportId: plan.sportId,
+            planKind: plan.planKind,
+            entitlements: plan.entitlements,
             isActive: plan.isActive,
           }}
         />

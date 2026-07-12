@@ -9,7 +9,8 @@ import { SubscriptionBillingSummary } from "@/components/ui/reception-info-card"
 import { formatMoney, MONEY_INPUT_SUFFIX } from "@/lib/money";
 
 type MemberOption = { id: string; firstName: string; lastName: string; phone: string };
-type PlanOption = { id: string; name: string; price: number; totalSessions: number; validityDays: number };
+type PlanOption = { id: string; name: string; planKind: "CLASS" | "GYM" | "MIXED"; price: number; totalSessions: number; validityDays: number; entitlements: Array<{ type: "CLASS_SESSIONS" | "GYM_ACCESS"; grantedUnits: number | null; gymAccessMode: "UNLIMITED" | "VISIT_QUOTA" | null; sport: { id: string; name: string } | null }> };
+type GroupOption = { id: string; name: string; sportId: string; sportName: string };
 type SubscriptionPreview = {
   id: string;
   status: string;
@@ -26,17 +27,27 @@ type SubscriptionAddFormProps = {
   membersOptions: MemberOption[];
   plansOptions: PlanOption[];
   initialMemberId?: string;
+  initialPlanKind?: "GYM" | "MIXED";
+  groupsOptions?: GroupOption[];
 };
 
-export function SubscriptionAddForm({ membersOptions, plansOptions, initialMemberId = "" }: SubscriptionAddFormProps) {
+export function SubscriptionAddForm({ membersOptions, plansOptions, initialMemberId = "", initialPlanKind, groupsOptions = [] }: SubscriptionAddFormProps) {
   const router = useRouter();
+  const initialPlan = plansOptions.find((plan) => plan.planKind === initialPlanKind);
+  const initialStartDate = new Date().toISOString().split("T")[0];
   const [memberId, setMemberId] = useState(initialMemberId);
-  const [planId, setPlanId] = useState("");
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().split("T")[0]);
-  const [endDate, setEndDate] = useState("");
-  const [paymentCents, setPaymentCents] = useState("");
+  const [planId, setPlanId] = useState(initialPlan?.id ?? "");
+  const [startDate, setStartDate] = useState(initialStartDate);
+  const [endDate, setEndDate] = useState(() => {
+    if (!initialPlan) return "";
+    const end = new Date(initialStartDate);
+    end.setDate(end.getDate() + initialPlan.validityDays);
+    return end.toISOString().split("T")[0];
+  });
+  const [paymentCents, setPaymentCents] = useState(() => initialPlan ? (initialPlan.price / 100).toFixed(2) : "");
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [carryOverRemainingSessions, setCarryOverRemainingSessions] = useState(false);
+  const [groupBySport, setGroupBySport] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(Boolean(initialMemberId));
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -46,7 +57,7 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
   const selectedPlan = plansOptions.find((p) => p.id === planId);
   const selectedMember = membersOptions.find((member) => member.id === memberId);
   const paymentNum = Math.round(parseFloat(paymentCents.replace(",", ".")) * 100) || 0;
-  const canCarryOver = preview?.status === "ACTIVE" && preview.remainingSessions > 0;
+  const canCarryOver = selectedPlan?.planKind === "CLASS" && preview?.status === "ACTIVE" && preview.remainingSessions > 0;
   const paymentTooHigh = selectedPlan ? paymentNum > selectedPlan.price : false;
   const renewalBalance = selectedPlan ? Math.max(0, selectedPlan.price - paymentNum) : 0;
 
@@ -117,6 +128,7 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
 
   function handlePlanChange(nextPlanId: string) {
     setPlanId(nextPlanId);
+    setGroupBySport({});
     const plan = plansOptions.find((p) => p.id === nextPlanId);
     if (plan) {
       setPaymentCents((plan.price / 100).toFixed(2));
@@ -157,6 +169,7 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
         carryOverRemainingSessions: carryOverRemainingSessions || undefined,
         paymentCents: paymentNum > 0 ? paymentNum : undefined,
         paymentMethod,
+        groupIds: Object.values(groupBySport).filter(Boolean),
       }),
     });
 
@@ -230,11 +243,25 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
                 <option value="">Sélectionner une formule</option>
                 {plansOptions.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name} — {formatMoney(p.price)} · {p.totalSessions} séances · {p.validityDays}j
+                    {p.name} — {formatMoney(p.price)} · {p.planKind === "CLASS" ? `${p.totalSessions} séances` : p.planKind === "GYM" ? "Accès salle" : "Cours + salle"} · {p.validityDays}j
                   </option>
                 ))}
               </select>
             </FormField>
+
+            {selectedPlan?.planKind === "MIXED" ? (
+              <div className="mt-4 space-y-3 border-t border-[var(--border)] pt-4">
+                <div><p className="text-sm font-semibold">Groupes du pack</p><p className="text-xs text-[var(--muted-foreground)]">Choisissez un groupe pour chaque discipline incluse.</p></div>
+                {selectedPlan.entitlements.filter((right) => right.type === "CLASS_SESSIONS" && right.sport).map((right) => (
+                  <FormField key={right.sport!.id} label={right.sport!.name}>
+                    <select className="field" value={groupBySport[right.sport!.id] ?? ""} onChange={(event) => setGroupBySport((current) => ({ ...current, [right.sport!.id]: event.target.value }))} required>
+                      <option value="">Sélectionner un groupe</option>
+                      {groupsOptions.filter((group) => group.sportId === right.sport!.id).map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+                    </select>
+                  </FormField>
+                ))}
+              </div>
+            ) : null}
 
             <FormGrid className="mt-4">
               <FormField label="Début *">

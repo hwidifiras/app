@@ -167,7 +167,10 @@ export default async function AttendanceTodayPage({
           tenantId,
           memberId: { in: memberIds },
           status: { in: ["ACTIVE", "EXPIRED"] },
-          remainingSessions: { gt: 0 },
+          OR: [
+            { remainingSessions: { gt: 0 } },
+            { entitlements: { some: { type: "CLASS_SESSIONS", remainingUnits: { gt: 0 } } } },
+          ],
         },
         select: { 
           id: true,
@@ -178,6 +181,7 @@ export default async function AttendanceTodayPage({
           remainingSessions: true,
           payments: { where: { tenantId }, select: { amount: true } },
           plan: { select: { sportId: true, sessionsPerWeek: true, name: true } }
+          ,entitlements: { where: { type: "CLASS_SESSIONS" }, select: { id: true, sportId: true, sessionsPerWeek: true, remainingUnits: true } }
         },
       });
 
@@ -199,27 +203,30 @@ export default async function AttendanceTodayPage({
           const matchedSub = await (async () => {
             for (const sub of memberSubs) {
               const totalPaid = sub.payments.reduce((acc, p) => acc + p.amount, 0);
+              const classRight = sub.entitlements.find((right) => right.sportId === sessionSportId && (right.remainingUnits ?? 0) > 0);
               if (sub.plan.sportId && sub.plan.sportId !== sessionSportId) continue;
+              if (!sub.plan.sportId && !classRight) continue;
+              const sessionsPerWeek = classRight?.sessionsPerWeek ?? sub.plan.sessionsPerWeek;
 
               const paymentCheck = await canCheckInWithPayment({
                 id: sub.id,
-                entitlementId: null,
+                entitlementId: classRight?.id ?? null,
                 sportId: sub.plan.sportId ?? sessionSportId,
-                remainingSessions: sub.remainingSessions,
+                remainingSessions: classRight?.remainingUnits ?? sub.remainingSessions,
                 amount: sub.amount,
                 totalPaid,
-                plan: { ...sub.plan, sportId: sub.plan.sportId ?? sessionSportId },
+                plan: { ...sub.plan, sportId: sub.plan.sportId ?? sessionSportId, sessionsPerWeek },
               });
               if (!paymentCheck.allowed) continue;
 
-              if (sub.plan.sessionsPerWeek) {
+              if (sessionsPerWeek) {
                 const weeklyRemaining = await computeWeeklyAllowanceRemainingForMember({
                   sessionId: session.id,
                   groupId: session.groupId,
                   sessionDate: session.sessionDate,
                   memberId: sub.memberId,
                   memberSubscriptionId: sub.id,
-                  planSessionsPerWeek: sub.plan.sessionsPerWeek,
+                  planSessionsPerWeek: sessionsPerWeek,
                   absentConsumesSession: clubSettings.absentConsumesSession,
                 });
                 if (weeklyRemaining <= 0) continue;
