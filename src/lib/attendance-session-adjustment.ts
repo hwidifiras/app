@@ -1,6 +1,7 @@
 import type { AttendanceStatus, Prisma } from "@prisma/client";
 
 import { getRequiredTenantId } from "@/lib/tenant-context";
+import { findClassEntitlementForBalance } from "@/lib/subscription-entitlements";
 
 export function statusConsumesSession(
   status: AttendanceStatus,
@@ -27,29 +28,77 @@ export async function applySessionBalanceDelta(
   params: {
     delta: number;
     memberSubscriptionId: string | null;
+    subscriptionEntitlementId?: string | null;
     memberId: string;
     sportId: string;
   },
-): Promise<{ memberSubscriptionId: string | null }> {
+): Promise<{ memberSubscriptionId: string | null; subscriptionEntitlementId: string | null }> {
   const tenantId = getRequiredTenantId();
   if (params.delta === 0) {
-    return { memberSubscriptionId: params.memberSubscriptionId };
+    return {
+      memberSubscriptionId: params.memberSubscriptionId,
+      subscriptionEntitlementId: params.subscriptionEntitlementId ?? null,
+    };
   }
 
   let subscriptionId = params.memberSubscriptionId;
+  let entitlementId = params.subscriptionEntitlementId ?? null;
+
+  if (!subscriptionId && params.delta < 0) {
+    const activeEntitlement = await tx.subscriptionEntitlement.findFirst({
+      where: {
+        tenantId,
+        type: "CLASS_SESSIONS",
+        sportId: params.sportId,
+        remainingUnits: { gt: 0 },
+        memberSubscription: { memberId: params.memberId, status: "ACTIVE" },
+      },
+      select: { id: true, memberSubscriptionId: true },
+      orderBy: [{ endDate: "asc" }, { createdAt: "asc" }],
+    });
+    if (activeEntitlement) {
+      subscriptionId = activeEntitlement.memberSubscriptionId;
+      entitlementId = activeEntitlement.id;
+    }
+  }
+
+  const entitlement = subscriptionId
+    ? entitlementId
+      ? await tx.subscriptionEntitlement.findFirst({
+          where: { id: entitlementId, tenantId, memberSubscriptionId: subscriptionId },
+          select: {
+            id: true,
+            remainingUnits: true,
+            memberSubscription: { select: { plan: { select: { planKind: true } } } },
+          },
+        })
+      : await findClassEntitlementForBalance(tx, {
+          tenantId,
+          memberSubscriptionId: subscriptionId,
+          sportId: params.sportId,
+        })
+    : null;
+
+  if (entitlement) entitlementId = entitlement.id;
 
   if (params.delta > 0) {
     if (!subscriptionId) {
-      return { memberSubscriptionId: null };
+      return { memberSubscriptionId: null, subscriptionEntitlementId: null };
     }
-    const updated = await tx.memberSubscription.updateMany({
-      where: { id: subscriptionId, tenantId },
-      data: { remainingSessions: { increment: params.delta } },
-    });
-    if (updated.count === 0) {
-      throw new Error("SUBSCRIPTION_NOT_FOUND");
+    if (entitlementId) {
+      await tx.subscriptionEntitlement.update({
+        where: { id: entitlementId },
+        data: { remainingUnits: { increment: params.delta } },
+      });
     }
-    return { memberSubscriptionId: subscriptionId };
+    if (!entitlement || entitlement.memberSubscription.plan.planKind === "CLASS") {
+      const updated = await tx.memberSubscription.updateMany({
+        where: { id: subscriptionId, tenantId },
+        data: { remainingSessions: { increment: params.delta } },
+      });
+      if (updated.count === 0) throw new Error("SUBSCRIPTION_NOT_FOUND");
+    }
+    return { memberSubscriptionId: subscriptionId, subscriptionEntitlementId: entitlementId };
   }
 
   if (!subscriptionId) {
@@ -70,14 +119,22 @@ export async function applySessionBalanceDelta(
     subscriptionId = active.id;
   }
 
-  const updated = await tx.memberSubscription.updateMany({
-    where: { id: subscriptionId, tenantId, remainingSessions: { gt: 0 } },
-    data: { remainingSessions: { decrement: Math.abs(params.delta) } },
-  });
-
-  if (updated.count === 0) {
-    throw new Error("NO_SESSIONS_LEFT");
+  const debit = Math.abs(params.delta);
+  if (entitlementId) {
+    const entitlementUpdate = await tx.subscriptionEntitlement.updateMany({
+      where: { id: entitlementId, tenantId, remainingUnits: { gte: debit } },
+      data: { remainingUnits: { decrement: debit } },
+    });
+    if (entitlementUpdate.count === 0) throw new Error("NO_SESSIONS_LEFT");
   }
 
-  return { memberSubscriptionId: subscriptionId };
+  if (!entitlement || entitlement.memberSubscription.plan.planKind === "CLASS") {
+    const updated = await tx.memberSubscription.updateMany({
+      where: { id: subscriptionId, tenantId, remainingSessions: { gte: debit } },
+      data: { remainingSessions: { decrement: debit } },
+    });
+    if (updated.count === 0) throw new Error("NO_SESSIONS_LEFT");
+  }
+
+  return { memberSubscriptionId: subscriptionId, subscriptionEntitlementId: entitlementId };
 }

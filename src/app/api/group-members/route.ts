@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { createSubscriptionEntitlementSnapshots } from "@/lib/subscription-entitlements";
 import { createGroupMemberSchema, updateGroupMemberSchema } from "@/lib/schemas/group-member";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { resolveActiveSubscription } from "@/lib/membership-rules";
@@ -239,6 +240,14 @@ export async function POST(request: Request) {
             remainingSessions: selectedPlan.totalSessions,
             status: "ACTIVE",
           },
+        });
+        await createSubscriptionEntitlementSnapshots(tx, {
+          tenantId: actor.tenantId,
+          memberSubscriptionId: subscription.id,
+          planId: selectedPlan.id,
+          startDate: subscription.startDate,
+          endDate: subscription.endDate,
+          legacyRemainingSessions: subscription.remainingSessions,
         });
         createdSubscriptionId = subscription.id;
       }

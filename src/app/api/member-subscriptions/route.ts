@@ -436,6 +436,28 @@ export async function PATCH(request: Request) {
           sport: { select: { id: true, name: true } },
         },
       });
+      const nextPlanEntitlement = payload.planId
+        ? await tx.planEntitlement.findFirst({
+            where: { tenantId: actor.tenantId, planId: payload.planId, type: "CLASS_SESSIONS" },
+            orderBy: { sortOrder: "asc" },
+          })
+        : null;
+      await tx.subscriptionEntitlement.updateMany({
+        where: { tenantId: actor.tenantId, memberSubscriptionId: subscriptionId, type: "CLASS_SESSIONS" },
+        data: {
+          ...(payload.planId && nextPlanEntitlement
+            ? {
+                planEntitlementId: nextPlanEntitlement.id,
+                sportId: nextPlanEntitlement.sportId,
+                sessionsPerWeek: nextPlanEntitlement.sessionsPerWeek,
+                grantedUnits: nextPlanEntitlement.grantedUnits,
+              }
+            : {}),
+          ...(payload.startDate ? { startDate: nextStartDate } : {}),
+          ...(payload.endDate !== undefined ? { endDate: nextEndDate } : {}),
+          ...(payload.remainingSessions !== undefined ? { remainingUnits: payload.remainingSessions } : {}),
+        },
+      });
       const afterSnapshot = subscriptionAuditSnapshot(updatedSubscription);
 
       await tx.auditLog.create({

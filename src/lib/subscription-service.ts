@@ -1,6 +1,7 @@
 import type { Prisma, SubscriptionPlan } from "@prisma/client";
 
 import { computeEndDate } from "@/lib/membership-rules";
+import { createSubscriptionEntitlementSnapshots } from "@/lib/subscription-entitlements";
 
 export type SubscriptionFromPlanInput = {
   tenantId?: string;
@@ -69,10 +70,19 @@ export async function createSubscriptionFromPlan(
   const carryOver =
     options?.carryOverRemainingSessions && snapshot.remainingSessions > 0 ? snapshot.remainingSessions : 0;
 
-  return tx.memberSubscription.create({
+  const subscription = await tx.memberSubscription.create({
     data: buildSubscriptionData({
       ...input,
       carryOverSessions: carryOver,
     }),
   });
+  await createSubscriptionEntitlementSnapshots(tx, {
+    tenantId: input.tenantId ?? subscription.tenantId ?? "",
+    memberSubscriptionId: subscription.id,
+    planId: input.plan.id,
+    startDate: subscription.startDate,
+    endDate: subscription.endDate,
+    legacyRemainingSessions: subscription.remainingSessions,
+  });
+  return subscription;
 }

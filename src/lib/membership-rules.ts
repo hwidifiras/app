@@ -13,10 +13,12 @@ import { businessDayWindow, schedulesForGroupWindow } from "@/lib/assignment-pol
 import { resolveOfferRules } from "@/lib/offer-rules";
 import type { EnrollmentLineInput } from "@/lib/schemas/enrollment";
 import { prisma } from "@/lib/prisma";
+import { resolveClassEntitlementForAttendance } from "@/lib/subscription-entitlements";
 import { getRequiredTenantId } from "@/lib/tenant-context";
 
 export type ActiveSubscriptionView = {
   id: string;
+  entitlementId?: string | null;
   sportId: string;
   remainingSessions: number;
   amount: number;
@@ -158,7 +160,10 @@ export async function expireStaleSubscriptions(memberId?: string) {
       tenantId,
       status: "ACTIVE",
       ...(memberId ? { memberId } : {}),
-      OR: [{ endDate: { lt: dayStart } }, { remainingSessions: { lte: 0 } }],
+      OR: [
+        { endDate: { lt: dayStart } },
+        { plan: { planKind: "CLASS" }, remainingSessions: { lte: 0 } },
+      ],
     },
     data: { status: "EXPIRED" },
   });
@@ -171,6 +176,23 @@ export async function resolveActiveSubscription(
   const tenantId = getRequiredTenantId();
   await expireStaleSubscriptions(memberId);
   const now = new Date();
+  const entitlement = await resolveClassEntitlementForAttendance(memberId, sportId, now);
+  if (entitlement) {
+    const subscription = entitlement.memberSubscription;
+    return {
+      id: subscription.id,
+      entitlementId: entitlement.id,
+      sportId,
+      remainingSessions: entitlement.remainingUnits ?? 0,
+      amount: subscription.amount,
+      totalPaid: getTotalPaid(subscription.payments),
+      plan: {
+        ...subscription.plan,
+        sportId: subscription.plan.sportId ?? sportId,
+        sessionsPerWeek: entitlement.sessionsPerWeek ?? subscription.plan.sessionsPerWeek,
+      },
+    };
+  }
   const sub = await prisma.memberSubscription.findFirst({
     where: activeSubWhere(tenantId, memberId, sportId, now),
     select: {
@@ -186,6 +208,7 @@ export async function resolveActiveSubscription(
   if (!sub) return null;
   return {
     id: sub.id,
+    entitlementId: null,
     sportId,
     remainingSessions: sub.remainingSessions,
     amount: sub.amount,
@@ -200,6 +223,23 @@ export async function resolveSubscriptionForAttendance(
   sessionDate: Date,
 ): Promise<ActiveSubscriptionView | null> {
   const tenantId = getRequiredTenantId();
+  const entitlement = await resolveClassEntitlementForAttendance(memberId, sportId, sessionDate);
+  if (entitlement) {
+    const subscription = entitlement.memberSubscription;
+    return {
+      id: subscription.id,
+      entitlementId: entitlement.id,
+      sportId,
+      remainingSessions: entitlement.remainingUnits ?? 0,
+      amount: subscription.amount,
+      totalPaid: getTotalPaid(subscription.payments),
+      plan: {
+        ...subscription.plan,
+        sportId: subscription.plan.sportId ?? sportId,
+        sessionsPerWeek: entitlement.sessionsPerWeek ?? subscription.plan.sessionsPerWeek,
+      },
+    };
+  }
   const sub = await prisma.memberSubscription.findFirst({
     where: {
       tenantId,
@@ -225,6 +265,7 @@ export async function resolveSubscriptionForAttendance(
   }
   return {
     id: sub.id,
+    entitlementId: null,
     sportId,
     remainingSessions: sub.remainingSessions,
     amount: sub.amount,

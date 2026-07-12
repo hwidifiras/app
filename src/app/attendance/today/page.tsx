@@ -203,6 +203,7 @@ export default async function AttendanceTodayPage({
 
               const paymentCheck = await canCheckInWithPayment({
                 id: sub.id,
+                entitlementId: null,
                 sportId: sub.plan.sportId ?? sessionSportId,
                 remainingSessions: sub.remainingSessions,
                 amount: sub.amount,

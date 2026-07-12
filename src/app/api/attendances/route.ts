@@ -298,23 +298,19 @@ async function handlePost(request: Request, actor: AttendanceActor) {
 
     const result = await prisma.$transaction(async (tx) => {
       let remainingSessionsBefore: number | null = null;
+      let subscriptionEntitlementId = activeSub?.entitlementId ?? null;
 
       if (consumptionUnits > 0) {
         if (isSubActive && activeSub) {
           remainingSessionsBefore = activeSub.remainingSessions;
-
-          const updated = await tx.memberSubscription.updateMany({
-            where: {
-              tenantId: actor.tenantId,
-              id: activeSub.id,
-              remainingSessions: { gt: 0 },
-            },
-            data: { remainingSessions: { decrement: consumptionUnits } },
+          const adjustment = await applySessionBalanceDelta(tx, {
+            delta: -consumptionUnits,
+            memberSubscriptionId: activeSub.id,
+            subscriptionEntitlementId: activeSub.entitlementId,
+            memberId,
+            sportId,
           });
-
-          if (updated.count === 0) {
-            throw new Error("NO_SESSIONS_LEFT");
-          }
+          subscriptionEntitlementId = adjustment.subscriptionEntitlementId;
         }
       }
 
@@ -331,6 +327,12 @@ async function handlePost(request: Request, actor: AttendanceActor) {
               ? activeSub.id
               : consumptionUnits > 0 && isSubActive && activeSub
                 ? activeSub.id
+                : null,
+          subscriptionEntitlementId:
+            isRecoveryOverride && activeSub
+              ? activeSub.entitlementId
+              : consumptionUnits > 0 && isSubActive
+                ? subscriptionEntitlementId
                 : null,
         },
         include: {
@@ -457,6 +459,7 @@ async function handlePatch(request: Request, actor: AttendanceActor) {
         checkedBy: true,
         checkedAt: true,
         memberSubscriptionId: true,
+        subscriptionEntitlementId: true,
         session: {
           select: {
             id: true,
@@ -467,6 +470,7 @@ async function handlePatch(request: Request, actor: AttendanceActor) {
           },
         },
         memberSubscription: { select: { plan: { select: { sessionsPerWeek: true } } } },
+        subscriptionEntitlement: { select: { sessionsPerWeek: true } },
       },
     });
 
@@ -493,7 +497,10 @@ async function handlePatch(request: Request, actor: AttendanceActor) {
       existing.session.sessionDate,
     );
     const planSessionsPerWeek =
-      existing.memberSubscription?.plan.sessionsPerWeek ?? activeSub?.plan.sessionsPerWeek ?? null;
+      existing.subscriptionEntitlement?.sessionsPerWeek ??
+      existing.memberSubscription?.plan.sessionsPerWeek ??
+      activeSub?.plan.sessionsPerWeek ??
+      null;
     const subscriptionIdForConsumption = existing.memberSubscriptionId ?? activeSub?.id ?? null;
 
     const nextStatus = payload.status ?? existing.status;
@@ -576,15 +583,18 @@ async function handlePatch(request: Request, actor: AttendanceActor) {
     const beforeSnapshot = attendanceAuditSnapshot(existing);
     const updated = await prisma.$transaction(async (tx) => {
       let memberSubscriptionId = existing.memberSubscriptionId;
+      let subscriptionEntitlementId = existing.subscriptionEntitlementId;
 
       if (delta !== 0) {
         const adjustment = await applySessionBalanceDelta(tx, {
           delta,
           memberSubscriptionId,
+          subscriptionEntitlementId,
           memberId: existing.memberId,
           sportId: existing.session.group.sportId,
         });
         memberSubscriptionId = adjustment.memberSubscriptionId;
+        subscriptionEntitlementId = adjustment.subscriptionEntitlementId;
       }
 
       const updatedAttendance = await tx.attendance.update({
@@ -594,6 +604,12 @@ async function handlePatch(request: Request, actor: AttendanceActor) {
           memberSubscriptionId:
             payload.status !== undefined && nextStatus !== "OVERRIDE"
               ? memberSubscriptionId ?? subscriptionIdForConsumption
+              : payload.status !== undefined
+                ? null
+                : undefined,
+          subscriptionEntitlementId:
+            payload.status !== undefined && nextStatus !== "OVERRIDE"
+              ? subscriptionEntitlementId ?? activeSub?.entitlementId ?? null
               : payload.status !== undefined
                 ? null
                 : undefined,
@@ -707,6 +723,7 @@ async function handleDelete(request: Request, actor: AttendanceActor) {
         checkedBy: true,
         checkedAt: true,
         memberSubscriptionId: true,
+        subscriptionEntitlementId: true,
         session: {
           select: {
             id: true,
@@ -717,6 +734,7 @@ async function handleDelete(request: Request, actor: AttendanceActor) {
           },
         },
         memberSubscription: { select: { plan: { select: { sessionsPerWeek: true } } } },
+        subscriptionEntitlement: { select: { sessionsPerWeek: true } },
       },
     });
 
@@ -740,7 +758,10 @@ async function handleDelete(request: Request, actor: AttendanceActor) {
 
     const activeSub = await resolveActiveSubscription(existing.memberId, existing.session.group.sportId);
     const planSessionsPerWeek =
-      existing.memberSubscription?.plan.sessionsPerWeek ?? activeSub?.plan.sessionsPerWeek ?? null;
+      existing.subscriptionEntitlement?.sessionsPerWeek ??
+      existing.memberSubscription?.plan.sessionsPerWeek ??
+      activeSub?.plan.sessionsPerWeek ??
+      null;
     const subscriptionIdForConsumption = existing.memberSubscriptionId ?? activeSub?.id ?? null;
 
     const creditDelta = await computeAttendanceConsumptionUnits({
@@ -759,6 +780,7 @@ async function handleDelete(request: Request, actor: AttendanceActor) {
         await applySessionBalanceDelta(tx, {
           delta: creditDelta,
           memberSubscriptionId: existing.memberSubscriptionId,
+          subscriptionEntitlementId: existing.subscriptionEntitlementId,
           memberId: existing.memberId,
           sportId: existing.session.group.sportId,
         });

@@ -131,6 +131,17 @@ export async function POST(request: Request) {
         include: { sport: { select: { name: true } } },
       });
 
+      await tx.planEntitlement.create({
+        data: {
+          tenantId: actor.tenantId,
+          planId: created.id,
+          type: "CLASS_SESSIONS",
+          sportId: created.sportId,
+          sessionsPerWeek: created.sessionsPerWeek,
+          grantedUnits: created.totalSessions,
+        },
+      });
+
       await tx.auditLog.create({
         data: {
           tenantId: actor.tenantId,
@@ -260,6 +271,32 @@ export async function PATCH(request: Request) {
         },
         include: { sport: { select: { name: true } } },
       });
+
+      const entitlement = await tx.planEntitlement.findFirst({
+        where: { tenantId: actor.tenantId, planId, type: "CLASS_SESSIONS" },
+        select: { id: true },
+      });
+      if (entitlement) {
+        await tx.planEntitlement.update({
+          where: { id: entitlement.id },
+          data: {
+            sportId: next.sportId,
+            sessionsPerWeek: next.sessionsPerWeek,
+            grantedUnits: next.totalSessions,
+          },
+        });
+      } else if (next.sportId) {
+        await tx.planEntitlement.create({
+          data: {
+            tenantId: actor.tenantId,
+            planId,
+            type: "CLASS_SESSIONS",
+            sportId: next.sportId,
+            sessionsPerWeek: next.sessionsPerWeek,
+            grantedUnits: next.totalSessions,
+          },
+        });
+      }
 
       await tx.auditLog.create({
         data: {

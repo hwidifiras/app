@@ -5,6 +5,7 @@ import { checkGroupMemberCompatibility, type GroupGenderPolicyValue, type GroupT
 import { getWeekRangeUtc } from "@/lib/dates";
 import { resolveMemberPhone } from "@/lib/member-phone";
 import { prisma } from "@/lib/prisma";
+import { createSubscriptionEntitlementSnapshots } from "@/lib/subscription-entitlements";
 import type { DataImportPayload } from "@/lib/schemas/data-import";
 import { getGroupWeeklyScheduleCount } from "@/lib/sport-weekly-standard";
 import { getRequiredTenantId } from "@/lib/tenant-context";
@@ -225,6 +226,14 @@ export async function applyDataImport(
         remainingSessions: payload.remainingSessions,
         status: "ACTIVE",
       },
+    });
+    await createSubscriptionEntitlementSnapshots(tx, {
+      tenantId,
+      memberSubscriptionId: subscription.id,
+      planId: context.plan.id,
+      startDate: subscription.startDate,
+      endDate: subscription.endDate,
+      legacyRemainingSessions: subscription.remainingSessions,
     });
     const assignment = await tx.groupMember.create({
       data: {

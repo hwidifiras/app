@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 
 import { prisma } from "@/lib/prisma";
+import { createSubscriptionEntitlementSnapshots } from "@/lib/subscription-entitlements";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { enrollmentApplySchema } from "@/lib/schemas/enrollment";
 import { familyBundleRulesSchema } from "@/lib/schemas/offer";
@@ -196,6 +197,14 @@ export async function POST(request: Request) {
                   remainingSessions: plan.totalSessions,
                   status: "ACTIVE",
                 },
+              });
+              await createSubscriptionEntitlementSnapshots(tx, {
+                tenantId: actor.tenantId,
+                memberSubscriptionId: sub.id,
+                planId: plan.id,
+                startDate: sub.startDate,
+                endDate: sub.endDate,
+                legacyRemainingSessions: sub.remainingSessions,
               });
               subscriptionIds.push(sub.id);
               undoSnapshot.createdSubscriptionIds.push(sub.id);
