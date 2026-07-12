@@ -12,6 +12,7 @@ type AccountData = {
   role: "ADMIN" | "STAFF";
   isActive: boolean;
   permissions: string[];
+  modules: string[];
 };
 
 type NotificationData = {

@@ -37,6 +37,11 @@ export async function GET(request: Request) {
         isActive: true,
         createdAt: true,
         permissions: { select: { key: true } },
+        tenant: {
+          select: {
+            modules: { where: { status: "ENABLED" }, select: { moduleKey: true } },
+          },
+        },
       },
     });
 
@@ -48,6 +53,8 @@ export async function GET(request: Request) {
       data: {
         ...user,
         permissions: user.permissions.map((p) => p.key),
+        modules: user.tenant?.modules.map((item) => item.moduleKey) ?? [],
+        tenant: undefined,
       },
     });
   } catch (e) {

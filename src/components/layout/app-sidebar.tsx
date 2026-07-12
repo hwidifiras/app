@@ -36,6 +36,7 @@ export type NavItem = {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   adminOnly?: boolean;
+  moduleKey?: "GYM";
 };
 
 export type NavSection = {
@@ -49,6 +50,7 @@ export const dailySection: NavSection = {
     { href: "/", label: "Accueil", icon: LayoutDashboard },
     { href: "/attendance/today", label: "Pointage", icon: Clock },
     { href: "/sessions", label: "Planning", icon: CalendarRange },
+    { href: "/gym/check-in", label: "Acces salle", icon: Dumbbell, moduleKey: "GYM" },
   ],
 };
 
@@ -204,6 +206,7 @@ export function AppSidebar({
   const [configOpen, setConfigOpen] = useState(false);
   const { account, navBadges } = useAppShellData();
   const role = account?.role ?? null;
+  const enabledModules = new Set(account?.modules ?? []);
   const configurationSections = getConfigurationSections(role);
 
   const inClubConfig = configurationSections.some((section) =>
@@ -250,7 +253,7 @@ export function AppSidebar({
                 {section.title}
               </p>
             ) : null}
-            {section.items.map((item) => (
+            {section.items.filter((item) => !item.moduleKey || enabledModules.has(item.moduleKey)).map((item) => (
               <NavLink
                 key={item.href}
                 item={item}

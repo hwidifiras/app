@@ -26,6 +26,7 @@ export function MobileNav() {
   const pathname = usePathname();
   const { account, navBadges } = useAppShellData();
   const role = account?.role ?? null;
+  const enabledModules = new Set(account?.modules ?? []);
   const configurationSections = getConfigurationSections(role);
   const inClubConfig = configurationSections.some((section) =>
     section.items.some((item) => isLinkActive(pathname, item.href)),
@@ -101,7 +102,7 @@ export function MobileNav() {
               <p className="px-3 pt-2 text-[0.6rem] font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)] opacity-60">
                 {section.title}
               </p>
-              {section.items.map((item) => (
+              {section.items.filter((item) => !item.moduleKey || enabledModules.has(item.moduleKey)).map((item) => (
                 <NavLink key={item.href} item={item} pathname={pathname} onClick={close} badge={navBadges[item.href]} />
               ))}
             </div>
