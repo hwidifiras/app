@@ -142,7 +142,7 @@ export async function PATCH(request: Request) {
     },
   });
   if (updateResult.count !== 1) {
-    return NextResponse.json({ error: "Compte introuvable ou dÃ©sactivÃ©" }, { status: 404 });
+    return NextResponse.json({ error: "Compte introuvable ou désactivé" }, { status: 404 });
   }
 
   const updated = await prisma.user.findFirstOrThrow({

@@ -1,21 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { RotateCcw, SlidersHorizontal, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { RotateCcw } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { ListSearch } from "@/components/ui/list-controls";
+import {
+  FilterField,
+  ListSearch,
+  MobileFilterSheet,
+  MobileFiltersButton,
+} from "@/components/ui/list-controls";
 import { Pagination } from "@/components/ui/pagination";
 import { MemberRow } from "./member-row";
 import {
-  filterMemberList,
   getMemberActiveFilterCount,
-  getMemberPage,
   getGroupLabel,
   groupMembersByGroup,
-  MEMBER_LIST_PAGE_SIZE,
   type GroupOption,
   type MemberPaymentFilter,
   type MemberStatusFilter,
@@ -23,15 +25,18 @@ import {
   type MemberWithGroups,
   type SportOption,
 } from "./member-list-model";
+import type { MemberDirectoryPage } from "@/lib/member-directory";
 
 type MemberListClientProps = {
-  initialMembers: MemberWithGroups[];
+  initialPage: MemberDirectoryPage;
   groupsOptions: GroupOption[];
   sportsOptions: SportOption[];
 };
 
-export function MemberListClient({ initialMembers, groupsOptions, sportsOptions }: MemberListClientProps) {
-  const [members, setMembers] = useState<MemberWithGroups[]>(initialMembers);
+export function MemberListClient({ initialPage, groupsOptions, sportsOptions }: MemberListClientProps) {
+  const [members, setMembers] = useState<MemberWithGroups[]>(initialPage.data);
+  const [totalItems, setTotalItems] = useState(initialPage.total);
+  const [pageCount, setPageCount] = useState(initialPage.pageCount);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<MemberStatusFilter>("ALL");
   const [viewMode, setViewMode] = useState<MemberViewMode>("LIST");
@@ -40,24 +45,12 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [expandedMemberIds, setExpandedMemberIds] = useState<string[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(initialPage.page);
+  const [directoryLoading, setDirectoryLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [bulkArchiveOpen, setBulkArchiveOpen] = useState(false);
-
-  useEffect(() => {
-    if (!filtersOpen) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setFiltersOpen(false);
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.body.style.overflow = previous;
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [filtersOpen]);
+  const hasMountedRef = useRef(false);
 
   function toggleExpandMember(memberId: string) {
     setExpandedMemberIds((current) =>
@@ -85,34 +78,66 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
     viewMode,
   });
 
-  const filteredMembers = useMemo(
-    () =>
-      filterMemberList({
-        members,
-        groupsOptions,
-        searchTerm,
-        statusFilter,
-        paymentFilter,
-        sportFilter,
-      }),
-    [groupsOptions, members, paymentFilter, searchTerm, sportFilter, statusFilter],
-  );
-
   const groupedMembers = useMemo(
-    () => groupMembersByGroup(filteredMembers),
-    [filteredMembers],
+    () => groupMembersByGroup(members),
+    [members],
   );
 
-  const { pageCount, currentPageSafe, pageMembers } = getMemberPage({
-    members: filteredMembers,
-    currentPage,
-    pageSize: MEMBER_LIST_PAGE_SIZE,
-  });
+  const currentPageSafe = Math.min(currentPage, pageCount);
+  const pageMembers = members;
+
+  const loadDirectoryPage = useCallback(async (signal?: AbortSignal) => {
+    const params = new URLSearchParams({
+      page: String(currentPage),
+      pageSize: String(initialPage.pageSize),
+    });
+    if (searchTerm.trim()) params.set("q", searchTerm.trim());
+    if (statusFilter !== "ALL") params.set("status", statusFilter);
+    if (paymentFilter !== "ALL") params.set("payment", paymentFilter);
+    if (sportFilter !== "ALL") params.set("sportId", sportFilter);
+
+    setDirectoryLoading(true);
+    try {
+      const response = await fetch(`/api/member-directory?${params.toString()}`, {
+        cache: "no-store",
+        signal,
+      });
+      const result = (await response.json()) as MemberDirectoryPage & { error?: string };
+      if (!response.ok) throw new Error(result.error ?? "Impossible de charger les membres");
+
+      setMembers(result.data);
+      setTotalItems(result.total);
+      setPageCount(result.pageCount);
+      setCurrentPage(result.page);
+      setExpandedMemberIds((current) => current.filter((id) => result.data.some((member) => member.id === id)));
+    } finally {
+      setDirectoryLoading(false);
+    }
+  }, [currentPage, initialPage.pageSize, paymentFilter, searchTerm, sportFilter, statusFilter]);
+
+  useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+
+    const controller = new AbortController();
+    const delay = searchTerm.trim() ? 250 : 0;
+    const timer = window.setTimeout(() => {
+      void loadDirectoryPage(controller.signal).catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setMessage(error instanceof Error ? error.message : "Impossible de charger les membres");
+      });
+    }, delay);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [loadDirectoryPage, searchTerm]);
 
   const reloadMembers = async () => {
-    const response = await fetch("/api/members", { cache: "no-store" });
-    const result = await response.json();
-    setMembers(result.data ?? []);
+    await loadDirectoryPage();
   };
 
   function toggleMemberSelection(memberId: string) {
@@ -166,7 +191,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
   }
 
   return (
-    <div>
+    <div aria-busy={directoryLoading}>
       <div className="list-toolbar sticky top-[57px] z-20 -mx-2 mb-4 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[3.5rem]">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           <div className="min-w-0 flex-1">
@@ -180,19 +205,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
               placeholder="Nom, téléphone ou email..."
             />
           </div>
-          <button
-            type="button"
-            onClick={() => setFiltersOpen(true)}
-            className="btn btn-ghost min-h-12 shrink-0 sm:min-h-[2.75rem] md:hidden"
-          >
-            <SlidersHorizontal className="size-4" />
-            Filtres
-            {activeFilterCount > 0 ? (
-              <span className="rounded-full bg-[var(--primary)] px-1.5 py-0.5 text-[0.65rem] text-white">
-                {activeFilterCount}
-              </span>
-            ) : null}
-          </button>
+          <MobileFiltersButton onClick={() => setFiltersOpen(true)} count={activeFilterCount} />
           <Link href="/members/new" className="btn btn-primary btn-block-mobile shrink-0 sm:w-auto">
             + Ajouter un membre
           </Link>
@@ -266,7 +279,7 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="text-xs text-muted-foreground">
-              {filteredMembers.length} membre(s) trouvé(s) · page {currentPageSafe}/{pageCount}
+              {directoryLoading ? "Chargement…" : `${totalItems} membre(s) trouvé(s)`} · page {currentPageSafe}/{pageCount}
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               {selectedMemberIds.length > 0 ? (
@@ -337,8 +350,8 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
           <Pagination
             currentPage={currentPageSafe}
             pageCount={pageCount}
-            totalItems={filteredMembers.length}
-            pageSize={MEMBER_LIST_PAGE_SIZE}
+            totalItems={totalItems}
+            pageSize={initialPage.pageSize}
             onPageChange={setCurrentPage}
           />
         </div>
@@ -383,99 +396,66 @@ export function MemberListClient({ initialMembers, groupsOptions, sportsOptions 
               </div>
             </section>
           ))}
+          <Pagination
+            currentPage={currentPageSafe}
+            pageCount={pageCount}
+            totalItems={totalItems}
+            pageSize={initialPage.pageSize}
+            onPageChange={setCurrentPage}
+          />
         </div>
       )}
 
-      {filtersOpen ? (
-        <div
-          className="fixed inset-0 z-[70] flex items-end bg-black/40 md:hidden"
-          onClick={() => setFiltersOpen(false)}
-          role="presentation"
-        >
-          <div
-            className="max-h-[86dvh] w-full overflow-y-auto rounded-t-lg border border-[var(--border)] bg-[var(--surface)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[var(--shadow-floating)]"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="member-filters-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div>
-                <h2 id="member-filters-title" className="text-lg font-semibold">Filtrer les membres</h2>
-                <p className="text-xs text-[var(--muted-foreground)]">
-                  {activeFilterCount > 0 ? `${activeFilterCount} filtre(s) actif(s)` : "Aucun filtre actif"}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setFiltersOpen(false)}
-                className="btn btn-ghost min-h-11 min-w-11 rounded-full p-2"
-                aria-label="Fermer les filtres"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-
-            <div className="grid gap-4">
-              <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
-                Statut
-                <select value={statusFilter} onChange={(e) => {
-                  setStatusFilter(e.target.value as typeof statusFilter);
-                  resetPagingAndSelection();
-                }} className="field">
-                  <option value="ALL">Tous les statuts</option>
-                  <option value="ACTIVE">Actifs</option>
-                  <option value="ARCHIVED">Résiliés</option>
-                </select>
-              </label>
-              <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
-                Paiement
-                <select value={paymentFilter} onChange={(e) => {
-                  setPaymentFilter(e.target.value as typeof paymentFilter);
-                  resetPagingAndSelection();
-                }} className="field">
-                  <option value="ALL">Tous les paiements</option>
-                  <option value="PAID">Payé</option>
-                  <option value="PARTIAL">Partiel</option>
-                  <option value="UNPAID">Non payé</option>
-                </select>
-              </label>
-              <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
-                Discipline
-                <select value={sportFilter} onChange={(e) => {
-                  setSportFilter(e.target.value);
-                  resetPagingAndSelection();
-                }} className="field">
-                  <option value="ALL">Toutes les disciplines</option>
-                  {sportsOptions.map((sport) => (
-                    <option key={sport.id} value={sport.id}>{sport.name}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
-                Affichage
-                <select value={viewMode} onChange={(e) => {
-                  setViewMode(e.target.value as typeof viewMode);
-                  resetPagingAndSelection();
-                }} className="field">
-                  <option value="LIST">Liste</option>
-                  <option value="GROUPED">Par groupe</option>
-                </select>
-              </label>
-            </div>
-
-            <div className="mt-5 grid grid-cols-2 gap-2 border-t border-[var(--border)] pt-4">
-              <button type="button" onClick={resetFilters} className="btn btn-ghost min-h-12">
-                <RotateCcw className="size-4" />
-                Réinitialiser
-              </button>
-              <button type="button" onClick={() => setFiltersOpen(false)} className="btn btn-primary min-h-12">
-                Voir {filteredMembers.length} résultat{filteredMembers.length > 1 ? "s" : ""}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <MobileFilterSheet
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        onReset={resetFilters}
+        activeCount={activeFilterCount}
+        resultCount={totalItems}
+        title="Filtrer les membres"
+      >
+        <FilterField label="Statut">
+          <select value={statusFilter} onChange={(e) => {
+            setStatusFilter(e.target.value as typeof statusFilter);
+            resetPagingAndSelection();
+          }} className="field">
+            <option value="ALL">Tous les statuts</option>
+            <option value="ACTIVE">Actifs</option>
+            <option value="ARCHIVED">Résiliés</option>
+          </select>
+        </FilterField>
+        <FilterField label="Paiement">
+          <select value={paymentFilter} onChange={(e) => {
+            setPaymentFilter(e.target.value as typeof paymentFilter);
+            resetPagingAndSelection();
+          }} className="field">
+            <option value="ALL">Tous les paiements</option>
+            <option value="PAID">Payé</option>
+            <option value="PARTIAL">Partiel</option>
+            <option value="UNPAID">Non payé</option>
+          </select>
+        </FilterField>
+        <FilterField label="Discipline">
+          <select value={sportFilter} onChange={(e) => {
+            setSportFilter(e.target.value);
+            resetPagingAndSelection();
+          }} className="field">
+            <option value="ALL">Toutes les disciplines</option>
+            {sportsOptions.map((sport) => (
+              <option key={sport.id} value={sport.id}>{sport.name}</option>
+            ))}
+          </select>
+        </FilterField>
+        <FilterField label="Affichage">
+          <select value={viewMode} onChange={(e) => {
+            setViewMode(e.target.value as typeof viewMode);
+            resetPagingAndSelection();
+          }} className="field">
+            <option value="LIST">Liste</option>
+            <option value="GROUPED">Par groupe</option>
+          </select>
+        </FilterField>
+      </MobileFilterSheet>
 
       <ConfirmDialog
         open={bulkArchiveOpen}

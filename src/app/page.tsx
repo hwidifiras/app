@@ -19,11 +19,8 @@ import {
   formatPaymentMethodLabel,
   memberInitials,
   paymentMethodTone,
-  sumPaymentAmounts,
   type CashMethodStat,
   type CashTrendDay,
-  type DashboardPayment,
-  type PaymentEntryTypeValue,
   type RecentMemberPreview,
 } from "@/components/dashboard/dashboard-model";
 import { getClubSettings } from "@/lib/club-settings";
@@ -34,11 +31,15 @@ import {
   type DashboardPreferenceSettings,
 } from "@/lib/dashboard-preferences";
 import {
-  computeFinanceSnapshot,
-  computeMemberDebts,
   startOfUtcMonth,
   startOfUtcWeek,
 } from "@/lib/dashboard-finance";
+import {
+  loadDashboardPaymentReadModel,
+  loadDashboardSalesReadModel,
+  loadDashboardSubscriptionReadModel,
+  type DashboardExpiringSubscription,
+} from "@/lib/dashboard-read-model";
 import { utcDateOnlyForTimeZone } from "@/lib/dates";
 import { isPaymentReminderEmailConfigured } from "@/lib/email";
 import { enrichDebtsWithReminderMeta } from "@/lib/payment-reminders";
@@ -105,31 +106,31 @@ function DataConfidencePanel({ items }: { items: DataConfidenceItem[] }) {
   if (items.length === 0) return null;
 
   return (
-    <DashboardPanel labelledBy="dashboard-data-confidence-title" className="border-[#FDE68A] bg-[#FFFBEB]">
+    <DashboardPanel labelledBy="dashboard-data-confidence-title" className="border-[var(--warning)]/30 bg-[var(--warning-surface)]">
       <DashboardSectionHeader
         titleId="dashboard-data-confidence-title"
         title="Données à vérifier"
         eyebrow="Confiance"
         action={
-          <Link href="/settings" className="text-xs font-semibold text-[#B45309] hover:underline">
+          <Link href="/settings" className="text-xs font-semibold text-[var(--warning)] hover:underline">
             Réglages
           </Link>
         }
       />
       <div className="grid gap-2 p-3 md:grid-cols-2">
         {items.slice(0, 4).map((item) => (
-          <div key={item.id} className="rounded-lg border border-[#FDE68A] bg-white px-3 py-3">
+          <div key={item.id} className="rounded-lg border border-[var(--warning)]/30 bg-[var(--surface)] px-3 py-3">
             <div className="flex items-start gap-2.5">
-              <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#FFFBEB] text-[#B45309]">
+              <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-[var(--warning-surface)] text-[var(--warning)]">
                 <AlertCircle className="size-4" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-[#0B1220]">{item.title}</p>
-                <p className="mt-1 text-xs leading-5 text-[#64748B]">{item.detail}</p>
+                <p className="text-sm font-semibold text-[var(--foreground)]">{item.title}</p>
+                <p className="mt-1 text-xs leading-5 text-[var(--muted-foreground)]">{item.detail}</p>
                 <Link
                   href={item.href}
                   prefetch={false}
-                  className="mt-2 inline-flex min-h-8 items-center rounded-lg border border-[#FDE68A] bg-[#FFFBEB] px-3 text-xs font-semibold text-[#92400E] transition hover:bg-[#FEF3C7]"
+                  className="mt-2 inline-flex min-h-8 items-center rounded-lg border border-[var(--warning)]/30 bg-[var(--warning-surface)] px-3 text-xs font-semibold text-[var(--warning)] transition hover:brightness-95"
                 >
                   {item.actionLabel}
                 </Link>
@@ -189,7 +190,7 @@ function MembersOverviewPanel({
         title="Aperçu rapide"
         eyebrow="Membres"
         action={
-          <Link href="/members" className="text-xs font-semibold text-[#2563EB] hover:underline">
+          <Link href="/members" className="text-xs font-semibold text-[var(--primary)] hover:underline">
             Voir tout
           </Link>
         }
@@ -203,27 +204,27 @@ function MembersOverviewPanel({
               <Link
                 key={stat.label}
                 href={stat.label === "En attente de paiement" ? "/subscriptions" : "/members"}
-                className="rounded-lg border border-[#E2E8F0] bg-white px-3 py-3 shadow-[0_8px_18px_rgba(15,23,42,0.045)] transition hover:-translate-y-0.5 hover:border-[#2563EB] hover:shadow-[0_12px_26px_rgba(37,99,235,0.10)]"
+                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-3 shadow-[var(--shadow-panel)] transition hover:-translate-y-0.5 hover:border-[var(--primary)] hover:shadow-[var(--shadow-floating)]"
               >
                 <span className={cn("flex size-7 items-center justify-center rounded-lg", tone.soft, tone.text)}>
                   <Icon className="size-4" />
                 </span>
-                <span className="mt-2 block text-lg font-bold leading-none text-[#0B1220]">{stat.value}</span>
-                <span className="mt-1 block text-[0.72rem] leading-snug text-[#475569]">{stat.label}</span>
+                <span className="mt-2 block text-lg font-bold leading-none text-[var(--foreground)]">{stat.value}</span>
+                <span className="mt-1 block text-[0.72rem] leading-snug text-[var(--muted-foreground)]">{stat.label}</span>
               </Link>
             );
           })}
         </div>
 
         <div className="mt-4">
-          <p className="mb-2 text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[#64748B]">
+          <p className="mb-2 text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
             Derniers membres
           </p>
           {recentMembers.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-[#D8E2F0] bg-[#F8FAFC] px-4 py-6 text-center">
-              <UsersRound className="mx-auto size-8 text-[#94A3B8]" />
-              <p className="mt-2 text-sm font-semibold text-[#0B1220]">Aucun membre récent</p>
-              <p className="mt-1 text-xs text-[#64748B]">Les nouvelles inscriptions apparaîtront ici.</p>
+            <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-soft)] px-4 py-6 text-center">
+              <UsersRound className="mx-auto size-8 text-[var(--muted-foreground)]" />
+              <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">Aucun membre récent</p>
+              <p className="mt-1 text-xs text-[var(--muted-foreground)]">Les nouvelles inscriptions apparaîtront ici.</p>
             </div>
           ) : (
             <ul className="space-y-2">
@@ -232,19 +233,19 @@ function MembersOverviewPanel({
                   <Link
                     href={`/members/${member.id}`}
                     prefetch={false}
-                    className="flex items-center gap-3 rounded-lg border border-[#E2E8F0] bg-white px-3 py-2.5 transition hover:border-[#2563EB] hover:bg-[#F8FAFC]"
+                    className="flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 transition hover:border-[var(--primary)] hover:bg-[var(--surface-soft)]"
                   >
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#EFF6FF] text-xs font-bold text-[#2563EB]">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[var(--info-surface)] text-xs font-bold text-[var(--primary)]">
                       {member.initials}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold text-[#0B1220]">{member.name}</span>
-                      <span className="mt-0.5 block truncate text-xs text-[#64748B]">{member.planName}</span>
+                      <span className="block truncate text-sm font-semibold text-[var(--foreground)]">{member.name}</span>
+                      <span className="mt-0.5 block truncate text-xs text-[var(--muted-foreground)]">{member.planName}</span>
                     </span>
-                    <span className="rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[0.68rem] font-semibold text-[#047857]">
+                    <span className="rounded-full bg-[var(--success-surface)] px-2 py-0.5 text-[0.68rem] font-semibold text-[var(--success)]">
                       {member.status}
                     </span>
-                    <span className="hidden shrink-0 text-xs font-medium text-[#64748B] sm:inline">
+                    <span className="hidden shrink-0 text-xs font-medium text-[var(--muted-foreground)] sm:inline">
                       {member.joinedAt.toLocaleDateString("fr-FR")}
                     </span>
                   </Link>
@@ -259,14 +260,19 @@ function MembersOverviewPanel({
 }
 
 function DashboardMetric({ icon: Icon, label, value, tone }: { icon: ComponentType<{ className?: string }>; label: string; value: string; tone: "blue" | "green" | "amber" }) {
-  const toneClass = tone === "green" ? "text-emerald-600 bg-emerald-50" : tone === "amber" ? "text-amber-600 bg-amber-50" : "text-blue-600 bg-blue-50";
-  return <div className="rounded-lg border border-[#D8E2F0] bg-white p-3"><Icon className={`size-5 rounded-md p-0.5 ${toneClass}`} /><p className="mt-3 text-xl font-bold text-[#0B1220]">{value}</p><p className="text-xs text-slate-500">{label}</p></div>;
+  const toneClass =
+    tone === "green"
+      ? "text-[var(--success)] bg-[var(--success-surface)]"
+      : tone === "amber"
+        ? "text-[var(--warning)] bg-[var(--warning-surface)]"
+        : "text-[var(--info)] bg-[var(--info-surface)]";
+  return <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3"><Icon className={`size-5 rounded-md p-0.5 ${toneClass}`} /><p className="mt-3 text-xl font-bold text-[var(--foreground)]">{value}</p><p className="text-xs text-[var(--muted-foreground)]">{label}</p></div>;
 }
 
 function GymOverviewPanel({ visitsToday, activePasses, expiringSoon }: { visitsToday: number; activePasses: number; expiringSoon: number }) {
   return (
     <DashboardPanel labelledBy="dashboard-gym-title">
-      <DashboardSectionHeader titleId="dashboard-gym-title" title="Accès salle" eyebrow="Module gym" action={<Link href="/gym/check-in" className="text-xs font-semibold text-[#2563EB] hover:underline">Pointer une entrée</Link>} />
+      <DashboardSectionHeader titleId="dashboard-gym-title" title="Accès salle" eyebrow="Module gym" action={<Link href="/gym/check-in" className="text-xs font-semibold text-[var(--primary)] hover:underline">Pointer une entrée</Link>} />
       <div className="grid gap-2 p-3 sm:grid-cols-3">
         <DashboardMetric icon={Dumbbell} label="Entrées aujourd'hui" value={String(visitsToday)} tone="blue" />
         <DashboardMetric icon={CreditCard} label="Pass actifs" value={String(activePasses)} tone="green" />
@@ -284,15 +290,15 @@ function CommercialQuietStatePanel() {
         title="Activité commerciale"
         eyebrow="Pilotage"
         action={
-          <Link href="/subscriptions" className="text-xs font-semibold text-[#2563EB] hover:underline">
+          <Link href="/subscriptions" className="text-xs font-semibold text-[var(--primary)] hover:underline">
             Abonnements
           </Link>
         }
       />
       <div className="grid gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-        <div className="rounded-lg border border-dashed border-[#D8E2F0] bg-[#F8FAFC] px-4 py-4">
-          <p className="text-sm font-semibold text-[#0B1220]">Aucune activité commerciale ce mois.</p>
-          <p className="mt-1 text-xs leading-5 text-[#64748B]">
+        <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-soft)] px-4 py-4">
+          <p className="text-sm font-semibold text-[var(--foreground)]">Aucune activité commerciale ce mois.</p>
+          <p className="mt-1 text-xs leading-5 text-[var(--muted-foreground)]">
             Les ventes, remises et reçus apparaîtront ici dès qu&apos;une inscription, un renouvellement ou un
             encaissement sera créé.
           </p>
@@ -300,13 +306,13 @@ function CommercialQuietStatePanel() {
         <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
           <Link
             href="/enrollment"
-            className="inline-flex min-h-9 items-center justify-center rounded-lg bg-[#2563EB] px-3 text-sm font-semibold !text-white transition hover:bg-[#1D4ED8]"
+            className="inline-flex min-h-9 items-center justify-center rounded-lg bg-[var(--primary)] px-3 text-sm font-semibold !text-white transition hover:bg-[var(--primary-strong)]"
           >
             Inscrire
           </Link>
           <Link
             href="/payments/new"
-            className="inline-flex min-h-9 items-center justify-center rounded-lg border border-[#D8E2F0] bg-white px-3 text-sm font-semibold text-[#0B1220] transition hover:border-[#2563EB] hover:text-[#2563EB]"
+            className="inline-flex min-h-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--primary)] hover:text-[var(--primary)]"
           >
             Encaisser
           </Link>
@@ -390,7 +396,7 @@ function SalesSnapshotPanel({
         title="Ventes vs encaissé"
         eyebrow="Suivi commercial"
         action={
-          <Link href="/subscriptions" className="text-xs font-semibold text-[#2563EB] hover:underline">
+          <Link href="/subscriptions" className="text-xs font-semibold text-[var(--primary)] hover:underline">
             Abonnements
           </Link>
         }
@@ -401,11 +407,11 @@ function SalesSnapshotPanel({
             const tone = dashboardToneStyles[stat.tone];
             return (
               <div key={stat.label} className={cn("rounded-lg border px-3 py-3", tone.soft, tone.border)}>
-                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[#64748B]">
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
                   {stat.label}
                 </p>
-                <p className="mt-2 text-lg font-bold leading-tight text-[#0B1220]">{stat.value}</p>
-                <p className="mt-1 text-xs leading-snug text-[#475569]">{stat.detail}</p>
+                <p className="mt-2 text-lg font-bold leading-tight text-[var(--foreground)]">{stat.value}</p>
+                <p className="mt-1 text-xs leading-snug text-[var(--muted-foreground)]">{stat.detail}</p>
               </div>
             );
           })}
@@ -416,25 +422,25 @@ function SalesSnapshotPanel({
             const tone = dashboardToneStyles[stat.tone];
             const Icon = stat.icon;
             return (
-              <div key={stat.label} className="rounded-lg border border-[#E2E8F0] bg-white px-3 py-3">
+              <div key={stat.label} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-3">
                 <div className="flex items-center gap-2">
                   <span className={cn("flex size-8 items-center justify-center rounded-lg", tone.soft, tone.text)}>
                     <Icon className="size-4" />
                   </span>
-                  <p className="text-sm font-semibold text-[#0B1220]">{stat.label}</p>
+                  <p className="text-sm font-semibold text-[var(--foreground)]">{stat.label}</p>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2">
-                  <div className="rounded-lg bg-[#F8FAFC] px-3 py-2">
-                    <p className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
+                  <div className="rounded-lg bg-[var(--surface-soft)] px-3 py-2">
+                    <p className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
                       Aujourd&apos;hui
                     </p>
-                    <p className="mt-1 text-lg font-bold text-[#0B1220]">{stat.today}</p>
+                    <p className="mt-1 text-lg font-bold text-[var(--foreground)]">{stat.today}</p>
                   </div>
-                  <div className="rounded-lg bg-[#F8FAFC] px-3 py-2">
-                    <p className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
+                  <div className="rounded-lg bg-[var(--surface-soft)] px-3 py-2">
+                    <p className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
                       Ce mois
                     </p>
-                    <p className="mt-1 text-lg font-bold text-[#0B1220]">{stat.month}</p>
+                    <p className="mt-1 text-lg font-bold text-[var(--foreground)]">{stat.month}</p>
                   </div>
                 </div>
               </div>
@@ -443,15 +449,15 @@ function SalesSnapshotPanel({
         </div>
 
         <div className="grid gap-2 lg:grid-cols-2">
-          <div className="rounded-lg border border-[#E2E8F0] bg-white p-3">
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[#2563EB]">
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[var(--primary)]">
                   Impayés
                 </p>
-                <h3 className="text-sm font-semibold text-[#0B1220]">Par ancienneté</h3>
+                <h3 className="text-sm font-semibold text-[var(--foreground)]">Par ancienneté</h3>
               </div>
-              <Link href="/subscriptions" className="text-xs font-semibold text-[#2563EB] hover:underline">
+              <Link href="/subscriptions" className="text-xs font-semibold text-[var(--primary)] hover:underline">
                 Relancer
               </Link>
             </div>
@@ -461,46 +467,46 @@ function SalesSnapshotPanel({
                 return (
                   <div key={bucket.label} className={cn("rounded-lg border px-3 py-2", tone.soft, tone.border)}>
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-semibold text-[#0B1220]">{bucket.label}</span>
+                      <span className="text-xs font-semibold text-[var(--foreground)]">{bucket.label}</span>
                       <span className={cn("rounded-full px-2 py-0.5 text-[0.66rem] font-semibold", tone.badge)}>
                         {bucket.subscriptions}
                       </span>
                     </div>
-                    <p className="mt-1 text-sm font-bold text-[#0B1220]">{formatMoney(bucket.amount)}</p>
+                    <p className="mt-1 text-sm font-bold text-[var(--foreground)]">{formatMoney(bucket.amount)}</p>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          <div className="rounded-lg border border-[#E2E8F0] bg-white p-3">
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[#2563EB]">
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[var(--primary)]">
                   Ventes
                 </p>
-                <h3 className="text-sm font-semibold text-[#0B1220]">Top ce mois</h3>
+                <h3 className="text-sm font-semibold text-[var(--foreground)]">Top ce mois</h3>
               </div>
-              <Link href="/subscription-plans" className="text-xs font-semibold text-[#2563EB] hover:underline">
+              <Link href="/subscription-plans" className="text-xs font-semibold text-[var(--primary)] hover:underline">
                 Formules
               </Link>
             </div>
             {topSalesItems.length === 0 ? (
-              <div className="mt-3 rounded-lg border border-dashed border-[#D8E2F0] bg-[#F8FAFC] px-3 py-5 text-center text-xs text-[#64748B]">
+              <div className="mt-3 rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-soft)] px-3 py-5 text-center text-xs text-[var(--muted-foreground)]">
                 Aucune vente ce mois.
               </div>
             ) : (
               <ul className="mt-3 space-y-2">
                 {topSalesItems.map((item) => (
-                  <li key={`${item.label}-${item.sublabel}`} className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2">
+                  <li key={`${item.label}-${item.sublabel}`} className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="truncate text-xs font-semibold text-[#0B1220]">{item.label}</p>
-                        <p className="mt-0.5 truncate text-[0.68rem] text-[#64748B]">{item.sublabel}</p>
+                        <p className="truncate text-xs font-semibold text-[var(--foreground)]">{item.label}</p>
+                        <p className="mt-0.5 truncate text-[0.68rem] text-[var(--muted-foreground)]">{item.sublabel}</p>
                       </div>
-                      <p className="shrink-0 text-sm font-bold text-[#0B1220]">{formatMoney(item.amount)}</p>
+                      <p className="shrink-0 text-sm font-bold text-[var(--foreground)]">{formatMoney(item.amount)}</p>
                     </div>
-                    <p className="mt-1 text-[0.68rem] text-[#64748B]">
+                    <p className="mt-1 text-[0.68rem] text-[var(--muted-foreground)]">
                       {item.subscriptions} abonnement{item.subscriptions > 1 ? "s" : ""}
                     </p>
                   </li>
@@ -511,54 +517,54 @@ function SalesSnapshotPanel({
         </div>
 
         <div className="grid gap-2 lg:grid-cols-2">
-          <div className="rounded-lg border border-[#E2E8F0] bg-white p-3">
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[#2563EB]">
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[var(--primary)]">
                   Offres
                 </p>
-                <h3 className="text-sm font-semibold text-[#0B1220]">Remises ce mois</h3>
+                <h3 className="text-sm font-semibold text-[var(--foreground)]">Remises ce mois</h3>
               </div>
-              <Link href="/offers" className="text-xs font-semibold text-[#2563EB] hover:underline">
+              <Link href="/offers" className="text-xs font-semibold text-[var(--primary)] hover:underline">
                 Offres
               </Link>
             </div>
-            <div className="mt-3 rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] px-3 py-3">
-              <p className="text-lg font-bold leading-tight text-[#0B1220]">
+            <div className="mt-3 rounded-lg border border-[var(--primary)]/25 bg-[var(--info-surface)] px-3 py-3">
+              <p className="text-lg font-bold leading-tight text-[var(--foreground)]">
                 {formatMoney(discountSnapshot.discountMonth)}
               </p>
-              <p className="mt-1 text-xs text-[#475569]">
+              <p className="mt-1 text-xs text-[var(--muted-foreground)]">
                 {discountSnapshot.discountedSubscriptions} abonnement
                 {discountSnapshot.discountedSubscriptions > 1 ? "s" : ""} avec remise
               </p>
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2">
-              <div className="rounded-lg bg-[#F8FAFC] px-3 py-2">
-                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
+              <div className="rounded-lg bg-[var(--surface-soft)] px-3 py-2">
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
                   Catalogue
                 </p>
-                <p className="mt-1 text-sm font-bold text-[#0B1220]">{formatMoney(discountSnapshot.catalogueMonth)}</p>
+                <p className="mt-1 text-sm font-bold text-[var(--foreground)]">{formatMoney(discountSnapshot.catalogueMonth)}</p>
               </div>
-              <div className="rounded-lg bg-[#F8FAFC] px-3 py-2">
-                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
+              <div className="rounded-lg bg-[var(--surface-soft)] px-3 py-2">
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
                   Taux
                 </p>
-                <p className="mt-1 text-sm font-bold text-[#0B1220]">
+                <p className="mt-1 text-sm font-bold text-[var(--foreground)]">
                   {discountSnapshot.discountRatePercent === null ? "—" : `${discountSnapshot.discountRatePercent}%`}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-lg border border-[#E2E8F0] bg-white p-3">
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[#2563EB]">
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[var(--primary)]">
                   Reçus
                 </p>
-                <h3 className="text-sm font-semibold text-[#0B1220]">Traçabilité ce mois</h3>
+                <h3 className="text-sm font-semibold text-[var(--foreground)]">Traçabilité ce mois</h3>
               </div>
-              <Link href="/payments" className="text-xs font-semibold text-[#2563EB] hover:underline">
+              <Link href="/payments" className="text-xs font-semibold text-[var(--primary)] hover:underline">
                 Caisse
               </Link>
             </div>
@@ -566,35 +572,35 @@ function SalesSnapshotPanel({
               className={cn(
                 "mt-3 rounded-lg border px-3 py-3",
                 receiptSnapshot.missingMonth > 0
-                  ? "border-[#FECACA] bg-[#FEF2F2]"
-                  : "border-[#A7F3D0] bg-[#ECFDF5]",
+                  ? "border-[var(--danger)]/30 bg-[var(--danger-surface)]"
+                  : "border-[var(--success)]/30 bg-[var(--success-surface)]",
               )}
             >
-              <p className="text-lg font-bold leading-tight text-[#0B1220]">
+              <p className="text-lg font-bold leading-tight text-[var(--foreground)]">
                 {receiptSnapshot.issuedMonth}/{receiptSnapshot.paymentCountMonth}
               </p>
-              <p className="mt-1 text-xs text-[#475569]">paiements avec reçu émis</p>
+              <p className="mt-1 text-xs text-[var(--muted-foreground)]">paiements avec reçu émis</p>
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2">
-              <div className="rounded-lg bg-[#F8FAFC] px-3 py-2">
-                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
+              <div className="rounded-lg bg-[var(--surface-soft)] px-3 py-2">
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
                   À vérifier
                 </p>
-                <p className="mt-1 text-sm font-bold text-[#0B1220]">{receiptSnapshot.missingMonth}</p>
+                <p className="mt-1 text-sm font-bold text-[var(--foreground)]">{receiptSnapshot.missingMonth}</p>
               </div>
-              <div className="rounded-lg bg-[#F8FAFC] px-3 py-2">
-                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
+              <div className="rounded-lg bg-[var(--surface-soft)] px-3 py-2">
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
                   Annulés
                 </p>
-                <p className="mt-1 text-sm font-bold text-[#0B1220]">{receiptSnapshot.voidedMonth}</p>
+                <p className="mt-1 text-sm font-bold text-[var(--foreground)]">{receiptSnapshot.voidedMonth}</p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="rounded-lg border border-dashed border-[#D8E2F0] bg-[#F8FAFC] px-3 py-2 text-xs leading-5 text-[#475569]">
+        <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-xs leading-5 text-[var(--muted-foreground)]">
           Ventes = abonnements créés. Encaissé = paiements réellement reçus. Total ventes ce mois :
-          <span className="font-semibold text-[#0B1220]"> {formatMoney(salesMonth)}</span>.
+          <span className="font-semibold text-[var(--foreground)]"> {formatMoney(salesMonth)}</span>.
         </div>
       </div>
     </DashboardPanel>
@@ -657,13 +663,13 @@ function DashboardViewSwitcher({ mode, canSwitch }: { mode: "RECEPTION" | "PILOT
   return (
     <nav
       aria-label="Vue dashboard"
-      className="flex w-full flex-wrap items-center justify-between gap-3 rounded-lg border border-[#DDE7F4] bg-white/90 px-3 py-2 shadow-[0_12px_30px_rgba(15,23,42,0.045)]"
+      className="flex w-full flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)]/90 px-3 py-2 shadow-[var(--shadow-panel)]"
     >
       <div className="min-w-0">
-        <p className="text-xs font-semibold text-[#0B1220]">Lecture du dashboard</p>
-        <p className="text-xs text-[#64748B]">Reception pour le quotidien, pilotage pour les indicateurs.</p>
+        <p className="text-xs font-semibold text-[var(--foreground)]">Lecture du dashboard</p>
+        <p className="text-xs text-[var(--muted-foreground)]">Reception pour le quotidien, pilotage pour les indicateurs.</p>
       </div>
-      <div className="inline-flex rounded-lg border border-[#DDE7F4] bg-[#F8FAFC] p-1">
+      <div className="inline-flex rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-1">
         {options.map((option) => {
           const selected = mode === option.mode;
           return (
@@ -674,7 +680,7 @@ function DashboardViewSwitcher({ mode, canSwitch }: { mode: "RECEPTION" | "PILOT
               aria-current={selected ? "page" : undefined}
               className={cn(
                 "min-h-9 rounded-md px-3 py-2 text-xs font-semibold transition",
-                selected ? "bg-[#2563EB] text-white shadow-sm" : "text-[#475569] hover:bg-white hover:text-[#0B1220]",
+                selected ? "bg-[var(--primary)] text-white shadow-sm" : "text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]",
               )}
             >
               {option.label}
@@ -690,10 +696,10 @@ function EmptyDashboardConfigurationPanel({ isAdmin }: { isAdmin: boolean }) {
   return (
     <DashboardPanel labelledBy="dashboard-empty-config-title" className="min-w-0">
       <div className="p-5 text-center">
-        <p id="dashboard-empty-config-title" className="text-base font-semibold text-[#0B1220]">
+        <p id="dashboard-empty-config-title" className="text-base font-semibold text-[var(--foreground)]">
           Dashboard configure sans blocs
         </p>
-        <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-[#64748B]">
+        <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-[var(--muted-foreground)]">
           {isAdmin
             ? "Activez au moins un bloc dans les reglages du club pour retrouver une vue exploitable."
             : "Dashboard configure par l'administrateur."}
@@ -777,6 +783,7 @@ export default async function Home({
     activeSubscriptionsCount: 0,
   };
   let debts: Awaited<ReturnType<typeof enrichDebtsWithReminderMeta>> = [];
+  let expiringSubscriptions: DashboardExpiringSubscription[] = [];
   let todaySessions: TodaySession[] = [];
   let finalizationSessions: TodaySession[] = [];
   let priorityItems: PriorityItem[] = [];
@@ -837,10 +844,10 @@ export default async function Home({
       fetchedActiveMembers,
       fetchedNewMembersThisMonth,
       fetchedSessionsToday,
-      fetchedPaymentWindow,
-      fetchedSubscriptions,
-      fetchedSalesSubscriptions,
-      fetchedReceiptWindow,
+      paymentReadModel,
+      subscriptionReadModel,
+      salesReadModel,
+      fetchedReceiptCounts,
       fetchedSessions,
       fetchedRecentMembers,
     ] = await Promise.all([
@@ -853,61 +860,31 @@ export default async function Home({
           status: { not: "CANCELLED" },
         },
       }),
-      prisma.payment.findMany({
-        where: { tenantId, paymentDate: { gte: paymentWindowStart, lt: tomorrow } },
-        select: {
-          id: true,
-          amount: true,
-          entryType: true,
-          paymentMethod: true,
-          paymentDate: true,
-        },
-        orderBy: [{ paymentDate: "asc" }, { createdAt: "asc" }],
+      loadDashboardPaymentReadModel({
+        tenantId,
+        paymentWindowStart,
+        trendStart,
+        weekStart,
+        monthStart,
+        today,
+        tomorrow,
       }),
-      prisma.memberSubscription.findMany({
-        where: { tenantId, status: "ACTIVE" },
-        select: {
-          id: true,
-          amount: true,
-          createdAt: true,
-          memberId: true,
-          status: true,
-          startDate: true,
-          endDate: true,
-          member: { select: { firstName: true, lastName: true, phone: true } },
-          plan: { select: { name: true } },
-          payments: { where: { tenantId }, select: { amount: true } },
-        },
+      loadDashboardSubscriptionReadModel({
+        tenantId,
+        now,
+        today,
+        sevenDaysFromToday,
+        debtThresholdCents: clubSettings.debtAlertThresholdCents,
       }),
-      prisma.memberSubscription.findMany({
-        where: {
-          tenantId,
-          status: { in: ["ACTIVE", "EXPIRED"] },
-          createdAt: { gte: monthStart, lt: tomorrow },
-        },
-        select: {
-          id: true,
-          amount: true,
-          listPriceCents: true,
-          discountCents: true,
-          createdAt: true,
-          memberId: true,
-          member: { select: { joinedAt: true } },
-          plan: { select: { name: true } },
-          sport: { select: { name: true } },
-          payments: { where: { tenantId }, select: { amount: true } },
-        },
-      }),
-      prisma.receipt.findMany({
+      loadDashboardSalesReadModel({ tenantId, monthStart, today, tomorrow }),
+      prisma.receipt.groupBy({
+        by: ["status"],
         where: {
           tenantId,
           issuedAt: { gte: monthStart, lt: tomorrow },
+          payment: { entryType: "PAYMENT", amount: { gt: 0 } },
         },
-        select: {
-          id: true,
-          status: true,
-          payment: { select: { amount: true, entryType: true } },
-        },
+        _count: { _all: true },
       }),
       prisma.session.findMany({
         where: {
@@ -969,13 +946,6 @@ export default async function Home({
     newMembersThisMonth = fetchedNewMembersThisMonth;
     sessionsToday = fetchedSessionsToday;
 
-    const paymentWindow: DashboardPayment[] = fetchedPaymentWindow.map((payment) => ({
-      id: payment.id,
-      amount: payment.amount,
-      entryType: payment.entryType as PaymentEntryTypeValue,
-      paymentMethod: payment.paymentMethod,
-      paymentDate: payment.paymentDate,
-    }));
     recentMembers = fetchedRecentMembers.map((member) => ({
       id: member.id,
       name: `${member.firstName} ${member.lastName}`,
@@ -985,142 +955,67 @@ export default async function Home({
       status: member.status === "ACTIVE" ? "Actif" : member.status,
     }));
 
-    const paymentsToday = paymentWindow.filter((payment) => payment.paymentDate >= today && payment.paymentDate < tomorrow);
-    const paymentsThisWeek = paymentWindow.filter((payment) => payment.paymentDate >= weekStart && payment.paymentDate < tomorrow);
-    const paymentsThisMonth = paymentWindow.filter((payment) => payment.paymentDate >= monthStart && payment.paymentDate < tomorrow);
-    const positivePaymentsToday = paymentsToday.filter((payment) => payment.amount > 0);
-
-    revenueToday = sumPaymentAmounts(paymentsToday);
-    revenueWeek = sumPaymentAmounts(paymentsThisWeek);
-    revenueMonth = sumPaymentAmounts(paymentsThisMonth);
-    paymentCountToday = paymentsToday.length;
-    averagePaymentToday =
-      positivePaymentsToday.length > 0 ? Math.round(sumPaymentAmounts(positivePaymentsToday) / positivePaymentsToday.length) : 0;
-    correctionsToday = paymentsToday.filter((payment) => payment.entryType === "CORRECTION").length;
-    reversalsToday = paymentsToday.filter((payment) => payment.entryType === "REVERSAL").length;
-
-    const salesSubscriptionsToday = fetchedSalesSubscriptions.filter(
-      (subscription) => subscription.createdAt >= today && subscription.createdAt < tomorrow,
-    );
-    const todayNewMemberIds = new Set(
-      salesSubscriptionsToday
-        .filter((subscription) => subscription.member.joinedAt >= today && subscription.member.joinedAt < tomorrow)
-        .map((subscription) => subscription.memberId),
-    );
-    const monthNewMemberIds = new Set(
-      fetchedSalesSubscriptions
-        .filter((subscription) => subscription.member.joinedAt >= monthStart && subscription.member.joinedAt < tomorrow)
-        .map((subscription) => subscription.memberId),
+    revenueToday = paymentReadModel.revenueToday;
+    revenueWeek = paymentReadModel.revenueWeek;
+    revenueMonth = paymentReadModel.revenueMonth;
+    paymentCountToday = paymentReadModel.paymentCountToday;
+    averagePaymentToday = paymentReadModel.averagePaymentToday;
+    correctionsToday = paymentReadModel.correctionsToday;
+    reversalsToday = paymentReadModel.reversalsToday;
+    cashMethodStats = paymentReadModel.methodStats.map((item) => ({
+      ...item,
+      label: formatPaymentMethodLabel(item.method),
+      tone: paymentMethodTone(item.method),
+    }));
+    cashTrend = buildCashTrend(
+      paymentReadModel.trend.map((item, index) => ({
+        id: `trend-${index}`,
+        amount: item.amount,
+        entryType: "PAYMENT" as const,
+        paymentMethod: null,
+        paymentDate: new Date(`${item.key}T00:00:00.000Z`),
+      })),
+      trendStart,
+      today,
     );
 
-    salesToday = salesSubscriptionsToday.reduce((sum, subscription) => sum + subscription.amount, 0);
-    salesTodayCount = salesSubscriptionsToday.length;
-    salesMonth = fetchedSalesSubscriptions.reduce((sum, subscription) => sum + subscription.amount, 0);
-    const catalogueMonth = fetchedSalesSubscriptions.reduce((sum, subscription) => {
-      const cataloguePrice = subscription.listPriceCents ?? subscription.amount + subscription.discountCents;
-      return sum + Math.max(cataloguePrice, subscription.amount);
-    }, 0);
-    const discountMonth = fetchedSalesSubscriptions.reduce((sum, subscription) => {
-      const cataloguePrice = subscription.listPriceCents ?? subscription.amount + subscription.discountCents;
-      return sum + Math.max(0, cataloguePrice - subscription.amount);
-    }, 0);
-    const discountedSubscriptions = fetchedSalesSubscriptions.filter((subscription) => {
-      const cataloguePrice = subscription.listPriceCents ?? subscription.amount + subscription.discountCents;
-      return Math.max(0, cataloguePrice - subscription.amount) > 0;
-    }).length;
+    salesToday = salesReadModel.salesToday;
+    salesTodayCount = salesReadModel.salesTodayCount;
+    salesMonth = salesReadModel.salesMonth;
+    remainingOnTodaySales = salesReadModel.remainingOnTodaySales;
+    newSalesToday = salesReadModel.newSalesToday;
+    renewalSalesToday = salesReadModel.renewalSalesToday;
+    newSalesMonth = salesReadModel.newSalesMonth;
+    renewalSalesMonth = salesReadModel.renewalSalesMonth;
+    topSalesItems = salesReadModel.topSalesItems;
     discountSnapshot = {
-      catalogueMonth,
-      discountMonth,
-      discountedSubscriptions,
-      discountRatePercent: catalogueMonth > 0 ? Math.round((discountMonth / catalogueMonth) * 100) : null,
+      catalogueMonth: salesReadModel.catalogueMonth,
+      discountMonth: salesReadModel.discountMonth,
+      discountedSubscriptions: salesReadModel.discountedSubscriptions,
+      discountRatePercent:
+        salesReadModel.catalogueMonth > 0
+          ? Math.round((salesReadModel.discountMonth / salesReadModel.catalogueMonth) * 100)
+          : null,
     };
 
-    const paymentCountMonth = paymentsThisMonth.filter(
-      (payment) => payment.entryType === "PAYMENT" && payment.amount > 0,
-    ).length;
-    const paymentReceiptsMonth = fetchedReceiptWindow.filter(
-      (receipt) => receipt.payment.entryType === "PAYMENT" && receipt.payment.amount > 0,
-    );
-    const issuedReceiptsMonth = paymentReceiptsMonth.filter((receipt) => receipt.status === "ISSUED").length;
+    const issuedReceiptsMonth = fetchedReceiptCounts.find((item) => item.status === "ISSUED")?._count._all ?? 0;
+    const voidedReceiptsMonth = fetchedReceiptCounts.find((item) => item.status === "VOIDED")?._count._all ?? 0;
     receiptSnapshot = {
-      paymentCountMonth,
+      paymentCountMonth: paymentReadModel.paymentCountMonth,
       issuedMonth: issuedReceiptsMonth,
-      missingMonth: Math.max(0, paymentCountMonth - issuedReceiptsMonth),
-      voidedMonth: paymentReceiptsMonth.filter((receipt) => receipt.status === "VOIDED").length,
+      missingMonth: Math.max(0, paymentReadModel.paymentCountMonth - issuedReceiptsMonth),
+      voidedMonth: voidedReceiptsMonth,
     };
 
-    const paidOnTodaySales = salesSubscriptionsToday.reduce(
-      (sum, subscription) => sum + subscription.payments.reduce((paymentSum, payment) => paymentSum + payment.amount, 0),
-      0,
-    );
-    remainingOnTodaySales = Math.max(0, salesToday - paidOnTodaySales);
-    newSalesToday = todayNewMemberIds.size;
-    renewalSalesToday = Math.max(0, salesSubscriptionsToday.length - newSalesToday);
-    newSalesMonth = monthNewMemberIds.size;
-    renewalSalesMonth = Math.max(0, fetchedSalesSubscriptions.length - newSalesMonth);
-
-    const debtAgingMap = {
-      recent: { label: "0-7 jours", amount: 0, subscriptions: 0, tone: "green" as const },
-      warning: { label: "8-30 jours", amount: 0, subscriptions: 0, tone: "amber" as const },
-      late: { label: "30+ jours", amount: 0, subscriptions: 0, tone: "red" as const },
-    };
-
-    for (const subscription of fetchedSubscriptions) {
-      const paid = subscription.payments.reduce((sum, payment) => sum + payment.amount, 0);
-      const outstanding = Math.max(0, subscription.amount - paid);
-      if (outstanding <= 0) continue;
-
-      const ageInDays = Math.max(
-        0,
-        Math.floor((today.getTime() - subscription.createdAt.getTime()) / (1000 * 60 * 60 * 24)),
-      );
-      const bucket = ageInDays <= 7 ? debtAgingMap.recent : ageInDays <= 30 ? debtAgingMap.warning : debtAgingMap.late;
-      bucket.amount += outstanding;
-      bucket.subscriptions += 1;
-    }
-    debtAgingBuckets = [debtAgingMap.recent, debtAgingMap.warning, debtAgingMap.late];
-
-    const salesByPlan = new Map<string, SalesBreakdownItem>();
-    for (const subscription of fetchedSalesSubscriptions) {
-      const sportName = subscription.sport?.name ?? "Acces salle";
-      const key = `${subscription.plan.name}::${sportName}`;
-      const existing = salesByPlan.get(key) ?? {
-        label: subscription.plan.name,
-        sublabel: sportName,
-        amount: 0,
-        subscriptions: 0,
-      };
-      existing.amount += subscription.amount;
-      existing.subscriptions += 1;
-      salesByPlan.set(key, existing);
-    }
-    topSalesItems = Array.from(salesByPlan.values())
-      .sort((left, right) => right.amount - left.amount || right.subscriptions - left.subscriptions)
-      .slice(0, 3);
-
-    const methodStats = new Map<string, CashMethodStat>();
-    for (const payment of paymentsToday) {
-      const method = payment.paymentMethod?.trim() || "UNKNOWN";
-      const existing = methodStats.get(method) ?? {
-        method,
-        label: formatPaymentMethodLabel(method),
-        amount: 0,
-        count: 0,
-        tone: paymentMethodTone(method),
-      };
-      existing.amount += payment.amount;
-      existing.count += 1;
-      methodStats.set(method, existing);
-    }
-    cashMethodStats = Array.from(methodStats.values()).sort((left, right) => Math.abs(right.amount) - Math.abs(left.amount));
-    cashTrend = buildCashTrend(paymentWindow.filter((payment) => payment.paymentDate >= trendStart), trendStart, today);
-
-    finance = computeFinanceSnapshot(fetchedSubscriptions, { now });
-    const rawDebts = computeMemberDebts(fetchedSubscriptions, {
-      debtThresholdCents: clubSettings.debtAlertThresholdCents,
-      now,
-    }).slice(0, 15);
-    debts = await enrichDebtsWithReminderMeta(rawDebts, { now, tenantId });
+    const agingByBucket = new Map(subscriptionReadModel.aging.map((item) => [item.bucket, item]));
+    debtAgingBuckets = [
+      { label: "0-7 jours", amount: agingByBucket.get("recent")?.amount ?? 0, subscriptions: agingByBucket.get("recent")?.subscriptions ?? 0, tone: "green" },
+      { label: "8-30 jours", amount: agingByBucket.get("warning")?.amount ?? 0, subscriptions: agingByBucket.get("warning")?.subscriptions ?? 0, tone: "amber" },
+      { label: "30+ jours", amount: agingByBucket.get("late")?.amount ?? 0, subscriptions: agingByBucket.get("late")?.subscriptions ?? 0, tone: "red" },
+    ];
+    finance = subscriptionReadModel.finance;
+    debts = await enrichDebtsWithReminderMeta(subscriptionReadModel.debts, { now, tenantId });
+    expiringSubscriptions = subscriptionReadModel.expiring;
     emailConfigured = isPaymentReminderEmailConfigured();
 
     const operationalSessions = fetchedSessions.map((session) => {
@@ -1198,18 +1093,6 @@ export default async function Home({
       })
       .slice(0, 4);
 
-    const expiringSubscriptions = fetchedSubscriptions
-      .filter((subscription) => {
-        if (!subscription.endDate) return false;
-        if (subscription.startDate > today) return false;
-        return subscription.endDate >= today && subscription.endDate <= sevenDaysFromToday;
-      })
-      .sort((left, right) => {
-        if (!left.endDate || !right.endDate) return 0;
-        return left.endDate.getTime() - right.endDate.getTime();
-      })
-      .slice(0, 3);
-
     priorityItems = [
       ...debts.slice(0, 3).map((debt) => ({
         id: `debt-${debt.memberId}`,
@@ -1235,8 +1118,8 @@ export default async function Home({
       })),
       ...expiringSubscriptions.slice(0, 2).map((subscription) => ({
         id: `expiry-${subscription.id}`,
-        title: `${subscription.member.firstName} ${subscription.member.lastName}`,
-        detail: `${subscription.plan.name} · fin le ${subscription.endDate ? formatDateFr(subscription.endDate) : ""}`,
+        title: `${subscription.firstName} ${subscription.lastName}`,
+        detail: `${subscription.planName} · fin le ${formatDateFr(subscription.endDate)}`,
         meta: "Échéance proche",
         href: `/members/${subscription.memberId}`,
         actionLabel: "Voir",
@@ -1339,10 +1222,10 @@ export default async function Home({
       <DashboardPanel labelledBy="dashboard-debts-title" className="min-w-0">
         <DashboardSectionHeader
           titleId="dashboard-debts-title"
-          title="ImpayÃ©s dÃ©taillÃ©s"
+          title="Impayés détaillés"
           eyebrow="Relances"
           action={
-            <Link href="/subscriptions" className="text-xs font-semibold text-[#2563EB] hover:underline">
+            <Link href="/subscriptions" className="text-xs font-semibold text-[var(--primary)] hover:underline">
               Abonnements
             </Link>
           }
@@ -1364,50 +1247,36 @@ export default async function Home({
   ].filter(Boolean).length;
 
   return (
-    <main
-      className="app-shell relative overflow-hidden text-[#111827] dark:bg-[#0B1220] dark:text-slate-100"
-      style={{
-        background:
-          "radial-gradient(circle at 74% 0%, rgba(191,219,254,0.72) 0, rgba(219,234,254,0.46) 13rem, rgba(246,249,255,0) 31rem), #F6F9FF",
-      }}
-    >
+    <main className="app-shell relative overflow-hidden bg-[var(--canvas)] text-[var(--foreground)]">
       <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-5">
-        <header
-          className="relative overflow-hidden rounded-lg bg-[#0B1220] px-4 py-4 text-white shadow-[0_18px_48px_rgba(37,99,235,0.20)] sm:px-6 lg:min-h-[11.5rem] lg:px-7 lg:py-6"
-          style={{
-            backgroundImage:
-              "linear-gradient(90deg, rgba(8,22,58,0.94) 0%, rgba(12,43,104,0.78) 38%, rgba(12,44,101,0.24) 66%, rgba(7,18,48,0.50) 100%), linear-gradient(180deg, rgba(7,18,48,0.08) 0%, rgba(7,18,48,0.50) 100%), url('/we-discipline/wide-dojo-interior.webp')",
-            backgroundPosition: "center 48%",
-            backgroundSize: "cover",
-          }}
-        >
+        <header className="dashboard-hero relative overflow-hidden rounded-lg px-4 py-4 sm:px-6 lg:min-h-[11.5rem] lg:px-7 lg:py-6">
           <div className="relative z-10 flex min-h-full flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0 max-w-2xl">
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#93C5FD]">
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--hero-muted)]">
                 Tableau de bord
               </p>
               <h1 className="mt-2 text-2xl font-bold leading-tight tracking-normal sm:text-4xl">
                 Aujourd&apos;hui au club
               </h1>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-blue-50 sm:text-base sm:leading-7">
+              <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--hero-muted)] sm:text-base sm:leading-7">
                 Les séances à pointer, les encaissements à suivre et les priorités qui demandent une action.
               </p>
             </div>
             <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[32rem]">
-              <div className="rounded-lg border border-white/18 bg-[#061A3D]/70 px-3 py-2.5 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur sm:px-4 sm:py-3">
-                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-blue-200">
+              <div className="rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 backdrop-blur sm:px-4 sm:py-3">
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[var(--hero-muted)]">
                   Date
                 </p>
                 <p className="mt-2 text-sm font-bold capitalize text-white">{formatLongDateFr(today)}</p>
               </div>
-              <div className="rounded-lg border border-white/18 bg-[#061A3D]/70 px-3 py-2.5 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur sm:px-4 sm:py-3">
-                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-blue-200">
+              <div className="rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 backdrop-blur sm:px-4 sm:py-3">
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[var(--hero-muted)]">
                   Séances
                 </p>
                 <p className="mt-2 text-sm font-bold text-white">{sessionsToday} aujourd&apos;hui</p>
               </div>
-              <div className="rounded-lg border border-white/18 bg-[#061A3D]/70 px-3 py-2.5 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur sm:px-4 sm:py-3">
-                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-blue-200">
+              <div className="rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 backdrop-blur sm:px-4 sm:py-3">
+                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[var(--hero-muted)]">
                   Membres
                 </p>
                 <p className="mt-2 text-sm font-bold text-white">{activeMembers} actifs</p>
@@ -1417,7 +1286,7 @@ export default async function Home({
         </header>
 
         {hasDataError ? (
-          <div className="flex items-center gap-2 rounded-lg border border-[#FDE68A] bg-[#FFFBEB] px-4 py-3 text-sm font-medium text-[#B45309]">
+          <div className="flex items-center gap-2 rounded-lg border border-[var(--warning)]/30 bg-[var(--warning-surface)] px-4 py-3 text-sm font-medium text-[var(--warning)]">
             <AlertCircle className="size-4 shrink-0" />
             Données temporairement indisponibles. Vérifiez la base et redémarrez le serveur.
           </div>

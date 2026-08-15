@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useId, useRef } from "react";
 import { RotateCcw, Search, SlidersHorizontal, X } from "lucide-react";
 
 import { FieldControl } from "@/components/ui/field-control";
+import { useAccessibleDialog } from "@/hooks/use-accessible-dialog";
 import { cn } from "@/lib/utils";
 
 export function ListSearch({
@@ -11,11 +12,15 @@ export function ListSearch({
   onChange,
   placeholder,
   className,
+  id,
+  ariaLabel = "Rechercher dans la liste",
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
   className?: string;
+  id?: string;
+  ariaLabel?: string;
 }) {
   return (
     <FieldControl
@@ -35,6 +40,8 @@ export function ListSearch({
       }
     >
       <input
+        id={id}
+        aria-label={ariaLabel}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
@@ -83,41 +90,37 @@ export function MobileFilterSheet({
   title?: string;
   children: React.ReactNode;
 }) {
-  useEffect(() => {
-    if (!open) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.body.style.overflow = previous;
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [onClose, open]);
+  const titleId = useId();
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useAccessibleDialog<HTMLDivElement>({
+    open,
+    onClose,
+    initialFocusRef: closeButtonRef,
+  });
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end bg-black/40 md:hidden" onClick={onClose} role="presentation">
+    <div className="fixed inset-0 z-[70] flex items-end bg-[var(--overlay)] md:hidden" onClick={onClose} role="presentation">
       <div
+        ref={dialogRef}
         className="max-h-[86dvh] w-full overflow-y-auto rounded-t-lg border border-[var(--border)] bg-[var(--surface)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[var(--shadow-floating)]"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="mobile-filter-title"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h2 id="mobile-filter-title" className="text-lg font-semibold">
+            <h2 id={titleId} className="text-lg font-semibold">
               {title}
             </h2>
             <p className="text-xs text-[var(--muted-foreground)]">
               {activeCount > 0 ? `${activeCount} filtre(s) actif(s)` : "Aucun filtre actif"}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="btn btn-ghost min-h-11 min-w-11 p-2">
+          <button ref={closeButtonRef} type="button" onClick={onClose} className="btn btn-ghost min-h-11 min-w-11 p-2">
             <X className="size-5" />
             <span className="sr-only">Fermer</span>
           </button>
