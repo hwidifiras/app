@@ -11,6 +11,7 @@ import {
   deriveSessionLifecycle,
   expectedMemberIdsAtSession,
 } from "@/lib/session-lifecycle";
+import { getTenantProductContext } from "@/platform/product/product-context";
 
 export const dynamic = "force-dynamic";
 
@@ -33,9 +34,11 @@ export async function GET(request: Request) {
   try {
     const user = await requireAuth(request);
     const tenantId = user.tenantId;
+    const product = await getTenantProductContext(tenantId);
     const includePayments = hasAccess(user.role, user.permissions, "payments.manage");
     const includeExpirations = hasAccess(user.role, user.permissions, "catalog.manage");
-    const includeAttendance = hasAccess(user.role, user.permissions, "attendance.manage");
+    const includeAttendance =
+      product.capabilities.classManagement && hasAccess(user.role, user.permissions, "attendance.manage");
 
     if (!includePayments && !includeExpirations && !includeAttendance) {
       return NextResponse.json({ data: { notifications: [], unreadCount: 0 } });

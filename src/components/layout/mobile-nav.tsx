@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Banknote, ChevronDown, Clock, Home, Menu, PlusCircle, Search, X } from "lucide-react";
+import { Banknote, ChevronDown, Clock, Dumbbell, Home, Menu, PlusCircle, Search, X } from "lucide-react";
 
 import {
   getConfigurationSections,
   isLinkActive,
   navSections,
   NavLink,
+  navItemIsVisible,
   settingsSection,
 } from "@/components/layout/app-sidebar";
 import { AppRefreshButton } from "@/components/layout/app-refresh-button";
@@ -26,12 +27,34 @@ export function MobileNav() {
   const pathname = usePathname();
   const { account, navBadges } = useAppShellData();
   const role = account?.role ?? null;
-  const enabledModules = new Set(account?.modules ?? []);
-  const configurationSections = getConfigurationSections(role);
+  const configurationSections = getConfigurationSections(role, account);
   const inClubConfig = configurationSections.some((section) =>
     section.items.some((item) => isLinkActive(pathname, item.href)),
   );
   const showClubConfig = configOpen || inClubConfig;
+  const quickLinks = account?.productProfile === "GYM_ONLY"
+    ? [
+        { href: "/", label: "Accueil", icon: Home },
+        { href: "/gym/check-in", label: "Accès", icon: Dumbbell },
+        { href: "/enrollment", label: "Inscrire", icon: PlusCircle, featured: true },
+        { href: "/payments/new", label: "Caisse", icon: Banknote },
+        { href: "/members", label: "Membres", icon: Search },
+      ]
+    : account?.productProfile === "HYBRID"
+      ? [
+          { href: "/", label: "Accueil", icon: Home },
+          { href: "/attendance/today", label: "Pointage", icon: Clock },
+          { href: "/gym/check-in", label: "Accès", icon: Dumbbell },
+          { href: "/enrollment", label: "Inscrire", icon: PlusCircle, featured: true },
+          { href: "/payments/new", label: "Caisse", icon: Banknote },
+        ]
+      : [
+          { href: "/", label: "Accueil", icon: Home },
+          { href: "/attendance/today", label: "Pointage", icon: Clock },
+          { href: "/enrollment", label: "Inscrire", icon: PlusCircle, featured: true },
+          { href: "/payments/new", label: "Caisse", icon: Banknote },
+          { href: "/members", label: "Membres", icon: Search },
+        ];
 
   const close = useCallback(() => setOpen(false), []);
 
@@ -102,10 +125,7 @@ export function MobileNav() {
               <p className="px-3 pt-2 text-[0.6rem] font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)] opacity-60">
                 {section.title}
               </p>
-              {section.items.filter((item) =>
-                (!item.moduleKey || enabledModules.has(item.moduleKey)) &&
-                (!item.permission || role === "ADMIN" || account?.permissions.includes(item.permission)),
-              ).map((item) => (
+              {section.items.filter((item) => navItemIsVisible(item, account)).map((item) => (
                 <NavLink key={item.href} item={item} pathname={pathname} onClick={close} badge={navBadges[item.href]} />
               ))}
             </div>
@@ -148,11 +168,14 @@ export function MobileNav() {
 
       <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-8px_20px_rgba(15,23,42,0.1)] backdrop-blur lg:hidden dark:shadow-[0_-10px_28px_rgba(0,0,0,0.45)]">
         <nav className="mobile-quick-nav grid grid-cols-5 gap-1">
-          <QuickMobileLink href="/" label="Accueil" icon={Home} pathname={pathname} />
-          <QuickMobileLink href="/attendance/today" label="Pointage" icon={Clock} pathname={pathname} badge={navBadges["/attendance/today"]} />
-          <QuickMobileLink href="/enrollment" label="Inscrire" icon={PlusCircle} pathname={pathname} featured />
-          <QuickMobileLink href="/payments/new" label="Caisse" icon={Banknote} pathname={pathname} badge={navBadges["/payments/new"]} />
-          <QuickMobileLink href="/members" label="Membres" icon={Search} pathname={pathname} />
+          {quickLinks.map((item) => (
+            <QuickMobileLink
+              key={item.href}
+              {...item}
+              pathname={pathname}
+              badge={navBadges[item.href]}
+            />
+          ))}
         </nav>
       </div>
 

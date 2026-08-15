@@ -4,6 +4,7 @@ import {
   ClipboardCheck,
   CreditCard,
   Database,
+  Dumbbell,
   ShieldCheck,
   SlidersHorizontal,
   UserRound,
@@ -16,6 +17,7 @@ import { getClubSettings } from "@/lib/club-settings";
 import { formatMoney } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/request-user";
+import { getTenantProductContext } from "@/platform/product/product-context";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -41,15 +43,24 @@ export default async function SettingsHomePage() {
     );
   }
 
+  const product = await getTenantProductContext(authUser.tenantId);
+  const hasClasses = product.capabilities.classManagement;
+  const hasGym = product.capabilities.gymAccess;
+  const planKinds = product.profile === "CLASS_ONLY"
+    ? ["CLASS" as const]
+    : product.profile === "GYM_ONLY"
+      ? ["GYM" as const]
+      : ["CLASS" as const, "GYM" as const, "MIXED" as const];
+
   const [settings, activeGroups, activeSports, activePlans, activeOffers, users, templates] =
     await Promise.all([
       getClubSettings(),
-      prisma.group.count({ where: { tenantId: authUser.tenantId, isActive: true } }),
-      prisma.sport.count({ where: { tenantId: authUser.tenantId, isActive: true } }),
-      prisma.subscriptionPlan.count({ where: { tenantId: authUser.tenantId, isActive: true } }),
+      hasClasses ? prisma.group.count({ where: { tenantId: authUser.tenantId, isActive: true } }) : Promise.resolve(0),
+      hasClasses ? prisma.sport.count({ where: { tenantId: authUser.tenantId, isActive: true } }) : Promise.resolve(0),
+      prisma.subscriptionPlan.count({ where: { tenantId: authUser.tenantId, isActive: true, planKind: { in: planKinds } } }),
       prisma.offer.count({ where: { tenantId: authUser.tenantId, isActive: true } }),
       prisma.user.count({ where: { tenantId: authUser.tenantId, isActive: true } }),
-      prisma.scheduleTemplate.count({ where: { tenantId: authUser.tenantId, isActive: true } }),
+      hasClasses ? prisma.scheduleTemplate.count({ where: { tenantId: authUser.tenantId, isActive: true } }) : Promise.resolve(0),
     ]);
 
   const workingDaysLabel = settings.workingDays
@@ -61,7 +72,11 @@ export default async function SettingsHomePage() {
       <PageHeader
         overline="Réglages"
         title="Centre de configuration"
-        description="Pilotez les règles du club, les horaires, les documents, les accès et la reprise de données."
+        description={product.profile === "GYM_ONLY"
+          ? "Pilotez les accès salle, les formules, les reçus et les comptes de votre équipe."
+          : product.profile === "HYBRID"
+            ? "Pilotez les cours, les accès salle, les documents et les règles communes du club."
+            : "Pilotez les règles du club, les horaires, les documents, les accès et la reprise de données."}
       />
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -83,14 +98,28 @@ export default async function SettingsHomePage() {
             settings.receiptEmailDefault ? "Email du reçu automatique" : "Email du reçu manuel",
           ]}
         />
-        <SettingsTile
-          href="/settings/schedules"
-          icon={CalendarClock}
-          overline="Horaires"
-          title="Saisons et horaires types"
-          description="Créez des modèles hebdomadaires, appliquez-les aux groupes, puis générez les séances avec aperçu."
-          meta={[`${templates} modèle${templates > 1 ? "s" : ""}`, `${activeGroups} groupe${activeGroups > 1 ? "s" : ""} actif${activeGroups > 1 ? "s" : ""}`]}
-        />
+        {hasClasses ? (
+          <SettingsTile
+            href="/settings/schedules"
+            icon={CalendarClock}
+            overline="Horaires"
+            title="Saisons et horaires types"
+            description="Créez des modèles hebdomadaires, appliquez-les aux groupes, puis générez les séances avec aperçu."
+            meta={[`${templates} modèle${templates > 1 ? "s" : ""}`, `${activeGroups} groupe${activeGroups > 1 ? "s" : ""} actif${activeGroups > 1 ? "s" : ""}`]}
+          />
+        ) : null}
+        {hasGym ? (
+          <SettingsTile
+            href="/gym/check-in"
+            secondaryHref="/gym/visits"
+            secondaryLabel="Historique"
+            icon={Dumbbell}
+            overline="Salle"
+            title="Accès et passages"
+            description="Contrôlez les admissions, les quotas de visites et les corrections traçables."
+            meta={[product.profile === "HYBRID" ? "Module hybride actif" : "Module salle actif", "Accès sécurisés"]}
+          />
+        ) : null}
         <SettingsTile
           href="/subscription-plans"
           secondaryHref="/offers"
@@ -101,24 +130,28 @@ export default async function SettingsHomePage() {
           description="Gardez les tarifs, quotas de séances, disciplines et remises lisibles pour la réception."
           meta={[`${activePlans} formule${activePlans > 1 ? "s" : ""}`, `${activeOffers} offre${activeOffers > 1 ? "s" : ""}`]}
         />
-        <SettingsTile
-          href="/settings/data-import"
-          icon={Database}
-          overline="Reprise"
-          title="Import ancien fichier"
-          description="Préparez un fichier propre, contrôlez les erreurs et importez les élèves sans ressaisie manuelle."
-          meta={["Excel / CSV", "Controle avant import"]}
-        />
-        <SettingsTile
-          href="/sports"
-          secondaryHref="/coaches"
-          secondaryLabel="Coachs"
-          icon={ClipboardCheck}
-          overline="Catalogue"
-          title="Disciplines et encadrement"
-          description="Organisez les disciplines, les coachs, les specialites et les groupes qui structurent le planning."
-          meta={[`${activeSports} discipline${activeSports > 1 ? "s" : ""}`, "Spécialités coachs"]}
-        />
+        {hasClasses ? (
+          <SettingsTile
+            href="/settings/data-import"
+            icon={Database}
+            overline="Reprise"
+            title="Import ancien fichier"
+            description="Préparez un fichier propre, contrôlez les erreurs et importez les élèves sans ressaisie manuelle."
+            meta={["Excel / CSV", "Contrôle avant import"]}
+          />
+        ) : null}
+        {hasClasses ? (
+          <SettingsTile
+            href="/sports"
+            secondaryHref="/coaches"
+            secondaryLabel="Coachs"
+            icon={ClipboardCheck}
+            overline="Catalogue"
+            title="Disciplines et encadrement"
+            description="Organisez les disciplines, les coachs, les spécialités et les groupes qui structurent le planning."
+            meta={[`${activeSports} discipline${activeSports > 1 ? "s" : ""}`, "Spécialités coachs"]}
+          />
+        ) : null}
         <SettingsTile
           href="/settings/users"
           secondaryHref="/logs"

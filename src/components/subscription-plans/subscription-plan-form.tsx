@@ -35,15 +35,19 @@ export function SubscriptionPlanForm({
   mode,
   planId,
   initialValues,
+  classModuleEnabled = true,
   gymModuleEnabled = false,
+  initialPlanKind,
 }: {
   mode: "create" | "edit";
   planId?: string;
   initialValues?: SubscriptionPlanFormValues;
+  classModuleEnabled?: boolean;
   gymModuleEnabled?: boolean;
+  initialPlanKind?: PlanKind;
 }) {
   const router = useRouter();
-  const initialKind = initialValues?.planKind ?? "CLASS";
+  const initialKind = initialValues?.planKind ?? initialPlanKind ?? (classModuleEnabled ? "CLASS" : "GYM");
   const initialClassRights = initialValues?.entitlements?.filter((item) => item.type === "CLASS_SESSIONS").map((item) => ({
     sportId: item.sportId ?? "",
     sessionsPerWeek: item.sessionsPerWeek ?? 3,
@@ -65,8 +69,9 @@ export function SubscriptionPlanForm({
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!classModuleEnabled) return;
     fetch("/api/sports").then((response) => response.json()).then((json) => setSports(json.data ?? [])).catch(() => {});
-  }, []);
+  }, [classModuleEnabled]);
 
   const entitlements = useMemo(() => {
     const classItems = (planKind === "CLASS" || planKind === "MIXED")
@@ -79,7 +84,8 @@ export function SubscriptionPlanForm({
   }, [classRights, gymAccessMode, gymVisitQuota, planKind]);
 
   function changeKind(next: PlanKind) {
-    if (next !== "CLASS" && !gymModuleEnabled) return;
+    if ((next === "CLASS" && !classModuleEnabled) || (next === "GYM" && !gymModuleEnabled)) return;
+    if (next === "MIXED" && (!classModuleEnabled || !gymModuleEnabled)) return;
     setPlanKind(next);
     setMessage(null);
     if ((next === "CLASS" || next === "MIXED") && classRights.length === 0) {
@@ -127,9 +133,9 @@ export function SubscriptionPlanForm({
 
       <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Type de formule">
         {[
-          { value: "CLASS" as const, label: "Cours collectifs", icon: BookOpen, disabled: false },
+          { value: "CLASS" as const, label: "Cours collectifs", icon: BookOpen, disabled: !classModuleEnabled },
           { value: "GYM" as const, label: "Accès salle", icon: Dumbbell, disabled: !gymModuleEnabled },
-          { value: "MIXED" as const, label: "Pack mixte", icon: Layers3, disabled: !gymModuleEnabled },
+          { value: "MIXED" as const, label: "Pack mixte", icon: Layers3, disabled: !classModuleEnabled || !gymModuleEnabled },
         ].map((option) => {
           const Icon = option.icon;
           return (

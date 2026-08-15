@@ -40,6 +40,27 @@ if (skipTestDbSetup) {
       update: { status: "ACTIVE" },
     });
 
+    await prisma.tenantModule.upsert({
+      where: {
+        tenantId_moduleKey: {
+          tenantId: TEST_TENANT_ID,
+          moduleKey: "CLASS_MANAGEMENT",
+        },
+      },
+      create: {
+        id: "tenant_test_module_class",
+        tenantId: TEST_TENANT_ID,
+        moduleKey: "CLASS_MANAGEMENT",
+        status: "ENABLED",
+        enabledAt: new Date(),
+      },
+      update: {
+        status: "ENABLED",
+        enabledAt: new Date(),
+        disabledAt: null,
+      },
+    });
+
     await prisma.clubSettings.upsert({
       where: { tenantId: TEST_TENANT_ID },
       create: { tenantId: TEST_TENANT_ID },

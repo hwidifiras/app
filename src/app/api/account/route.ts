@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { setAuthSessionCookie } from "@/lib/auth-session";
 import { requireAuth } from "@/lib/request-user";
+import { getTenantProductContext } from "@/platform/product/product-context";
 
 export const runtime = "nodejs";
 
@@ -27,23 +28,21 @@ const updateAccountSchema = z
 export async function GET(request: Request) {
   try {
     const auth = await requireAuth(request);
-    const user = await prisma.user.findFirst({
-      where: { id: auth.id, tenantId: auth.tenantId },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        isActive: true,
-        createdAt: true,
-        permissions: { select: { key: true } },
-        tenant: {
-          select: {
-            modules: { where: { status: "ENABLED" }, select: { moduleKey: true } },
-          },
+    const [user, product] = await Promise.all([
+      prisma.user.findFirst({
+        where: { id: auth.id, tenantId: auth.tenantId },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          isActive: true,
+          createdAt: true,
+          permissions: { select: { key: true } },
         },
-      },
-    });
+      }),
+      getTenantProductContext(auth.tenantId),
+    ]);
 
     if (!user) {
       return NextResponse.json({ error: "Compte introuvable" }, { status: 404 });
@@ -53,8 +52,10 @@ export async function GET(request: Request) {
       data: {
         ...user,
         permissions: user.permissions.map((p) => p.key),
-        modules: user.tenant?.modules.map((item) => item.moduleKey) ?? [],
-        tenant: undefined,
+        modules: product.modules,
+        productProfile: product.profile,
+        productCapabilities: product.capabilities,
+        saasStatus: product.saasStatus,
       },
     });
   } catch (e) {

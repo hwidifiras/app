@@ -7,7 +7,10 @@ import {
 } from "@/lib/schemas/subscription-plan";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { validatePlanSessionsPerWeekForSport } from "@/lib/sport-weekly-standard";
-import { isTenantModuleEnabled } from "@/lib/tenant-modules";
+import {
+  getTenantProductContext,
+  type TenantProductContext,
+} from "@/platform/product/product-context";
 
 export const runtime = "nodejs";
 
@@ -41,6 +44,18 @@ function planAuditSnapshot(plan: SubscriptionPlanAuditSnapshot) {
   };
 }
 
+function canManagePlanKind(product: TenantProductContext, planKind: "CLASS" | "GYM" | "MIXED") {
+  if (planKind === "CLASS") return product.capabilities.classManagement;
+  if (planKind === "GYM") return product.capabilities.gymAccess;
+  return product.capabilities.mixedSales;
+}
+
+function visiblePlanKinds(product: TenantProductContext) {
+  if (product.profile === "CLASS_ONLY") return ["CLASS" as const];
+  if (product.profile === "GYM_ONLY") return ["GYM" as const];
+  return ["CLASS" as const, "GYM" as const, "MIXED" as const];
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q")?.trim();
@@ -51,14 +66,17 @@ export async function GET(request: Request) {
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
+  const product = await getTenantProductContext(actor.tenantId);
+  const allowedKinds = visiblePlanKinds(product);
 
   const plans = await prisma.subscriptionPlan.findMany({
     where: query
       ? {
           tenantId: actor.tenantId,
+          planKind: { in: allowedKinds },
           OR: [{ name: { contains: query } }, { description: { contains: query } }],
         }
-      : { tenantId: actor.tenantId },
+      : { tenantId: actor.tenantId, planKind: { in: allowedKinds } },
     orderBy: { createdAt: "desc" },
     take: 50,
     include: {
@@ -98,8 +116,9 @@ export async function POST(request: Request) {
     );
   }
 
-  if (parsed.data.planKind !== "CLASS" && !(await isTenantModuleEnabled(actor.tenantId, "GYM"))) {
-    return NextResponse.json({ error: "Le module salle n'est pas actif pour ce club" }, { status: 403 });
+  const product = await getTenantProductContext(actor.tenantId);
+  if (!canManagePlanKind(product, parsed.data.planKind)) {
+    return NextResponse.json({ error: "Ce type de formule n'est pas actif pour ce club" }, { status: 403 });
   }
   const classRights = parsed.data.entitlements.filter((item) => item.type === "CLASS_SESSIONS");
   const sportIds = classRights.map((item) => item.sportId).filter((id): id is string => Boolean(id));
@@ -248,8 +267,9 @@ export async function PATCH(request: Request) {
     if (!merged.success) {
       return NextResponse.json({ error: "Configuration de formule invalide", details: merged.error.flatten() }, { status: 400 });
     }
-    if (merged.data.planKind !== "CLASS" && !(await isTenantModuleEnabled(actor.tenantId, "GYM"))) {
-      return NextResponse.json({ error: "Le module salle n'est pas actif pour ce club" }, { status: 403 });
+    const product = await getTenantProductContext(actor.tenantId);
+    if (!canManagePlanKind(product, merged.data.planKind)) {
+      return NextResponse.json({ error: "Ce type de formule n'est pas actif pour ce club" }, { status: 403 });
     }
     const nextClassRights = merged.data.entitlements.filter((item) => item.type === "CLASS_SESSIONS");
     const nextSportIds = nextClassRights.map((item) => item.sportId).filter((id): id is string => Boolean(id));

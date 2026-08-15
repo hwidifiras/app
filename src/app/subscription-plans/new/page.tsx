@@ -3,10 +3,15 @@ import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { SubscriptionPlanForm } from "@/components/subscription-plans/subscription-plan-form";
 import { getAuthUser } from "@/lib/request-user";
-import { isTenantModuleEnabled } from "@/lib/tenant-modules";
+import { getTenantProductContext } from "@/platform/product/product-context";
 
-export default async function NewPlanPage() {
+export default async function NewPlanPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ kind?: string }>;
+}) {
   const authUser = await getAuthUser();
+  const { kind } = await searchParams;
 
   if (!authUser) {
     return (
@@ -22,7 +27,14 @@ export default async function NewPlanPage() {
       </main>
     );
   }
-  const gymModuleEnabled = await isTenantModuleEnabled(authUser.tenantId, "GYM");
+  const product = await getTenantProductContext(authUser.tenantId);
+  const initialPlanKind = product.profile === "GYM_ONLY"
+    ? "GYM"
+    : product.profile === "HYBRID" && kind === "gym"
+      ? "GYM"
+      : product.profile === "HYBRID" && kind === "mixed"
+        ? "MIXED"
+        : "CLASS";
 
   return (
     <main className="app-shell py-4 md:py-8">
@@ -37,7 +49,12 @@ export default async function NewPlanPage() {
       />
 
       <section className="panel p-4 sm:p-6">
-        <SubscriptionPlanForm mode="create" gymModuleEnabled={gymModuleEnabled} />
+        <SubscriptionPlanForm
+          mode="create"
+          classModuleEnabled={product.capabilities.classManagement}
+          gymModuleEnabled={product.capabilities.gymAccess}
+          initialPlanKind={initialPlanKind}
+        />
       </section>
     </main>
   );

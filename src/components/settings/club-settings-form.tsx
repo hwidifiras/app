@@ -58,6 +58,7 @@ export type ClubSettingsFormData = {
 
 type ClubSettingsFormProps = {
   initial: ClubSettingsFormData;
+  classModuleEnabled?: boolean;
   gymModuleEnabled?: boolean;
 };
 
@@ -74,7 +75,11 @@ function moneyInputToCents(value: string): number {
   return Math.round(amount * 100);
 }
 
-export function ClubSettingsForm({ initial, gymModuleEnabled = false }: ClubSettingsFormProps) {
+export function ClubSettingsForm({
+  initial,
+  classModuleEnabled = true,
+  gymModuleEnabled = false,
+}: ClubSettingsFormProps) {
   const router = useRouter();
   const [clubName, setClubName] = useState(initial.clubName);
   const [clubLogoUrl, setClubLogoUrl] = useState(initial.clubLogoUrl ?? "");
@@ -141,7 +146,7 @@ export function ClubSettingsForm({ initial, gymModuleEnabled = false }: ClubSett
       return;
     }
 
-    if (workingDays.length === 0) {
+    if (classModuleEnabled && workingDays.length === 0) {
       setMessage("Selectionnez au moins un jour d'ouverture du club");
       return;
     }
@@ -322,9 +327,9 @@ export function ClubSettingsForm({ initial, gymModuleEnabled = false }: ClubSett
         items={[
           { href: "#club-identity", label: "Identité" },
           { href: "#club-access", label: "Accès" },
-          { href: "#club-checkin", label: "Pointage" },
+          ...(classModuleEnabled ? [{ href: "#club-checkin", label: "Pointage" }] : []),
           ...(gymModuleEnabled ? [{ href: "#club-gym", label: "Salle" }] : []),
-          { href: "#club-planning", label: "Planning" },
+          ...(classModuleEnabled ? [{ href: "#club-planning", label: "Planning" }] : []),
           { href: "#club-alerts", label: "Alertes" },
           { href: "#club-dashboard", label: "Dashboard" },
           { href: "#club-receipts", label: "Reçus" },
@@ -358,14 +363,16 @@ export function ClubSettingsForm({ initial, gymModuleEnabled = false }: ClubSett
         />
       </FormSection>
 
-      <ClubCheckinRulesSection
-        allowPartialPayment={allowPartialPayment}
-        allowWithoutSubscription={allowWithoutSubscription}
-        absentConsumesSession={absentConsumesSession}
-        onAllowPartialPaymentChange={setAllowPartialPayment}
-        onAllowWithoutSubscriptionChange={setAllowWithoutSubscription}
-        onAbsentConsumesSessionChange={setAbsentConsumesSession}
-      />
+      {classModuleEnabled ? (
+        <ClubCheckinRulesSection
+          allowPartialPayment={allowPartialPayment}
+          allowWithoutSubscription={allowWithoutSubscription}
+          absentConsumesSession={absentConsumesSession}
+          onAllowPartialPaymentChange={setAllowPartialPayment}
+          onAllowWithoutSubscriptionChange={setAllowWithoutSubscription}
+          onAbsentConsumesSessionChange={setAbsentConsumesSession}
+        />
+      ) : null}
 
       {gymModuleEnabled ? (
         <ClubGymRulesSection
@@ -382,14 +389,16 @@ export function ClubSettingsForm({ initial, gymModuleEnabled = false }: ClubSett
         />
       ) : null}
 
-      <ClubPlanningRulesSection
-        workingDays={workingDays}
-        allowSameRoomConcurrentGroups={allowSameRoomConcurrentGroups}
-        allowCoachConcurrentSameRoomQualified={allowCoachConcurrentSameRoomQualified}
-        onToggleWorkingDay={toggleWorkingDay}
-        onAllowSameRoomConcurrentGroupsChange={setAllowSameRoomConcurrentGroups}
-        onAllowCoachConcurrentSameRoomQualifiedChange={setAllowCoachConcurrentSameRoomQualified}
-      />
+      {classModuleEnabled ? (
+        <ClubPlanningRulesSection
+          workingDays={workingDays}
+          allowSameRoomConcurrentGroups={allowSameRoomConcurrentGroups}
+          allowCoachConcurrentSameRoomQualified={allowCoachConcurrentSameRoomQualified}
+          onToggleWorkingDay={toggleWorkingDay}
+          onAllowSameRoomConcurrentGroupsChange={setAllowSameRoomConcurrentGroups}
+          onAllowCoachConcurrentSameRoomQualifiedChange={setAllowCoachConcurrentSameRoomQualified}
+        />
+      ) : null}
 
       <ClubAlertsSection
         debtThresholdAmount={debtThresholdAmount}
@@ -399,6 +408,7 @@ export function ClubSettingsForm({ initial, gymModuleEnabled = false }: ClubSett
       />
 
       <ClubDashboardSection
+        classModuleEnabled={classModuleEnabled}
         dashboardDefaultMode={dashboardDefaultMode}
         dashboardShowTodaySessions={dashboardShowTodaySessions}
         dashboardShowCashToday={dashboardShowCashToday}

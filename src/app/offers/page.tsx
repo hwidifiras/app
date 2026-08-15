@@ -6,6 +6,7 @@ import { OffersManager } from "@/components/offers/offers-manager";
 import { PageHeader } from "@/components/ui/page-header";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/request-user";
+import { getTenantProductContext } from "@/platform/product/product-context";
 
 export const dynamic = "force-dynamic";
 
@@ -27,11 +28,19 @@ export default async function OffersPage() {
     );
   }
 
-  const sports = await prisma.sport.findMany({
-    where: { tenantId: authUser.tenantId, isActive: true },
-    select: { id: true, name: true },
-    orderBy: { name: "asc" },
-  });
+  const product = await getTenantProductContext(authUser.tenantId);
+  const sports = product.capabilities.classManagement
+    ? await prisma.sport.findMany({
+        where: { tenantId: authUser.tenantId, isActive: true },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      })
+    : [];
+  const allowedPlanScopes = product.profile === "CLASS_ONLY"
+    ? ["ALL" as const, "CLASS" as const]
+    : product.profile === "GYM_ONLY"
+      ? ["ALL" as const, "GYM" as const]
+      : ["ALL" as const, "CLASS" as const, "GYM" as const, "MIXED" as const];
 
   return (
     <main className="app-shell py-4 md:py-8">
@@ -46,7 +55,11 @@ export default async function OffersPage() {
         }
       />
       <Suspense fallback={<p className="text-sm text-[var(--muted-foreground)]">Chargement…</p>}>
-        <OffersManager sportsOptions={sports} />
+        <OffersManager
+          sportsOptions={sports}
+          allowedPlanScopes={allowedPlanScopes}
+          classModuleEnabled={product.capabilities.classManagement}
+        />
       </Suspense>
     </main>
   );

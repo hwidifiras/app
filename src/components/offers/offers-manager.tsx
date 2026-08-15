@@ -22,6 +22,8 @@ type OfferKindValue = "PERCENT_OFF" | "FIXED_OFF" | "FAMILY_BUNDLE" | "SECOND_DI
 
 type OffersManagerProps = {
   sportsOptions: Array<{ id: string; name: string }>;
+  allowedPlanScopes?: Array<"ALL" | "CLASS" | "GYM" | "MIXED">;
+  classModuleEnabled?: boolean;
 };
 
 const OFFER_KIND_HELP: Record<OfferKindValue, { title: string; example: string }> = {
@@ -52,15 +54,21 @@ const OFFER_TEMPLATES: Array<{ key: OfferTemplateKey; label: string; description
   { key: "manual", label: "Remise manuelle", description: "Montant fixe contrôlé par l'équipe." },
 ];
 
-export function OffersManager({ sportsOptions }: OffersManagerProps) {
+export function OffersManager({
+  sportsOptions,
+  allowedPlanScopes = ["ALL", "CLASS"],
+  classModuleEnabled = true,
+}: OffersManagerProps) {
   const searchParams = useSearchParams();
   const contextMemberId = searchParams.get("memberId") ?? "";
+  const requestedKind = searchParams.get("kind") as OfferKindValue | null;
+  const initialKind = requestedKind === "SECOND_DISCIPLINE" && !classModuleEnabled
+    ? "PERCENT_OFF"
+    : requestedKind ?? "PERCENT_OFF";
 
   const [offers, setOffers] = useState<OfferRow[]>([]);
   const [name, setName] = useState("");
-  const [kind, setKind] = useState<OfferKindValue>(
-    (searchParams.get("kind") as OfferKindValue | null) ?? "PERCENT_OFF",
-  );
+  const [kind, setKind] = useState<OfferKindValue>(initialKind);
   const [percentOff, setPercentOff] = useState("10");
   const [fixedAmount, setFixedAmount] = useState("");
   const [bundlePrice, setBundlePrice] = useState("");
@@ -268,7 +276,7 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
           <strong>Inscription</strong>.
         </p>
         <div className="mb-4 grid gap-2 sm:grid-cols-2">
-          {OFFER_TEMPLATES.map((template) => (
+          {OFFER_TEMPLATES.filter((template) => classModuleEnabled || template.key !== "second-discipline").map((template) => (
             <button
               key={template.key}
               type="button"
@@ -319,16 +327,16 @@ export function OffersManager({ sportsOptions }: OffersManagerProps) {
               <option value="PERCENT_OFF">Réduction % sur le devis</option>
               <option value="FIXED_OFF">Montant fixe offert par ligne (TND)</option>
               <option value="FAMILY_BUNDLE">Forfait famille (prix total)</option>
-              <option value="SECOND_DISCIPLINE">Réduction 2e discipline (%)</option>
+              {classModuleEnabled ? <option value="SECOND_DISCIPLINE">Réduction 2e discipline (%)</option> : null}
             </select>
           </label>
           <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
             Formules concernées
             <select className="field" value={planScope} onChange={(event) => setPlanScope(event.target.value as typeof planScope)}>
-              <option value="ALL">Toutes les formules</option>
-              <option value="CLASS">Cours collectifs</option>
-              <option value="GYM">Accès salle</option>
-              <option value="MIXED">Packs mixtes</option>
+              {allowedPlanScopes.includes("ALL") ? <option value="ALL">Toutes les formules</option> : null}
+              {allowedPlanScopes.includes("CLASS") ? <option value="CLASS">Cours collectifs</option> : null}
+              {allowedPlanScopes.includes("GYM") ? <option value="GYM">Accès salle</option> : null}
+              {allowedPlanScopes.includes("MIXED") ? <option value="MIXED">Packs mixtes</option> : null}
             </select>
           </label>
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-sm">

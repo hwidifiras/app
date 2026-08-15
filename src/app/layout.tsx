@@ -15,6 +15,8 @@ import { isAdminOnlyPath, requiredPermissionForPath } from "@/lib/route-permissi
 import { enterTenantContext, getTenantContext } from "@/lib/tenant-context";
 import { resolveTenantFromHost } from "@/lib/tenant-resolver";
 import { THEME_INIT_SCRIPT } from "@/lib/theme-init-script";
+import { getTenantProductContext } from "@/platform/product/product-context";
+import { requiredProductModuleForPath } from "@/platform/product/product-registry";
 import "./globals.css";
 
 const appName = getAppName();
@@ -77,6 +79,14 @@ export default async function RootLayout({
 
     if (denied) {
       redirect("/?denied=1");
+    }
+
+    const requiredModule = requiredProductModuleForPath(pathname);
+    if (requiredModule) {
+      const product = await getTenantProductContext(user.tenantId);
+      if (!product.modules.includes(requiredModule)) {
+        redirect("/?module=unavailable");
+      }
     }
   }
 

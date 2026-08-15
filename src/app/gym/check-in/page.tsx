@@ -12,7 +12,7 @@ export const revalidate = 0;
 
 export default async function GymCheckInPage() {
   const user = await getAuthUser();
-  const enabled = user ? await isTenantModuleEnabled(user.tenantId, "GYM") : false;
+  const enabled = user ? await isTenantModuleEnabled(user.tenantId, "GYM_ACCESS") : false;
   const permitted = user ? await userHasPermission(user, "gym.checkin") : false;
   const canManageVisits = user ? await userHasPermission(user, "gym.manage") : false;
 

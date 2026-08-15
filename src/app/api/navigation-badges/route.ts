@@ -10,6 +10,7 @@ import {
   deriveSessionLifecycle,
   expectedMemberIdsAtSession,
 } from "@/lib/session-lifecycle";
+import { getTenantProductContext } from "@/platform/product/product-context";
 
 export const dynamic = "force-dynamic";
 
@@ -54,9 +55,12 @@ export async function GET(request: Request) {
   try {
     const user = await requireAuth(request);
     const tenantId = user.tenantId;
-    const includeAttendance = await userHasPermission(user, "attendance.manage");
+    const product = await getTenantProductContext(tenantId);
+    const includeAttendance =
+      product.capabilities.classManagement && await userHasPermission(user, "attendance.manage");
     const includePayments = await userHasPermission(user, "payments.manage");
-    const includeCatalog = await userHasPermission(user, "catalog.manage");
+    const includeSubscriptions = await userHasPermission(user, "catalog.manage");
+    const includeClassCatalog = product.capabilities.classManagement && includeSubscriptions;
     const now = new Date();
     const today = utcDateOnlyForTimeZone(now);
     const overdueSince = new Date(today);
@@ -94,7 +98,7 @@ export async function GET(request: Request) {
             },
           })
         : Promise.resolve([]),
-      includePayments || includeCatalog
+      includePayments || includeSubscriptions
         ? prisma.memberSubscription.findMany({
             where: { tenantId, status: "ACTIVE" },
             select: {
@@ -107,7 +111,7 @@ export async function GET(request: Request) {
             },
           })
         : Promise.resolve([]),
-      includeCatalog
+      includeClassCatalog
         ? prisma.session.findMany({
             where: {
               tenantId,
@@ -127,7 +131,7 @@ export async function GET(request: Request) {
             },
           })
         : Promise.resolve([]),
-      includeCatalog
+      includeClassCatalog
         ? prisma.coach.findMany({
             where: { tenantId, isActive: true },
             select: {
@@ -137,7 +141,7 @@ export async function GET(request: Request) {
             },
           })
         : Promise.resolve([]),
-      includeCatalog ? getClubSettings() : Promise.resolve(null),
+      includeClassCatalog ? getClubSettings() : Promise.resolve(null),
     ]);
 
     const pointageCount = attendanceSessions.filter((session) => {
@@ -153,9 +157,9 @@ export async function GET(request: Request) {
     }).length;
 
     const paymentCount = includePayments ? subscriptions.filter(hasRemainingBalance).length : 0;
-    const renewalCount = includeCatalog ? subscriptions.filter((subscription) => needsRenewal(subscription, now)).length : 0;
+    const renewalCount = includeSubscriptions ? subscriptions.filter((subscription) => needsRenewal(subscription, now)).length : 0;
     const conflictCount =
-      includeCatalog && settings
+      includeClassCatalog && settings
         ? buildPlanningConflictDetails({
             sessions: planningSessions.map((session) => ({
               id: session.id,

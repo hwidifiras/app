@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { getClubSettings } from "@/lib/club-settings";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/request-user";
-import { isTenantModuleEnabled } from "@/lib/tenant-modules";
+import { getTenantProductContext } from "@/platform/product/product-context";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -20,8 +20,14 @@ export default async function EnrollmentPage({
   const { memberId, offerId, step, type } = await searchParams;
   const user = await getAuthUser();
   const settings = await getClubSettings();
-  const gymModuleEnabled = user ? await isTenantModuleEnabled(user.tenantId, "GYM") : false;
-  const selectedType = gymModuleEnabled && (type === "gym" || type === "mixed") ? type : "class";
+  const product = user ? await getTenantProductContext(user.tenantId) : null;
+  const gymModuleEnabled = product?.capabilities.gymAccess ?? false;
+  const classModuleEnabled = product?.capabilities.classManagement ?? false;
+  const selectedType = product?.profile === "GYM_ONLY"
+    ? "gym"
+    : product?.profile === "HYBRID" && (type === "gym" || type === "mixed")
+      ? type
+      : "class";
   const initialStep = step === "2" || step === "3" ? Number(step) : 1;
 
   const accessData = user && selectedType !== "class"
@@ -44,11 +50,13 @@ export default async function EnrollmentPage({
             entitlements: { select: { type: true, grantedUnits: true, gymAccessMode: true, sport: { select: { id: true, name: true } } }, orderBy: { sortOrder: "asc" } },
           },
         }),
-        prisma.group.findMany({
-          where: { tenantId: user.tenantId, isActive: true },
-          orderBy: { name: "asc" },
-          select: { id: true, name: true, sportId: true, sport: { select: { name: true } } },
-        }),
+        selectedType === "mixed"
+          ? prisma.group.findMany({
+              where: { tenantId: user.tenantId, isActive: true },
+              orderBy: { name: "asc" },
+              select: { id: true, name: true, sportId: true, sport: { select: { name: true } } },
+            })
+          : Promise.resolve([]),
       ])
     : null;
 
@@ -61,7 +69,7 @@ export default async function EnrollmentPage({
         actions={selectedType !== "class" ? <Link href="/members/new" className="btn btn-ghost"><UserPlus className="size-4" /> Nouveau membre</Link> : undefined}
       />
 
-      {gymModuleEnabled ? (
+      {gymModuleEnabled && classModuleEnabled ? (
         <nav className="mb-5 grid gap-2 sm:grid-cols-3" aria-label="Type d'inscription">
           <Link href="/enrollment?type=class" className={`flex min-h-12 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-semibold ${selectedType === "class" ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)]"}`}><BookOpen className="size-4" /> Cours</Link>
           <Link href="/enrollment?type=gym" className={`flex min-h-12 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-semibold ${selectedType === "gym" ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)]"}`}><Dumbbell className="size-4" /> Salle</Link>

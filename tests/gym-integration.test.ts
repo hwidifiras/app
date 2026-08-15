@@ -55,7 +55,7 @@ async function createGymFixture(accessMode: "UNLIMITED" | "VISIT_QUOTA", granted
 describe("gym access integration", () => {
   beforeEach(async () => {
     setFallbackTenantContext({ tenantId: TENANT_ID, tenantSlug: TENANT_SLUG, host: "test.local" });
-    await prisma.tenantModule.deleteMany({ where: { tenantId: TENANT_ID, moduleKey: "GYM" } });
+    await prisma.tenantModule.deleteMany({ where: { tenantId: TENANT_ID, moduleKey: "GYM_ACCESS" } });
     await prisma.clubSettings.update({
       where: { tenantId: TENANT_ID },
       data: {
@@ -68,11 +68,11 @@ describe("gym access integration", () => {
   });
 
   it("keeps the module disabled until the tenant explicitly enables it", async () => {
-    expect(await isTenantModuleEnabled(TENANT_ID, "GYM")).toBe(false);
+    expect(await isTenantModuleEnabled(TENANT_ID, "GYM_ACCESS")).toBe(false);
     await prisma.tenantModule.create({
-      data: { tenantId: TENANT_ID, moduleKey: "GYM", status: "ENABLED", enabledAt: new Date() },
+      data: { tenantId: TENANT_ID, moduleKey: "GYM_ACCESS", status: "ENABLED", enabledAt: new Date() },
     });
-    expect(await isTenantModuleEnabled(TENANT_ID, "GYM")).toBe(true);
+    expect(await isTenantModuleEnabled(TENANT_ID, "GYM_ACCESS")).toBe(true);
   });
 
   it("snapshots a quota pass and applies payment, exhaustion, and override policy", async () => {

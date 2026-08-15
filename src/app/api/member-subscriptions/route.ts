@@ -17,7 +17,6 @@ import { checkGroupMemberCompatibility } from "@/lib/demographics";
 import { createSubscriptionFromPlan } from "@/lib/subscription-service";
 import { sumLedgerRows } from "@/lib/payment-ledger";
 import { issueReceiptForPayment } from "@/lib/receipts";
-import { isTenantModuleEnabled } from "@/lib/tenant-modules";
 import { resolveMemberPhone } from "@/lib/member-phone";
 import { memberAuditSnapshot } from "@/lib/member-audit";
 import { activeAssignmentWindow } from "@/lib/assignment-policy";
@@ -29,6 +28,7 @@ import {
   replayIdempotentResponse,
   runIdempotentSerializableTransaction,
 } from "@/lib/idempotency";
+import { getTenantProductContext } from "@/platform/product/product-context";
 
 export const runtime = "nodejs";
 
@@ -209,8 +209,14 @@ export async function POST(request: Request) {
     if (!plan) {
       return NextResponse.json({ error: "Plan introuvable" }, { status: 404 });
     }
-    if (plan.planKind !== "CLASS" && !(await isTenantModuleEnabled(actor.tenantId, "GYM"))) {
-      return NextResponse.json({ error: "Le module salle n'est pas actif pour ce club" }, { status: 403 });
+    const product = await getTenantProductContext(actor.tenantId);
+    const planKindEnabled = plan.planKind === "CLASS"
+      ? product.capabilities.classManagement
+      : plan.planKind === "GYM"
+        ? product.capabilities.gymAccess
+        : product.capabilities.mixedSales;
+    if (!planKindEnabled) {
+      return NextResponse.json({ error: "Ce type de formule n'est pas actif pour ce club" }, { status: 403 });
     }
     if (plan.planKind !== "MIXED" && groupIds.length > 0) {
       return NextResponse.json({ error: "Les groupes sont reserves aux packs mixtes dans ce parcours" }, { status: 400 });

@@ -63,7 +63,7 @@ export default async function EditSubscriptionPlanPage({
       </main>
     );
   }
-  const gymModuleEnabled = await isTenantModuleEnabled(authUser.tenantId, "GYM");
+  const gymModuleEnabled = await isTenantModuleEnabled(authUser.tenantId, "GYM_ACCESS");
 
   return (
     <main className="app-shell py-4 md:py-8">

@@ -31,13 +31,14 @@ import { useAppShellData, type NavigationBadge } from "@/components/layout/app-s
 import { ClubBrandMark } from "@/components/layout/club-brand-mark";
 import { useClubBranding } from "@/components/layout/club-branding-provider";
 import { cn } from "@/lib/utils";
+import type { ProductModule } from "@/platform/product/product-context";
 
 export type NavItem = {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   adminOnly?: boolean;
-  moduleKey?: "GYM";
+  moduleKey?: ProductModule;
   permission?: string;
 };
 
@@ -50,9 +51,9 @@ export const dailySection: NavSection = {
   title: "Aujourd'hui",
   items: [
     { href: "/", label: "Accueil", icon: LayoutDashboard },
-    { href: "/attendance/today", label: "Pointage", icon: Clock },
-    { href: "/sessions", label: "Planning", icon: CalendarRange },
-    { href: "/gym/check-in", label: "Acces salle", icon: Dumbbell, moduleKey: "GYM", permission: "gym.checkin" },
+    { href: "/attendance/today", label: "Pointage", icon: Clock, moduleKey: "CLASS_MANAGEMENT" },
+    { href: "/sessions", label: "Planning", icon: CalendarRange, moduleKey: "CLASS_MANAGEMENT" },
+    { href: "/gym/check-in", label: "Accès salle", icon: Dumbbell, moduleKey: "GYM_ACCESS", permission: "gym.checkin" },
   ],
 };
 
@@ -70,17 +71,18 @@ export const studentsSection: NavSection = {
   title: "Élèves",
   items: [
     { href: "/members", label: "Membres", icon: Users },
-    { href: "/attendance", label: "Historique présences", icon: Activity },
-    { href: "/attendance/groups", label: "Suivi groupes", icon: ClipboardCheck },
+    { href: "/attendance", label: "Historique présences", icon: Activity, moduleKey: "CLASS_MANAGEMENT" },
+    { href: "/attendance/groups", label: "Suivi groupes", icon: ClipboardCheck, moduleKey: "CLASS_MANAGEMENT" },
+    { href: "/gym/visits", label: "Historique accès", icon: Dumbbell, moduleKey: "GYM_ACCESS", permission: "gym.manage" },
   ],
 };
 
 export const clubSection: NavSection = {
   title: "Club",
   items: [
-    { href: "/groups", label: "Groupes & horaires", icon: CalendarDays },
-    { href: "/coaches", label: "Coachs", icon: User },
-    { href: "/sports", label: "Disciplines", icon: Dumbbell },
+    { href: "/groups", label: "Groupes & horaires", icon: CalendarDays, moduleKey: "CLASS_MANAGEMENT" },
+    { href: "/coaches", label: "Coachs", icon: User, moduleKey: "CLASS_MANAGEMENT" },
+    { href: "/sports", label: "Disciplines", icon: Dumbbell, moduleKey: "CLASS_MANAGEMENT" },
   ],
 };
 
@@ -89,10 +91,10 @@ export const settingsSection: NavSection = {
   items: [
     { href: "/settings", label: "Vue d'ensemble", icon: Settings },
     { href: "/settings/club", label: "Club", icon: Building2 },
-    { href: "/settings/schedules", label: "Horaires & saisons", icon: CalendarClock },
+    { href: "/settings/schedules", label: "Horaires & saisons", icon: CalendarClock, moduleKey: "CLASS_MANAGEMENT" },
     { href: "/subscription-plans", label: "Formules", icon: ClipboardCheck },
     { href: "/offers", label: "Offres", icon: CreditCard },
-    { href: "/settings/data-import", label: "Import ancien fichier", icon: Import },
+    { href: "/settings/data-import", label: "Import ancien fichier", icon: Import, moduleKey: "CLASS_MANAGEMENT" },
   ],
 };
 
@@ -139,8 +141,26 @@ export function isLinkActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-export function getConfigurationSections(role: string | null) {
-  return role === "ADMIN" ? [settingsSection, adminSection] : [accountSettingsSection];
+export function navItemIsVisible(
+  item: NavItem,
+  account: { role: string; permissions: string[]; modules: string[] } | null,
+) {
+  if (!account) return false;
+  if (item.adminOnly && account.role !== "ADMIN") return false;
+  if (item.moduleKey && !account.modules.includes(item.moduleKey)) return false;
+  if (item.permission && account.role !== "ADMIN" && !account.permissions.includes(item.permission)) return false;
+  return true;
+}
+
+export function getConfigurationSections(
+  role: string | null,
+  account?: { role: string; permissions: string[]; modules: string[] } | null,
+) {
+  const sections = role === "ADMIN" ? [settingsSection, adminSection] : [accountSettingsSection];
+  if (!account) return sections;
+  return sections
+    .map((section) => ({ ...section, items: section.items.filter((item) => navItemIsVisible(item, account)) }))
+    .filter((section) => section.items.length > 0);
 }
 
 export function NavLink({
@@ -209,8 +229,7 @@ export function AppSidebar({
   const { account, navBadges } = useAppShellData();
   const { appName } = useClubBranding();
   const role = account?.role ?? null;
-  const enabledModules = new Set(account?.modules ?? []);
-  const configurationSections = getConfigurationSections(role);
+  const configurationSections = getConfigurationSections(role, account);
 
   const inClubConfig = configurationSections.some((section) =>
     section.items.some((item) => isLinkActive(pathname, item.href)),
@@ -256,10 +275,7 @@ export function AppSidebar({
                 {section.title}
               </p>
             ) : null}
-            {section.items.filter((item) =>
-              (!item.moduleKey || enabledModules.has(item.moduleKey)) &&
-              (!item.permission || role === "ADMIN" || account?.permissions.includes(item.permission)),
-            ).map((item) => (
+            {section.items.filter((item) => navItemIsVisible(item, account)).map((item) => (
               <NavLink
                 key={item.href}
                 item={item}

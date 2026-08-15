@@ -16,6 +16,7 @@ const DASHBOARD_MODE_OPTIONS: Array<{
 ];
 
 type ClubDashboardSectionProps = {
+  classModuleEnabled?: boolean;
   dashboardDefaultMode: DashboardDefaultMode;
   dashboardShowTodaySessions: boolean;
   dashboardShowCashToday: boolean;
@@ -35,6 +36,7 @@ type ClubDashboardSectionProps = {
 };
 
 export function ClubDashboardSection({
+  classModuleEnabled = true,
   dashboardDefaultMode,
   dashboardShowTodaySessions,
   dashboardShowCashToday,
@@ -126,13 +128,15 @@ export function ClubDashboardSection({
         </div>
 
         <FormGrid>
-          <SettingsToggleRow
-            id="dashboardShowTodaySessions"
-            label="Seances du jour"
-            description="Affiche les cours a pointer et les actions du quotidien."
-            checked={dashboardShowTodaySessions}
-            onChange={onDashboardShowTodaySessionsChange}
-          />
+          {classModuleEnabled ? (
+            <SettingsToggleRow
+              id="dashboardShowTodaySessions"
+              label="Séances du jour"
+              description="Affiche les cours à pointer et les actions du quotidien."
+              checked={dashboardShowTodaySessions}
+              onChange={onDashboardShowTodaySessionsChange}
+            />
+          ) : null}
           <SettingsToggleRow
             id="dashboardShowCashToday"
             label="Caisse aujourd'hui"
@@ -140,13 +144,15 @@ export function ClubDashboardSection({
             checked={dashboardShowCashToday}
             onChange={onDashboardShowCashTodayChange}
           />
-          <SettingsToggleRow
-            id="dashboardShowDataConfidence"
-            label="Alertes donnees"
-            description="Signale les reglages incomplets qui peuvent fausser l'exploitation."
-            checked={dashboardShowDataConfidence}
-            onChange={onDashboardShowDataConfidenceChange}
-          />
+          {classModuleEnabled ? (
+            <SettingsToggleRow
+              id="dashboardShowDataConfidence"
+              label="Alertes données"
+              description="Signale les réglages incomplets qui peuvent fausser l'exploitation."
+              checked={dashboardShowDataConfidence}
+              onChange={onDashboardShowDataConfidenceChange}
+            />
+          ) : null}
           <SettingsToggleRow
             id="dashboardShowCashTrend"
             label="Tendance encaissements"

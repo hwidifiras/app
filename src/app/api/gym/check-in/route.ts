@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 
 async function authorize(request: Request) {
   const actor = await requirePermission(request, "gym.checkin");
-  await requireTenantModule(actor.tenantId, "GYM");
+  await requireTenantModule(actor.tenantId, "GYM_ACCESS");
   return actor;
 }
 

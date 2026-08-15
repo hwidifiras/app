@@ -37,6 +37,25 @@ await prisma.clubSettings.upsert({
   update: {},
 });
 
+await prisma.tenantModule.upsert({
+  where: {
+    tenantId_moduleKey: {
+      tenantId: tenant.id,
+      moduleKey: "CLASS_MANAGEMENT",
+    },
+  },
+  create: {
+    tenantId: tenant.id,
+    moduleKey: "CLASS_MANAGEMENT",
+    status: "ENABLED",
+    enabledAt: new Date(),
+  },
+  update: {
+    status: "ENABLED",
+    disabledAt: null,
+  },
+});
+
 await prisma.$disconnect();
 
 console.log(`Tenant ready: ${tenant.slug} (${tenant.id})`);

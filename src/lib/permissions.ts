@@ -39,6 +39,12 @@ export async function requirePermission(
 
 export function permissionErrorResponse(error: unknown) {
   const code = error instanceof Error ? error.message : "FORBIDDEN";
+  if (code === "MODULE_DISABLED") {
+    return { error: "Module non actif pour ce club", status: 404 };
+  }
+  if (code === "TENANT_PRODUCT_UNCONFIGURED") {
+    return { error: "Modules du club non configurés", status: 503 };
+  }
   return {
     error: code === "UNAUTHENTICATED" ? "Non authentifié" : "Accès refusé",
     status: code === "UNAUTHENTICATED" ? 401 : 403,

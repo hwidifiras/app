@@ -1,4 +1,5 @@
 import type { PermissionKey } from "@/lib/permission-definitions";
+import { productRouteForPath } from "@/platform/product/product-registry";
 
 export const ROUTE_PERMISSION_RULES: Array<{ paths: string[]; permission: PermissionKey }> = [
   { paths: ["/enrollment", "/api/enrollment", "/api/group-members"], permission: "enrollment.manage" },
@@ -43,6 +44,9 @@ export const ADMIN_ROUTE_PREFIXES = [
 ] as const;
 
 export function requiredPermissionForPath(pathname: string): PermissionKey | null {
+  const productPermission = productRouteForPath(pathname)?.permission;
+  if (productPermission) return productPermission;
+
   for (const rule of ROUTE_PERMISSION_RULES) {
     if (rule.paths.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
       return rule.permission;

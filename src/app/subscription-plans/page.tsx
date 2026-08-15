@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/request-user";
 import { PageHeader } from "@/components/ui/page-header";
 import { SubscriptionPlansTable } from "@/components/subscription-plans/subscription-plans-table";
+import { getTenantProductContext } from "@/platform/product/product-context";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -48,10 +49,16 @@ export default async function SubscriptionPlansPage() {
     _count: { subscriptions: number };
   }>;
   let hasError = false;
+  const product = await getTenantProductContext(authUser.tenantId);
+  const visiblePlanKinds = product.profile === "CLASS_ONLY"
+    ? ["CLASS" as const]
+    : product.profile === "GYM_ONLY"
+      ? ["GYM" as const]
+      : ["CLASS" as const, "GYM" as const, "MIXED" as const];
 
   try {
     plans = await prisma.subscriptionPlan.findMany({
-      where: { tenantId: authUser.tenantId },
+      where: { tenantId: authUser.tenantId, planKind: { in: visiblePlanKinds } },
       orderBy: { createdAt: "desc" },
       include: {
         _count: { select: { subscriptions: true } },

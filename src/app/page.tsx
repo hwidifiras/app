@@ -45,7 +45,7 @@ import { isPaymentReminderEmailConfigured } from "@/lib/email";
 import { enrichDebtsWithReminderMeta } from "@/lib/payment-reminders";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/request-user";
-import { isTenantModuleEnabled } from "@/lib/tenant-modules";
+import { getTenantProductContext } from "@/platform/product/product-context";
 import {
   deriveSessionLifecycle,
   expectedMemberIdsAtSession,
@@ -717,7 +717,7 @@ function EmptyDashboardConfigurationPanel({ isAdmin }: { isAdmin: boolean }) {
 export default async function Home({
   searchParams,
 }: {
-  searchParams?: Promise<{ view?: string }>;
+  searchParams?: Promise<{ view?: string; module?: string }>;
 }) {
   const dashboardParams = searchParams ? await searchParams : {};
   const authUser = await getAuthUser();
@@ -734,6 +734,9 @@ export default async function Home({
   }
 
   const tenantId = authUser.tenantId;
+  const product = await getTenantProductContext(tenantId);
+  const classModuleEnabled = product.capabilities.classManagement;
+  const gymModuleEnabled = product.capabilities.gymAccess;
   let hasDataError = false;
   let activeMembers = 0;
   let newMembersThisMonth = 0;
@@ -789,7 +792,6 @@ export default async function Home({
   let priorityItems: PriorityItem[] = [];
   let dataConfidenceItems: DataConfidenceItem[] = [];
   let emailConfigured = false;
-  let gymModuleEnabled = false;
   let showGymOverview = true;
   let gymStats = { visitsToday: 0, activePasses: 0, expiringSoon: 0 };
   let dashboardPreferences: DashboardPreferenceSettings = {
@@ -819,7 +821,6 @@ export default async function Home({
 
   try {
     const clubSettings = await getClubSettings({ tenantId });
-    gymModuleEnabled = await isTenantModuleEnabled(tenantId, "GYM");
     showGymOverview = clubSettings.dashboardShowGymOverview;
     dashboardPreferences = {
       dashboardDefaultMode: clubSettings.dashboardDefaultMode,
@@ -853,13 +854,15 @@ export default async function Home({
     ] = await Promise.all([
       prisma.member.count({ where: { tenantId, status: "ACTIVE" } }),
       prisma.member.count({ where: { tenantId, status: "ACTIVE", joinedAt: { gte: monthStart, lt: tomorrow } } }),
-      prisma.session.count({
-        where: {
-          tenantId,
-          sessionDate: { gte: today, lt: tomorrow },
-          status: { not: "CANCELLED" },
-        },
-      }),
+      classModuleEnabled
+        ? prisma.session.count({
+            where: {
+              tenantId,
+              sessionDate: { gte: today, lt: tomorrow },
+              status: { not: "CANCELLED" },
+            },
+          })
+        : Promise.resolve(0),
       loadDashboardPaymentReadModel({
         tenantId,
         paymentWindowStart,
@@ -886,40 +889,42 @@ export default async function Home({
         },
         _count: { _all: true },
       }),
-      prisma.session.findMany({
-        where: {
-          tenantId,
-          sessionDate: { gte: overdueSince, lt: tomorrow },
-          status: { in: ["PLANNED", "RESCHEDULED", "COMPLETED"] },
-        },
-        select: {
-          id: true,
-          sessionDate: true,
-          startTime: true,
-          endTime: true,
-          room: true,
-          status: true,
-          coach: { select: { firstName: true, lastName: true } },
-          group: {
+      classModuleEnabled
+        ? prisma.session.findMany({
+            where: {
+              tenantId,
+              sessionDate: { gte: overdueSince, lt: tomorrow },
+              status: { in: ["PLANNED", "RESCHEDULED", "COMPLETED"] },
+            },
             select: {
-              name: true,
-              members: {
-                where: { tenantId },
+              id: true,
+              sessionDate: true,
+              startTime: true,
+              endTime: true,
+              room: true,
+              status: true,
+              coach: { select: { firstName: true, lastName: true } },
+              group: {
                 select: {
-                  memberId: true,
-                  status: true,
-                  startDate: true,
-                  endDate: true,
-                  member: { select: { status: true } },
+                  name: true,
+                  members: {
+                    where: { tenantId },
+                    select: {
+                      memberId: true,
+                      status: true,
+                      startDate: true,
+                      endDate: true,
+                      member: { select: { status: true } },
+                    },
+                  },
                 },
               },
+              attendances: { where: { tenantId }, select: { memberId: true } },
             },
-          },
-          attendances: { where: { tenantId }, select: { memberId: true } },
-        },
-        orderBy: [{ sessionDate: "desc" }, { startTime: "asc" }],
-        take: 200,
-      }),
+            orderBy: [{ sessionDate: "desc" }, { startTime: "asc" }],
+            take: 200,
+          })
+        : Promise.resolve([]),
       prisma.member.findMany({
         where: { tenantId, status: "ACTIVE" },
         orderBy: [{ joinedAt: "desc" }, { createdAt: "desc" }],
@@ -1164,7 +1169,7 @@ export default async function Home({
     authUser.permissions,
   );
 
-  const todayPanel = dashboardVisibility.todaySessions ? (
+  const todayPanel = classModuleEnabled && dashboardVisibility.todaySessions ? (
     <TodayWorkPanel todaySessions={todaySessions} priorityItems={priorityItems} />
   ) : null;
   const cashPanel = dashboardVisibility.cashToday ? (
@@ -1180,7 +1185,7 @@ export default async function Home({
     />
   ) : null;
   const dataConfidencePanel =
-    dashboardVisibility.dataConfidence && dataConfidenceItems.length > 0 ? (
+    classModuleEnabled && dashboardVisibility.dataConfidence && dataConfidenceItems.length > 0 ? (
       <DataConfidencePanel items={dataConfidenceItems} />
     ) : null;
   const cashTrendPanel = dashboardVisibility.cashTrend ? (
@@ -1196,6 +1201,8 @@ export default async function Home({
     />
   ) : null;
   const gymOverviewPanel = gymModuleEnabled && showGymOverview ? <GymOverviewPanel {...gymStats} /> : null;
+  const primaryOperationsPanel = classModuleEnabled ? todayPanel : gymOverviewPanel;
+  const secondaryGymPanel = classModuleEnabled && gymModuleEnabled ? gymOverviewPanel : null;
   const commercialPanel = dashboardVisibility.commercialInsights ? (
     hasCommercialActivity ? (
       <SalesSnapshotPanel
@@ -1256,10 +1263,14 @@ export default async function Home({
                 Tableau de bord
               </p>
               <h1 className="mt-2 text-2xl font-bold leading-tight tracking-normal sm:text-4xl">
-                Aujourd&apos;hui au club
+                {product.profile === "GYM_ONLY" ? "Aujourd'hui à la salle" : "Aujourd'hui au club"}
               </h1>
               <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--hero-muted)] sm:text-base sm:leading-7">
-                Les séances à pointer, les encaissements à suivre et les priorités qui demandent une action.
+                {product.profile === "GYM_ONLY"
+                  ? "Les accès à contrôler, les encaissements à suivre et les pass qui demandent une action."
+                  : product.profile === "HYBRID"
+                    ? "Les cours, les accès salle et les encaissements qui demandent une action."
+                    : "Les séances à pointer, les encaissements à suivre et les priorités qui demandent une action."}
               </p>
             </div>
             <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[32rem]">
@@ -1271,9 +1282,11 @@ export default async function Home({
               </div>
               <div className="rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 backdrop-blur sm:px-4 sm:py-3">
                 <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[var(--hero-muted)]">
-                  Séances
+                  {product.profile === "GYM_ONLY" ? "Entrées" : "Séances"}
                 </p>
-                <p className="mt-2 text-sm font-bold text-white">{sessionsToday} aujourd&apos;hui</p>
+                <p className="mt-2 text-sm font-bold text-white">
+                  {product.profile === "GYM_ONLY" ? gymStats.visitsToday : sessionsToday} aujourd&apos;hui
+                </p>
               </div>
               <div className="rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 backdrop-blur sm:px-4 sm:py-3">
                 <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[var(--hero-muted)]">
@@ -1292,6 +1305,13 @@ export default async function Home({
           </div>
         ) : null}
 
+        {dashboardParams.module === "unavailable" ? (
+          <div className="flex items-center gap-2 rounded-lg border border-[var(--primary)]/25 bg-[var(--primary)]/8 px-4 py-3 text-sm font-medium text-[var(--foreground)]">
+            <AlertCircle className="size-4 shrink-0 text-[var(--primary)]" />
+            Ce module n&apos;est pas activé pour votre club. Vos autres espaces restent disponibles.
+          </div>
+        ) : null}
+
         <DashboardViewSwitcher mode={dashboardMode} canSwitch={canSwitchDashboardView} />
 
         {visibleDashboardPanels === 0 ? (
@@ -1299,18 +1319,18 @@ export default async function Home({
         ) : dashboardMode === "PILOTAGE" ? (
           <>
             <DashboardGridRow variant="balanced">{[cashPanel, cashTrendPanel]}</DashboardGridRow>
-            <DashboardGridRow variant="wideLeft">{[membersOverviewPanel, todayPanel]}</DashboardGridRow>
-            {gymOverviewPanel}
+            <DashboardGridRow variant="wideLeft">{[membersOverviewPanel, primaryOperationsPanel]}</DashboardGridRow>
+            {secondaryGymPanel}
             {dataConfidencePanel}
             {commercialPanel}
             {detailedDebtsPanel}
           </>
         ) : (
           <>
-            <DashboardGridRow variant="wideLeft">{[todayPanel, cashPanel]}</DashboardGridRow>
+            <DashboardGridRow variant="wideLeft">{[primaryOperationsPanel, cashPanel]}</DashboardGridRow>
             {dataConfidencePanel}
             <DashboardGridRow variant="balanced">{[cashTrendPanel, membersOverviewPanel]}</DashboardGridRow>
-            {gymOverviewPanel}
+            {secondaryGymPanel}
             {detailedDebtsPanel}
           </>
         )}

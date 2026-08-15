@@ -4,6 +4,7 @@ export type TenantContext = {
   tenantId: string;
   tenantSlug: string;
   host?: string;
+  requestCache?: Map<string, unknown>;
 };
 
 const tenantStorage = new AsyncLocalStorage<TenantContext>();
@@ -72,6 +73,21 @@ export function getTenantId(): string | null {
 
 export function getRequiredTenantId(): string {
   return getRequiredTenantContext().tenantId;
+}
+
+export function memoizeTenantRequest<T>(key: string, factory: () => Promise<T>): Promise<T> {
+  const context = tenantStorage.getStore();
+  if (!context) return factory();
+
+  const requestCache = context.requestCache ?? new Map<string, unknown>();
+  context.requestCache = requestCache;
+
+  const cached = requestCache.get(key) as Promise<T> | undefined;
+  if (cached) return cached;
+
+  const value = factory();
+  requestCache.set(key, value);
+  return value;
 }
 
 export function isTenantScopedModel(model: string | undefined): boolean {

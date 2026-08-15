@@ -139,7 +139,8 @@ enum GymVisitEntryType {
 }
 
 enum TenantModuleKey {
-  GYM
+  CLASS_MANAGEMENT
+  GYM_ACCESS
 }
 
 enum TenantModuleStatus {

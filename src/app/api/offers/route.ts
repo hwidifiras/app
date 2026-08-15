@@ -10,6 +10,7 @@ import {
 } from "@/lib/offer-rules";
 import { createOfferSchema } from "@/lib/schemas/offer";
 import { validateStaffOfferDiscount } from "@/lib/membership-rules";
+import { getTenantProductContext } from "@/platform/product/product-context";
 
 export const runtime = "nodejs";
 
@@ -20,9 +21,15 @@ export async function GET(request: Request) {
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
+  const product = await getTenantProductContext(actor.tenantId);
+  const visibleScopes = product.profile === "CLASS_ONLY"
+    ? ["ALL" as const, "CLASS" as const]
+    : product.profile === "GYM_ONLY"
+      ? ["ALL" as const, "GYM" as const]
+      : ["ALL" as const, "CLASS" as const, "GYM" as const, "MIXED" as const];
 
   const offers = await prisma.offer.findMany({
-    where: { tenantId: actor.tenantId, isActive: true },
+    where: { tenantId: actor.tenantId, isActive: true, planScope: { in: visibleScopes } },
     orderBy: { createdAt: "desc" },
     include: {
       sport: { select: { id: true, name: true } },
@@ -61,6 +68,14 @@ export async function POST(request: Request) {
       { error: "Validation échouée", details: parsed.error.flatten() },
       { status: 400 },
     );
+  }
+  const product = await getTenantProductContext(actor.tenantId);
+  const scopeEnabled = parsed.data.planScope === "ALL"
+    || (parsed.data.planScope === "CLASS" && product.capabilities.classManagement)
+    || (parsed.data.planScope === "GYM" && product.capabilities.gymAccess)
+    || (parsed.data.planScope === "MIXED" && product.capabilities.mixedSales);
+  if (!scopeEnabled || (parsed.data.kind === "SECOND_DISCIPLINE" && !product.capabilities.classManagement)) {
+    return NextResponse.json({ error: "Cette offre cible un module non actif" }, { status: 403 });
   }
 
   let resolvedRules;

@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { CLUB_DAY_SHORT_LABELS } from "@/lib/club-working-days";
 import { getClubSettings } from "@/lib/club-settings";
 import { getAuthUser } from "@/lib/request-user";
-import { isTenantModuleEnabled } from "@/lib/tenant-modules";
+import { getTenantProductContext } from "@/platform/product/product-context";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -29,7 +29,9 @@ export default async function SettingsClubPage() {
   }
 
   const settings = await getClubSettings();
-  const gymModuleEnabled = await isTenantModuleEnabled(authUser.tenantId, "GYM");
+  const product = await getTenantProductContext(authUser.tenantId);
+  const gymModuleEnabled = product.capabilities.gymAccess;
+  const classModuleEnabled = product.capabilities.classManagement;
   const workingDaysLabel = settings.workingDays
     .map((day) => CLUB_DAY_SHORT_LABELS[day])
     .join(", ");
@@ -46,19 +48,29 @@ export default async function SettingsClubPage() {
       <PageHeader
         overline="Réglages"
         title="Club"
-        description="Personnaliser logo, coordonnées et règles de pointage utilisées par la réception."
+        description={product.profile === "GYM_ONLY"
+          ? "Personnaliser le club, les règles d'accès salle, les reçus et le dashboard."
+          : product.profile === "HYBRID"
+            ? "Personnaliser le club et les règles communes aux cours et à l'accès salle."
+            : "Personnaliser logo, coordonnées et règles de pointage utilisées par la réception."}
       />
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <SettingsMetric label="Club" value={settings.clubName || "Non nommé"} detail={settings.clubPhone || "Téléphone à compléter"} />
         <SettingsMetric label="Jours ouverts" value={`${settings.workingDays.length} jours`} detail={workingDaysLabel || "À définir"} />
-        <SettingsMetric label="Pointage" value={settings.absentConsumesSession ? "Absence déduite" : "Absence non déduite"} detail={pointagePolicy} />
+        <SettingsMetric
+          label={product.profile === "GYM_ONLY" ? "Accès salle" : "Pointage"}
+          value={product.profile === "GYM_ONLY"
+            ? settings.gymAllowCheckInWithPartialPayment ? "Partiel accepté" : "Paiement complet"
+            : settings.absentConsumesSession ? "Absence déduite" : "Absence non déduite"}
+          detail={product.profile === "GYM_ONLY" ? `${settings.gymDuplicateScanWindowMinutes} min anti-doublon` : pointagePolicy}
+        />
         <SettingsMetric label="Reçus" value={settings.receiptPrefix} detail={receiptPolicy} />
       </section>
 
       <div className="mt-5 grid w-full gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <section className="xl:order-2">
-          <ReceptionRulesCard />
+          <ReceptionRulesCard profile={product.profile} />
         </section>
 
         <section className="min-w-0 xl:order-1">
@@ -77,6 +89,7 @@ export default async function SettingsClubPage() {
           </div>
 
         <ClubSettingsForm
+          classModuleEnabled={classModuleEnabled}
           gymModuleEnabled={gymModuleEnabled}
           initial={{
             clubName: settings.clubName,

@@ -13,6 +13,17 @@ type AccountData = {
   isActive: boolean;
   permissions: string[];
   modules: string[];
+  productProfile: "CLASS_ONLY" | "GYM_ONLY" | "HYBRID";
+  productCapabilities: {
+    classManagement: boolean;
+    gymAccess: boolean;
+    classSales: boolean;
+    gymSales: boolean;
+    mixedSales: boolean;
+    classReports: boolean;
+    gymReports: boolean;
+  };
+  saasStatus: "ACTIVE" | "SUSPENDED";
 };
 
 type NotificationData = {
