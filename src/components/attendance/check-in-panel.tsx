@@ -5,6 +5,7 @@ import { Clock } from "lucide-react";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { weekStartIsoForDate } from "@/lib/dates";
 import { useActionHistory } from "@/hooks/use-action-history";
+import { useIdempotencyIntent } from "@/hooks/use-idempotency-intent";
 import { SessionCard, type SessionCardData } from "./session-card";
 import { CheckInDrawer } from "./check-in-drawer";
 
@@ -64,6 +65,10 @@ export function CheckInPanel({
   const { push, undoLast, loading: undoLoading, countInScope } = useActionHistory<AttendanceUndoMeta["sessionId"]>({
     enableKeyboard: true,
   });
+  const {
+    keyFor: keyForAttendanceIntent,
+    complete: completeAttendanceIntent,
+  } = useIdempotencyIntent();
 
   const effectiveSession = selectedId ? sessions.find((s) => s.id === selectedId) : null;
   const sessionUndoCount = selectedId ? countInScope(selectedId) : 0;
@@ -107,22 +112,35 @@ export function CheckInPanel({
 
       const session = sessions.find((s) => s.id === sessionId);
       const existingAtt = session?.attendances.find((a) => a.memberId === mid);
+      const idempotencyPayload = existingAtt
+        ? {
+            attendanceId: existingAtt.id,
+            payload: { status, overrideReason: overrideReason?.trim() || null },
+          }
+        : { sessionId, memberId: mid, status, overrideReason, overrideKind };
 
       let res: Response;
 
-      if (existingAtt) {
+      try {
+        if (existingAtt) {
         res = await fetch("/api/attendances", {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": keyForAttendanceIntent(idempotencyPayload),
+          },
           body: JSON.stringify({
             attendanceId: existingAtt.id,
             payload: { status, overrideReason: overrideReason?.trim() || null },
           }),
         });
-      } else {
+        } else {
         res = await fetch("/api/attendances", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": keyForAttendanceIntent(idempotencyPayload),
+          },
           body: JSON.stringify({
             sessionId,
             memberId: mid,
@@ -132,6 +150,11 @@ export function CheckInPanel({
             checkedBy: "Réception",
           }),
         });
+        }
+      } catch {
+        setMessage("Connexion interrompue. Réessayez : le pointage ne sera pas créé deux fois.");
+        setLoadingId(null);
+        return false;
       }
 
       const json: { data?: { id: string; status: string }; error?: string; warning?: string } =
@@ -141,6 +164,7 @@ export function CheckInPanel({
         setLoadingId(null);
         return false;
       }
+      completeAttendanceIntent(idempotencyPayload);
 
       const attendanceId = json.data?.id ?? existingAtt?.id ?? "";
       const nextStatus = json.data?.status ?? status;
@@ -185,23 +209,32 @@ export function CheckInPanel({
         label: "Pointage",
         undo: async () => {
           let undoRes: Response;
+          let undoPayload: unknown;
           if (meta.kind === "create" || !meta.previous) {
+            undoPayload = { attendanceId: meta.attendanceId };
             undoRes = await fetch("/api/attendances", {
               method: "DELETE",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ attendanceId: meta.attendanceId }),
+              headers: {
+                "Content-Type": "application/json",
+                "Idempotency-Key": keyForAttendanceIntent(undoPayload),
+              },
+              body: JSON.stringify(undoPayload),
             });
           } else {
+            undoPayload = {
+              attendanceId: meta.attendanceId,
+              payload: {
+                status: meta.previous.status,
+                overrideReason: meta.previous.overrideReason,
+              },
+            };
             undoRes = await fetch("/api/attendances", {
               method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                attendanceId: meta.attendanceId,
-                payload: {
-                  status: meta.previous.status,
-                  overrideReason: meta.previous.overrideReason,
-                },
-              }),
+              headers: {
+                "Content-Type": "application/json",
+                "Idempotency-Key": keyForAttendanceIntent(undoPayload),
+              },
+              body: JSON.stringify(undoPayload),
             });
           }
 
@@ -210,6 +243,7 @@ export function CheckInPanel({
             setMessage(undoJson.error ?? "Impossible d'annuler le pointage");
             return false;
           }
+          completeAttendanceIntent(undoPayload);
 
           revertAttendance(meta);
           setMessage(undoJson.warning ?? "Dernier pointage annulé");
@@ -221,7 +255,7 @@ export function CheckInPanel({
       setLoadingId(null);
       return true;
     },
-    [push, revertAttendance, sessions],
+    [completeAttendanceIntent, keyForAttendanceIntent, push, revertAttendance, sessions],
   );
 
   async function undoLastForSession() {
@@ -238,10 +272,14 @@ export function CheckInPanel({
     if (!latestAttendance) return;
 
     setLoadingId(latestAttendance.memberId);
+    const requestPayload = { attendanceId: latestAttendance.id };
     const response = await fetch("/api/attendances", {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ attendanceId: latestAttendance.id }),
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": keyForAttendanceIntent(requestPayload),
+      },
+      body: JSON.stringify(requestPayload),
     });
     const result = (await response.json()) as { error?: string; warning?: string };
     if (!response.ok) {
@@ -249,6 +287,7 @@ export function CheckInPanel({
       setLoadingId(null);
       return;
     }
+    completeAttendanceIntent(requestPayload);
 
     setSessions((current) =>
       current.map((item) =>

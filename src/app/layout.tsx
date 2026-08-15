@@ -57,7 +57,7 @@ export default async function RootLayout({
   const requestHeaders = await headers();
   const pathname = requestHeaders.get("x-pathname");
   const resolvedTenant = await resolveTenantFromHost(
-    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host"),
+    requestHeaders.get("host") ?? requestHeaders.get("x-forwarded-host"),
   );
 
   if (resolvedTenant.ok) {

@@ -22,8 +22,18 @@ const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 export async function POST(request: Request) {
   const tenant = await resolveTenantFromRequest(request);
   const tenantRateKey = tenant.ok ? tenant.context.tenantSlug : "unknown";
-  const rateLimit = checkRateLimit(`login:${tenantRateKey}:${getClientIp(request)}`, LOGIN_LIMIT, LOGIN_WINDOW_MS);
+  const rateLimit = await checkRateLimit(
+    `login:${tenantRateKey}:${getClientIp(request)}`,
+    LOGIN_LIMIT,
+    LOGIN_WINDOW_MS,
+  );
   if (!rateLimit.allowed) {
+    if (rateLimit.reason === "unavailable") {
+      return NextResponse.json(
+        { error: "Service de connexion temporairement indisponible." },
+        { status: 503, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } },
+      );
+    }
     return NextResponse.json(
       { error: "Trop de tentatives. Reessayez dans quelques minutes." },
       { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } },

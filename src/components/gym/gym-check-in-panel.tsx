@@ -94,7 +94,7 @@ export function GymCheckInPanel() {
               id="gym-member-search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              className="input h-11 w-full pl-9"
+              className="field h-11 w-full pl-9"
               placeholder="Nom, téléphone ou futur code membre"
               autoComplete="off"
             />
@@ -175,7 +175,7 @@ export function GymCheckInPanel() {
                   overrideOpen ? (
                     <div className="space-y-2">
                       <label className="text-xs font-semibold" htmlFor={`gym-reason-${decision.member.id}`}>Motif obligatoire</label>
-                      <textarea id={`gym-reason-${decision.member.id}`} value={overrideReason} onChange={(event) => setOverrideReason(event.target.value)} className="input min-h-20 w-full resize-y py-2" placeholder="Ex. validation exceptionnelle du responsable" />
+                      <textarea id={`gym-reason-${decision.member.id}`} value={overrideReason} onChange={(event) => setOverrideReason(event.target.value)} className="field min-h-20 w-full resize-y py-2" placeholder="Ex. validation exceptionnelle du responsable" />
                       <div className="flex gap-2">
                         <button type="button" className="btn btn-ghost flex-1" onClick={() => setOverrideMemberId(null)}>Annuler</button>
                         <button type="button" className="btn btn-primary flex-1" disabled={overrideReason.trim().length < 3 || submittingId === decision.member.id} onClick={() => void checkIn(decision, true)}>Autoriser</button>

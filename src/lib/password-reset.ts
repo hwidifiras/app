@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 
-import { prisma } from "@/lib/prisma";
+import { runSerializableTransaction } from "@/lib/serializable-transaction";
 import { getRequiredTenantId } from "@/lib/tenant-context";
 
 const RESET_TTL_MINUTES = 60;
@@ -10,7 +10,9 @@ export function hashResetToken(token: string): string {
 }
 
 export function buildResetUrl(token: string, origin?: string): string {
-  const baseUrl = process.env.APP_URL?.trim() || origin || "http://localhost:3000";
+  // A reset token is tenant-scoped, so a validated request origin must win over
+  // the platform fallback or the link can land on another tenant's hostname.
+  const baseUrl = origin || process.env.APP_URL?.trim() || "http://localhost:3000";
   const url = new URL("/reset-password", baseUrl);
   url.searchParams.set("token", token);
   return url.toString();
@@ -22,13 +24,23 @@ export async function createPasswordResetToken(userId: string) {
   const tokenHash = hashResetToken(token);
   const expiresAt = new Date(Date.now() + RESET_TTL_MINUTES * 60 * 1000);
 
-  await prisma.passwordResetToken.updateMany({
-    where: { tenantId, userId, usedAt: null },
-    data: { usedAt: new Date() },
-  });
+  await runSerializableTransaction(async (tx) => {
+    const user = await tx.user.findFirst({
+      where: { id: userId, tenantId, isActive: true },
+      select: { id: true },
+    });
+    if (!user) {
+      throw new Error("PASSWORD_RESET_USER_UNAVAILABLE");
+    }
 
-  await prisma.passwordResetToken.create({
-    data: { tenantId, userId, tokenHash, expiresAt },
+    await tx.passwordResetToken.updateMany({
+      where: { tenantId, userId, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+
+    await tx.passwordResetToken.create({
+      data: { tenantId, userId, tokenHash, expiresAt },
+    });
   });
 
   return { token, expiresAt };

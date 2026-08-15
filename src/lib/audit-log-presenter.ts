@@ -111,6 +111,15 @@ const ACTION_LABELS: Record<string, string> = {
   ADMIN_BOOTSTRAPPED: "Premier administrateur créé",
 };
 
+export function auditActionsMatchingQuery(query: string): string[] {
+  const normalized = query.trim().toLocaleLowerCase("fr-FR");
+  if (!normalized) return [];
+
+  return Object.entries(ACTION_LABELS)
+    .filter(([, label]) => label.toLocaleLowerCase("fr-FR").includes(normalized))
+    .map(([action]) => action);
+}
+
 const CLUB_FIELD_LABELS: Record<string, string> = {
   absentConsumesSession: "Absence consomme une seance",
   allowSameRoomConcurrentGroups: "Deux groupes dans la meme salle",

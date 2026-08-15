@@ -63,7 +63,7 @@ function loginRedirect(request: NextRequest, reason: "missing" | "invalid") {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const tenantSlug = tenantSlugFromHost(request.headers.get("x-forwarded-host") ?? request.headers.get("host"));
+  const tenantSlug = tenantSlugFromHost(request.headers.get("host") ?? request.headers.get("x-forwarded-host"));
 
   if (isPublicPath(pathname)) {
     const headers = sanitizedRequestHeaders(request);

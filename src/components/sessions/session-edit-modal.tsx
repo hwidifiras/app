@@ -1,5 +1,9 @@
+"use client";
+
+import { useId } from "react";
 import type { SessionDto, SessionStatusDto } from "@/types/session";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { useAccessibleDialog } from "@/hooks/use-accessible-dialog";
 import { formatCoachOptionLabel } from "@/lib/coach-display";
 
 export type SessionEditFormState = {
@@ -51,6 +55,8 @@ export function SessionEditModal({
   onClose,
   onSave,
 }: SessionEditModalProps) {
+  const titleId = useId();
+  const dialogRef = useAccessibleDialog<HTMLDivElement>({ open: true, onClose });
   const saveDisabled =
     editLoading ||
     editingHasAttendances ||
@@ -59,9 +65,21 @@ export function SessionEditModal({
     (needsCoachSportOverride && !editForm.coachSportOverrideReason.trim());
 
   return (
-    <div className="mobile-modal-overlay fixed inset-0 z-50 flex justify-center bg-black/40">
-      <div className="mobile-modal-panel border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-floating)] md:max-w-2xl md:rounded-lg">
-        <h3 className="text-lg font-semibold text-[var(--foreground)]">Modifier la séance</h3>
+    <div
+      className="mobile-modal-overlay fixed inset-0 z-50 flex justify-center bg-[var(--overlay)]"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div
+        ref={dialogRef}
+        className="mobile-modal-panel border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-floating)] md:max-w-2xl md:rounded-lg"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+      >
+        <h3 id={titleId} className="text-lg font-semibold text-[var(--foreground)]">Modifier la séance</h3>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
           {session.groupName} — {new Date(session.sessionDate).toLocaleDateString("fr-FR")}
         </p>

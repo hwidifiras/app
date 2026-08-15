@@ -2,7 +2,7 @@ FROM node:22-bookworm-slim AS deps
 
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV DATABASE_URL=postgresql://gymday:gymday@postgres:5432/gymday_prod?schema=public
+ENV DATABASE_URL=postgresql://build:build-only@127.0.0.1:5432/build?schema=public
 
 RUN apt-get update -y \
   && apt-get install -y --no-install-recommends openssl ca-certificates \
@@ -17,7 +17,7 @@ RUN npm ci
 FROM deps AS builder
 
 WORKDIR /app
-ENV DATABASE_URL=postgresql://gymday:gymday@postgres:5432/gymday_prod?schema=public
+ENV DATABASE_URL=postgresql://build:build-only@127.0.0.1:5432/build?schema=public
 COPY . .
 RUN npx prisma generate
 RUN npm run build
@@ -50,4 +50,7 @@ USER nextjs
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "test -n \"$AUTH_SECRET\" && test -n \"$APP_URL\" && npx prisma migrate deploy && npm run permissions:backfill && npm run start"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD ["node", "-e", "fetch('http://127.0.0.1:3000/api/ready').then((response) => { if (!response.ok) process.exit(1) }).catch(() => process.exit(1))"]
+
+CMD ["npm", "run", "start"]

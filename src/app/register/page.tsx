@@ -1,10 +1,32 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 
 import { PageHeader } from "@/components/ui/page-header";
 import { RegisterForm } from "@/components/auth/register-form";
+import { getClubSettings } from "@/lib/club-settings";
+import {
+  isPublicRegistrationGloballyEnabled,
+  resolvePublicRegistrationPolicy,
+} from "@/lib/registration-policy";
+import { enterTenantContext } from "@/lib/tenant-context";
+import { resolveTenantFromHost } from "@/lib/tenant-resolver";
 
-export default function RegisterPage() {
-  const enabled = process.env.ALLOW_PUBLIC_REGISTER === "true";
+async function isRegistrationEnabledForRequest(): Promise<boolean> {
+  if (!isPublicRegistrationGloballyEnabled()) return false;
+
+  const requestHeaders = await headers();
+  const tenant = await resolveTenantFromHost(
+    requestHeaders.get("host") ?? requestHeaders.get("x-forwarded-host"),
+  );
+  if (!tenant.ok) return false;
+
+  enterTenantContext(tenant.context);
+  const settings = await getClubSettings({ tenantId: tenant.context.tenantId });
+  return resolvePublicRegistrationPolicy(settings.allowPublicRegister).enabled;
+}
+
+export default async function RegisterPage() {
+  const enabled = await isRegistrationEnabledForRequest();
 
   if (!enabled) {
     return (
@@ -34,7 +56,7 @@ export default function RegisterPage() {
         <PageHeader
           overline="Accès"
           title="Créer un compte"
-          description="Créez un compte staff pour accéder à l'interface réception."
+          description="Envoyez votre demande d'accès à l'administrateur du club."
         />
 
         <section className="panel panel-soft p-5 md:p-6">

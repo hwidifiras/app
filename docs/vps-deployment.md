@@ -1,129 +1,169 @@
-# VPS Deployment
+# VPS deployment
 
-This is the fastest safe deployment path for tonight.
+This runbook deploys the PostgreSQL multi-tenant stack on one Ubuntu or Debian VPS. Nginx terminates TLS and proxies to the app bound on `127.0.0.1`.
 
-## 1. Server prerequisites
-
-On Ubuntu/Debian VPS:
+## 1. Install prerequisites
 
 ```bash
 sudo apt update
 sudo apt install -y git nginx certbot python3-certbot-nginx
 curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
+sudo usermod -aG docker "$USER"
 ```
 
 Log out and back in after adding Docker permissions.
 
-## 2. Upload or clone the app
+## 2. Clone the repository
 
 ```bash
-git clone <your-repo-url> dojo-saas
-cd dojo-saas/app
+sudo mkdir -p /opt/gymday
+sudo chown "$USER":"$USER" /opt/gymday
+git clone <your-repository-url> /opt/gymday
+cd /opt/gymday
 ```
 
-If you upload files manually, make sure `Dockerfile`, `docker-compose.yml`, `.env.production.example`, `prisma/`, `src/`, `package.json`, and `package-lock.json` are present.
+The deployment must include `Dockerfile`, `docker-compose.yml`, `prisma/`, `scripts/`, `src/`, `package.json`, and `package-lock.json`.
 
-## 3. Create production env
+## 3. Configure production
 
 ```bash
 cp .env.production.example .env.production
-nano .env.production
+chmod 600 .env.production
+POSTGRES_PASSWORD="$(openssl rand -hex 32)"
+AUTH_SECRET="$(openssl rand -base64 48)"
 ```
 
-Set:
+Edit `.env.production` and set the generated values plus the real public domain:
 
 ```env
-AUTH_SECRET="long-random-secret-at-least-32-chars"
-APP_URL="https://your-domain.com"
-APP_TIMEZONE="Africa/Tunis"
+POSTGRES_USER="gymday"
+POSTGRES_PASSWORD="paste-the-hex-value"
+POSTGRES_DB="gymday_prod"
+AUTH_SECRET="paste-the-base64-value"
+APP_URL="https://first-club.example.com"
+SAAS_ROOT_DOMAIN="example.com"
+DEFAULT_TENANT_SLUG="first-club"
 ALLOW_PUBLIC_REGISTER="false"
-RESEND_API_KEY=""
-PASSWORD_RESET_FROM="GymDay <no-reply@your-domain.com>"
+RATE_LIMIT_REDIS_REST_URL="https://your-rest-redis-endpoint"
+RATE_LIMIT_REDIS_REST_TOKEN="paste-the-rest-redis-token"
+TRUSTED_PROXY_HOPS="1"
 ```
 
-Generate a secret:
+Use a hexadecimal PostgreSQL password so it is safe both as the database password and inside the generated connection URL. Leave `RESEND_API_KEY` and `PASSWORD_RESET_FROM` both empty to disable email, or configure both with real values.
+
+Validate Compose interpolation and the application configuration before starting anything:
 
 ```bash
-openssl rand -base64 48
+docker compose --env-file .env.production config --quiet
+set -a
+. ./.env.production
+set +a
+npm ci
+npm run config:validate:production
 ```
 
-## 4. Start the app
+The Redis REST endpoint must be shared by every app replica; production authentication rate limits fail closed if it is missing or unavailable. `TRUSTED_PROXY_HOPS=1` is correct only for the direct Nginx-to-app topology shown below. Increase it only when another trusted proxy is deliberately added to the chain.
+
+The validator rejects missing values, development defaults, placeholder secrets, non-PostgreSQL URLs, missing shared rate-limit storage, invalid proxy trust, and an insecure public `APP_URL`.
+
+## 4. Start the stack
 
 ```bash
-docker compose up -d --build
-docker compose logs -f dojo-app
+docker compose --env-file .env.production up -d --build
+docker compose --env-file .env.production ps --all
+docker compose --env-file .env.production logs --tail=150 dojo-migrate dojo-app
 ```
 
-The app listens on `http://127.0.0.1:3000`.
+Expected state:
 
-SQLite production data is stored at `/app/data/prod.db` inside the Docker volume `dojo_data`.
+- `postgres` is healthy.
+- `dojo-migrate` exits with code `0` after the tenant-consistency preflight, `prisma migrate deploy`, and the permission backfill. If the preflight reports missing tenant IDs or cross-tenant references, repair those rows before retrying the release.
+- `dojo-app` is healthy and bound to `127.0.0.1:3000` by default.
 
-## 5. Create the first admin
+The migration service is separate from the web process, so restarting or scaling the app does not run schema changes in every web container.
+
+Verify both probes:
 
 ```bash
-docker compose exec dojo-app sh -lc 'ADMIN_EMAIL=admin@example.com ADMIN_NAME="Admin" ADMIN_PASSWORD="change-this-password" npm run admin:create'
+curl --fail http://127.0.0.1:3000/api/health
+curl --fail http://127.0.0.1:3000/api/ready
 ```
 
-Then open `/login`.
+## 5. Create the first tenant admin
 
-## 6. Configure Nginx
+The default tenant is created or selected with `DEFAULT_TENANT_SLUG`.
 
-Create `/etc/nginx/sites-available/dojo-saas`:
+```bash
+docker compose --env-file .env.production exec \
+  -e ADMIN_EMAIL=admin@example.com \
+  -e ADMIN_NAME="Admin" \
+  -e ADMIN_PASSWORD="replace-with-a-strong-password" \
+  dojo-app npm run admin:create
+```
+
+Sign in at `/login`, then create staff accounts from Settings.
+
+## 6. Configure Nginx and TLS
+
+Create `/etc/nginx/sites-available/gymday`:
 
 ```nginx
 server {
-    server_name your-domain.com www.your-domain.com;
+    listen 80;
+    server_name first-club.example.com;
+
+    client_max_body_size 10m;
 
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
     }
 }
 ```
 
-Enable it:
+The first hostname must match `DEFAULT_TENANT_SLUG` (`first-club.example.com` resolves to `first-club`). Before onboarding more tenants, configure wildcard DNS and a matching TLS certificate for `*.example.com`, then add that wildcard to `server_name`. A custom hostname must be stored as that tenant's `rootDomainAlias`. Always overwrite both `Host` and `X-Forwarded-Host` at the proxy boundary as shown above.
+
+Enable it and obtain a certificate:
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/dojo-saas /etc/nginx/sites-enabled/dojo-saas
+sudo ln -s /etc/nginx/sites-available/gymday /etc/nginx/sites-enabled/gymday
 sudo nginx -t
 sudo systemctl reload nginx
+sudo certbot --nginx -d first-club.example.com
 ```
 
-## 7. SSL
+## 7. Back up PostgreSQL
+
+Create a compressed logical backup before every deployment and on a schedule:
 
 ```bash
-sudo certbot --nginx -d your-domain.com -d www.your-domain.com
+mkdir -p /opt/gymday-backups
+docker compose --env-file .env.production exec -T postgres \
+  sh -lc 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' \
+  > "/opt/gymday-backups/gymday-$(date -u +%Y%m%dT%H%M%SZ).dump"
 ```
 
-## 8. Update deployment
+Verify that the file is non-empty and periodically test restoration into a disposable PostgreSQL database. Do not treat a Docker volume as a backup.
+
+## 8. Deploy an update
 
 ```bash
-git pull
-docker compose up -d --build
-docker compose logs -f dojo-app
+cd /opt/gymday
+git status --short
+git fetch origin
+git log --oneline HEAD..origin/main
+# Create and verify a PostgreSQL backup here.
+git pull --ff-only origin main
+docker compose --env-file .env.production config --quiet
+docker compose --env-file .env.production up -d --build
+docker compose --env-file .env.production ps --all
+curl --fail http://127.0.0.1:3000/api/ready
 ```
 
-Migrations run automatically when the container starts.
-
-## 9. Backups
-
-Back up the SQLite DB every night:
-
-```bash
-mkdir -p ~/dojo-backups
-docker run --rm -v app_dojo_data:/data -v ~/dojo-backups:/backup busybox \
-  sh -c 'cp /data/prod.db /backup/prod-$(date +%F-%H%M).db'
-```
-
-Adjust the volume name if `docker volume ls` shows a different prefix.
-
-## Notes for v1
-
-This deployment is mono-dojo and intentionally simple. For v1 SaaS/multi-dojo, migrate to PostgreSQL and add tenant scoping before onboarding many clubs.
+Review the one-shot migration logs before accepting traffic. A code rollback does not automatically reverse a database migration; use a tested forward-fix or a verified pre-deployment backup according to the migration plan.

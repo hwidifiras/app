@@ -9,6 +9,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormField } from "@/components/ui/form-layout";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListSearch } from "@/components/ui/list-controls";
+import { NoticeDialog } from "@/components/ui/notice-dialog";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { SportSuggestionPicker } from "@/components/sports/sport-suggestion-picker";
 import { SportCard } from "@/components/sports/sport-card";
@@ -411,13 +412,17 @@ export function SportManager({ initialSports }: SportManagerProps) {
       </section>
 
       {blockedSport ? (
-        <div className="mobile-modal-overlay fixed inset-0 z-50 flex justify-center bg-black/40">
-          <div className="mobile-modal-panel border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-floating)] md:rounded-lg">
-            <h3 className="text-base font-semibold text-[var(--foreground)]">Suppression impossible</h3>
-            <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+        <NoticeDialog
+          open
+          title="Suppression impossible"
+          onClose={() => setBlockedSport(null)}
+          description={
+            <>
               La discipline <span className="font-medium text-[var(--foreground)]">{blockedSport.name}</span> est
               encore utilisée. Réaffectez les éléments liés, ou désactivez-la depuis le menu d&apos;actions.
-            </p>
+            </>
+          }
+        >
             {blockedSport.groups.length > 0 && (
               <>
                 <p className="mt-3 text-xs font-semibold uppercase text-[var(--muted-foreground)]">Cours</p>
@@ -448,13 +453,7 @@ export function SportManager({ initialSports }: SportManagerProps) {
                 </ul>
               </>
             )}
-            <div className="mt-4 flex justify-end">
-              <button type="button" onClick={() => setBlockedSport(null)} className="btn btn-primary btn-block-mobile">
-                Compris
-              </button>
-            </div>
-          </div>
-        </div>
+        </NoticeDialog>
       ) : null}
 
       <ConfirmDialog

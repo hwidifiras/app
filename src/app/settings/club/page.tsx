@@ -85,6 +85,7 @@ export default async function SettingsClubPage() {
             clubPhone: settings.clubPhone,
             receiptLegalName: settings.receiptLegalName,
             receiptTaxId: settings.receiptTaxId,
+            allowPublicRegister: settings.allowPublicRegister,
             allowCheckInWithPartialPayment: settings.allowCheckInWithPartialPayment,
             allowCheckInWithoutSubscription: settings.allowCheckInWithoutSubscription,
             absentConsumesSession: settings.absentConsumesSession,

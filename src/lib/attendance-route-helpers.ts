@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import type { AttendancePolicyFailure } from "@/lib/attendance-policy";
@@ -10,9 +11,15 @@ function getThirtyDaysAgo(): Date {
   return d;
 }
 
-export async function countAttendanceOverrides(memberId: string, tenantId: string): Promise<number> {
+type AttendanceCountDb = Pick<Prisma.TransactionClient, "attendance">;
+
+export async function countAttendanceOverrides(
+  memberId: string,
+  tenantId: string,
+  db: AttendanceCountDb = prisma,
+): Promise<number> {
   const thirtyDaysAgo = getThirtyDaysAgo();
-  return prisma.attendance.count({
+  return db.attendance.count({
     where: {
       tenantId,
       memberId,

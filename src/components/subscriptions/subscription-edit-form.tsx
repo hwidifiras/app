@@ -6,6 +6,7 @@ import { SubscriptionCorrectionSummary } from "@/components/subscriptions/subscr
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormSectionNav } from "@/components/ui/form-layout";
 import { ReceptionInfoCard } from "@/components/ui/reception-info-card";
+import { useIdempotencyIntent } from "@/hooks/use-idempotency-intent";
 import { formatMoney } from "@/lib/money";
 
 type PlanOption = { id: string; name: string; price: number; totalSessions: number; validityDays: number };
@@ -42,6 +43,7 @@ export function SubscriptionEditForm({ subscription, plansOptions }: Subscriptio
   const [adjustmentReason, setAdjustmentReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const subscriptionIntent = useIdempotencyIntent();
 
   const amountNum = Math.round(parseFloat(amount || "0") * 100);
   const sessionsNum = Math.max(0, Math.round(Number(remainingSessions || 0)));
@@ -84,22 +86,33 @@ export function SubscriptionEditForm({ subscription, plansOptions }: Subscriptio
       return;
     }
 
-    const response = await fetch("/api/member-subscriptions", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        subscriptionId: subscription.id,
-        payload: {
-          planId,
-          startDate: new Date(startDate).toISOString(),
-          endDate: endDate ? new Date(endDate).toISOString() : null,
-          amount: amountNum,
-          remainingSessions: sessionsNum,
-          status,
-          ...(needsAdjustmentReason ? { adjustmentReason: adjustmentReason.trim() } : {}),
+    const requestPayload = {
+      subscriptionId: subscription.id,
+      payload: {
+        planId,
+        startDate: new Date(startDate).toISOString(),
+        endDate: endDate ? new Date(endDate).toISOString() : null,
+        amount: amountNum,
+        remainingSessions: sessionsNum,
+        status,
+        ...(needsAdjustmentReason ? { adjustmentReason: adjustmentReason.trim() } : {}),
+      },
+    };
+    let response: Response;
+    try {
+      response = await fetch("/api/member-subscriptions", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": subscriptionIntent.keyFor(requestPayload),
         },
-      }),
-    });
+        body: JSON.stringify(requestPayload),
+      });
+    } catch {
+      setLoading(false);
+      setMessage("Connexion interrompue. Réessayez sans risque de doubler la correction.");
+      return;
+    }
 
     const result = await response.json();
 
@@ -108,6 +121,7 @@ export function SubscriptionEditForm({ subscription, plansOptions }: Subscriptio
       setLoading(false);
       return;
     }
+    subscriptionIntent.complete(requestPayload);
 
     router.push("/subscriptions");
     router.refresh();

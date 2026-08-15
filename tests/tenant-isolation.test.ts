@@ -108,5 +108,92 @@ describe("tenant isolation", () => {
         data: { firstName: "Leaked" },
       }),
     ).rejects.toMatchObject({ code: "P2025" });
+    await expect(
+      prisma.member.updateManyAndReturn({
+        where: { id: member.id },
+        data: { firstName: "Leaked in bulk" },
+      }),
+    ).resolves.toEqual([]);
+  });
+
+  it("rejects cross-tenant foreign keys at the database boundary", async () => {
+    const suffix = `${Date.now()}`;
+    const member = await prisma.member.create({
+      data: { firstName: "Ledger", lastName: "Owner", phone: `ledger-${suffix}` },
+    });
+    const sport = await prisma.sport.create({ data: { name: `Ledger sport ${suffix}` } });
+    const plan = await prisma.subscriptionPlan.create({
+      data: {
+        name: `Ledger plan ${suffix}`,
+        price: 5_000,
+        totalSessions: 4,
+        validityDays: 30,
+        sportId: sport.id,
+      },
+    });
+    const subscription = await prisma.memberSubscription.create({
+      data: {
+        memberId: member.id,
+        planId: plan.id,
+        sportId: sport.id,
+        startDate: new Date(),
+        amount: plan.price,
+        remainingSessions: plan.totalSessions,
+        status: "ACTIVE",
+      },
+    });
+
+    await useTenant(OTHER_TENANT_ID, OTHER_TENANT_SLUG);
+
+    await expect(
+      prisma.$executeRaw`
+        UPDATE "Member"
+        SET "tenantId" = ${OTHER_TENANT_ID}
+        WHERE "id" = ${member.id}
+      `,
+    ).rejects.toThrow(/TENANT_REASSIGNMENT_FORBIDDEN/);
+
+    await expect(
+      prisma.$executeRaw`
+        INSERT INTO "Payment" (
+          "id",
+          "tenantId",
+          "memberSubscriptionId",
+          "amount",
+          "updatedAt"
+        ) VALUES (
+          ${`cross-tenant-payment-${suffix}`},
+          ${OTHER_TENANT_ID},
+          ${subscription.id},
+          ${100},
+          ${new Date()}
+        )
+      `,
+    ).rejects.toThrow(/TENANT_REFERENCE_MISMATCH/);
+  });
+
+  it("keeps an idempotency record bound to its original tenant at the database boundary", async () => {
+    const suffix = `${Date.now()}`;
+    const record = await prisma.idempotencyRecord.create({
+      data: {
+        tenantId: TEST_TENANT_ID,
+        scope: "tenant-guard-test",
+        key: `key-${suffix}`,
+        requestHash: `hash-${suffix}`,
+        responseStatus: 201,
+        responseBody: '{"data":true}',
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    });
+
+    await useTenant(OTHER_TENANT_ID, OTHER_TENANT_SLUG);
+
+    await expect(
+      prisma.$executeRaw`
+        UPDATE "IdempotencyRecord"
+        SET "tenantId" = ${OTHER_TENANT_ID}
+        WHERE "id" = ${record.id}
+      `,
+    ).rejects.toThrow(/TENANT_REASSIGNMENT_FORBIDDEN/);
   });
 });

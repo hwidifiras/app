@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormActions, FormField, FormGrid } from "@/components/ui/form-layout";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListSearch } from "@/components/ui/list-controls";
+import { NoticeDialog } from "@/components/ui/notice-dialog";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { CoachCard } from "@/components/coaches/coach-card";
 import { qualifiedSportNames, toggleSportId, withPrimarySport } from "@/components/coaches/coach-manager-model";
@@ -456,28 +457,22 @@ export function CoachManager({ initialCoaches, sportsOptions }: CoachManagerProp
       </div>
 
       {blockedCoach ? (
-        <div className="mobile-modal-overlay fixed inset-0 z-50 flex justify-center bg-black/40">
-          <div className="mobile-modal-panel border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-floating)] md:rounded-lg">
-            <h3 className="text-base font-semibold text-[var(--foreground)]">Désactivation impossible</h3>
-            <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+        <NoticeDialog
+          open
+          title="Désactivation impossible"
+          onClose={() => setBlockedCoach(null)}
+          description={
+            <>
               Le coach <span className="font-medium text-[var(--foreground)]">{blockedCoach.name}</span> est assigné aux groupes suivants. Affectez ces groupes à un autre coach avant de le désactiver.
-            </p>
+            </>
+          }
+        >
             <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-[var(--foreground)]">
               {blockedCoach.groups.map((group) => (
                 <li key={group.id}>{group.name}</li>
               ))}
             </ul>
-            <div className="mt-4 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setBlockedCoach(null)}
-                className="btn btn-primary btn-block-mobile"
-              >
-                Compris
-              </button>
-            </div>
-          </div>
-        </div>
+        </NoticeDialog>
       ) : null}
 
       <ConfirmDialog

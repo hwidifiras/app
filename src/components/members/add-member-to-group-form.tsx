@@ -4,6 +4,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions } from "@/components/ui/form-layout";
+import { useIdempotencyIntent } from "@/hooks/use-idempotency-intent";
 import {
   isMemberAllowedInGroupPolicy,
   type GenderValue,
@@ -80,6 +81,7 @@ export function AddMemberToGroupForm({
   const [endDate, setEndDate] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const assignmentIntent = useIdempotencyIntent();
 
   const selectedGroup = useMemo(
     () => availableGroups.find((g) => g.id === selectedGroupId) ?? null,
@@ -131,16 +133,20 @@ export function AddMemberToGroupForm({
     setMessage(null);
 
     try {
+      const requestPayload = {
+        groupId: selectedGroupId,
+        memberId,
+        planId: selectedPlanId,
+        startDate: new Date(`${startDate}T00:00:00Z`).toISOString(),
+        endDate: endDate ? new Date(`${endDate}T00:00:00Z`).toISOString() : null,
+      };
       const response = await fetch("/api/group-members", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          groupId: selectedGroupId,
-          memberId,
-          planId: selectedPlanId,
-          startDate: new Date(`${startDate}T00:00:00Z`).toISOString(),
-          endDate: endDate ? new Date(`${endDate}T00:00:00Z`).toISOString() : null,
-        }),
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": assignmentIntent.keyFor(requestPayload),
+        },
+        body: JSON.stringify(requestPayload),
       });
 
       const result = await response.json();
@@ -150,6 +156,7 @@ export function AddMemberToGroupForm({
         setLoading(false);
         return;
       }
+      assignmentIntent.complete(requestPayload);
 
       setMessage("Affectation réussie");
       setLoading(false);

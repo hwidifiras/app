@@ -2,18 +2,17 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 
 export function RegisterForm() {
-  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -26,21 +25,49 @@ export function RegisterForm() {
     setLoading(true);
     setMessage(null);
 
-    const res = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
-    });
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
+      const json = await res.json().catch(() => null);
 
-    const json = await res.json();
+      if (!res.ok) {
+        setMessage(json?.error ?? "Erreur d'inscription");
+        return;
+      }
 
-    if (!res.ok) {
-      setMessage(json?.error ?? "Erreur d'inscription");
+      setPassword("");
+      setConfirmPassword("");
+      setMessage(
+        json?.data?.message ??
+          "Demande créée. Un administrateur du club doit approuver votre accès.",
+      );
+      setSubmittedEmail(email);
+    } catch {
+      setMessage("Connexion impossible. Vérifiez votre réseau puis réessayez.");
+    } finally {
       setLoading(false);
-      return;
     }
+  }
 
-    router.replace(`/login?registered=1&email=${encodeURIComponent(email)}`);
+  if (submittedEmail) {
+    return (
+      <div className="space-y-4">
+        <FeedbackMessage message={message} variant="success" />
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-3">
+          <p className="text-sm font-semibold text-[var(--foreground)]">Demande en attente d&apos;approbation</p>
+          <p className="mt-1 text-sm leading-relaxed text-[var(--muted-foreground)]">
+            Le compte <span className="font-medium text-[var(--foreground)]">{submittedEmail}</span> reste inactif
+            jusqu&apos;à sa validation par un administrateur du club. Vous pourrez vous connecter après cette validation.
+          </p>
+        </div>
+        <Link href="/login" className="btn btn-primary inline-flex w-full justify-center">
+          Retour à la connexion
+        </Link>
+      </div>
+    );
   }
 
   return (
@@ -113,8 +140,12 @@ export function RegisterForm() {
         />
       </div>
 
+      <p className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2.5 text-xs leading-relaxed text-[var(--muted-foreground)]">
+        Votre demande sera créée sans droit actif. Un administrateur vérifiera puis activera votre accès.
+      </p>
+
       <button type="submit" className="btn btn-primary w-full" disabled={loading}>
-        {loading ? "Création..." : "Créer le compte"}
+        {loading ? "Envoi..." : "Envoyer la demande"}
       </button>
 
       <p className="text-xs text-muted-foreground">

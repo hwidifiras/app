@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { enrichAuditLogContexts } from "@/lib/audit-log-enricher";
 import { getAuthUser } from "@/lib/request-user";
 import {
-  auditLogMatchesQuery,
+  auditActionsMatchingQuery,
   formatAuditDateTime,
   formatAuditUserName,
   presentAuditLog,
@@ -49,21 +50,57 @@ function isSystemLog(log: { action: string; entityType: string; userId: string |
   );
 }
 
-function getLogCategory(log: { action: string; entityType: string; userId: string | null }): LogCategory {
-  if (isSystemLog(log)) return "SYSTEM";
-  if (log.action.startsWith("PAYMENT") || log.entityType === "Payment") return "PAYMENTS";
-  if (log.action.startsWith("ATTENDANCE") || log.action.startsWith("SESSION_") || log.action === "SESSIONS_GENERATED") return "ATTENDANCE";
-  if (log.action.startsWith("ENROLLMENT") || log.action.startsWith("MEMBER_SUBSCRIPTION")) return "ENROLLMENT";
-  if (
-    log.action.startsWith("CLUB_SETTINGS") ||
-    log.action.startsWith("OFFER_") ||
-    log.action.startsWith("USER_") ||
-    log.action === "ACCOUNT_UPDATED" ||
-    ["ClubSettings", "Offer", "Sport", "Coach", "Group", "SubscriptionPlan", "User"].includes(log.entityType)
-  ) {
-    return "SETTINGS";
-  }
-  return "ENROLLMENT";
+const SYSTEM_LOG_FILTER: Prisma.AuditLogWhereInput = {
+  OR: [
+    { userId: null },
+    { action: { startsWith: "PASSWORD_RESET" } },
+    { action: "ADMIN_BOOTSTRAPPED" },
+    { action: { startsWith: "AUDIT_" } },
+  ],
+};
+
+const PAYMENT_LOG_FILTER: Prisma.AuditLogWhereInput = {
+  OR: [{ action: { startsWith: "PAYMENT" } }, { entityType: "Payment" }],
+};
+
+const ATTENDANCE_LOG_FILTER: Prisma.AuditLogWhereInput = {
+  OR: [
+    { action: { startsWith: "ATTENDANCE" } },
+    { action: { startsWith: "SESSION_" } },
+    { action: "SESSIONS_GENERATED" },
+  ],
+};
+
+const SETTINGS_LOG_FILTER: Prisma.AuditLogWhereInput = {
+  OR: [
+    { action: { startsWith: "CLUB_SETTINGS" } },
+    { action: { startsWith: "OFFER_" } },
+    { action: { startsWith: "USER_" } },
+    { action: "ACCOUNT_UPDATED" },
+    { entityType: { in: ["ClubSettings", "Offer", "Sport", "Coach", "Group", "SubscriptionPlan", "User"] } },
+  ],
+};
+
+function categoryWhere(category: LogCategory): Prisma.AuditLogWhereInput {
+  if (category === "ALL") return {};
+  if (category === "BUSINESS") return { NOT: SYSTEM_LOG_FILTER };
+  if (category === "SYSTEM") return SYSTEM_LOG_FILTER;
+  if (category === "PAYMENTS") return { AND: [{ NOT: SYSTEM_LOG_FILTER }, PAYMENT_LOG_FILTER] };
+  if (category === "ATTENDANCE") return { AND: [{ NOT: SYSTEM_LOG_FILTER }, ATTENDANCE_LOG_FILTER] };
+  if (category === "SETTINGS") return { AND: [{ NOT: SYSTEM_LOG_FILTER }, SETTINGS_LOG_FILTER] };
+
+  return {
+    AND: [
+      { NOT: SYSTEM_LOG_FILTER },
+      { NOT: PAYMENT_LOG_FILTER },
+      { NOT: ATTENDANCE_LOG_FILTER },
+      { NOT: SETTINGS_LOG_FILTER },
+    ],
+  };
+}
+
+function tenantCategoryWhere(tenantId: string, category: LogCategory): Prisma.AuditLogWhereInput {
+  return { tenantId, AND: [categoryWhere(category)] };
 }
 
 export default async function LogsPage({
@@ -93,37 +130,58 @@ export default async function LogsPage({
     );
   }
 
-  const allLogs = await prisma.auditLog.findMany({
-    where: { tenantId: authUser.tenantId },
-    orderBy: { createdAt: "desc" },
-  });
+  const matchingActions = query ? auditActionsMatchingQuery(query) : [];
+  const searchWhere: Prisma.AuditLogWhereInput = query
+    ? {
+        OR: [
+          { action: { contains: query, mode: "insensitive" } },
+          { entityType: { contains: query, mode: "insensitive" } },
+          { entityId: { contains: query, mode: "insensitive" } },
+          { details: { contains: query, mode: "insensitive" } },
+          ...(matchingActions.length > 0 ? [{ action: { in: matchingActions } }] : []),
+        ],
+      }
+    : {};
+  const where: Prisma.AuditLogWhereInput = {
+    tenantId: authUser.tenantId,
+    AND: [categoryWhere(selectedCategory), searchWhere],
+  };
 
-  const presented = allLogs.map((log) => ({
-    log,
-    presentation: presentAuditLog(log),
-    category: getLogCategory(log),
-    isSystem: isSystemLog(log),
-  }));
-
-  const categoryFiltered = presented.filter((item) => {
-    if (selectedCategory === "ALL") return true;
-    if (selectedCategory === "BUSINESS") return !item.isSystem;
-    return item.category === selectedCategory;
-  });
-
-  const filtered = query
-    ? categoryFiltered.filter(({ log, presentation }) => auditLogMatchesQuery(log, presentation, query))
-    : categoryFiltered;
-
-  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const filteredCount = await prisma.auditLog.count({ where });
+  const pageCount = Math.max(1, Math.ceil(filteredCount / pageSize));
   const currentPage = Math.min(requestedPage, pageCount);
   const startIndex = (currentPage - 1) * pageSize;
-  const pageItems = filtered.slice(startIndex, startIndex + pageSize);
-  const logs = pageItems.map((p) => p.log);
+  const [logs, businessCount, paymentCount, attendanceCount, systemCount] = await Promise.all([
+    prisma.auditLog.findMany({
+      where,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      skip: startIndex,
+      take: pageSize,
+      select: {
+        id: true,
+        tenantId: true,
+        action: true,
+        entityType: true,
+        entityId: true,
+        userId: true,
+        details: true,
+        createdAt: true,
+      },
+    }),
+    prisma.auditLog.count({ where: tenantCategoryWhere(authUser.tenantId, "BUSINESS") }),
+    prisma.auditLog.count({ where: tenantCategoryWhere(authUser.tenantId, "PAYMENTS") }),
+    prisma.auditLog.count({ where: tenantCategoryWhere(authUser.tenantId, "ATTENDANCE") }),
+    prisma.auditLog.count({ where: tenantCategoryWhere(authUser.tenantId, "SYSTEM") }),
+  ]);
+  const pageItems = logs.map((log) => ({
+    log,
+    presentation: presentAuditLog(log),
+    isSystem: isSystemLog(log),
+  }));
   const itemById = new Map(pageItems.map((item) => [item.log.id, item]));
   const presentationById = await enrichAuditLogContexts(
     logs,
-    new Map(filtered.map((p) => [p.log.id, p.presentation])),
+    new Map(pageItems.map((item) => [item.log.id, item.presentation])),
     authUser.tenantId,
   );
 
@@ -139,10 +197,6 @@ export default async function LogsPage({
     : [];
 
   const userMap = new Map(users.map((user) => [user.id, user]));
-  const businessCount = presented.filter((item) => !item.isSystem).length;
-  const paymentCount = presented.filter((item) => item.category === "PAYMENTS").length;
-  const attendanceCount = presented.filter((item) => item.category === "ATTENDANCE").length;
-  const systemCount = presented.filter((item) => item.category === "SYSTEM").length;
 
   return (
     <main className="app-shell py-4 md:py-8">
@@ -273,7 +327,7 @@ export default async function LogsPage({
             className="mt-4 flex flex-col gap-3 border-t border-[var(--border)] pt-4 sm:flex-row sm:items-center sm:justify-between"
           >
             <p className="text-center text-xs tabular-nums text-[var(--muted-foreground)] sm:text-left">
-              Éléments {startIndex + 1}–{Math.min(startIndex + pageSize, filtered.length)} sur {filtered.length}
+              Éléments {startIndex + 1}–{Math.min(startIndex + pageSize, filteredCount)} sur {filteredCount}
             </p>
             <div className="flex items-center justify-center gap-2">
               <Link

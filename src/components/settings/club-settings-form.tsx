@@ -10,6 +10,7 @@ import { ClubIdentitySection } from "@/components/settings/club-identity-section
 import { ClubGymRulesSection } from "@/components/settings/club-gym-rules-section";
 import { ClubPlanningRulesSection } from "@/components/settings/club-planning-rules-section";
 import { ClubReceiptSettings } from "@/components/settings/club-receipt-settings";
+import { SettingsToggleRow } from "@/components/settings/settings-toggle-row";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import {
@@ -26,6 +27,7 @@ export type ClubSettingsFormData = {
   clubPhone: string;
   receiptLegalName: string;
   receiptTaxId: string;
+  allowPublicRegister: boolean;
   allowCheckInWithPartialPayment: boolean;
   allowCheckInWithoutSubscription: boolean;
   absentConsumesSession: boolean;
@@ -81,6 +83,7 @@ export function ClubSettingsForm({ initial, gymModuleEnabled = false }: ClubSett
   const [clubPhone, setClubPhone] = useState(initial.clubPhone);
   const [receiptLegalName, setReceiptLegalName] = useState(initial.receiptLegalName);
   const [receiptTaxId, setReceiptTaxId] = useState(initial.receiptTaxId);
+  const [allowPublicRegister, setAllowPublicRegister] = useState(initial.allowPublicRegister);
   const [allowPartialPayment, setAllowPartialPayment] = useState(initial.allowCheckInWithPartialPayment);
   const [allowWithoutSubscription, setAllowWithoutSubscription] = useState(
     initial.allowCheckInWithoutSubscription,
@@ -166,6 +169,7 @@ export function ClubSettingsForm({ initial, gymModuleEnabled = false }: ClubSett
         clubPhone,
         receiptLegalName: receiptLegalName.trim(),
         receiptTaxId: receiptTaxId.trim(),
+        allowPublicRegister,
         allowCheckInWithPartialPayment: allowPartialPayment,
         allowCheckInWithoutSubscription: allowWithoutSubscription,
         absentConsumesSession,
@@ -221,6 +225,7 @@ export function ClubSettingsForm({ initial, gymModuleEnabled = false }: ClubSett
     setClubPhone(json.data.clubPhone);
     setReceiptLegalName(json.data.receiptLegalName ?? "");
     setReceiptTaxId(json.data.receiptTaxId ?? "");
+    setAllowPublicRegister(Boolean(json.data.allowPublicRegister));
     setAllowPartialPayment(json.data.allowCheckInWithPartialPayment);
     setAllowWithoutSubscription(json.data.allowCheckInWithoutSubscription);
     setAbsentConsumesSession(json.data.absentConsumesSession);
@@ -316,6 +321,7 @@ export function ClubSettingsForm({ initial, gymModuleEnabled = false }: ClubSett
       <FormSectionNav
         items={[
           { href: "#club-identity", label: "Identité" },
+          { href: "#club-access", label: "Accès" },
           { href: "#club-checkin", label: "Pointage" },
           ...(gymModuleEnabled ? [{ href: "#club-gym", label: "Salle" }] : []),
           { href: "#club-planning", label: "Planning" },
@@ -337,6 +343,20 @@ export function ClubSettingsForm({ initial, gymModuleEnabled = false }: ClubSett
         onUploadLogo={(file) => void uploadLogo(file)}
         onRemoveLogo={() => void removeLogo()}
       />
+
+      <FormSection
+        id="club-access"
+        title="Accès au club"
+        description="Contrôlez les demandes de comptes avant qu'elles n'atteignent votre équipe."
+      >
+        <SettingsToggleRow
+          id="allowPublicRegister"
+          label="Autoriser les demandes d'accès publiques"
+          description="Les nouveaux comptes restent inactifs, sans permission, jusqu'à l'approbation explicite d'un administrateur. Le coupe-circuit global de la plateforme reste prioritaire."
+          checked={allowPublicRegister}
+          onChange={setAllowPublicRegister}
+        />
+      </FormSection>
 
       <ClubCheckinRulesSection
         allowPartialPayment={allowPartialPayment}

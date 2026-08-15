@@ -1,9 +1,9 @@
 # GYM-SaaS Database Architecture - Professional Documentation
 
-**Date:** May 5, 2026  
-**Version:** 1.0  
-**Database Technology:** SQLite + Prisma ORM  
-**Architecture Style:** Relational with transactional consistency guarantees
+**Updated:** July 13, 2026
+**Version:** PostgreSQL multi-tenant baseline plus incremental migrations
+**Database Technology:** PostgreSQL 16 + Prisma ORM
+**Architecture Style:** Tenant-scoped relational model with transactional consistency guarantees
 
 ---
 
@@ -21,12 +21,13 @@ The GYM-SaaS database follows a **normalized relational schema** with the follow
 
 ### 1.2 Core Bounded Contexts
 
-The schema is organized into four logical domains:
+The schema is organized into these logical domains:
 
-1. **Identity & Audit** (User, AuditLog)
-2. **Members & Subscriptions** (Member, MemberSubscription, SubscriptionPlan, Payment)
+1. **Tenancy & Identity** (Tenant, TenantModule, User, UserPermission, AuditLog)
+2. **Members & Subscriptions** (Member, MemberSubscription, SubscriptionPlan, Payment, Receipt)
 3. **Training Programs** (Sport, Coach, Group, GroupMember, GroupSchedule)
 4. **Attendance & Sessions** (Session, Attendance)
+5. **Club Configuration & Commercial Rules** (ClubSettings, Offer, OfferApplication)
 
 ---
 
@@ -561,19 +562,21 @@ ORDER BY sessionDate, startTime;
 - **Caching Active Subscriptions:** Cache member's active subscription (TTL: 5 min) to reduce DB hits
 - **Session Listing Pagination:** Always paginate session results; avoid full table scans
 
-### 7.3 SQLite Limitations
+### 7.3 PostgreSQL Multi-Tenant Operations
 
-- SQLite suitable for ~10-100K members; scaling beyond requires migration to PostgreSQL/MySQL
-- No built-in partitioning; manual archival required for large audit logs
-- Concurrent writes limited; transaction conflicts increase under high load
+- Every tenant-owned query and mutation must include the resolved `tenantId`; application middleware is not a substitute for database constraints and reviewed access paths.
+- Use bounded pagination and tenant-leading indexes for high-growth tables such as attendance, payments, receipts, and audit logs.
+- Run committed migrations as a one-shot release job before web containers become ready; never run development migrations in production.
+- Use connection pooling and monitor connection saturation before adding web replicas.
+- Consider PostgreSQL partitioning and an explicit retention policy only after measured table growth justifies the operational cost.
 
 ---
 
 ## 8. DATA MIGRATION & VERSIONING
 
 ### 8.1 Current Schema Version
-- Version: 1.0 (as of May 5, 2026)
-- Latest Migration: `/prisma/migrations/20260428171933_session_based_plans/`
+- Baseline: `/prisma/migrations/20260624000000_postgres_multitenant_baseline/`
+- Apply every committed incremental migration in order with `prisma migrate deploy`; do not hand-select a “latest” SQL file.
 
 ### 8.2 Migration Strategy
 - Each schema change creates new migration with timestamp

@@ -26,7 +26,7 @@ import {
   POST as createMemberSubscription,
 } from "@/app/api/member-subscriptions/route";
 import { DELETE as bulkCloseGroupMembers, POST as bulkCreateGroupMembers } from "@/app/api/group-members/bulk/route";
-import { DELETE as closeGroupMember } from "@/app/api/group-members/route";
+import { DELETE as closeGroupMember, POST as createGroupMember } from "@/app/api/group-members/route";
 import { PATCH as patchClubSettings } from "@/app/api/club-settings/route";
 import { POST as createUser } from "@/app/api/users/route";
 import { POST as requestPasswordReset } from "@/app/api/auth/forgot-password/route";
@@ -35,6 +35,7 @@ import { GET as getAuthMe } from "@/app/api/auth/me/route";
 import { signAuthToken, type AuthRole } from "@/lib/auth";
 import { resetRateLimitsForTests } from "@/lib/rate-limit";
 import { hashPassword, verifyPassword } from "@/lib/password";
+import { createPasswordResetToken, hashResetToken } from "@/lib/password-reset";
 import { FULL_STAFF_PERMISSIONS } from "@/lib/permission-definitions";
 import {
   buildEnrollmentQuote,
@@ -78,6 +79,7 @@ setFallbackTenantContext({ tenantId: TEST_TENANT_ID, tenantSlug: TEST_TENANT_SLU
 
 async function resetData() {
   await prisma.$transaction([
+    prisma.idempotencyRecord.deleteMany(),
     prisma.auditLog.deleteMany(),
     prisma.passwordResetToken.deleteMany(),
     prisma.userPermission.deleteMany(),
@@ -304,10 +306,10 @@ async function signIn(role: AuthRole = "ADMIN") {
   });
 }
 
-function jsonRequest(method: string, body: unknown) {
+function jsonRequest(method: string, body: unknown, headers?: HeadersInit) {
   return new Request("http://test.local/api", {
     method,
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...headers },
     body: JSON.stringify(body),
   });
 }
@@ -496,6 +498,7 @@ function buildDataImportPayload(
       phone: "import-unique-phone",
       email: "mouna@example.com",
       memberType: "ADULT",
+      gender: "NOT_SPECIFIED",
       birthDate: "",
       address: "",
       parentName: "",
@@ -1015,6 +1018,7 @@ describe("subscriptions, payments and offers", () => {
             lastName: "Un",
             phone: "new-adult-1",
             memberType: "ADULT",
+            gender: "NOT_SPECIFIED",
           },
           groupId: fx.adultBjj.id,
           planId: fx.bjjPlan.id,
@@ -1025,6 +1029,7 @@ describe("subscriptions, payments and offers", () => {
             lastName: "Deux",
             phone: "new-adult-2",
             memberType: "ADULT",
+            gender: "NOT_SPECIFIED",
           },
           groupId: fx.adultBjj.id,
           planId: fx.bjjPlan.id,
@@ -2023,6 +2028,7 @@ describe("admin permissions and password reset", () => {
         clubLogoUrl: "/branding/club-logo-test.png",
         allowCheckInWithPartialPayment: false,
         allowCheckInWithoutSubscription: false,
+        allowPublicRegister: true,
         maxStaffDiscountPercent: 25,
         debtAlertThresholdCents: 1500,
       }),
@@ -2036,6 +2042,7 @@ describe("admin permissions and password reset", () => {
     expect(settings.clubLogoUrl).toBe("/branding/club-logo-test.png");
     expect(settings.allowCheckInWithPartialPayment).toBe(false);
     expect(settings.allowCheckInWithoutSubscription).toBe(false);
+    expect(settings.allowPublicRegister).toBe(true);
     expect(settings.maxStaffDiscountPercent).toBe(25);
     expect(settings.debtAlertThresholdCents).toBe(1500);
 
@@ -2052,6 +2059,7 @@ describe("admin permissions and password reset", () => {
         clubLogoUrl: "",
         allowCheckInWithPartialPayment: true,
         allowCheckInWithoutSubscription: false,
+        allowPublicRegister: false,
         absentConsumesSession: true,
         maxStaffDiscountPercent: 30,
         debtAlertThresholdCents: 0,
@@ -3799,5 +3807,241 @@ describe("enrollment revert", () => {
       }),
     );
     expect(revertResponse.status).toBe(409);
+  });
+});
+
+describe("concurrent invariant enforcement", () => {
+  it("allows only one payment when concurrent requests would overpay", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const subscription = await createActiveSubscription(fx, { amount: 1000 });
+
+    const responses = await Promise.all([
+      createPayment(jsonRequest("POST", { memberSubscriptionId: subscription.id, amount: 600 })),
+      createPayment(jsonRequest("POST", { memberSubscriptionId: subscription.id, amount: 600 })),
+    ]);
+
+    expect(responses.map((response) => response.status).sort()).toEqual([201, 409]);
+    const ledger = await prisma.payment.aggregate({
+      where: { memberSubscriptionId: subscription.id },
+      _sum: { amount: true },
+    });
+    expect(ledger._sum.amount).toBe(600);
+  });
+
+  it("replays concurrent payment retries with the same idempotency key", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const subscription = await createActiveSubscription(fx, { amount: 1000 });
+    const body = { memberSubscriptionId: subscription.id, amount: 600 };
+    const headers = { "Idempotency-Key": "payment-retry-1" };
+
+    const responses = await Promise.all([
+      createPayment(jsonRequest("POST", body, headers)),
+      createPayment(jsonRequest("POST", body, headers)),
+    ]);
+    const responseBodies = await Promise.all(responses.map(responseJson));
+
+    expect(responses.map((response) => response.status)).toEqual([201, 201]);
+    expect(responses.filter((response) => response.headers.get("Idempotency-Replayed") === "true")).toHaveLength(1);
+    expect(responseBodies[0].data).toEqual(responseBodies[1].data);
+    expect(await prisma.payment.count({ where: { memberSubscriptionId: subscription.id } })).toBe(1);
+    expect(await prisma.idempotencyRecord.count({ where: { scope: "payments:create" } })).toBe(1);
+  });
+
+  it("rejects reuse of a payment idempotency key for a different request", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const subscription = await createActiveSubscription(fx, { amount: 1000 });
+    const headers = { "Idempotency-Key": "payment-conflict-1" };
+
+    const first = await createPayment(
+      jsonRequest("POST", { memberSubscriptionId: subscription.id, amount: 400 }, headers),
+    );
+    const conflict = await createPayment(
+      jsonRequest("POST", { memberSubscriptionId: subscription.id, amount: 500 }, headers),
+    );
+
+    expect(first.status).toBe(201);
+    expect(conflict.status).toBe(409);
+    expect(await prisma.payment.count({ where: { memberSubscriptionId: subscription.id } })).toBe(1);
+  });
+
+  it("awards the final group seat to only one concurrent enrollment", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    await prisma.group.update({ where: { id: fx.adultBjj.id }, data: { capacity: 1 } });
+    const secondMember = await prisma.member.create({
+      data: {
+        firstName: "Nora",
+        lastName: "Concurrent",
+        phone: "concurrent-seat-2",
+        memberType: "ADULT",
+      },
+    });
+    const firstSubscription = await createActiveSubscription(fx, { memberId: fx.adult.id });
+    const secondSubscription = await createActiveSubscription(fx, { memberId: secondMember.id });
+    await prisma.payment.createMany({
+      data: [
+        { memberSubscriptionId: firstSubscription.id, amount: firstSubscription.amount },
+        { memberSubscriptionId: secondSubscription.id, amount: secondSubscription.amount },
+      ],
+    });
+
+    const startDate = new Date().toISOString();
+    const responses = await Promise.all([
+      createGroupMember(
+        jsonRequest("POST", {
+          groupId: fx.adultBjj.id,
+          memberId: fx.adult.id,
+          planId: fx.bjjPlan.id,
+          startDate,
+        }),
+      ),
+      createGroupMember(
+        jsonRequest("POST", {
+          groupId: fx.adultBjj.id,
+          memberId: secondMember.id,
+          planId: fx.bjjPlan.id,
+          startDate,
+        }),
+      ),
+    ]);
+
+    expect(responses.map((response) => response.status).sort()).toEqual([201, 409]);
+    expect(
+      await prisma.groupMember.count({
+        where: { groupId: fx.adultBjj.id, status: "ACTIVE" },
+      }),
+    ).toBe(1);
+  });
+
+  it("does not overspend a weekly allowance under concurrent check-ins", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    const { plan, sessions } = await setupTwoPerWeekPlanWithThreeSessions(fx);
+    const subscription = await enrollMemberForContextualPlan(fx, plan.id);
+
+    const first = await createAttendance(
+      jsonRequest("POST", {
+        sessionId: sessions[0].id,
+        memberId: fx.adult.id,
+        status: "PRESENT",
+      }),
+    );
+    expect(first.status).toBe(201);
+
+    const responses = await Promise.all([
+      createAttendance(
+        jsonRequest("POST", {
+          sessionId: sessions[1].id,
+          memberId: fx.adult.id,
+          status: "PRESENT",
+        }),
+      ),
+      createAttendance(
+        jsonRequest("POST", {
+          sessionId: sessions[2].id,
+          memberId: fx.adult.id,
+          status: "PRESENT",
+        }),
+      ),
+    ]);
+
+    expect(responses.map((response) => response.status).sort()).toEqual([201, 403]);
+    expect(await prisma.attendance.count({ where: { memberId: fx.adult.id, status: "PRESENT" } })).toBe(2);
+    const refreshed = await prisma.memberSubscription.findUniqueOrThrow({ where: { id: subscription.id } });
+    expect(refreshed.remainingSessions).toBe(6);
+  });
+
+  it("allows only one concurrent override at the 30-day limit", async () => {
+    await signIn();
+    const fx = await dojoFixture();
+    await createActiveSubscription(fx);
+    const sessionDates = Array.from({ length: 4 }, (_, index) => {
+      const date = new Date();
+      date.setUTCDate(date.getUTCDate() + index);
+      return date;
+    });
+    const sessions = await Promise.all(
+      sessionDates.map((sessionDate, index) =>
+        createSessionForGroup(fx.adultBjj.id, {
+          sessionDate,
+          startTime: `${String(10 + index).padStart(2, "0")}:00`,
+          endTime: `${String(11 + index).padStart(2, "0")}:00`,
+        }),
+      ),
+    );
+    await prisma.attendance.createMany({
+      data: sessions.slice(0, 2).map((session) => ({
+        sessionId: session.id,
+        memberId: fx.adult.id,
+        status: "OVERRIDE" as const,
+        overrideReason: "Passage exceptionnel existant",
+      })),
+    });
+
+    const responses = await Promise.all(
+      sessions.slice(2).map((session) =>
+        createAttendance(
+          jsonRequest("POST", {
+            sessionId: session.id,
+            memberId: fx.adult.id,
+            status: "OVERRIDE",
+            overrideReason: "Validation exceptionnelle concurrente",
+          }),
+        ),
+      ),
+    );
+
+    expect(responses.map((response) => response.status).sort()).toEqual([201, 403]);
+    expect(await prisma.attendance.count({ where: { memberId: fx.adult.id, status: "OVERRIDE" } })).toBe(3);
+  });
+
+  it("consumes a password-reset token exactly once under concurrent requests", async () => {
+    const user = await prisma.user.create({
+      data: {
+        name: "Concurrent Reset",
+        email: "concurrent-reset@test.local",
+        role: "STAFF",
+        passwordHash: await hashPassword("old-password"),
+      },
+    });
+    const forgotResponse = await requestPasswordReset(jsonRequest("POST", { email: user.email }));
+    const forgotBody = await responseJson(forgotResponse);
+    const token = new URL((forgotBody.data as { resetUrl: string }).resetUrl).searchParams.get("token");
+    expect(token).toBeTruthy();
+
+    const responses = await Promise.all([
+      resetPassword(jsonRequest("POST", { token, password: "new-password-a" })),
+      resetPassword(jsonRequest("POST", { token, password: "new-password-b" })),
+    ]);
+
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 400]);
+    const resetToken = await prisma.passwordResetToken.findFirstOrThrow({ where: { userId: user.id } });
+    expect(resetToken.usedAt).not.toBeNull();
+    expect(await prisma.auditLog.count({ where: { action: "PASSWORD_RESET_COMPLETED", entityId: user.id } })).toBe(1);
+  });
+
+  it("leaves only the newest password-reset token active under concurrent issuance", async () => {
+    const user = await prisma.user.create({
+      data: {
+        name: "Concurrent Reset Issuance",
+        email: "concurrent-reset-issuance@test.local",
+        role: "STAFF",
+        passwordHash: await hashPassword("old-password"),
+      },
+    });
+
+    const issued = await Promise.all([
+      createPasswordResetToken(user.id),
+      createPasswordResetToken(user.id),
+    ]);
+    const activeTokens = await prisma.passwordResetToken.findMany({
+      where: { userId: user.id, usedAt: null },
+    });
+
+    expect(activeTokens).toHaveLength(1);
+    expect(issued.map((item) => hashResetToken(item.token))).toContain(activeTokens[0].tokenHash);
   });
 });

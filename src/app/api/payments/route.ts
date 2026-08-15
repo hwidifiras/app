@@ -11,6 +11,13 @@ import {
 import { issueReceiptForPayment, voidReceiptForPayment } from "@/lib/receipts";
 import { getClubSettings } from "@/lib/club-settings";
 import { sendReceiptEmailForReceipt, type ReceiptEmailDeliveryResult } from "@/lib/receipt-email-delivery";
+import {
+  IdempotencyKeyConflictError,
+  InvalidIdempotencyKeyError,
+  idempotencyResponseHeaders,
+  readIdempotencyKey,
+  runIdempotentSerializableTransaction,
+} from "@/lib/idempotency";
 
 export const runtime = "nodejs";
 
@@ -93,7 +100,15 @@ export async function POST(request: Request) {
   const { memberSubscriptionId, amount, paymentDate, paymentMethod, notes } = parsed.data;
 
   try {
-    const payment = await prisma.$transaction(async (tx) => {
+    const idempotencyKey = readIdempotencyKey(request);
+    const outcome = await runIdempotentSerializableTransaction(
+      {
+        tenantId: actor.tenantId,
+        scope: "payments:create",
+        idempotencyKey,
+        requestPayload: parsed.data,
+      },
+      async (tx) => {
       const subscription = await tx.memberSubscription.findFirst({
         where: { id: memberSubscriptionId, tenantId: actor.tenantId },
         select: { id: true, amount: true },
@@ -167,8 +182,21 @@ export async function POST(request: Request) {
         },
       });
 
-      return { ...created, receipt };
-    });
+        return {
+          status: 201,
+          body: { data: { ...created, receipt, receiptEmailDelivery: null as ReceiptEmailDeliveryResult | null } },
+        };
+      },
+    );
+
+    if (outcome.replayed) {
+      return NextResponse.json(outcome.response.body, {
+        status: outcome.response.status,
+        headers: idempotencyResponseHeaders(true),
+      });
+    }
+
+    const payment = outcome.response.body.data;
 
     let receiptEmailDelivery: ReceiptEmailDeliveryResult | null = null;
     try {
@@ -191,8 +219,20 @@ export async function POST(request: Request) {
       };
     }
 
-    return NextResponse.json({ data: { ...payment, receiptEmailDelivery } }, { status: 201 });
+    if (outcome.idempotencyKey) {
+      return NextResponse.json(outcome.response.body, { status: outcome.response.status });
+    }
+    return NextResponse.json({ data: { ...payment, receiptEmailDelivery } }, { status: outcome.response.status });
   } catch (error) {
+    if (error instanceof InvalidIdempotencyKeyError) {
+      return NextResponse.json({ error: "ClÃ© d'idempotence invalide" }, { status: 400 });
+    }
+    if (error instanceof IdempotencyKeyConflictError) {
+      return NextResponse.json(
+        { error: "Cette clÃ© d'idempotence a dÃ©jÃ  Ã©tÃ© utilisÃ©e avec une autre requÃªte", code: error.message },
+        { status: 409 },
+      );
+    }
     if (error instanceof Error) {
       if (error.message === "SUB_NOT_FOUND") {
         return NextResponse.json({ error: "Abonnement introuvable" }, { status: 404 });
@@ -248,7 +288,15 @@ export async function PATCH(request: Request) {
   const payload = parsed.data;
 
   try {
-    const correction = await prisma.$transaction(async (tx) => {
+    const idempotencyKey = readIdempotencyKey(request);
+    const outcome = await runIdempotentSerializableTransaction(
+      {
+        tenantId: actor.tenantId,
+        scope: "payments:correct",
+        idempotencyKey,
+        requestPayload: { paymentId, payload },
+      },
+      async (tx) => {
       const existing = await tx.payment.findFirst({
         where: { id: paymentId, tenantId: actor.tenantId },
         include: {
@@ -347,11 +395,24 @@ export async function PATCH(request: Request) {
         });
       }
 
-      return created;
-    });
+        return { status: 200, body: { data: created } };
+      },
+    );
 
-    return NextResponse.json({ data: correction });
+    return NextResponse.json(outcome.response.body, {
+      status: outcome.response.status,
+      headers: idempotencyResponseHeaders(outcome.replayed),
+    });
   } catch (error) {
+    if (error instanceof InvalidIdempotencyKeyError) {
+      return NextResponse.json({ error: "ClÃ© d'idempotence invalide" }, { status: 400 });
+    }
+    if (error instanceof IdempotencyKeyConflictError) {
+      return NextResponse.json(
+        { error: "Cette clÃ© d'idempotence a dÃ©jÃ  Ã©tÃ© utilisÃ©e avec une autre requÃªte", code: error.message },
+        { status: 409 },
+      );
+    }
     if (error instanceof Error) {
       if (error.message === "PAYMENT_NOT_FOUND") {
         return NextResponse.json({ error: "Paiement introuvable" }, { status: 404 });
@@ -408,7 +469,15 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    const reversal = await prisma.$transaction(async (tx) => {
+    const idempotencyKey = readIdempotencyKey(request);
+    const outcome = await runIdempotentSerializableTransaction(
+      {
+        tenantId: actor.tenantId,
+        scope: "payments:reverse",
+        idempotencyKey,
+        requestPayload: { paymentId, correctionReason: correctionReason.trim() },
+      },
+      async (tx) => {
       const existing = await tx.payment.findFirst({
         where: { id: paymentId, tenantId: actor.tenantId },
         include: {
@@ -500,11 +569,24 @@ export async function DELETE(request: Request) {
         });
       }
 
-      return created;
-    });
+        return { status: 200, body: { data: created } };
+      },
+    );
 
-    return NextResponse.json({ data: reversal });
+    return NextResponse.json(outcome.response.body, {
+      status: outcome.response.status,
+      headers: idempotencyResponseHeaders(outcome.replayed),
+    });
   } catch (error) {
+    if (error instanceof InvalidIdempotencyKeyError) {
+      return NextResponse.json({ error: "ClÃ© d'idempotence invalide" }, { status: 400 });
+    }
+    if (error instanceof IdempotencyKeyConflictError) {
+      return NextResponse.json(
+        { error: "Cette clÃ© d'idempotence a dÃ©jÃ  Ã©tÃ© utilisÃ©e avec une autre requÃªte", code: error.message },
+        { status: 409 },
+      );
+    }
     if (error instanceof Error) {
       if (error.message === "PAYMENT_NOT_FOUND") {
         return NextResponse.json({ error: "Paiement introuvable" }, { status: 404 });

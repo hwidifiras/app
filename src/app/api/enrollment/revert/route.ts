@@ -7,7 +7,14 @@ import {
   type EnrollmentUndoSnapshot,
 } from "@/lib/enrollment-undo";
 import { getEnrollmentRecoveryByKey, isEnrollmentRecoveryVoided } from "@/lib/enrollment-recovery";
-import { prisma } from "@/lib/prisma";
+import {
+  IdempotencyKeyConflictError,
+  InvalidIdempotencyKeyError,
+  idempotencyResponseHeaders,
+  readIdempotencyKey,
+  replayIdempotentResponse,
+  runIdempotentSerializableTransaction,
+} from "@/lib/idempotency";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 
 export const runtime = "nodejs";
@@ -34,6 +41,38 @@ export async function POST(request: Request) {
 
   if (reason.length < 3) {
     return NextResponse.json({ error: "Motif obligatoire pour annuler une inscription" }, { status: 400 });
+  }
+
+  let idempotencyKey: string | null;
+  try {
+    idempotencyKey = readIdempotencyKey(request);
+  } catch (error) {
+    if (error instanceof InvalidIdempotencyKeyError) {
+      return NextResponse.json({ error: "Clé d'idempotence invalide" }, { status: 400 });
+    }
+    throw error;
+  }
+
+  const idempotencyParams = {
+    tenantId: actor.tenantId,
+    scope: "enrollment:revert",
+    idempotencyKey,
+    requestPayload: body,
+  };
+
+  try {
+    const replay = await replayIdempotentResponse<{ data: { voided: boolean } }>(idempotencyParams);
+    if (replay) {
+      return NextResponse.json(replay.response.body, {
+        status: replay.response.status,
+        headers: idempotencyResponseHeaders(true),
+      });
+    }
+  } catch (error) {
+    if (error instanceof IdempotencyKeyConflictError) {
+      return NextResponse.json({ error: "Cette clé d'idempotence a déjà servi pour une autre requête" }, { status: 409 });
+    }
+    throw error;
   }
 
   let snapshot: EnrollmentUndoSnapshot | null = null;
@@ -72,16 +111,24 @@ export async function POST(request: Request) {
   const undoSnapshot = snapshot;
 
   try {
-    await prisma.$transaction(async (tx) => {
+    const result = await runIdempotentSerializableTransaction(idempotencyParams, async (tx) => {
       await revertEnrollmentUndoSnapshot(tx, undoSnapshot, actor.id, reason, {
         tenantId: actor.tenantId,
         recoveryKey,
         memberIds,
       });
+
+      return { status: 200, body: { data: { voided: true } } };
     });
 
-    return NextResponse.json({ data: { voided: true } });
+    return NextResponse.json(result.response.body, {
+      status: result.response.status,
+      headers: idempotencyResponseHeaders(result.replayed),
+    });
   } catch (error) {
+    if (error instanceof IdempotencyKeyConflictError) {
+      return NextResponse.json({ error: "Cette clé d'idempotence a déjà servi pour une autre requête" }, { status: 409 });
+    }
     if (error instanceof EnrollmentRevertBlockedError) {
       return NextResponse.json({ error: error.message }, { status: 409 });
     }

@@ -29,6 +29,7 @@ import {
 
 import { useAppShellData, type NavigationBadge } from "@/components/layout/app-shell-data-provider";
 import { ClubBrandMark } from "@/components/layout/club-brand-mark";
+import { useClubBranding } from "@/components/layout/club-branding-provider";
 import { cn } from "@/lib/utils";
 
 export type NavItem = {
@@ -206,6 +207,7 @@ export function AppSidebar({
   const pathname = usePathname();
   const [configOpen, setConfigOpen] = useState(false);
   const { account, navBadges } = useAppShellData();
+  const { appName } = useClubBranding();
   const role = account?.role ?? null;
   const enabledModules = new Set(account?.modules ?? []);
   const configurationSections = getConfigurationSections(role);
@@ -329,16 +331,15 @@ export function AppSidebar({
       <div className={cn("mt-auto border-t border-[var(--border)] px-4 py-4", collapsed && "px-2 py-3")}>
         {collapsed ? (
           <div className="mx-auto flex size-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-soft)]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/we-discipline/navbar-logo.png" alt="We Discipline" className="h-4 w-10 object-contain opacity-45" />
+            <Dumbbell className="size-4 text-[var(--muted-foreground)]" aria-hidden="true" />
+            <span className="sr-only">{appName}</span>
           </div>
         ) : (
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2.5">
             <p className="text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
-              Propulsé par
+              Application de gestion
             </p>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/we-discipline/navbar-logo.png" alt="We Discipline" className="mt-1 h-7 w-auto opacity-70" />
+            <p className="mt-1 truncate text-sm font-semibold text-[var(--foreground)]">{appName}</p>
           </div>
         )}
       </div>

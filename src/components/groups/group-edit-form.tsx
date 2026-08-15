@@ -8,6 +8,7 @@ import { GroupCoachEligibility } from "@/components/groups/group-coach-eligibili
 import { GroupMemberSelector } from "@/components/groups/group-member-selector";
 import { GroupPolicyPicker } from "@/components/groups/group-policy-picker";
 import { GroupSetupSummary } from "@/components/groups/group-setup-summary";
+import { useIdempotencyIntent } from "@/hooks/use-idempotency-intent";
 import { formatCoachName, formatCoachOptionLabel, isCoachQualifiedForSport } from "@/lib/coach-display";
 import { isMemberAllowedInGroupPolicy, type GroupGenderPolicyValue, type GroupTypeValue } from "@/lib/demographics";
 import { CoachDto } from "@/types/coach";
@@ -53,6 +54,7 @@ export function GroupEditForm({
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(initialMemberIds);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const assignmentIntent = useIdempotencyIntent();
 
   function isMemberAllowed(member: MemberDto, nextGroupType = groupType, nextGenderPolicy = genderPolicy) {
     return isMemberAllowedInGroupPolicy({
@@ -135,13 +137,23 @@ export function GroupEditForm({
     let removeMsg = "";
 
     if (toAdd.length > 0) {
+      const requestPayload = {
+        groupId,
+        memberIds: toAdd,
+        startDate: `${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`,
+        endDate: null,
+      };
       const addResponse = await fetch("/api/group-members/bulk", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ groupId, memberIds: toAdd, startDate: new Date().toISOString(), endDate: null }),
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": assignmentIntent.keyFor(requestPayload),
+        },
+        body: JSON.stringify(requestPayload),
       });
       const addResult = await addResponse.json();
       if (addResponse.ok) {
+        assignmentIntent.complete(requestPayload);
         addMsg = `${addResult.data?.createdCount ?? 0} ajouté(s)`;
       } else {
         addMsg = `Erreur ajout: ${addResult.error ?? ""}`;
@@ -149,13 +161,18 @@ export function GroupEditForm({
     }
 
     if (toRemove.length > 0) {
+      const requestPayload = { groupId, memberIds: toRemove };
       const removeResponse = await fetch("/api/group-members/bulk", {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ groupId, memberIds: toRemove }),
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": assignmentIntent.keyFor(requestPayload),
+        },
+        body: JSON.stringify(requestPayload),
       });
       const removeResult = await removeResponse.json();
       if (removeResponse.ok) {
+        assignmentIntent.complete(requestPayload);
         removeMsg = `${removeResult.data?.closedCount ?? 0} retiré(s)`;
       } else {
         removeMsg = `Erreur retrait: ${removeResult.error ?? ""}`;

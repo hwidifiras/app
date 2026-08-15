@@ -1,8 +1,10 @@
-import type { AttendanceStatus } from "@prisma/client";
+import type { AttendanceStatus, Prisma } from "@prisma/client";
 
 import { isScheduleActiveOnDate, scheduleWindowWhere } from "@/lib/assignment-policy";
 import { getWeekRangeUtc } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
+
+type WeeklyConsumptionDb = Pick<Prisma.TransactionClient, "attendance" | "groupSchedule" | "session">;
 
 export type WeeklyConsumptionMode = "CONTEXTUAL" | "STANDARD";
 
@@ -155,11 +157,12 @@ export function consumptionUnitsForSessionSlot(params: {
 export async function loadGroupWeekSessions(
   groupId: string,
   sessionDate: Date,
+  db: WeeklyConsumptionDb = prisma,
 ): Promise<WeekSessionSlot[]> {
   const { start, end } = getWeekRangeUtc(sessionDate);
 
   const [sessions, schedules] = await Promise.all([
-    prisma.session.findMany({
+    db.session.findMany({
       where: {
         groupId,
         sessionDate: { gte: start, lt: end },
@@ -173,7 +176,7 @@ export async function loadGroupWeekSessions(
       },
       orderBy: [{ sessionDate: "asc" }, { startTime: "asc" }],
     }),
-    prisma.groupSchedule.findMany({
+    db.groupSchedule.findMany({
       where: { groupId, ...scheduleWindowWhere(start, end) },
       select: { id: true, dayOfWeek: true, startTime: true, effectiveFrom: true, effectiveTo: true },
     }),
@@ -236,10 +239,10 @@ export async function loadWeekAttendanceStatuses(params: {
   groupId: string;
   sessionDate: Date;
   omitSessionId?: string;
-}): Promise<Map<string, AttendanceStatus>> {
+}, db: WeeklyConsumptionDb = prisma): Promise<Map<string, AttendanceStatus>> {
   const { start, end } = getWeekRangeUtc(params.sessionDate);
 
-  const rows = await prisma.attendance.findMany({
+  const rows = await db.attendance.findMany({
     where: {
       memberId: params.memberId,
       memberSubscriptionId: params.memberSubscriptionId,
@@ -270,13 +273,13 @@ export async function resolveCheckInConsumption(params: {
   memberSubscriptionId: string;
   planSessionsPerWeek: number | null;
   absentConsumesSession: boolean;
-}): Promise<{
+}, db: WeeklyConsumptionDb = prisma): Promise<{
   units: number;
   weeklyAllowanceRemaining: number;
   mode: WeeklyConsumptionMode;
   blockPresent: boolean;
 }> {
-  const sessionsInWeek = await loadGroupWeekSessions(params.groupId, params.sessionDate);
+  const sessionsInWeek = await loadGroupWeekSessions(params.groupId, params.sessionDate, db);
   const groupWeeklySessions = sessionsInWeek.length;
   const planAllowance = params.planSessionsPerWeek ?? groupWeeklySessions;
   const mode = getWeeklyConsumptionMode(params.planSessionsPerWeek, groupWeeklySessions);
@@ -285,7 +288,7 @@ export async function resolveCheckInConsumption(params: {
     memberSubscriptionId: params.memberSubscriptionId,
     groupId: params.groupId,
     sessionDate: params.sessionDate,
-  });
+  }, db);
 
   const weeklyAllowanceRemaining = simulateWeeklyAllowanceRemaining({
     planAllowance,
@@ -322,8 +325,8 @@ export async function computeWeeklyAllowanceRemainingForMember(params: {
   planSessionsPerWeek: number | null;
   absentConsumesSession: boolean;
   omitSessionId?: string;
-}): Promise<number> {
-  const sessionsInWeek = await loadGroupWeekSessions(params.groupId, params.sessionDate);
+}, db: WeeklyConsumptionDb = prisma): Promise<number> {
+  const sessionsInWeek = await loadGroupWeekSessions(params.groupId, params.sessionDate, db);
   const groupWeeklySessions = sessionsInWeek.length;
   const planAllowance = params.planSessionsPerWeek ?? groupWeeklySessions;
   const mode = getWeeklyConsumptionMode(params.planSessionsPerWeek, groupWeeklySessions);
@@ -333,7 +336,7 @@ export async function computeWeeklyAllowanceRemainingForMember(params: {
     groupId: params.groupId,
     sessionDate: params.sessionDate,
     omitSessionId: params.omitSessionId,
-  });
+  }, db);
 
   return simulateWeeklyAllowanceRemaining({
     planAllowance,
@@ -354,7 +357,7 @@ export async function resolveAttendanceConsumptionChange(params: {
   memberSubscriptionId: string | null;
   planSessionsPerWeek: number | null;
   absentConsumesSession: boolean;
-}): Promise<{ balanceDelta: number; blockPresent: boolean }> {
+}, db: WeeklyConsumptionDb = prisma): Promise<{ balanceDelta: number; blockPresent: boolean }> {
   if (!params.memberSubscriptionId) {
     const previousUnits =
       params.previousStatus === "PRESENT" ||
@@ -372,7 +375,7 @@ export async function resolveAttendanceConsumptionChange(params: {
     };
   }
 
-  const sessionsInWeek = await loadGroupWeekSessions(params.groupId, params.sessionDate);
+  const sessionsInWeek = await loadGroupWeekSessions(params.groupId, params.sessionDate, db);
   const groupWeeklySessions = sessionsInWeek.length;
   const planAllowance = params.planSessionsPerWeek ?? groupWeeklySessions;
   const mode = getWeeklyConsumptionMode(params.planSessionsPerWeek, groupWeeklySessions);
@@ -382,7 +385,7 @@ export async function resolveAttendanceConsumptionChange(params: {
     groupId: params.groupId,
     sessionDate: params.sessionDate,
     omitSessionId: params.sessionId,
-  });
+  }, db);
 
   const previousAttendances = new Map(attendancesWithoutCurrent);
   previousAttendances.set(params.sessionId, params.previousStatus);
@@ -421,14 +424,14 @@ export async function computeAttendanceConsumptionUnits(params: {
   absentConsumesSession: boolean;
   /** Treat this session slot as empty (for PATCH recomputation). */
   omitSessionId?: string;
-}): Promise<number> {
+}, db: WeeklyConsumptionDb = prisma): Promise<number> {
   if (!params.memberSubscriptionId) {
     if (params.status === "PRESENT") return 1;
     if (params.status === "ABSENT" && params.absentConsumesSession) return 1;
     return 0;
   }
 
-  const sessionsInWeek = await loadGroupWeekSessions(params.groupId, params.sessionDate);
+  const sessionsInWeek = await loadGroupWeekSessions(params.groupId, params.sessionDate, db);
   const groupWeeklySessions = sessionsInWeek.length;
   const planAllowance = params.planSessionsPerWeek ?? groupWeeklySessions;
   const mode = getWeeklyConsumptionMode(params.planSessionsPerWeek, groupWeeklySessions);
@@ -438,7 +441,7 @@ export async function computeAttendanceConsumptionUnits(params: {
     groupId: params.groupId,
     sessionDate: params.sessionDate,
     omitSessionId: params.omitSessionId ?? params.sessionId,
-  });
+  }, db);
 
   const allowanceWithoutCurrent = simulateWeeklyAllowanceRemaining({
     planAllowance,

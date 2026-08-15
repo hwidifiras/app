@@ -7,6 +7,7 @@ import { FieldControl } from "@/components/ui/field-control";
 import { FormActions, FormField, FormGrid, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import { SubscriptionBillingSummary } from "@/components/ui/reception-info-card";
 import { AccessMemberFields, EMPTY_ACCESS_MEMBER, type AccessNewMember } from "@/components/subscriptions/access-member-fields";
+import { useIdempotencyIntent } from "@/hooks/use-idempotency-intent";
 import { formatMoney, MONEY_INPUT_SUFFIX } from "@/lib/money";
 
 type MemberOption = { id: string; firstName: string; lastName: string; phone: string };
@@ -34,6 +35,7 @@ type SubscriptionAddFormProps = {
 
 export function SubscriptionAddForm({ membersOptions, plansOptions, initialMemberId = "", initialPlanKind, groupsOptions = [] }: SubscriptionAddFormProps) {
   const router = useRouter();
+  const subscriptionIntent = useIdempotencyIntent();
   const initialPlan = plansOptions.find((plan) => plan.planKind === initialPlanKind);
   const initialStartDate = new Date().toISOString().split("T")[0];
   const [memberId, setMemberId] = useState(initialMemberId);
@@ -162,25 +164,36 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
     setLoading(true);
     setMessage(null);
 
-    const response = await fetch("/api/member-subscriptions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        memberId: memberMode === "EXISTING" ? memberId : undefined,
-        newMember: memberMode === "NEW" ? {
+    const requestPayload = {
+      memberId: memberMode === "EXISTING" ? memberId : undefined,
+      newMember: memberMode === "NEW" ? {
           ...newMember,
           birthDate: new Date(newMember.birthDate).toISOString(),
           parentName: newMember.memberType === "KID" ? newMember.parentName : undefined,
           parentPhone: newMember.memberType === "KID" ? newMember.parentPhone : undefined,
         } : undefined,
-        planId,
-        startDate: new Date(startDate).toISOString(),
-        carryOverRemainingSessions: carryOverRemainingSessions || undefined,
-        paymentCents: paymentNum > 0 ? paymentNum : undefined,
-        paymentMethod,
-        groupIds: Object.values(groupBySport).filter(Boolean),
-      }),
-    });
+      planId,
+      startDate: new Date(startDate).toISOString(),
+      carryOverRemainingSessions: carryOverRemainingSessions || undefined,
+      paymentCents: paymentNum > 0 ? paymentNum : undefined,
+      paymentMethod,
+      groupIds: Object.values(groupBySport).filter(Boolean),
+    };
+    let response: Response;
+    try {
+      response = await fetch("/api/member-subscriptions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": subscriptionIntent.keyFor(requestPayload),
+        },
+        body: JSON.stringify(requestPayload),
+      });
+    } catch {
+      setLoading(false);
+      setMessage("Connexion interrompue. Réessayez : l'abonnement ne sera pas créé deux fois.");
+      return;
+    }
 
     const result = await response.json();
 
@@ -189,6 +202,7 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
       setLoading(false);
       return;
     }
+    subscriptionIntent.complete(requestPayload);
 
     router.push("/subscriptions");
     router.refresh();

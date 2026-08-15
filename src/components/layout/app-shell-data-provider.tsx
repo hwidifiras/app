@@ -203,11 +203,16 @@ export function AppShellDataProvider({ children }: { children: React.ReactNode }
   }, [refreshAccount]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void refreshNotifications(), 0);
-    const interval = window.setInterval(() => void refreshNotifications(), 60_000);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void refreshNotifications();
+    };
+    const timer = window.setTimeout(refreshWhenVisible, 0);
+    const interval = window.setInterval(refreshWhenVisible, 120_000);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
       window.clearTimeout(timer);
       window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [refreshNotifications]);
 
@@ -219,11 +224,16 @@ export function AppShellDataProvider({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     if (accountLoading || !accountId) return;
-    const timer = window.setTimeout(() => void refreshNavBadges(), 0);
-    const interval = window.setInterval(() => void refreshNavBadges(), 60_000);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void refreshNavBadges();
+    };
+    const timer = window.setTimeout(refreshWhenVisible, 0);
+    const interval = window.setInterval(refreshWhenVisible, 180_000);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
       window.clearTimeout(timer);
       window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [accountId, accountLoading, refreshNavBadges]);
 

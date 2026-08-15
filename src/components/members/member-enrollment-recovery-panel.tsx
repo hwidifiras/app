@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { RotateCcw, ShieldAlert } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { useIdempotencyIntent } from "@/hooks/use-idempotency-intent";
 import { formatMoney } from "@/lib/money";
 import type { EnrollmentRecoveryCandidate } from "@/lib/enrollment-recovery";
 
@@ -17,6 +18,7 @@ export function MemberEnrollmentRecoveryPanel({
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; variant?: "success" | "error" } | null>(null);
+  const enrollmentIntent = useIdempotencyIntent();
 
   async function voidEnrollment(candidate: EnrollmentRecoveryCandidate) {
     const reason = (reasons[candidate.recoveryKey] ?? "").trim();
@@ -28,11 +30,25 @@ export function MemberEnrollmentRecoveryPanel({
     setLoadingKey(candidate.recoveryKey);
     setMessage(null);
 
-    const response = await fetch("/api/enrollment/revert", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ recoveryKey: candidate.recoveryKey, reason }),
-    });
+    const requestPayload = { recoveryKey: candidate.recoveryKey, reason };
+    let response: Response;
+    try {
+      response = await fetch("/api/enrollment/revert", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": enrollmentIntent.keyFor(requestPayload),
+        },
+        body: JSON.stringify(requestPayload),
+      });
+    } catch {
+      setLoadingKey(null);
+      setMessage({
+        text: "Connexion interrompue. Réessayez sans risque de doubler l'annulation.",
+        variant: "error",
+      });
+      return;
+    }
     const payload = (await response.json().catch(() => null)) as { error?: string; data?: { voided?: boolean } } | null;
     setLoadingKey(null);
 
@@ -40,6 +56,7 @@ export function MemberEnrollmentRecoveryPanel({
       setMessage({ text: payload?.error ?? "Impossible d'annuler cette inscription.", variant: "error" });
       return;
     }
+    enrollmentIntent.complete(requestPayload);
 
     setReasons((current) => ({ ...current, [candidate.recoveryKey]: "" }));
     setMessage({ text: "Inscription annulée avec trace.", variant: "success" });

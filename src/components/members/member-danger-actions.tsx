@@ -1,10 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { useAccessibleDialog } from "@/hooks/use-accessible-dialog";
 
 type MemberDangerActionsProps = {
   memberId: string;
@@ -40,11 +41,19 @@ export function MemberDangerActions({
   canPermanentDelete = false,
   canTechnicalPurge = false,
 }: MemberDangerActionsProps) {
+  const purgeTitleId = useId();
+  const purgeConfirmationRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const [loading, setLoading] = useState<DangerAction | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<DangerAction | null>(null);
   const [technicalConfirmation, setTechnicalConfirmation] = useState("");
+  const purgeDialogRef = useAccessibleDialog<HTMLElement>({
+    open: pendingAction === "technical-purge",
+    onClose: () => setPendingAction(null),
+    closeOnEscape: loading !== "technical-purge",
+    initialFocusRef: purgeConfirmationRef,
+  });
   const [technicalReason, setTechnicalReason] = useState("Données de test à retirer des chiffres réels du club");
 
   async function archiveMember() {
@@ -194,18 +203,20 @@ export function MemberDangerActions({
       />
       {pendingAction === "technical-purge" ? (
         <div
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/55 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-[var(--overlay)] p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget && !loading) setPendingAction(null);
           }}
         >
           <section
+            ref={purgeDialogRef}
             role="alertdialog"
             aria-modal="true"
-            aria-labelledby="technical-purge-title"
+            aria-labelledby={purgeTitleId}
+            tabIndex={-1}
             className="max-h-[min(90dvh,40rem)] w-full overflow-y-auto rounded-t-lg border border-[var(--danger)]/30 bg-[var(--surface)] p-4 shadow-[var(--shadow-floating)] sm:max-w-lg sm:rounded-lg sm:p-5"
           >
-            <h2 id="technical-purge-title" className="text-base font-semibold text-[var(--danger)]">
+            <h2 id={purgeTitleId} className="text-base font-semibold text-[var(--danger)]">
               Purge technique de données de test
             </h2>
             <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">
@@ -226,10 +237,10 @@ export function MemberDangerActions({
             <label className="mt-4 block text-sm font-medium">
               Tapez exactement <span className="font-bold">{memberName}</span>
               <input
+                ref={purgeConfirmationRef}
                 className="field mt-1"
                 value={technicalConfirmation}
                 onChange={(event) => setTechnicalConfirmation(event.target.value)}
-                autoFocus
               />
             </label>
             <div className="mt-5 grid gap-2 sm:flex sm:flex-row-reverse">
