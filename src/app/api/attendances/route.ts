@@ -41,6 +41,14 @@ import {
   readAttendanceIdFromBody,
 } from "@/lib/attendance-route-helpers";
 import { withTenantContext } from "@/lib/tenant-context";
+import {
+  IdempotencyKeyConflictError,
+  InvalidIdempotencyKeyError,
+  idempotencyResponseHeaders,
+  readIdempotencyKey,
+  replayIdempotentResponse,
+  runIdempotentSerializableTransaction,
+} from "@/lib/idempotency";
 
 export const runtime = "nodejs";
 
@@ -130,6 +138,21 @@ async function handlePost(request: Request, actor: AttendanceActor) {
     : overrideReason?.trim() || null;
 
   try {
+    const idempotencyKey = readIdempotencyKey(request);
+    const idempotencyParams = {
+      tenantId: actor.tenantId,
+      scope: "attendances:create",
+      idempotencyKey,
+      requestPayload: parsed.data,
+    };
+    const replay = await replayIdempotentResponse<Record<string, unknown>>(idempotencyParams);
+    if (replay) {
+      return NextResponse.json(replay.response.body, {
+        status: replay.response.status,
+        headers: idempotencyResponseHeaders(true),
+      });
+    }
+
     const sessionExists = await prisma.session.findFirst({
       where: { id: sessionId, tenantId: actor.tenantId },
       include: {
@@ -203,21 +226,6 @@ async function handlePost(request: Request, actor: AttendanceActor) {
         );
       }
 
-      const recoveryCheck = await validateRecoveryCheckIn({
-        memberId,
-        targetSessionId: sessionExists.id,
-        targetGroupId: sessionExists.group.id,
-        targetSportId: sessionExists.group.sportId,
-        targetGroupType: sessionExists.group.groupType,
-        targetSessionDate: sessionExists.sessionDate,
-      });
-
-      if (!recoveryCheck.ok) {
-        return NextResponse.json(
-          { error: recoveryCheck.error, code: recoveryCheck.code },
-          { status: 403 },
-        );
-      }
     } else if (status === "PRESENT" || status === "ABSENT") {
       const assignmentCheck = await assignmentFailure(sessionExists.group.id, memberId, sessionExists.sessionDate);
       if (assignmentCheck) {
@@ -296,15 +304,56 @@ async function handlePost(request: Request, actor: AttendanceActor) {
       }
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await runIdempotentSerializableTransaction(idempotencyParams, async (tx) => {
+      if (isRecoveryOverride) {
+        const recoveryCheck = await validateRecoveryCheckIn(
+          {
+            memberId,
+            targetSessionId: sessionExists.id,
+            targetGroupId: sessionExists.group.id,
+            targetSportId: sessionExists.group.sportId,
+            targetGroupType: sessionExists.group.groupType,
+            targetSessionDate: sessionExists.sessionDate,
+          },
+          tx,
+        );
+        if (!recoveryCheck.ok) throw new Error("RECOVERY_NOT_ELIGIBLE");
+      }
+
+      let transactionConsumptionUnits = consumptionUnits;
+      if ((status === "PRESENT" || status === "ABSENT") && activeSub) {
+        const freshConsumption = await resolveCheckInConsumption(
+          {
+            status,
+            sessionId: sessionExists.id,
+            groupId: sessionExists.group.id,
+            sessionDate: sessionExists.sessionDate,
+            memberId,
+            memberSubscriptionId: activeSub.id,
+            planSessionsPerWeek: activeSub.plan.sessionsPerWeek,
+            absentConsumesSession: clubSettings.absentConsumesSession,
+          },
+          tx,
+        );
+        if (activeSub.plan.sessionsPerWeek && freshConsumption.blockPresent) {
+          throw new Error("SUBSCRIPTION_WEEK_LIMIT_REACHED");
+        }
+        transactionConsumptionUnits = freshConsumption.units;
+      }
+
+      if (status === "OVERRIDE" && !isRecoveryOverride) {
+        const freshOverrideCount = await countAttendanceOverrides(memberId, actor.tenantId, tx);
+        if (freshOverrideCount >= 3) throw new Error("OVERRIDE_LIMIT_REACHED");
+      }
+
       let remainingSessionsBefore: number | null = null;
       let subscriptionEntitlementId = activeSub?.entitlementId ?? null;
 
-      if (consumptionUnits > 0) {
+      if (transactionConsumptionUnits > 0) {
         if (isSubActive && activeSub) {
           remainingSessionsBefore = activeSub.remainingSessions;
           const adjustment = await applySessionBalanceDelta(tx, {
-            delta: -consumptionUnits,
+            delta: -transactionConsumptionUnits,
             memberSubscriptionId: activeSub.id,
             subscriptionEntitlementId: activeSub.entitlementId,
             memberId,
@@ -325,13 +374,13 @@ async function handlePost(request: Request, actor: AttendanceActor) {
           memberSubscriptionId:
             isRecoveryOverride && activeSub
               ? activeSub.id
-              : consumptionUnits > 0 && isSubActive && activeSub
+              : transactionConsumptionUnits > 0 && isSubActive && activeSub
                 ? activeSub.id
                 : null,
           subscriptionEntitlementId:
             isRecoveryOverride && activeSub
               ? activeSub.entitlementId
-              : consumptionUnits > 0 && isSubActive
+              : transactionConsumptionUnits > 0 && isSubActive
                 ? subscriptionEntitlementId
                 : null,
         },
@@ -374,23 +423,67 @@ async function handlePost(request: Request, actor: AttendanceActor) {
         },
       });
 
-      return attendance;
+      const overrideCountAfter =
+        status === "OVERRIDE" ? await countAttendanceOverrides(memberId, actor.tenantId, tx) : 0;
+
+      return {
+        status: 201,
+        body: {
+          data: attendance,
+          warning:
+            status === "OVERRIDE" && overrideCountAfter >= 2
+              ? "Attention: 2 passages exceptionnels sur 30 jours"
+              : undefined,
+        },
+      };
     });
 
-    return NextResponse.json(
-      {
-        data: result,
-        warning:
-          status === "OVERRIDE" && (await countAttendanceOverrides(memberId, actor.tenantId)) >= 2
-            ? "Attention: 2 passages exceptionnels sur 30 jours"
-            : undefined,
-      },
-      { status: 201 },
-    );
+    return NextResponse.json(result.response.body, {
+      status: result.response.status,
+      headers: idempotencyResponseHeaders(result.replayed),
+    });
   } catch (error) {
+    if (error instanceof InvalidIdempotencyKeyError) {
+      return NextResponse.json({ error: "Clé d'idempotence invalide" }, { status: 400 });
+    }
+    if (error instanceof IdempotencyKeyConflictError) {
+      return NextResponse.json(
+        { error: "Cette clé d'idempotence a déjà été utilisée avec une autre requête", code: error.message },
+        { status: 409 },
+      );
+    }
+    if (error instanceof Error && error.message === "RECOVERY_NOT_ELIGIBLE") {
+      return NextResponse.json(
+        {
+          error: "Aucune absence récupérable cette semaine sur un cours équivalent",
+          code: "RECOVERY_NOT_ELIGIBLE",
+        },
+        { status: 403 },
+      );
+    }
     if (error instanceof Error && error.message === "NO_SESSIONS_LEFT") {
       return NextResponse.json(
         { error: "Plus de séances disponibles sur cet abonnement", code: "NO_SESSIONS_LEFT" },
+        { status: 403 },
+      );
+    }
+
+    if (error instanceof Error && error.message === "SUBSCRIPTION_WEEK_LIMIT_REACHED") {
+      return NextResponse.json(
+        {
+          error: "Quota hebdomadaire atteint - passage exceptionnel requis",
+          code: "SUBSCRIPTION_WEEK_LIMIT_REACHED",
+        },
+        { status: 403 },
+      );
+    }
+
+    if (error instanceof Error && error.message === "OVERRIDE_LIMIT_REACHED") {
+      return NextResponse.json(
+        {
+          error: "Limite de passages exceptionnels atteinte (3/30j) - validation managériale requise",
+          code: "OVERRIDE_LIMIT_REACHED",
+        },
         { status: 403 },
       );
     }
@@ -448,6 +541,21 @@ async function handlePatch(request: Request, actor: AttendanceActor) {
   const payload = updatePayload.data;
 
   try {
+    const idempotencyKey = readIdempotencyKey(request);
+    const idempotencyParams = {
+      tenantId: actor.tenantId,
+      scope: "attendances:update",
+      idempotencyKey,
+      requestPayload: { attendanceId, payload },
+    };
+    const replay = await replayIdempotentResponse<Record<string, unknown>>(idempotencyParams);
+    if (replay) {
+      return NextResponse.json(replay.response.body, {
+        status: replay.response.status,
+        headers: idempotencyResponseHeaders(true),
+      });
+    }
+
     const clubSettings = await getClubSettings();
     const existing = await prisma.attendance.findFirst({
       where: { id: attendanceId, tenantId: actor.tenantId },
@@ -481,6 +589,7 @@ async function handlePatch(request: Request, actor: AttendanceActor) {
     if (sessionFailure) {
       return attendancePolicyResponse(sessionFailure);
     }
+
     if (existing.session.status === "COMPLETED") {
       return NextResponse.json(
         {
@@ -551,8 +660,6 @@ async function handlePatch(request: Request, actor: AttendanceActor) {
       }
     }
 
-    let delta = 0;
-
     if (payload.status !== undefined) {
       const consumptionChange = await resolveAttendanceConsumptionChange({
         previousStatus: existing.status,
@@ -576,22 +683,85 @@ async function handlePatch(request: Request, actor: AttendanceActor) {
           { status: 403 },
         );
       }
-
-      delta = consumptionChange.balanceDelta;
     }
 
-    const beforeSnapshot = attendanceAuditSnapshot(existing);
-    const updated = await prisma.$transaction(async (tx) => {
-      let memberSubscriptionId = existing.memberSubscriptionId;
-      let subscriptionEntitlementId = existing.subscriptionEntitlementId;
+    const updated = await runIdempotentSerializableTransaction(idempotencyParams, async (tx) => {
+      const transactionExisting = await tx.attendance.findFirst({
+        where: { id: attendanceId, tenantId: actor.tenantId },
+        select: {
+          id: true,
+          memberId: true,
+          status: true,
+          overrideReason: true,
+          checkedBy: true,
+          checkedAt: true,
+          memberSubscriptionId: true,
+          subscriptionEntitlementId: true,
+          session: {
+            select: {
+              id: true,
+              sessionDate: true,
+              groupId: true,
+              status: true,
+              group: { select: { sportId: true } },
+            },
+          },
+          memberSubscription: { select: { plan: { select: { sessionsPerWeek: true } } } },
+          subscriptionEntitlement: { select: { sessionsPerWeek: true } },
+        },
+      });
+      if (!transactionExisting) throw new Error("ATTENDANCE_NOT_FOUND");
 
-      if (delta !== 0) {
+      const transactionNextStatus = payload.status ?? transactionExisting.status;
+      if (transactionNextStatus === "OVERRIDE" && transactionNextStatus !== transactionExisting.status) {
+        const freshOverrideCount = await countAttendanceOverrides(
+          transactionExisting.memberId,
+          actor.tenantId,
+          tx,
+        );
+        if (freshOverrideCount >= 3) throw new Error("OVERRIDE_LIMIT_REACHED");
+      }
+
+      const transactionPlanSessionsPerWeek =
+        transactionExisting.subscriptionEntitlement?.sessionsPerWeek ??
+        transactionExisting.memberSubscription?.plan.sessionsPerWeek ??
+        activeSub?.plan.sessionsPerWeek ??
+        null;
+      const transactionSubscriptionId = transactionExisting.memberSubscriptionId ?? activeSub?.id ?? null;
+      let transactionDelta = 0;
+
+      if (payload.status !== undefined) {
+        const freshConsumptionChange = await resolveAttendanceConsumptionChange(
+          {
+            previousStatus: transactionExisting.status,
+            nextStatus: transactionNextStatus,
+            sessionId: transactionExisting.session.id,
+            groupId: transactionExisting.session.groupId,
+            sessionDate: transactionExisting.session.sessionDate,
+            memberId: transactionExisting.memberId,
+            memberSubscriptionId: transactionSubscriptionId,
+            planSessionsPerWeek: transactionPlanSessionsPerWeek,
+            absentConsumesSession: clubSettings.absentConsumesSession,
+          },
+          tx,
+        );
+        if (freshConsumptionChange.blockPresent) {
+          throw new Error("SUBSCRIPTION_WEEK_LIMIT_REACHED");
+        }
+        transactionDelta = freshConsumptionChange.balanceDelta;
+      }
+
+      const beforeSnapshot = attendanceAuditSnapshot(transactionExisting);
+      let memberSubscriptionId = transactionExisting.memberSubscriptionId;
+      let subscriptionEntitlementId = transactionExisting.subscriptionEntitlementId;
+
+      if (transactionDelta !== 0) {
         const adjustment = await applySessionBalanceDelta(tx, {
-          delta,
+          delta: transactionDelta,
           memberSubscriptionId,
           subscriptionEntitlementId,
-          memberId: existing.memberId,
-          sportId: existing.session.group.sportId,
+          memberId: transactionExisting.memberId,
+          sportId: transactionExisting.session.group.sportId,
         });
         memberSubscriptionId = adjustment.memberSubscriptionId;
         subscriptionEntitlementId = adjustment.subscriptionEntitlementId;
@@ -602,13 +772,13 @@ async function handlePatch(request: Request, actor: AttendanceActor) {
         data: {
           status: payload.status,
           memberSubscriptionId:
-            payload.status !== undefined && nextStatus !== "OVERRIDE"
-              ? memberSubscriptionId ?? subscriptionIdForConsumption
+            payload.status !== undefined && transactionNextStatus !== "OVERRIDE"
+              ? memberSubscriptionId ?? transactionSubscriptionId
               : payload.status !== undefined
                 ? null
                 : undefined,
           subscriptionEntitlementId:
-            payload.status !== undefined && nextStatus !== "OVERRIDE"
+            payload.status !== undefined && transactionNextStatus !== "OVERRIDE"
               ? subscriptionEntitlementId ?? activeSub?.entitlementId ?? null
               : payload.status !== undefined
                 ? null
@@ -650,10 +820,10 @@ async function handlePatch(request: Request, actor: AttendanceActor) {
           details: JSON.stringify(
             attendanceUpdatedAuditDetails({
               tenantId: actor.tenantId,
-              oldStatus: existing.status,
-              newStatus: payload.status ?? existing.status,
+              oldStatus: transactionExisting.status,
+              newStatus: payload.status ?? transactionExisting.status,
               overrideReason: payload.overrideReason || null,
-              sessionBalanceDelta: delta,
+              sessionBalanceDelta: transactionDelta,
               before: beforeSnapshot,
               after: afterSnapshot,
             }),
@@ -661,16 +831,49 @@ async function handlePatch(request: Request, actor: AttendanceActor) {
         },
       });
 
-      return updatedAttendance;
+      return { status: 200, body: { data: updatedAttendance } };
     });
 
-    return NextResponse.json({ data: updated });
+    return NextResponse.json(updated.response.body, {
+      status: updated.response.status,
+      headers: idempotencyResponseHeaders(updated.replayed),
+    });
   } catch (error) {
+    if (error instanceof InvalidIdempotencyKeyError) {
+      return NextResponse.json({ error: "Clé d'idempotence invalide" }, { status: 400 });
+    }
+    if (error instanceof IdempotencyKeyConflictError) {
+      return NextResponse.json(
+        { error: "Cette clé d'idempotence a déjà été utilisée avec une autre requête", code: error.message },
+        { status: 409 },
+      );
+    }
     if (error instanceof Error && error.message === "NO_SESSIONS_LEFT") {
       return NextResponse.json(
         { error: "Plus de séances disponibles sur cet abonnement", code: "NO_SESSIONS_LEFT" },
         { status: 403 },
       );
+    }
+    if (error instanceof Error && error.message === "SUBSCRIPTION_WEEK_LIMIT_REACHED") {
+      return NextResponse.json(
+        {
+          error: "Quota hebdomadaire atteint - passage exceptionnel requis",
+          code: "SUBSCRIPTION_WEEK_LIMIT_REACHED",
+        },
+        { status: 403 },
+      );
+    }
+    if (error instanceof Error && error.message === "OVERRIDE_LIMIT_REACHED") {
+      return NextResponse.json(
+        {
+          error: "Limite de passages exceptionnels atteinte (3/30j) - validation managériale requise",
+          code: "OVERRIDE_LIMIT_REACHED",
+        },
+        { status: 403 },
+      );
+    }
+    if (error instanceof Error && error.message === "ATTENDANCE_NOT_FOUND") {
+      return NextResponse.json({ error: "Présence introuvable" }, { status: 404 });
     }
     if (error instanceof Error && error.message === "NO_ACTIVE_SUBSCRIPTION") {
       return NextResponse.json(
@@ -713,6 +916,21 @@ async function handleDelete(request: Request, actor: AttendanceActor) {
   const { attendanceId } = attendanceIdResult;
 
   try {
+    const idempotencyKey = readIdempotencyKey(request);
+    const idempotencyParams = {
+      tenantId: actor.tenantId,
+      scope: "attendances:delete",
+      idempotencyKey,
+      requestPayload: { attendanceId },
+    };
+    const replay = await replayIdempotentResponse<Record<string, unknown>>(idempotencyParams);
+    if (replay) {
+      return NextResponse.json(replay.response.body, {
+        status: replay.response.status,
+        headers: idempotencyResponseHeaders(true),
+      });
+    }
+
     const clubSettings = await getClubSettings();
     const existing = await prisma.attendance.findFirst({
       where: { id: attendanceId, tenantId: actor.tenantId },
@@ -755,34 +973,63 @@ async function handleDelete(request: Request, actor: AttendanceActor) {
     if (deleteSessionFailure) {
       return attendancePolicyResponse(deleteSessionFailure);
     }
-
     const activeSub = await resolveActiveSubscription(existing.memberId, existing.session.group.sportId);
-    const planSessionsPerWeek =
-      existing.subscriptionEntitlement?.sessionsPerWeek ??
-      existing.memberSubscription?.plan.sessionsPerWeek ??
-      activeSub?.plan.sessionsPerWeek ??
-      null;
-    const subscriptionIdForConsumption = existing.memberSubscriptionId ?? activeSub?.id ?? null;
+    const deleted = await runIdempotentSerializableTransaction(idempotencyParams, async (tx) => {
+      const transactionExisting = await tx.attendance.findFirst({
+        where: { id: attendanceId, tenantId: actor.tenantId },
+        select: {
+          memberId: true,
+          status: true,
+          overrideReason: true,
+          checkedBy: true,
+          checkedAt: true,
+          memberSubscriptionId: true,
+          subscriptionEntitlementId: true,
+          session: {
+            select: {
+              id: true,
+              sessionDate: true,
+              groupId: true,
+              status: true,
+              group: { select: { sportId: true } },
+            },
+          },
+          memberSubscription: { select: { plan: { select: { sessionsPerWeek: true } } } },
+          subscriptionEntitlement: { select: { sessionsPerWeek: true } },
+        },
+      });
+      if (!transactionExisting) throw new Error("ATTENDANCE_NOT_FOUND");
+      if (transactionExisting.session.status === "COMPLETED") {
+        throw new Error("SESSION_REOPEN_REQUIRED");
+      }
 
-    const creditDelta = await computeAttendanceConsumptionUnits({
-      status: existing.status,
-      sessionId: existing.session.id,
-      groupId: existing.session.groupId,
-      sessionDate: existing.session.sessionDate,
-      memberId: existing.memberId,
-      memberSubscriptionId: subscriptionIdForConsumption,
-      planSessionsPerWeek,
-      absentConsumesSession: clubSettings.absentConsumesSession,
-    });
+      const transactionPlanSessionsPerWeek =
+        transactionExisting.subscriptionEntitlement?.sessionsPerWeek ??
+        transactionExisting.memberSubscription?.plan.sessionsPerWeek ??
+        activeSub?.plan.sessionsPerWeek ??
+        null;
+      const transactionSubscriptionId = transactionExisting.memberSubscriptionId ?? activeSub?.id ?? null;
+      const creditDelta = await computeAttendanceConsumptionUnits(
+        {
+          status: transactionExisting.status,
+          sessionId: transactionExisting.session.id,
+          groupId: transactionExisting.session.groupId,
+          sessionDate: transactionExisting.session.sessionDate,
+          memberId: transactionExisting.memberId,
+          memberSubscriptionId: transactionSubscriptionId,
+          planSessionsPerWeek: transactionPlanSessionsPerWeek,
+          absentConsumesSession: clubSettings.absentConsumesSession,
+        },
+        tx,
+      );
 
-    await prisma.$transaction(async (tx) => {
       if (creditDelta > 0) {
         await applySessionBalanceDelta(tx, {
           delta: creditDelta,
-          memberSubscriptionId: existing.memberSubscriptionId,
-          subscriptionEntitlementId: existing.subscriptionEntitlementId,
-          memberId: existing.memberId,
-          sportId: existing.session.group.sportId,
+          memberSubscriptionId: transactionExisting.memberSubscriptionId,
+          subscriptionEntitlementId: transactionExisting.subscriptionEntitlementId,
+          memberId: transactionExisting.memberId,
+          sportId: transactionExisting.session.group.sportId,
         });
       }
 
@@ -799,26 +1046,52 @@ async function handleDelete(request: Request, actor: AttendanceActor) {
             attendanceDeletedAuditDetails({
               tenantId: actor.tenantId,
               deletedAt: new Date(),
-              previousStatus: existing.status,
+              previousStatus: transactionExisting.status,
               previous: {
-                status: existing.status,
-                overrideReason: existing.overrideReason,
-                checkedBy: existing.checkedBy,
-                checkedAt: existing.checkedAt,
-                memberSubscriptionId: existing.memberSubscriptionId,
+                status: transactionExisting.status,
+                overrideReason: transactionExisting.overrideReason,
+                checkedBy: transactionExisting.checkedBy,
+                checkedAt: transactionExisting.checkedAt,
+                memberSubscriptionId: transactionExisting.memberSubscriptionId,
               },
-              memberId: existing.memberId,
-              sessionId: existing.session.id,
-              memberSubscriptionId: existing.memberSubscriptionId,
+              memberId: transactionExisting.memberId,
+              sessionId: transactionExisting.session.id,
+              memberSubscriptionId: transactionExisting.memberSubscriptionId,
               sessionBalanceDelta: creditDelta,
             }),
           ),
         },
       });
+
+      return { status: 200, body: { data: { id: attendanceId } } };
     });
 
-    return NextResponse.json({ data: { id: attendanceId } });
+    return NextResponse.json(deleted.response.body, {
+      status: deleted.response.status,
+      headers: idempotencyResponseHeaders(deleted.replayed),
+    });
   } catch (error) {
+    if (error instanceof InvalidIdempotencyKeyError) {
+      return NextResponse.json({ error: "Clé d'idempotence invalide" }, { status: 400 });
+    }
+    if (error instanceof IdempotencyKeyConflictError) {
+      return NextResponse.json(
+        { error: "Cette clé d'idempotence a déjà été utilisée avec une autre requête", code: error.message },
+        { status: 409 },
+      );
+    }
+    if (error instanceof Error && error.message === "ATTENDANCE_NOT_FOUND") {
+      return NextResponse.json({ error: "Présence introuvable" }, { status: 404 });
+    }
+    if (error instanceof Error && error.message === "SESSION_REOPEN_REQUIRED") {
+      return NextResponse.json(
+        {
+          error: "Cette séance est finalisée. Rouvrez-la avant d'annuler un pointage.",
+          code: "SESSION_REOPEN_REQUIRED",
+        },
+        { status: 409 },
+      );
+    }
     if (isPrismaErrorCode(error, "P2025")) {
       return NextResponse.json({ error: "Présence introuvable" }, { status: 404 });
     }

@@ -10,6 +10,14 @@ import { checkGroupMemberCompatibility } from "@/lib/demographics";
 import { memberProfileCompletionError } from "@/lib/member-profile-policy";
 import { memberAuditSelect, memberAuditSnapshot } from "@/lib/member-audit";
 import { isPrismaErrorCode, readMemberIdFromBody } from "@/lib/member-route-helpers";
+import {
+  IdempotencyKeyConflictError,
+  InvalidIdempotencyKeyError,
+  idempotencyResponseHeaders,
+  readIdempotencyKey,
+  replayIdempotentResponse,
+  runIdempotentSerializableTransaction,
+} from "@/lib/idempotency";
 
 export const runtime = "nodejs";
 
@@ -141,6 +149,39 @@ export async function POST(request: Request) {
     );
   }
 
+  let idempotencyKey: string | null;
+  try {
+    idempotencyKey = readIdempotencyKey(request);
+  } catch (error) {
+    if (error instanceof InvalidIdempotencyKeyError) {
+      return NextResponse.json({ error: "Clé d'idempotence invalide" }, { status: 400 });
+    }
+    throw error;
+  }
+  const idempotencyParams = {
+    tenantId: actor.tenantId,
+    scope: "members:enroll",
+    idempotencyKey,
+    requestPayload: body,
+  };
+  try {
+    const replay = await replayIdempotentResponse<{ data: unknown }>(idempotencyParams);
+    if (replay) {
+      return NextResponse.json(replay.response.body, {
+        status: replay.response.status,
+        headers: idempotencyResponseHeaders(true),
+      });
+    }
+  } catch (error) {
+    if (error instanceof IdempotencyKeyConflictError) {
+      return NextResponse.json(
+        { error: "Cette clé d'idempotence a déjà servi pour une autre requête" },
+        { status: 409 },
+      );
+    }
+    throw error;
+  }
+
   const emailValue = parsed.data.email?.trim() || null;
   const addressValue = parsed.data.address?.trim() || null;
   const parentNameValue = parsed.data.parentName?.trim() || null;
@@ -167,7 +208,7 @@ export async function POST(request: Request) {
     : null;
 
   try {
-    const member = await prisma.$transaction(async (tx) => {
+    const result = await runIdempotentSerializableTransaction(idempotencyParams, async (tx) => {
       if (!hasPlanId) {
         throw new Error("SUBSCRIPTION_PLAN_REQUIRED");
       }
@@ -352,11 +393,20 @@ export async function POST(request: Request) {
         });
       }
 
-      return created;
+      return { status: 201, body: { data: created } };
     });
 
-    return NextResponse.json({ data: member }, { status: 201 });
+    return NextResponse.json(result.response.body, {
+      status: result.response.status,
+      headers: idempotencyResponseHeaders(result.replayed),
+    });
   } catch (error) {
+    if (error instanceof IdempotencyKeyConflictError) {
+      return NextResponse.json(
+        { error: "Cette clé d'idempotence a déjà servi pour une autre requête" },
+        { status: 409 },
+      );
+    }
     if (error instanceof Error && error.message === "PAYMENT_EXCEEDS_DUE") {
       return NextResponse.json({ error: "Le paiement depasse le montant du plan" }, { status: 409 });
     }

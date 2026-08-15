@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import Link from "next/link";
 import { CalendarClock, Check, CheckCircle2, LockOpen, RotateCcw, Users, X, XIcon } from "lucide-react";
 
 import { UndoButton } from "@/components/ui/undo-button";
+import { useAccessibleDialog } from "@/hooks/use-accessible-dialog";
 import { formatMoney } from "@/lib/money";
 import type { SessionCardData } from "./session-card";
 
@@ -54,7 +55,24 @@ export function CheckInDrawer({
   const [modalMember, setModalMember] = useState<{ memberId: string; name: string; status: string } | null>(null);
   const [reason, setReason] = useState("");
   const [markingAll, setMarkingAll] = useState(false);
-  const sheetRef = useRef<HTMLDivElement>(null);
+  const overrideTitleId = useId();
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const overrideReasonRef = useRef<HTMLTextAreaElement>(null);
+  const sheetRef = useAccessibleDialog<HTMLDivElement>({
+    open: true,
+    onClose,
+    closeOnEscape: !modalMember,
+    initialFocusRef: closeButtonRef,
+    trapFocus: !modalMember,
+  });
+  const overrideDialogRef = useAccessibleDialog<HTMLDivElement>({
+    open: Boolean(modalMember),
+    onClose: () => {
+      setModalMember(null);
+      setReason("");
+    },
+    initialFocusRef: overrideReasonRef,
+  });
 
   function hasSub(mid: string) {
     return activeSubscriptionMemberIds.includes(`${session.id}_${mid}`);
@@ -90,19 +108,6 @@ export function CheckInDrawer({
     const att = getAtt(gm.memberId);
     return hasSub(gm.memberId) && att?.status !== "PRESENT";
   });
-
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && !modalMember) onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = prev;
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [onClose, modalMember]);
 
   function statusLabel(status: string, overrideReason?: string | null) {
     if (status === "PRESENT") return "Présent";
@@ -140,7 +145,7 @@ export function CheckInDrawer({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 md:items-stretch md:justify-end"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-[var(--overlay)] md:items-stretch md:justify-end"
       onClick={onClose}
       role="presentation"
     >
@@ -150,6 +155,7 @@ export function CheckInDrawer({
         role="dialog"
         aria-modal="true"
         aria-labelledby="check-in-drawer-title"
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 flex-col items-center pt-2 md:hidden">
@@ -213,6 +219,7 @@ export function CheckInDrawer({
           <div className="grid gap-2">
           {!isFinalized && total <= MARK_ALL_MAX && unmarkedWithSub.length > 0 ? (
             <button
+              ref={closeButtonRef}
               type="button"
               onClick={markAllPresent}
               disabled={markingAll || loadingId !== null}
@@ -402,22 +409,29 @@ export function CheckInDrawer({
 
       {modalMember && (
         <div
-          className="mobile-modal-overlay fixed inset-0 z-[60] flex justify-center bg-black/50"
-          onClick={() => {
+          className="mobile-modal-overlay fixed inset-0 z-[60] flex justify-center bg-[var(--overlay)]"
+          onClick={(event) => {
+            event.stopPropagation();
             setModalMember(null);
             setReason("");
           }}
         >
           <div
+            ref={overrideDialogRef}
             className="mobile-modal-panel border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-floating)] md:max-w-sm md:rounded-lg"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={overrideTitleId}
+            tabIndex={-1}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-base font-semibold text-[var(--foreground)]">Passage exceptionnel</h3>
+            <h3 id={overrideTitleId} className="text-base font-semibold text-[var(--foreground)]">Passage exceptionnel</h3>
             <p className="mt-1 text-sm text-[var(--muted-foreground)]">
               {modalMember.name} n&apos;est pas en règle (abonnement, quota, impayé, ou sport non inclus). Un motif est
               obligatoire.
             </p>
             <textarea
+              ref={overrideReasonRef}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Motif du passage exceptionnel..."

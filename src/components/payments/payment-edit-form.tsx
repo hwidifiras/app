@@ -9,6 +9,7 @@ import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FieldControl } from "@/components/ui/field-control";
 import { FormActions, FormField, FormGrid, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import { PaymentReceiptActions } from "@/components/payments/payment-receipt-actions";
+import { useIdempotencyIntent } from "@/hooks/use-idempotency-intent";
 import { formatMoney, MONEY_INPUT_SUFFIX } from "@/lib/money";
 
 const METHODS = [
@@ -63,6 +64,7 @@ export function PaymentEditForm({ payment, receiptDeliveryLogs }: PaymentEditFor
   const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const paymentIntent = useIdempotencyIntent();
 
   const subscription = payment.memberSubscription;
   const effectiveAmount =
@@ -92,20 +94,31 @@ export function PaymentEditForm({ payment, receiptDeliveryLogs }: PaymentEditFor
     setLoading(true);
     setMessage(null);
 
-    const res = await fetch("/api/payments", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        paymentId: payment.id,
-        payload: {
-          amount: amountNum,
-          paymentDate: paymentDate ? new Date(paymentDate).toISOString() : undefined,
-          paymentMethod: method,
-          notes: notes.trim() || undefined,
-          correctionReason: correctionReason.trim(),
+    const requestPayload = {
+      paymentId: payment.id,
+      payload: {
+        amount: amountNum,
+        paymentDate: paymentDate ? new Date(paymentDate).toISOString() : undefined,
+        paymentMethod: method,
+        notes: notes.trim() || undefined,
+        correctionReason: correctionReason.trim(),
+      },
+    };
+    let res: Response;
+    try {
+      res = await fetch("/api/payments", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": paymentIntent.keyFor(requestPayload),
         },
-      }),
-    });
+        body: JSON.stringify(requestPayload),
+      });
+    } catch {
+      setLoading(false);
+      setMessage("Connexion interrompue. Réessayez sans risque de doubler la correction.");
+      return;
+    }
 
     const json = await res.json();
     setLoading(false);
@@ -114,6 +127,7 @@ export function PaymentEditForm({ payment, receiptDeliveryLogs }: PaymentEditFor
       setMessage(json.error ?? "Erreur lors de la correction du paiement.");
       return;
     }
+    paymentIntent.complete(requestPayload);
 
     router.push("/payments");
     router.refresh();
@@ -128,11 +142,22 @@ export function PaymentEditForm({ payment, receiptDeliveryLogs }: PaymentEditFor
     setDeleting(true);
     setMessage(null);
 
-    const res = await fetch("/api/payments", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ paymentId: payment.id, correctionReason: deleteReason.trim() }),
-    });
+    const requestPayload = { paymentId: payment.id, correctionReason: deleteReason.trim() };
+    let res: Response;
+    try {
+      res = await fetch("/api/payments", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": paymentIntent.keyFor(requestPayload),
+        },
+        body: JSON.stringify(requestPayload),
+      });
+    } catch {
+      setDeleting(false);
+      setMessage("Connexion interrompue. Réessayez sans risque de doubler l'annulation.");
+      return;
+    }
 
     const json = await res.json();
     setDeleting(false);
@@ -141,6 +166,7 @@ export function PaymentEditForm({ payment, receiptDeliveryLogs }: PaymentEditFor
       setMessage(json.error ?? "Erreur lors de l'annulation du paiement.");
       return;
     }
+    paymentIntent.complete(requestPayload);
 
     router.push("/payments");
     router.refresh();

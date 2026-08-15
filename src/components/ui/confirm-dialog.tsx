@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
+import { useId, useRef } from "react";
 import { AlertTriangle, X } from "lucide-react";
 
+import { useAccessibleDialog } from "@/hooks/use-accessible-dialog";
 import { cn } from "@/lib/utils";
 
 type ConfirmDialogProps = {
@@ -30,54 +31,19 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const titleId = useId();
   const descriptionId = useId();
-  const dialogRef = useRef<HTMLElement>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-
-    const previousOverflow = document.body.style.overflow;
-    const previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    document.body.style.overflow = "hidden";
-    cancelButtonRef.current?.focus();
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && !loading) {
-        onCancel();
-        return;
-      }
-
-      if (event.key === "Tab") {
-        const focusableElements = dialogRef.current?.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-        );
-        if (!focusableElements?.length) return;
-
-        const first = focusableElements[0];
-        const last = focusableElements[focusableElements.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault();
-          last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first.focus();
-        }
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-      previousActiveElement?.focus();
-    };
-  }, [loading, onCancel, open]);
+  const dialogRef = useAccessibleDialog<HTMLElement>({
+    open,
+    onClose: onCancel,
+    closeOnEscape: !loading,
+    initialFocusRef: cancelButtonRef,
+  });
 
   if (!open) return null;
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/55 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-[var(--overlay)] p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !loading) onCancel();
       }}
@@ -89,6 +55,7 @@ export function ConfirmDialog({
         aria-busy={loading}
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
+        tabIndex={-1}
         className="max-h-[min(90dvh,36rem)] w-full overflow-y-auto rounded-t-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-floating)] sm:max-w-md sm:rounded-lg sm:p-5"
       >
         <div className="flex items-start gap-3">

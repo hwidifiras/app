@@ -1,3 +1,5 @@
+import type { Prisma } from "@prisma/client";
+
 import { prisma } from "@/lib/prisma";
 import { utcDateOnlyForTimeZone } from "@/lib/dates";
 import { getRequiredTenantId } from "@/lib/tenant-context";
@@ -7,6 +9,8 @@ type AssignmentWindow = {
   startDate: { lte?: Date; lt?: Date };
   OR: Array<{ endDate: null } | { endDate: { gte: Date } }>;
 };
+
+type AssignmentPolicyDb = Pick<Prisma.TransactionClient, "groupMember" | "groupSchedule">;
 
 export type ScheduleSlot = {
   dayOfWeek: string;
@@ -81,9 +85,14 @@ export function isScheduleActiveOnDate(
   );
 }
 
-export async function schedulesForGroupWindow(groupId: string, startDate: Date, endDate?: Date | null) {
+export async function schedulesForGroupWindow(
+  groupId: string,
+  startDate: Date,
+  endDate?: Date | null,
+  db: AssignmentPolicyDb = prisma,
+) {
   const tenantId = getRequiredTenantId();
-  return prisma.groupSchedule.findMany({
+  return db.groupSchedule.findMany({
     where: {
       tenantId,
       groupId,
@@ -165,8 +174,9 @@ export async function checkScheduleConflictOnDate(
   memberId: string,
   date: Date,
   ignoredAssignmentId?: string,
+  db: AssignmentPolicyDb = prisma,
 ) {
-  return checkScheduleConflictForAssignmentWindow(groupId, memberId, date, null, ignoredAssignmentId);
+  return checkScheduleConflictForAssignmentWindow(groupId, memberId, date, null, ignoredAssignmentId, db);
 }
 
 export async function checkScheduleConflictForAssignmentWindow(
@@ -175,12 +185,13 @@ export async function checkScheduleConflictForAssignmentWindow(
   startDate: Date,
   endDate?: Date | null,
   ignoredAssignmentId?: string,
+  db: AssignmentPolicyDb = prisma,
 ) {
   const tenantId = getRequiredTenantId();
-  const newGroupSchedules = await schedulesForGroupWindow(groupId, startDate, endDate);
+  const newGroupSchedules = await schedulesForGroupWindow(groupId, startDate, endDate, db);
   if (newGroupSchedules.length === 0) return { ok: true as const };
 
-  const existingAssignments = await prisma.groupMember.findMany({
+  const existingAssignments = await db.groupMember.findMany({
     where: {
       tenantId,
       memberId,
@@ -201,7 +212,7 @@ export async function checkScheduleConflictForAssignmentWindow(
           : existingEnd
         : (candidateEnd ?? existingEnd);
 
-    const existingSchedules = await schedulesForGroupWindow(assignment.groupId, overlapStart, overlapEnd);
+    const existingSchedules = await schedulesForGroupWindow(assignment.groupId, overlapStart, overlapEnd, db);
 
     for (const newSchedule of newGroupSchedules) {
       for (const existingSchedule of existingSchedules) {

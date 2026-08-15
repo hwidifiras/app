@@ -5,6 +5,7 @@ import { checkGroupMemberCompatibility, type GroupGenderPolicyValue, type GroupT
 import { getWeekRangeUtc } from "@/lib/dates";
 import { resolveMemberPhone } from "@/lib/member-phone";
 import { prisma } from "@/lib/prisma";
+import { runSerializableTransaction } from "@/lib/serializable-transaction";
 import { createSubscriptionEntitlementSnapshots } from "@/lib/subscription-entitlements";
 import type { DataImportPayload } from "@/lib/schemas/data-import";
 import { getGroupWeeklyScheduleCount } from "@/lib/sport-weekly-standard";
@@ -185,7 +186,7 @@ export async function applyDataImport(
   const tenantId = getRequiredTenantId();
   const context = await inspectDataImport(payload);
 
-  return prisma.$transaction(async (tx) => {
+  return runSerializableTransaction(async (tx) => {
     const groupState = await tx.group.findFirstOrThrow({
       where: { id: context.group.id, tenantId },
       select: {

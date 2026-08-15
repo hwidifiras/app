@@ -20,10 +20,32 @@ import { issueReceiptForPayment } from "@/lib/receipts";
 import { isTenantModuleEnabled } from "@/lib/tenant-modules";
 import { resolveMemberPhone } from "@/lib/member-phone";
 import { memberAuditSnapshot } from "@/lib/member-audit";
+import { activeAssignmentWindow } from "@/lib/assignment-policy";
+import {
+  IdempotencyKeyConflictError,
+  InvalidIdempotencyKeyError,
+  idempotencyResponseHeaders,
+  readIdempotencyKey,
+  replayIdempotentResponse,
+  runIdempotentSerializableTransaction,
+} from "@/lib/idempotency";
 
 export const runtime = "nodejs";
 
 const VALID_STATUSES: string[] = ["ACTIVE", "EXPIRED", "CANCELLED", "DRAFT"];
+
+function idempotencyErrorResponse(error: unknown) {
+  if (error instanceof InvalidIdempotencyKeyError) {
+    return NextResponse.json({ error: "Clé d'idempotence invalide" }, { status: 400 });
+  }
+  if (error instanceof IdempotencyKeyConflictError) {
+    return NextResponse.json(
+      { error: "Cette clé d'idempotence a déjà servi pour une autre requête" },
+      { status: 409 },
+    );
+  }
+  return null;
+}
 
 type SubscriptionAuditSnapshotInput = {
   id: string;
@@ -135,6 +157,32 @@ export async function POST(request: Request) {
     );
   }
 
+  let idempotencyKey: string | null;
+  try {
+    idempotencyKey = readIdempotencyKey(request);
+  } catch (error) {
+    return idempotencyErrorResponse(error) ?? NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+  }
+  const idempotencyParams = {
+    tenantId: actor.tenantId,
+    scope: "member-subscriptions:create",
+    idempotencyKey,
+    requestPayload: parsed.data,
+  };
+  try {
+    const replay = await replayIdempotentResponse<{ data: unknown }>(idempotencyParams);
+    if (replay) {
+      return NextResponse.json(replay.response.body, {
+        status: replay.response.status,
+        headers: idempotencyResponseHeaders(true),
+      });
+    }
+  } catch (error) {
+    const response = idempotencyErrorResponse(error);
+    if (response) return response;
+    throw error;
+  }
+
   const { memberId: requestedMemberId, newMember, planId, startDate, carryOverRemainingSessions, paymentCents, paymentMethod, groupIds = [] } =
     parsed.data;
   const start = new Date(startDate);
@@ -218,7 +266,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Dépassement du montant dû pour cette formule" }, { status: 409 });
     }
 
-    const subscription = await prisma.$transaction(async (tx) => {
+    const result = await runIdempotentSerializableTransaction(idempotencyParams, async (tx) => {
       let memberId = requestedMemberId ?? "";
       if (newMember) {
         const createdMember = await tx.member.create({
@@ -249,6 +297,27 @@ export async function POST(request: Request) {
           },
         });
       }
+
+      for (const selectedGroup of selectedGroups) {
+        const freshGroup = await tx.group.findFirst({
+          where: { id: selectedGroup.id, tenantId: actor.tenantId, isActive: true },
+          select: { capacity: true },
+        });
+        if (!freshGroup) throw new Error("GROUP_NOT_FOUND");
+
+        const otherActiveAssignments = await tx.groupMember.count({
+          where: {
+            tenantId: actor.tenantId,
+            groupId: selectedGroup.id,
+            ...activeAssignmentWindow(start),
+            NOT: { memberId },
+          },
+        });
+        if (otherActiveAssignments >= freshGroup.capacity) {
+          throw new Error("GROUP_CAPACITY_REACHED");
+        }
+      }
+
       const created = await createSubscriptionFromPlan(
         tx,
         {
@@ -335,22 +404,36 @@ export async function POST(request: Request) {
         },
       });
 
-      return created;
+      const withRelations = await tx.memberSubscription.findFirstOrThrow({
+        where: { id: created.id, tenantId: actor.tenantId },
+        include: {
+          member: { select: { id: true, firstName: true, lastName: true } },
+          plan: { select: { id: true, name: true } },
+          sport: { select: { id: true, name: true } },
+          payments: { select: { id: true, amount: true, paymentDate: true } },
+          entitlements: {
+            include: { sport: { select: { id: true, name: true } } },
+            orderBy: { createdAt: "asc" },
+          },
+        },
+      });
+
+      return { status: 201, body: { data: withRelations } };
     });
 
-    const withRelations = await prisma.memberSubscription.findFirstOrThrow({
-      where: { id: subscription.id, tenantId: actor.tenantId },
-      include: {
-        member: { select: { id: true, firstName: true, lastName: true } },
-        plan: { select: { id: true, name: true } },
-        sport: { select: { id: true, name: true } },
-        payments: { select: { id: true, amount: true, paymentDate: true } },
-        entitlements: { include: { sport: { select: { id: true, name: true } } }, orderBy: { createdAt: "asc" } },
-      },
+    return NextResponse.json(result.response.body, {
+      status: result.response.status,
+      headers: idempotencyResponseHeaders(result.replayed),
     });
-
-    return NextResponse.json({ data: withRelations }, { status: 201 });
   } catch (error) {
+    const idempotencyResponse = idempotencyErrorResponse(error);
+    if (idempotencyResponse) return idempotencyResponse;
+    if (error instanceof Error && error.message === "GROUP_CAPACITY_REACHED") {
+      return NextResponse.json({ error: "Un groupe sélectionné est complet" }, { status: 409 });
+    }
+    if (error instanceof Error && error.message === "GROUP_NOT_FOUND") {
+      return NextResponse.json({ error: "Un groupe sélectionné est introuvable ou inactif" }, { status: 409 });
+    }
     console.error("[POST /api/member-subscriptions] error:", error);
     return NextResponse.json({ error: "Erreur serveur lors de la création de l'abonnement" }, { status: 500 });
   }
@@ -392,6 +475,32 @@ export async function PATCH(request: Request) {
   }
 
   const payload = updatePayload.data;
+  let idempotencyKey: string | null;
+  try {
+    idempotencyKey = readIdempotencyKey(request);
+  } catch (error) {
+    return idempotencyErrorResponse(error) ?? NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+  }
+  const idempotencyParams = {
+    tenantId: actor.tenantId,
+    scope: "member-subscriptions:update",
+    idempotencyKey,
+    requestPayload: { subscriptionId, payload },
+  };
+  try {
+    const replay = await replayIdempotentResponse<{ data: unknown }>(idempotencyParams);
+    if (replay) {
+      return NextResponse.json(replay.response.body, {
+        status: replay.response.status,
+        headers: idempotencyResponseHeaders(true),
+      });
+    }
+  } catch (error) {
+    const response = idempotencyErrorResponse(error);
+    if (response) return response;
+    throw error;
+  }
+
   const sensitive =
     payload.planId !== undefined ||
     payload.amount !== undefined ||
@@ -511,7 +620,7 @@ export async function PATCH(request: Request) {
     }
 
     const beforeSnapshot = subscriptionAuditSnapshot(existing);
-    const updated = await prisma.$transaction(async (tx) => {
+    const result = await runIdempotentSerializableTransaction(idempotencyParams, async (tx) => {
       const updatedSubscription = await tx.memberSubscription.update({
         where: { id: subscriptionId },
         data: {
@@ -578,11 +687,16 @@ export async function PATCH(request: Request) {
         },
       });
 
-      return updatedSubscription;
+      return { status: 200, body: { data: updatedSubscription } };
     });
 
-    return NextResponse.json({ data: updated });
+    return NextResponse.json(result.response.body, {
+      status: result.response.status,
+      headers: idempotencyResponseHeaders(result.replayed),
+    });
   } catch (error) {
+    const idempotencyResponse = idempotencyErrorResponse(error);
+    if (idempotencyResponse) return idempotencyResponse;
     const isNotFound =
       typeof error === "object" &&
       error !== null &&
@@ -627,11 +741,37 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "subscriptionId invalide" }, { status: 400 });
   }
 
+  const reasonValue = (body as { reason?: unknown }).reason;
+  const rawReason = typeof reasonValue === "string" ? reasonValue.trim() : "";
+  const reason = rawReason || "Résiliation admin";
+  let idempotencyKey: string | null;
+  try {
+    idempotencyKey = readIdempotencyKey(request);
+  } catch (error) {
+    return idempotencyErrorResponse(error) ?? NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+  }
+  const idempotencyParams = {
+    tenantId: actor.tenantId,
+    scope: "member-subscriptions:cancel",
+    idempotencyKey,
+    requestPayload: { subscriptionId, reason },
+  };
+  try {
+    const replay = await replayIdempotentResponse<{ data: unknown }>(idempotencyParams);
+    if (replay) {
+      return NextResponse.json(replay.response.body, {
+        status: replay.response.status,
+        headers: idempotencyResponseHeaders(true),
+      });
+    }
+  } catch (error) {
+    const response = idempotencyErrorResponse(error);
+    if (response) return response;
+    throw error;
+  }
+
   try {
     const now = new Date();
-    const reasonValue = (body as { reason?: unknown }).reason;
-    const rawReason = typeof reasonValue === "string" ? reasonValue.trim() : "";
-    const reason = rawReason || "Résiliation admin";
     const existing = await prisma.memberSubscription.findFirst({
       where: { id: subscriptionId, tenantId: actor.tenantId },
       select: {
@@ -652,7 +792,7 @@ export async function DELETE(request: Request) {
     }
 
     const beforeSnapshot = subscriptionAuditSnapshot(existing);
-    const cancelled = await prisma.$transaction(async (tx) => {
+    const result = await runIdempotentSerializableTransaction(idempotencyParams, async (tx) => {
       const subscription = await tx.memberSubscription.update({
         where: { id: subscriptionId },
         data: { status: "CANCELLED" },
@@ -677,11 +817,16 @@ export async function DELETE(request: Request) {
         },
       });
 
-      return subscription;
+      return { status: 200, body: { data: subscription } };
     });
 
-    return NextResponse.json({ data: cancelled });
+    return NextResponse.json(result.response.body, {
+      status: result.response.status,
+      headers: idempotencyResponseHeaders(result.replayed),
+    });
   } catch (error) {
+    const idempotencyResponse = idempotencyErrorResponse(error);
+    if (idempotencyResponse) return idempotencyResponse;
     const isNotFound =
       typeof error === "object" &&
       error !== null &&

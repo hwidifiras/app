@@ -22,6 +22,7 @@ import {
   type PaymentSubscriptionRow,
 } from "@/components/payments/payment-subscription-selector";
 import { useActionHistory } from "@/hooks/use-action-history";
+import { useIdempotencyIntent } from "@/hooks/use-idempotency-intent";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
@@ -55,6 +56,7 @@ export function PaymentAddForm({
   const [message, setMessage] = useState<string | null>(null);
   const [lastReceipt, setLastReceipt] = useState<{ id: string; receiptNumber: string } | null>(null);
   const { push, undoLast, loading: undoLoading, canUndo } = useActionHistory({ enableKeyboard: true });
+  const paymentIntent = useIdempotencyIntent();
 
   const selected = subscriptions.find((s) => s.id === subscriptionId);
   const remaining = selected ? selected.amount - selected.totalPaid : 0;
@@ -94,17 +96,28 @@ export function PaymentAddForm({
     setMessage(null);
     setLastReceipt(null);
 
-    const res = await fetch("/api/payments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        memberSubscriptionId: subscriptionId,
-        amount: amountNum,
-        paymentDate: paymentDate ? new Date(paymentDate).toISOString() : undefined,
-        paymentMethod: method,
-        notes: notes.trim() || undefined,
-      }),
-    });
+    const requestPayload = {
+      memberSubscriptionId: subscriptionId,
+      amount: amountNum,
+      paymentDate: paymentDate ? new Date(paymentDate).toISOString() : undefined,
+      paymentMethod: method,
+      notes: notes.trim() || undefined,
+    };
+    let res: Response;
+    try {
+      res = await fetch("/api/payments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": paymentIntent.keyFor(requestPayload),
+        },
+        body: JSON.stringify(requestPayload),
+      });
+    } catch {
+      setLoading(false);
+      setMessage("Connexion interrompue. Réessayez : le même paiement ne sera pas créé deux fois.");
+      return;
+    }
 
     const json = (await res.json()) as {
       data?: {
@@ -126,6 +139,7 @@ export function PaymentAddForm({
       setMessage(json.error ?? "Erreur lors de l'enregistrement du paiement.");
       return;
     }
+    paymentIntent.complete(requestPayload);
 
     const paymentId = json.data?.id;
     const paidAmount = json.data?.amount ?? amountNum;
@@ -144,16 +158,24 @@ export function PaymentAddForm({
         scope: "payment",
         label: "Encaissement",
         undo: async () => {
+          const reversalPayload = {
+            paymentId,
+            correctionReason: "Annulation immediate apres encaissement",
+          };
           const deleteRes = await fetch("/api/payments", {
             method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ paymentId, correctionReason: "Annulation immediate apres encaissement" }),
+            headers: {
+              "Content-Type": "application/json",
+              "Idempotency-Key": paymentIntent.keyFor(reversalPayload),
+            },
+            body: JSON.stringify(reversalPayload),
           });
           const deleteJson = (await deleteRes.json()) as { error?: string };
           if (!deleteRes.ok) {
             setMessage(deleteJson.error ?? "Impossible d'annuler le paiement.");
             return false;
           }
+          paymentIntent.complete(reversalPayload);
 
           setSubscriptions((current) =>
             current.map((row) =>

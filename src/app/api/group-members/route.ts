@@ -5,8 +5,20 @@ import { createSubscriptionEntitlementSnapshots } from "@/lib/subscription-entit
 import { createGroupMemberSchema, updateGroupMemberSchema } from "@/lib/schemas/group-member";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { resolveActiveSubscription } from "@/lib/membership-rules";
-import { checkScheduleConflictForAssignmentWindow, ensureGroupCapacityOnDate } from "@/lib/assignment-policy";
+import {
+  activeAssignmentWindow,
+  checkScheduleConflictForAssignmentWindow,
+  ensureGroupCapacityOnDate,
+} from "@/lib/assignment-policy";
 import { checkGroupMemberCompatibility } from "@/lib/demographics";
+import {
+  IdempotencyKeyConflictError,
+  InvalidIdempotencyKeyError,
+  idempotencyResponseHeaders,
+  readIdempotencyKey,
+  replayIdempotentResponse,
+  runIdempotentSerializableTransaction,
+} from "@/lib/idempotency";
 
 export const runtime = "nodejs";
 
@@ -35,6 +47,21 @@ function toGroupMemberDto(item: {
     createdAt: item.createdAt.toISOString(),
     updatedAt: item.updatedAt.toISOString(),
   };
+}
+
+type GroupMemberDto = ReturnType<typeof toGroupMemberDto>;
+
+function idempotencyErrorResponse(error: unknown) {
+  if (error instanceof InvalidIdempotencyKeyError) {
+    return NextResponse.json({ error: "Clé d'idempotence invalide" }, { status: 400 });
+  }
+  if (error instanceof IdempotencyKeyConflictError) {
+    return NextResponse.json(
+      { error: "Cette clé d'idempotence a déjà servi pour une autre requête" },
+      { status: 409 },
+    );
+  }
+  return null;
 }
 
 export async function GET(request: Request) {
@@ -92,6 +119,32 @@ export async function POST(request: Request) {
       },
       { status: 400 },
     );
+  }
+
+  let idempotencyKey: string | null;
+  try {
+    idempotencyKey = readIdempotencyKey(request);
+  } catch (error) {
+    return idempotencyErrorResponse(error) ?? NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+  }
+  const idempotencyParams = {
+    tenantId: actor.tenantId,
+    scope: "group-members:create",
+    idempotencyKey,
+    requestPayload: parsed.data,
+  };
+  try {
+    const replay = await replayIdempotentResponse<{ data: GroupMemberDto }>(idempotencyParams);
+    if (replay) {
+      return NextResponse.json(replay.response.body, {
+        status: replay.response.status,
+        headers: idempotencyResponseHeaders(true),
+      });
+    }
+  } catch (error) {
+    const response = idempotencyErrorResponse(error);
+    if (response) return response;
+    throw error;
   }
 
   const group = await prisma.group.findFirst({
@@ -169,7 +222,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const created = await prisma.$transaction(async (tx) => {
+    const result = await runIdempotentSerializableTransaction(idempotencyParams, async (tx) => {
       const now = new Date();
       let createdSubscriptionId: string | null = null;
       const groupCapacity = await tx.group.findFirst({
@@ -283,11 +336,16 @@ export async function POST(request: Request) {
         },
       });
 
-      return createdAssignment;
+      return { status: 201, body: { data: toGroupMemberDto(createdAssignment) } };
     });
 
-    return NextResponse.json({ data: toGroupMemberDto(created) }, { status: 201 });
+    return NextResponse.json(result.response.body, {
+      status: result.response.status,
+      headers: idempotencyResponseHeaders(result.replayed),
+    });
   } catch (error) {
+    const idempotencyResponse = idempotencyErrorResponse(error);
+    if (idempotencyResponse) return idempotencyResponse;
     const isDuplicateAssignment =
       typeof error === "object" &&
       error !== null &&
@@ -350,6 +408,32 @@ export async function PATCH(request: Request) {
 
   const payload = updatePayload.data;
 
+  let idempotencyKey: string | null;
+  try {
+    idempotencyKey = readIdempotencyKey(request);
+  } catch (error) {
+    return idempotencyErrorResponse(error) ?? NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+  }
+  const idempotencyParams = {
+    tenantId: actor.tenantId,
+    scope: "group-members:update",
+    idempotencyKey,
+    requestPayload: { groupMemberId, payload },
+  };
+  try {
+    const replay = await replayIdempotentResponse<{ data: GroupMemberDto }>(idempotencyParams);
+    if (replay) {
+      return NextResponse.json(replay.response.body, {
+        status: replay.response.status,
+        headers: idempotencyResponseHeaders(true),
+      });
+    }
+  } catch (error) {
+    const response = idempotencyErrorResponse(error);
+    if (response) return response;
+    throw error;
+  }
+
   try {
     const existing = await prisma.groupMember.findFirst({
       where: { id: groupMemberId, tenantId: actor.tenantId },
@@ -406,7 +490,25 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "La date de fin doit être >= date de début" }, { status: 400 });
     }
 
-    const updated = await prisma.$transaction(async (tx) => {
+    const result = await runIdempotentSerializableTransaction(idempotencyParams, async (tx) => {
+      if ((payload.status ?? existing.status) === "ACTIVE") {
+        const freshGroup = await tx.group.findFirst({
+          where: { id: existing.groupId, tenantId: actor.tenantId },
+          select: { capacity: true },
+        });
+        if (!freshGroup) throw new Error("GROUP_NOT_FOUND");
+
+        const activeCount = await tx.groupMember.count({
+          where: {
+            tenantId: actor.tenantId,
+            groupId: existing.groupId,
+            ...activeAssignmentWindow(targetStartDate),
+            NOT: { id: groupMemberId },
+          },
+        });
+        if (activeCount >= freshGroup.capacity) throw new Error("GROUP_CAPACITY_REACHED");
+      }
+
       const next = await tx.groupMember.update({
         where: { id: groupMemberId },
         data: {
@@ -435,11 +537,22 @@ export async function PATCH(request: Request) {
         },
       });
 
-      return next;
+      return { status: 200, body: { data: toGroupMemberDto(next) } };
     });
 
-    return NextResponse.json({ data: toGroupMemberDto(updated) });
-  } catch {
+    return NextResponse.json(result.response.body, {
+      status: result.response.status,
+      headers: idempotencyResponseHeaders(result.replayed),
+    });
+  } catch (error) {
+    const idempotencyResponse = idempotencyErrorResponse(error);
+    if (idempotencyResponse) return idempotencyResponse;
+    if (error instanceof Error && error.message === "GROUP_CAPACITY_REACHED") {
+      return NextResponse.json({ error: "Capacité du groupe atteinte" }, { status: 409 });
+    }
+    if (error instanceof Error && error.message === "GROUP_NOT_FOUND") {
+      return NextResponse.json({ error: "Groupe introuvable" }, { status: 404 });
+    }
     return NextResponse.json({ error: "Erreur serveur lors de la modification" }, { status: 500 });
   }
 }
@@ -470,9 +583,37 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "groupMemberId invalide" }, { status: 400 });
   }
 
+  let idempotencyKey: string | null;
+  try {
+    idempotencyKey = readIdempotencyKey(request);
+  } catch (error) {
+    return idempotencyErrorResponse(error) ?? NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+  }
+  const idempotencyParams = {
+    tenantId: actor.tenantId,
+    scope: "group-members:close",
+    idempotencyKey,
+    requestPayload: { groupMemberId },
+  };
+  try {
+    const replay = await replayIdempotentResponse<{
+      data: { id: string; status: string; endDate: string | null };
+    }>(idempotencyParams);
+    if (replay) {
+      return NextResponse.json(replay.response.body, {
+        status: replay.response.status,
+        headers: idempotencyResponseHeaders(true),
+      });
+    }
+  } catch (error) {
+    const response = idempotencyErrorResponse(error);
+    if (response) return response;
+    throw error;
+  }
+
   try {
     const now = new Date();
-    const closed = await prisma.$transaction(async (tx) => {
+    const result = await runIdempotentSerializableTransaction(idempotencyParams, async (tx) => {
       const existing = await tx.groupMember.findFirst({
         where: { id: groupMemberId, tenantId: actor.tenantId },
         select: { id: true },
@@ -501,11 +642,25 @@ export async function DELETE(request: Request) {
         },
       });
 
-      return assignment;
+      return {
+        status: 200,
+        body: {
+          data: {
+            id: assignment.id,
+            status: assignment.status,
+            endDate: assignment.endDate?.toISOString() ?? null,
+          },
+        },
+      };
     });
 
-    return NextResponse.json({ data: { id: closed.id, status: closed.status, endDate: closed.endDate?.toISOString() ?? null } });
+    return NextResponse.json(result.response.body, {
+      status: result.response.status,
+      headers: idempotencyResponseHeaders(result.replayed),
+    });
   } catch (error) {
+    const idempotencyResponse = idempotencyErrorResponse(error);
+    if (idempotencyResponse) return idempotencyResponse;
     if (error instanceof Error && error.message === "GROUP_MEMBER_NOT_FOUND") {
       return NextResponse.json({ error: "Affectation introuvable" }, { status: 404 });
     }

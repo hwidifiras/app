@@ -10,6 +10,7 @@ import { GroupMemberAvailablePanel } from "@/components/groups/group-member-avai
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormField } from "@/components/ui/form-layout";
+import { useIdempotencyIntent } from "@/hooks/use-idempotency-intent";
 import { isMemberAllowedInGroupPolicy } from "@/lib/demographics";
 
 type GroupMembersManagerProps = {
@@ -31,6 +32,7 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pendingRemoval, setPendingRemoval] = useState<GroupMemberDto | "bulk" | null>(null);
+  const assignmentIntent = useIdempotencyIntent();
 
   const selectedGroup = useMemo(() => groups.find((item) => item.id === groupId) ?? null, [groupId, groups]);
   const activeAssignments = useMemo(() => assignments.filter((item) => item.status === "ACTIVE"), [assignments]);
@@ -162,16 +164,20 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
 
     setBulkAction("assign");
     setMessage(null);
+    const requestPayload = {
+      groupId,
+      memberIds: selectedMemberIds,
+      startDate: new Date(`${startDate}T00:00:00.000Z`).toISOString(),
+      endDate: endDate ? new Date(`${endDate}T00:00:00.000Z`).toISOString() : null,
+    };
 
     const response = await fetch("/api/group-members/bulk", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        groupId,
-        memberIds: selectedMemberIds,
-        startDate: new Date(`${startDate}T00:00:00.000Z`).toISOString(),
-        endDate: endDate ? new Date(`${endDate}T00:00:00.000Z`).toISOString() : null,
-      }),
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": assignmentIntent.keyFor(requestPayload),
+      },
+      body: JSON.stringify(requestPayload),
     });
 
     const result = await response.json();
@@ -181,6 +187,7 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
       setBulkAction(null);
       return;
     }
+    assignmentIntent.complete(requestPayload);
 
     const summary = result.data ?? {};
     setMessage(
@@ -199,14 +206,15 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
 
     setBulkAction("remove");
     setMessage(null);
+    const requestPayload = { groupId, memberIds: selectedAssignedMemberIds };
 
     const response = await fetch("/api/group-members/bulk", {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        groupId,
-        memberIds: selectedAssignedMemberIds,
-      }),
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": assignmentIntent.keyFor(requestPayload),
+      },
+      body: JSON.stringify(requestPayload),
     });
 
     const result = await response.json();
@@ -216,6 +224,7 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
       setBulkAction(null);
       return;
     }
+    assignmentIntent.complete(requestPayload);
 
     setMessage(`Retrait terminé: ${result.data?.closedCount ?? 0} affectation(s) fermée(s).`);
     setSelectedAssignedMemberIds([]);
@@ -229,16 +238,18 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
     setMessage(null);
 
     const nextStatus = item.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+    const requestPayload = {
+      groupMemberId: item.id,
+      payload: { status: nextStatus },
+    };
 
     const response = await fetch("/api/group-members", {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        groupMemberId: item.id,
-        payload: {
-          status: nextStatus,
-        },
-      }),
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": assignmentIntent.keyFor(requestPayload),
+      },
+      body: JSON.stringify(requestPayload),
     });
 
     const result = await response.json();
@@ -248,6 +259,7 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
       setActionLoadingId(null);
       return;
     }
+    assignmentIntent.complete(requestPayload);
 
     setMessage("Statut mis à jour");
     await reloadAssignments();
@@ -257,11 +269,15 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
   async function removeAssignment(item: GroupMemberDto) {
     setActionLoadingId(item.id);
     setMessage(null);
+    const requestPayload = { groupMemberId: item.id };
 
     const response = await fetch("/api/group-members", {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ groupMemberId: item.id }),
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": assignmentIntent.keyFor(requestPayload),
+      },
+      body: JSON.stringify(requestPayload),
     });
 
     const result = await response.json();
@@ -271,6 +287,7 @@ export function GroupMembersManager({ groups, members }: GroupMembersManagerProp
       setActionLoadingId(null);
       return;
     }
+    assignmentIntent.complete(requestPayload);
 
     setMessage("Affectation retirée du groupe");
     setPendingRemoval(null);

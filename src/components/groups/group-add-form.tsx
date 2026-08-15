@@ -8,6 +8,7 @@ import { GroupCoachEligibility } from "@/components/groups/group-coach-eligibili
 import { GroupMemberSelector } from "@/components/groups/group-member-selector";
 import { GroupPolicyPicker } from "@/components/groups/group-policy-picker";
 import { GroupSetupSummary } from "@/components/groups/group-setup-summary";
+import { useIdempotencyIntent } from "@/hooks/use-idempotency-intent";
 import { formatCoachName, formatCoachOptionLabel, isCoachQualifiedForSport } from "@/lib/coach-display";
 import { isMemberAllowedInGroupPolicy, type GroupGenderPolicyValue, type GroupTypeValue } from "@/lib/demographics";
 import { CoachDto } from "@/types/coach";
@@ -37,6 +38,7 @@ export function GroupAddForm({
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const assignmentIntent = useIdempotencyIntent();
 
   async function reloadSports() {
     const response = await fetch("/api/sports?active=true", { cache: "no-store" });
@@ -95,15 +97,19 @@ export function GroupAddForm({
     }
 
     if (selectedMemberIds.length > 0 && result.data?.id) {
+      const requestPayload = {
+        groupId: result.data.id as string,
+        memberIds: selectedMemberIds,
+        startDate: `${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`,
+        endDate: null,
+      };
       const bulkResponse = await fetch("/api/group-members/bulk", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          groupId: result.data.id,
-          memberIds: selectedMemberIds,
-          startDate: new Date().toISOString(),
-          endDate: null,
-        }),
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": assignmentIntent.keyFor(requestPayload),
+        },
+        body: JSON.stringify(requestPayload),
       });
       const bulkResult = await bulkResponse.json();
       if (!bulkResponse.ok) {
@@ -111,6 +117,7 @@ export function GroupAddForm({
         setLoading(false);
         return;
       }
+      assignmentIntent.complete(requestPayload);
     }
 
     router.push("/groups");

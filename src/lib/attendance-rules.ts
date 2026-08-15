@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { getWeekRangeUtc } from "@/lib/dates";
 import type { GroupTypeValue } from "@/lib/demographics";
 import { getRequiredTenantId } from "@/lib/tenant-context";
@@ -6,6 +7,8 @@ import { getRequiredTenantId } from "@/lib/tenant-context";
 export const RECOVERY_OVERRIDE_PREFIX = "Récupération";
 
 export const WEEKLY_SLOT_STATUSES = ["PRESENT", "ABSENT"] as const;
+
+type RecoveryAttendanceDb = Pick<Prisma.TransactionClient, "attendance">;
 
 export async function countWeeklySlotUsage(
   memberSubscriptionId: string,
@@ -37,11 +40,11 @@ export async function findRecoveryEligibleAbsences(params: {
   targetSportId: string;
   targetGroupType: GroupTypeValue;
   targetSessionDate: Date;
-}) {
+}, db: RecoveryAttendanceDb = prisma) {
   const tenantId = getRequiredTenantId();
   const { start, end } = getWeekRangeUtc(params.targetSessionDate);
 
-  const absences = await prisma.attendance.findMany({
+  const absences = await db.attendance.findMany({
     where: {
       tenantId,
       memberId: params.memberId,
@@ -71,7 +74,7 @@ export async function findRecoveryEligibleAbsences(params: {
 
   if (absences.length === 0) return [];
 
-  const recoveriesThisWeek = await prisma.attendance.findMany({
+  const recoveriesThisWeek = await db.attendance.findMany({
     where: {
       tenantId,
       memberId: params.memberId,
@@ -98,8 +101,8 @@ export async function validateRecoveryCheckIn(params: {
   targetSportId: string;
   targetGroupType: GroupTypeValue;
   targetSessionDate: Date;
-}): Promise<{ ok: true } | { ok: false; error: string; code: string }> {
-  const eligible = await findRecoveryEligibleAbsences(params);
+}, db: RecoveryAttendanceDb = prisma): Promise<{ ok: true } | { ok: false; error: string; code: string }> {
+  const eligible = await findRecoveryEligibleAbsences(params, db);
 
   if (eligible.length === 0) {
     return {

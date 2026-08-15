@@ -26,6 +26,7 @@ import {
   type QuoteData,
 } from "@/components/enrollment/enrollment-types";
 import type { OfferLike } from "@/lib/offer-display";
+import { useIdempotencyIntent } from "@/hooks/use-idempotency-intent";
 import {
   formatOfferRulesSummary,
   getOfferEnrollmentHint,
@@ -71,6 +72,7 @@ export function EnrollmentWizard({
   const [completion, setCompletion] = useState<EnrollmentCompletion | null>(null);
   const [voidReason, setVoidReason] = useState("");
   const [voiding, setVoiding] = useState(false);
+  const enrollmentIntent = useIdempotencyIntent();
 
   useEffect(() => {
     Promise.all([
@@ -195,11 +197,22 @@ export function EnrollmentWizard({
     if (completed) return;
     setLoading(true);
     setMessage(null);
-    const res = await fetch("/api/enrollment/apply", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(buildPayload()),
-    });
+    const requestPayload = buildPayload();
+    let res: Response;
+    try {
+      res = await fetch("/api/enrollment/apply", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": enrollmentIntent.keyFor(requestPayload),
+        },
+        body: JSON.stringify(requestPayload),
+      });
+    } catch {
+      setLoading(false);
+      setMessage("Connexion interrompue. Réessayez : l'inscription ne sera pas créée deux fois.");
+      return;
+    }
     const data = await res.json() as {
       data?: {
         memberIds: string[];
@@ -214,6 +227,7 @@ export function EnrollmentWizard({
       setMessage(data.error ?? "Erreur inscription");
       return;
     }
+    enrollmentIntent.complete(requestPayload);
 
     const memberIds = data.data?.memberIds ?? [];
     const receipts = data.data?.receipts ?? [];
@@ -235,15 +249,26 @@ export function EnrollmentWizard({
 
     setVoiding(true);
     setMessage(null);
-    const res = await fetch("/api/enrollment/revert", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        undoSnapshot: completion.undoSnapshot,
-        recoveryKey: completion.recoveryKey,
-        reason,
-      }),
-    });
+    const requestPayload = {
+      undoSnapshot: completion.undoSnapshot,
+      recoveryKey: completion.recoveryKey,
+      reason,
+    };
+    let res: Response;
+    try {
+      res = await fetch("/api/enrollment/revert", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": enrollmentIntent.keyFor(requestPayload),
+        },
+        body: JSON.stringify(requestPayload),
+      });
+    } catch {
+      setVoiding(false);
+      setMessage("Connexion interrompue. Réessayez sans risque de doubler l'annulation.");
+      return;
+    }
     const data = (await res.json()) as { data?: { voided: boolean }; error?: string };
     setVoiding(false);
 
@@ -251,6 +276,7 @@ export function EnrollmentWizard({
       setMessage(data.error ?? "Impossible d'annuler cette inscription.");
       return;
     }
+    enrollmentIntent.complete(requestPayload);
 
     setCompleted(false);
     setCompletion(null);

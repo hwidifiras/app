@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { MemberDemographicsFields } from "@/components/members/member-demographics-fields";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions } from "@/components/ui/form-layout";
+import { useIdempotencyIntent } from "@/hooks/use-idempotency-intent";
 import { formatMoney } from "@/lib/money";
 
 type GroupOption = { id: string; name: string };
@@ -36,6 +37,7 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
   const [paymentNotes, setPaymentNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const enrollmentIntent = useIdempotencyIntent();
 
   const selectedPlan = plansOptions.find((p) => p.id === planId);
   const profileIncomplete =
@@ -77,11 +79,21 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
       payload.paymentNotes = paymentNotes;
     }
 
-    const response = await fetch("/api/members", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    let response: Response;
+    try {
+      response = await fetch("/api/members", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": enrollmentIntent.keyFor(payload),
+        },
+        body: JSON.stringify(payload),
+      });
+    } catch {
+      setLoading(false);
+      setMessage("Connexion interrompue. Réessayez : l'inscription ne sera pas créée deux fois.");
+      return;
+    }
 
     const result = await response.json();
 
@@ -90,6 +102,7 @@ export function MemberAddForm({ groupsOptions, plansOptions }: MemberAddFormProp
       setLoading(false);
       return;
     }
+    enrollmentIntent.complete(payload);
 
     const memberId = result.data?.id as string | undefined;
     router.push(memberId ? `/members/${memberId}` : "/members");

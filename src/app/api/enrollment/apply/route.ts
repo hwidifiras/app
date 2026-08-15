@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 
-import { prisma } from "@/lib/prisma";
 import { createSubscriptionEntitlementSnapshots } from "@/lib/subscription-entitlements";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { enrollmentApplySchema } from "@/lib/schemas/enrollment";
@@ -17,6 +16,14 @@ import { emptyEnrollmentUndoSnapshot } from "@/lib/enrollment-undo";
 import { resolveMemberPhone } from "@/lib/member-phone";
 import { issueReceiptForPayment } from "@/lib/receipts";
 import { withTenantContext } from "@/lib/tenant-context";
+import {
+  IdempotencyKeyConflictError,
+  InvalidIdempotencyKeyError,
+  idempotencyResponseHeaders,
+  readIdempotencyKey,
+  replayIdempotentResponse,
+  runIdempotentSerializableTransaction,
+} from "@/lib/idempotency";
 
 export const runtime = "nodejs";
 
@@ -46,6 +53,39 @@ export async function POST(request: Request) {
   return withTenantContext(
     { tenantId: actor.tenantId, tenantSlug: actor.tenantSlug },
     async () => {
+      let idempotencyKey: string | null;
+      try {
+        idempotencyKey = readIdempotencyKey(request);
+      } catch (error) {
+        if (error instanceof InvalidIdempotencyKeyError) {
+          return NextResponse.json({ error: "Clé d'idempotence invalide" }, { status: 400 });
+        }
+        throw error;
+      }
+      const idempotencyParams = {
+        tenantId: actor.tenantId,
+        scope: "enrollment:apply",
+        idempotencyKey,
+        requestPayload: parsed.data,
+      };
+      try {
+        const replay = await replayIdempotentResponse<Record<string, unknown>>(idempotencyParams);
+        if (replay) {
+          return NextResponse.json(replay.response.body, {
+            status: replay.response.status,
+            headers: idempotencyResponseHeaders(true),
+          });
+        }
+      } catch (error) {
+        if (error instanceof IdempotencyKeyConflictError) {
+          return NextResponse.json(
+            { error: "Cette clé d'idempotence a déjà été utilisée avec une autre requête", code: error.message },
+            { status: 409 },
+          );
+        }
+        throw error;
+      }
+
       const quote = await buildEnrollmentQuote(
         parsed.data.lines,
         parsed.data.offerId,
@@ -64,7 +104,7 @@ export async function POST(request: Request) {
         : new Date();
 
       try {
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await runIdempotentSerializableTransaction(idempotencyParams, async (tx) => {
           const subscriptionIds: string[] = [];
           const memberIds: string[] = [];
           const receipts: Array<{ id: string; receiptNumber: string }> = [];
@@ -420,18 +460,32 @@ export async function POST(request: Request) {
           });
 
           return {
-            memberIds,
-            subscriptionIds,
-            offerApplicationId,
-            quote,
-            receipts,
-            undoSnapshot,
-            recoveryKey,
+            status: 201,
+            body: {
+              data: {
+                memberIds,
+                subscriptionIds,
+                offerApplicationId,
+                quote,
+                receipts,
+                undoSnapshot,
+                recoveryKey,
+              },
+            },
           };
         });
 
-        return NextResponse.json({ data: result }, { status: 201 });
+        return NextResponse.json(result.response.body, {
+          status: result.response.status,
+          headers: idempotencyResponseHeaders(result.replayed),
+        });
       } catch (error) {
+        if (error instanceof IdempotencyKeyConflictError) {
+          return NextResponse.json(
+            { error: "Cette clé d'idempotence a déjà été utilisée avec une autre requête", code: error.message },
+            { status: 409 },
+          );
+        }
         const msg = error instanceof Error ? error.message : "";
         if (msg.startsWith("LINE_")) {
           return NextResponse.json(
