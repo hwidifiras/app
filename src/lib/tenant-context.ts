@@ -13,6 +13,7 @@ export const TENANT_SCOPED_MODELS = new Set([
   "User",
   "UserPermission",
   "PasswordResetToken",
+  "IdempotencyRecord",
   "NotificationRead",
   "ClubSettings",
   "Member",

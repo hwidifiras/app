@@ -23,12 +23,18 @@ const FORGOT_PASSWORD_WINDOW_MS = 15 * 60 * 1000;
 export async function POST(request: Request) {
   const tenant = await resolveTenantFromRequest(request);
   const tenantRateKey = tenant.ok ? tenant.context.tenantSlug : "unknown";
-  const rateLimit = checkRateLimit(
+  const rateLimit = await checkRateLimit(
     `forgot-password:${tenantRateKey}:${getClientIp(request)}`,
     FORGOT_PASSWORD_LIMIT,
     FORGOT_PASSWORD_WINDOW_MS,
   );
   if (!rateLimit.allowed) {
+    if (rateLimit.reason === "unavailable") {
+      return NextResponse.json(
+        { error: "Service de recuperation temporairement indisponible." },
+        { status: 503, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } },
+      );
+    }
     return NextResponse.json(
       { error: "Trop de demandes. Reessayez dans quelques minutes." },
       { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } },

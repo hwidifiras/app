@@ -3,11 +3,15 @@ import { z } from "zod";
 
 import { hashPassword } from "@/lib/password";
 import { hashResetToken } from "@/lib/password-reset";
-import { prisma } from "@/lib/prisma";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { runSerializableTransaction } from "@/lib/serializable-transaction";
 import { enterTenantContext } from "@/lib/tenant-context";
 import { resolveTenantFromRequest } from "@/lib/tenant-resolver";
 
 export const runtime = "nodejs";
+
+const RESET_PASSWORD_LIMIT = 5;
+const RESET_PASSWORD_WINDOW_MS = 15 * 60 * 1000;
 
 const resetPasswordSchema = z.object({
   token: z.string().trim().min(32),
@@ -20,6 +24,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Lien invalide ou expire" }, { status: 400 });
   }
   enterTenantContext(tenant.context);
+
+  const rateLimit = await checkRateLimit(
+    `reset-password:${tenant.context.tenantSlug}:${getClientIp(request)}`,
+    RESET_PASSWORD_LIMIT,
+    RESET_PASSWORD_WINDOW_MS,
+  );
+  if (!rateLimit.allowed) {
+    if (rateLimit.reason === "unavailable") {
+      return NextResponse.json(
+        { error: "Service de reinitialisation temporairement indisponible." },
+        { status: 503, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } },
+      );
+    }
+    return NextResponse.json(
+      { error: "Trop de tentatives. Reessayez dans quelques minutes." },
+      { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } },
+    );
+  }
 
   let body: unknown;
   try {
@@ -34,33 +56,37 @@ export async function POST(request: Request) {
   }
 
   const tokenHash = hashResetToken(parsed.data.token);
-  const resetToken = await prisma.passwordResetToken.findFirst({
-    where: { tenantId: tenant.context.tenantId, tokenHash },
-    include: { user: { select: { id: true, isActive: true } } },
-  });
-
-  if (
-    !resetToken ||
-    resetToken.usedAt ||
-    resetToken.expiresAt < new Date() ||
-    !resetToken.user.isActive
-  ) {
-    return NextResponse.json({ error: "Lien invalide ou expire" }, { status: 400 });
-  }
-
   const passwordHash = await hashPassword(parsed.data.password);
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await runSerializableTransaction(async (tx) => {
+      const now = new Date();
+      const tokenUpdate = await tx.passwordResetToken.updateMany({
+        where: {
+          tenantId: tenant.context.tenantId,
+          tokenHash,
+          usedAt: null,
+          expiresAt: { gt: now },
+        },
+        data: { usedAt: now },
+      });
+      if (tokenUpdate.count !== 1) {
+        throw new Error("PASSWORD_RESET_TOKEN_INVALID");
+      }
+
+      const resetToken = await tx.passwordResetToken.findFirst({
+        where: { tenantId: tenant.context.tenantId, tokenHash },
+        select: { userId: true },
+      });
+      if (!resetToken) {
+        throw new Error("PASSWORD_RESET_TOKEN_INVALID");
+      }
+
       const userUpdate = await tx.user.updateMany({
-        where: { id: resetToken.userId, tenantId: tenant.context.tenantId },
+        where: { id: resetToken.userId, tenantId: tenant.context.tenantId, isActive: true },
         data: { passwordHash },
       });
-      const tokenUpdate = await tx.passwordResetToken.updateMany({
-        where: { id: resetToken.id, tenantId: tenant.context.tenantId },
-        data: { usedAt: new Date() },
-      });
-      if (userUpdate.count !== 1 || tokenUpdate.count !== 1) {
+      if (userUpdate.count !== 1) {
         throw new Error("PASSWORD_RESET_SCOPE_MISMATCH");
       }
       await tx.auditLog.create({
@@ -73,7 +99,10 @@ export async function POST(request: Request) {
       });
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "PASSWORD_RESET_SCOPE_MISMATCH") {
+    if (
+      error instanceof Error &&
+      (error.message === "PASSWORD_RESET_SCOPE_MISMATCH" || error.message === "PASSWORD_RESET_TOKEN_INVALID")
+    ) {
       return NextResponse.json({ error: "Lien invalide ou expire" }, { status: 400 });
     }
     throw error;

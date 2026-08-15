@@ -47,7 +47,7 @@ async function tenantIdFromRequestHeaders(): Promise<string | null> {
     enterTenantContext({
       tenantId,
       tenantSlug: requestHeaders.get("x-tenant-slug")?.trim() || "unknown",
-      host: requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? undefined,
+      host: requestHeaders.get("host") ?? requestHeaders.get("x-forwarded-host") ?? undefined,
     });
 
     return tenantId;
@@ -73,7 +73,31 @@ if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = basePrisma;
 }
 
-export const unscopedPrisma = basePrisma;
+export async function checkDatabaseReadiness(): Promise<void> {
+  await basePrisma.$queryRaw`SELECT 1`;
+}
+
+/**
+ * Deliberately narrow public lookup. Keep the unscoped Prisma client private so
+ * application code cannot accidentally bypass tenant enforcement.
+ */
+export async function findPublicReceiptByVerificationCode(input: {
+  tenantId: string;
+  receiptNumber: string;
+  verificationCode: string;
+}) {
+  return basePrisma.receipt.findFirst({
+    where: {
+      tenantId: input.tenantId,
+      receiptNumber: input.receiptNumber,
+      verificationCode: input.verificationCode,
+    },
+    select: {
+      status: true,
+      snapshotJson: true,
+    },
+  });
+}
 
 export const prisma = basePrisma.$extends({
   query: {
@@ -95,6 +119,7 @@ export const prisma = basePrisma.$extends({
           operation === "groupBy" ||
           operation === "update" ||
           operation === "updateMany" ||
+          operation === "updateManyAndReturn" ||
           operation === "delete" ||
           operation === "deleteMany"
         ) {

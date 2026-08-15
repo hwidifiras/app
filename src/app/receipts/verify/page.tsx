@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 
 import { ReceiptDocument } from "@/components/receipts/receipt-document";
-import { unscopedPrisma } from "@/lib/prisma";
+import { findPublicReceiptByVerificationCode } from "@/lib/prisma";
 import { buildReceiptVerificationQrDataUrl } from "@/lib/receipt-qr";
 import { parseReceiptSnapshot } from "@/lib/receipts";
 import { buildReceiptVerificationUrl } from "@/lib/receipt-verification-url";
@@ -22,22 +22,16 @@ export default async function ReceiptVerifyPage({
   const canSearch = receiptNumber.length > 0 && code.length > 0;
   const host = h.get("host");
   const protocol = h.get("x-forwarded-proto") ?? "https";
-  const resolvedTenant = await resolveTenantFromHost(h.get("x-forwarded-host") ?? host);
+  const resolvedTenant = await resolveTenantFromHost(host ?? h.get("x-forwarded-host"));
   const verificationUrl =
     canSearch && host ? buildReceiptVerificationUrl(`${protocol}://${host}`, receiptNumber, code) : undefined;
 
   const receipt =
     canSearch && resolvedTenant.ok
-      ? await unscopedPrisma.receipt.findFirst({
-          where: {
-            tenantId: resolvedTenant.context.tenantId,
-            receiptNumber,
-            verificationCode: code,
-          },
-          select: {
-            status: true,
-            snapshotJson: true,
-          },
+      ? await findPublicReceiptByVerificationCode({
+          tenantId: resolvedTenant.context.tenantId,
+          receiptNumber,
+          verificationCode: code,
         })
       : null;
 
@@ -47,11 +41,11 @@ export default async function ReceiptVerifyPage({
     : undefined;
 
   return (
-    <main data-receipt-print-page className="min-h-screen bg-[#F6F9FF] px-4 py-8 text-[#0B1220] print:min-h-0 print:bg-white print:p-0 sm:px-6">
+    <main data-receipt-print-page className="min-h-screen bg-[var(--canvas)] px-4 py-8 text-[var(--foreground)] print:min-h-0 print:bg-white print:p-0 sm:px-6">
       <div className="mx-auto max-w-3xl print:max-w-none">
-        <section className="mb-5 rounded-lg border border-[var(--border)] bg-white p-5 shadow-[var(--shadow-panel)] print:hidden">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#2563EB]">Verification recu</p>
-          <h1 className="mt-2 text-2xl font-black tracking-normal">Verifier un recu We Discipline</h1>
+        <section className="mb-5 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-panel)] print:hidden">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--primary)]">Vérification du reçu</p>
+          <h1 className="mt-2 text-2xl font-black tracking-normal">Vérifier un reçu du club</h1>
           <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">
             Saisissez le numero de recu et le code de verification presentes sur le document imprime ou envoye.
           </p>
@@ -72,7 +66,7 @@ export default async function ReceiptVerifyPage({
         </section>
 
         {canSearch && !snapshot ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800">
+          <div className="rounded-lg border border-[var(--danger)]/30 bg-[var(--danger-surface)] p-4 text-sm font-semibold text-[var(--danger)]">
             Aucun recu valide ne correspond a ce numero et ce code pour ce club.
           </div>
         ) : null}

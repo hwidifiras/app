@@ -8,8 +8,8 @@ export type ResolvedTenant =
 
 function hostFromRequest(request: Request): string {
   return (
-    request.headers.get("x-forwarded-host") ??
     request.headers.get("host") ??
+    request.headers.get("x-forwarded-host") ??
     new URL(request.url).host
   );
 }

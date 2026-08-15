@@ -156,6 +156,7 @@ model Tenant {
   users                 User[]
   userPermissions       UserPermission[]
   passwordResetTokens   PasswordResetToken[]
+  idempotencyRecords    IdempotencyRecord[]
   notificationReads     NotificationRead[]
   clubSettings          ClubSettings?
   members               Member[]
@@ -234,6 +235,24 @@ model PasswordResetToken {
   @@unique([tenantId, tokenHash])
   @@index([tenantId])
   @@index([userId])
+  @@index([expiresAt])
+}
+
+model IdempotencyRecord {
+  id             String   @id @default(cuid())
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  scope          String
+  key            String
+  requestHash    String
+  responseStatus Int
+  responseBody   String
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+
+  @@unique([tenantId, scope, key])
+  @@index([tenantId])
+  @@index([tenantId, expiresAt])
   @@index([expiresAt])
 }
 
@@ -320,6 +339,8 @@ model Member {
 
   @@unique([tenantId, phone])
   @@index([tenantId])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, status, createdAt])
 }
 
 model Household {
@@ -433,6 +454,7 @@ model Group {
   updatedAt DateTime        @updatedAt
 
   @@index([tenantId])
+  @@index([tenantId, sportId, isActive])
 }
 
 model GroupMember {
@@ -451,6 +473,7 @@ model GroupMember {
 
   @@unique([tenantId, groupId, memberId])
   @@index([tenantId])
+  @@index([tenantId, memberId, status])
 }
 
 model GroupSchedule {
@@ -528,6 +551,7 @@ model Session {
 
   @@unique([tenantId, groupId, sessionDate, startTime])
   @@index([tenantId])
+  @@index([tenantId, sessionDate, status])
 }
 
 model SubscriptionPlan {
@@ -582,6 +606,8 @@ model MemberSubscription {
 
   @@index([tenantId])
   @@index([memberId, sportId, status])
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, status, memberId, createdAt])
 }
 
 model PlanEntitlement {
@@ -653,6 +679,8 @@ model Payment {
   updatedAt            DateTime           @updatedAt
 
   @@index([tenantId])
+  @@index([tenantId, paymentDate])
+  @@index([tenantId, memberSubscriptionId])
   @@index([correctsPaymentId])
   @@index([createdById])
 }
@@ -677,6 +705,7 @@ model Receipt {
 
   @@unique([tenantId, receiptNumber])
   @@index([tenantId])
+  @@index([tenantId, issuedAt, status])
   @@index([verificationCode])
   @@index([issuedById])
 }
@@ -803,4 +832,6 @@ model AuditLog {
   createdAt  DateTime @default(now())
 
   @@index([tenantId])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, action, createdAt])
 }
