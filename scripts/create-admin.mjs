@@ -1,21 +1,19 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
+import { resolveTenantBootstrapConfig } from "./lib/tenant-bootstrap.mjs";
+
 const prisma = new PrismaClient();
 
 const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
 const name = process.env.ADMIN_NAME?.trim() || "Admin";
 const password = process.env.ADMIN_PASSWORD?.trim();
-const tenantSlug = process.env.TENANT_SLUG?.trim() || process.env.DEFAULT_TENANT_SLUG?.trim() || "we-discipline";
-const tenantId =
-  process.env.TENANT_ID?.trim() ||
-  process.env.DEFAULT_TENANT_ID?.trim() ||
-  `tenant_${tenantSlug.replace(/[^a-z0-9_-]/gi, "_")}`;
-const tenantName = process.env.TENANT_NAME?.trim() || process.env.DEFAULT_TENANT_NAME?.trim() || "We Discipline";
-const rootDomainAlias =
-  process.env.TENANT_ROOT_DOMAIN_ALIAS?.trim() ||
-  process.env.DEFAULT_TENANT_ROOT_ALIAS?.trim() ||
-  null;
+const {
+  id: tenantId,
+  name: tenantName,
+  rootDomainAlias,
+  slug: tenantSlug,
+} = resolveTenantBootstrapConfig(process.env, { fallbackName: "We Discipline" });
 
 if (!email || !password) {
   console.error("ADMIN_EMAIL and ADMIN_PASSWORD are required.");

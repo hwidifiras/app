@@ -1,14 +1,10 @@
 import { PrismaClient } from "@prisma/client";
 
+import { resolveTenantBootstrapConfig } from "./lib/tenant-bootstrap.mjs";
+
 const prisma = new PrismaClient();
 
-const slug = process.env.TENANT_SLUG?.trim() || process.env.DEFAULT_TENANT_SLUG?.trim();
-const name = process.env.TENANT_NAME?.trim() || process.env.DEFAULT_TENANT_NAME?.trim() || slug;
-const id = process.env.TENANT_ID?.trim() || (slug ? `tenant_${slug.replace(/[^a-z0-9_-]/gi, "_")}` : "");
-const rootDomainAlias =
-  process.env.TENANT_ROOT_DOMAIN_ALIAS?.trim() ||
-  process.env.DEFAULT_TENANT_ROOT_ALIAS?.trim() ||
-  null;
+const { id, name, rootDomainAlias, slug } = resolveTenantBootstrapConfig();
 
 if (!slug || !name || !id) {
   console.error("TENANT_SLUG and TENANT_NAME are required.");
