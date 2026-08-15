@@ -6,7 +6,7 @@ import type { NextConfig } from "next";
 /** Force Turbopack root to this app (avoids picking C:\\Users\\...\\package-lock.json). */
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
 
-const productionSecurityHeaders = [
+export const productionSecurityHeaders = [
   {
     key: "Content-Security-Policy",
     value: [
@@ -28,7 +28,7 @@ const productionSecurityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=()",
+    value: "camera=(self), microphone=(), geolocation=()",
   },
 ];
 
