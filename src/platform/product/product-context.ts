@@ -1,16 +1,21 @@
-import type { TenantModuleKey, TenantStatus } from "@prisma/client";
+import type { TenantModuleKey } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import {
   getRequiredTenantId,
   memoizeTenantRequest,
 } from "@/lib/tenant-context";
+import {
+  resolveSaasOperationalAccess,
+  type EffectiveSaasStatus,
+  type SaasOperationalAccess,
+} from "@/platform/billing/saas-access";
 
 export const PRODUCT_MODULES = ["CLASS_MANAGEMENT", "GYM_ACCESS"] as const satisfies readonly TenantModuleKey[];
 
 export type ProductModule = (typeof PRODUCT_MODULES)[number];
 export type ProductProfile = "CLASS_ONLY" | "GYM_ONLY" | "HYBRID";
-export type TenantSaasStatus = TenantStatus;
+export type TenantSaasStatus = EffectiveSaasStatus;
 
 export type ProductCapabilities = {
   classManagement: boolean;
@@ -27,6 +32,9 @@ export type TenantProductContext = {
   tenantSlug: string;
   tenantName: string;
   saasStatus: TenantSaasStatus;
+  operationsAllowed: boolean;
+  billingWarning: SaasOperationalAccess["warning"];
+  saasSubscription: SaasOperationalAccess["subscription"];
   modules: ProductModule[];
   profile: ProductProfile;
   capabilities: ProductCapabilities;
@@ -74,17 +82,51 @@ export function getTenantProductContext(tenantId = getRequiredTenantId()): Promi
           select: { moduleKey: true },
           orderBy: { moduleKey: "asc" },
         },
+        saasSubscriptions: {
+          where: { isCurrent: true },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: {
+            id: true,
+            status: true,
+            startsAt: true,
+            trialEndsAt: true,
+            currentPeriodEnd: true,
+            graceEndsAt: true,
+            saasPlan: {
+              select: {
+                code: true,
+                name: true,
+                userLimit: true,
+                memberLimit: true,
+              },
+            },
+          },
+        },
       },
     });
 
     if (!tenant) throw new Error("TENANT_NOT_FOUND");
 
     const modules = tenant.modules.map((entry) => entry.moduleKey) as ProductModule[];
+    const currentSubscription = tenant.saasSubscriptions[0];
+    const access = resolveSaasOperationalAccess({
+      tenantStatus: tenant.status,
+      subscription: currentSubscription
+        ? {
+            ...currentSubscription,
+            plan: currentSubscription.saasPlan,
+          }
+        : null,
+    });
     return {
       tenantId: tenant.id,
       tenantSlug: tenant.slug,
       tenantName: tenant.name,
-      saasStatus: tenant.status,
+      saasStatus: access.status,
+      operationsAllowed: access.canOperate,
+      billingWarning: access.warning,
+      saasSubscription: access.subscription,
       modules,
       profile: deriveProductProfile(modules),
       capabilities: buildProductCapabilities(modules),

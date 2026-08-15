@@ -6,7 +6,10 @@ import { usePathname } from "next/navigation";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppShellDataProvider } from "@/components/layout/app-shell-data-provider";
 import { DesktopTopNav } from "@/components/layout/desktop-top-nav";
+import { ClubBrandMark } from "@/components/layout/club-brand-mark";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { SaasSubscriptionBanner } from "@/components/layout/saas-subscription-banner";
+import { UserAccountMenu } from "@/components/layout/user-account-menu";
 import {
   DISPLAY_MODE_STORAGE_KEY,
   isDisplayMode,
@@ -90,9 +93,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/homepage/");
   const isPublicReceiptRoute = pathname === "/receipts/verify";
   const isReceiptRoute = pathname.startsWith("/receipts/") && !isPublicReceiptRoute;
+  const isSubscriptionStatusRoute = pathname === "/subscription-status" || pathname.startsWith("/subscription-status/");
 
   if (isAuthRoute || isMarketingRoute || isPublicReceiptRoute) {
     return <div className="relative min-h-screen">{children}</div>;
+  }
+
+  if (isSubscriptionStatusRoute) {
+    return (
+      <AppShellDataProvider>
+        <div className="min-h-screen bg-[var(--background)]">
+          <header className="flex min-h-14 items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-4 sm:px-6">
+            <ClubBrandMark size="md" />
+            <UserAccountMenu />
+          </header>
+          <main id="main-content">{children}</main>
+        </div>
+      </AppShellDataProvider>
+    );
   }
 
   return (
@@ -112,6 +130,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             className={`flex min-w-0 flex-col bg-[var(--background)] ${isReceiptRoute ? "print:block print:bg-white" : ""}`}
           >
             <DesktopTopNav />
+            <SaasSubscriptionBanner />
             <div id="main-content" tabIndex={-1} className={isReceiptRoute ? "print:block" : undefined}>
               {children}
             </div>

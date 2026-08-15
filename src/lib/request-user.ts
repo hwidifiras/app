@@ -5,6 +5,8 @@ import { parsePermissions } from "@/lib/permission-definitions";
 import { prisma } from "@/lib/prisma";
 import { enterTenantContext } from "@/lib/tenant-context";
 import { requireProductModule } from "@/lib/tenant-modules";
+import { isSaasRecoveryPath } from "@/platform/billing/saas-access";
+import { getTenantProductContext } from "@/platform/product/product-context";
 import { requiredProductModuleForPath } from "@/platform/product/product-registry";
 
 export type RequestUser = {
@@ -70,7 +72,13 @@ export async function requireAuth(request: Request): Promise<RequestUser> {
     throw new Error("UNAUTHENTICATED");
   }
 
-  const requiredModule = requiredProductModuleForPath(new URL(request.url).pathname);
+  const pathname = new URL(request.url).pathname;
+  const product = await getTenantProductContext(user.tenantId);
+  if (!product.operationsAllowed && !isSaasRecoveryPath(pathname)) {
+    throw new Error("SAAS_SUBSCRIPTION_BLOCKED");
+  }
+
+  const requiredModule = requiredProductModuleForPath(pathname);
   if (requiredModule) {
     await requireProductModule(user.tenantId, requiredModule);
   }

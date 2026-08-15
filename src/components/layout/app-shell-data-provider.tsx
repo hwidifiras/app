@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { AppNotification } from "@/lib/notifications";
 import type { SetupGuideProgress } from "@/lib/setup-guide";
 
-type AccountData = {
+export type AccountData = {
   id: string;
   email: string;
   name: string;
@@ -24,7 +24,20 @@ type AccountData = {
     classReports: boolean;
     gymReports: boolean;
   };
-  saasStatus: "ACTIVE" | "SUSPENDED";
+  saasStatus: "LEGACY_ACTIVE" | "TRIAL" | "ACTIVE" | "PAST_DUE" | "GRACE" | "SUSPENDED" | "CANCELLED";
+  operationsAllowed: boolean;
+  billingWarning: "PAST_DUE" | "GRACE" | null;
+  saasSubscription: {
+    id: string;
+    planCode: string;
+    planName: string;
+    startsAt: string;
+    trialEndsAt: string | null;
+    currentPeriodEnd: string | null;
+    graceEndsAt: string | null;
+    userLimit: number | null;
+    memberLimit: number | null;
+  } | null;
 };
 
 type NotificationData = {

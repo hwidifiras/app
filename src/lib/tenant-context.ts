@@ -37,6 +37,7 @@ export const TENANT_SCOPED_MODELS = new Set([
   "OfferApplication",
   "Attendance",
   "TenantModule",
+  "TenantSaasSubscription",
   "PlanEntitlement",
   "SubscriptionEntitlement",
   "SubscriptionPause",

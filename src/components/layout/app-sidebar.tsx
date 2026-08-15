@@ -144,9 +144,10 @@ export function isLinkActive(pathname: string, href: string) {
 
 export function navItemIsVisible(
   item: NavItem,
-  account: { role: string; permissions: string[]; modules: string[] } | null,
+  account: { role: string; permissions: string[]; modules: string[]; operationsAllowed?: boolean } | null,
 ) {
   if (!account) return false;
+  if (account.operationsAllowed === false && item.href !== "/settings/account") return false;
   if (item.adminOnly && account.role !== "ADMIN") return false;
   if (item.moduleKey && !account.modules.includes(item.moduleKey)) return false;
   if (item.permission && account.role !== "ADMIN" && !hasPermission(account.permissions, item.permission)) return false;
@@ -155,7 +156,7 @@ export function navItemIsVisible(
 
 export function getConfigurationSections(
   role: string | null,
-  account?: { role: string; permissions: string[]; modules: string[] } | null,
+  account?: { role: string; permissions: string[]; modules: string[]; operationsAllowed?: boolean } | null,
 ) {
   const sections = [
     settingsSection,

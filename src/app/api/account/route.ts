@@ -58,6 +58,9 @@ export async function GET(request: Request) {
         productProfile: product.profile,
         productCapabilities: product.capabilities,
         saasStatus: product.saasStatus,
+        operationsAllowed: product.operationsAllowed,
+        billingWarning: product.billingWarning,
+        saasSubscription: product.saasSubscription,
       },
     });
   } catch (e) {

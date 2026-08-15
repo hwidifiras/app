@@ -17,26 +17,65 @@ if (!tenantSlug || !moduleKeys.includes(moduleKey) || !["enable", "disable", "st
     const tenant = await prisma.tenant.findUnique({ where: { slug: tenantSlug } });
     if (!tenant) throw new Error(`Tenant introuvable: ${tenantSlug}`);
 
+    const currentGrant = await prisma.tenantModule.findUnique({
+      where: { tenantId_moduleKey: { tenantId: tenant.id, moduleKey } },
+      select: { grantSource: true, saasSubscriptionId: true },
+    });
+    if (action !== "status" && currentGrant?.grantSource === "SAAS_SUBSCRIPTION") {
+      throw new Error(
+        "Ce module est piloté par un abonnement SaaS. Utilisez npm run saas:control pour éviter de contourner le plan commercial.",
+      );
+    }
+
     if (action === "enable") {
       const now = new Date();
       await prisma.tenantModule.upsert({
         where: { tenantId_moduleKey: { tenantId: tenant.id, moduleKey } },
-        update: { status: "ENABLED", enabledAt: now, disabledAt: null },
-        create: { tenantId: tenant.id, moduleKey, status: "ENABLED", enabledAt: now },
+        update: {
+          status: "ENABLED",
+          grantSource: "MANUAL",
+          saasSubscriptionId: null,
+          enabledAt: now,
+          disabledAt: null,
+        },
+        create: {
+          tenantId: tenant.id,
+          moduleKey,
+          status: "ENABLED",
+          grantSource: "MANUAL",
+          enabledAt: now,
+        },
       });
     } else if (action === "disable") {
       const now = new Date();
       await prisma.tenantModule.upsert({
         where: { tenantId_moduleKey: { tenantId: tenant.id, moduleKey } },
-        update: { status: "DISABLED", disabledAt: now },
-        create: { tenantId: tenant.id, moduleKey, status: "DISABLED", disabledAt: now },
+        update: {
+          status: "DISABLED",
+          grantSource: "MANUAL",
+          saasSubscriptionId: null,
+          disabledAt: now,
+        },
+        create: {
+          tenantId: tenant.id,
+          moduleKey,
+          status: "DISABLED",
+          grantSource: "MANUAL",
+          disabledAt: now,
+        },
       });
     }
 
     const tenantModule = await prisma.tenantModule.findUnique({
       where: { tenantId_moduleKey: { tenantId: tenant.id, moduleKey } },
     });
-    console.log(JSON.stringify({ tenant: tenant.slug, module: moduleKey, status: tenantModule?.status ?? "DISABLED" }, null, 2));
+    console.log(JSON.stringify({
+      tenant: tenant.slug,
+      module: moduleKey,
+      status: tenantModule?.status ?? "DISABLED",
+      grantSource: tenantModule?.grantSource ?? "MANUAL",
+      saasSubscriptionId: tenantModule?.saasSubscriptionId ?? null,
+    }, null, 2));
   } catch (error) {
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;

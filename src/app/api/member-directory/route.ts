@@ -6,7 +6,7 @@ import {
   type MemberDirectoryPaymentStatus,
   type MemberDirectoryStatus,
 } from "@/lib/member-directory";
-import { getAuthUser } from "@/lib/request-user";
+import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -20,9 +20,11 @@ function positiveInteger(value: string | null, fallback: number) {
 }
 
 export async function GET(request: Request) {
-  const authUser = await getAuthUser();
-  if (!authUser) {
-    return NextResponse.json({ error: "Non autorise" }, { status: 401 });
+  let authUser;
+  try {
+    authUser = await requirePermission(request, "members.manage");
+  } catch (error) {
+    return jsonAuthFailureResponse(error);
   }
 
   const params = new URL(request.url).searchParams;

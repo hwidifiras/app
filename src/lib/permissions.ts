@@ -62,6 +62,9 @@ export function permissionErrorResponse(error: unknown) {
   if (code === "TENANT_PRODUCT_UNCONFIGURED") {
     return { error: "Modules du club non configurés", status: 503 };
   }
+  if (code === "SAAS_SUBSCRIPTION_BLOCKED") {
+    return { error: "Abonnement du club suspendu", status: 423 };
+  }
   return {
     error: code === "UNAUTHENTICATED" ? "Non authentifié" : "Accès refusé",
     status: code === "UNAUTHENTICATED" ? 401 : 403,

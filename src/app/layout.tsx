@@ -16,6 +16,7 @@ import { isAdminOnlyPath, requiredPermissionForPath } from "@/lib/route-permissi
 import { enterTenantContext, getTenantContext } from "@/lib/tenant-context";
 import { resolveTenantFromHost } from "@/lib/tenant-resolver";
 import { THEME_INIT_SCRIPT } from "@/lib/theme-init-script";
+import { isSaasRecoveryPath } from "@/platform/billing/saas-access";
 import { getTenantProductContext } from "@/platform/product/product-context";
 import { requiredProductModuleForPath } from "@/platform/product/product-registry";
 import "./globals.css";
@@ -73,6 +74,11 @@ export default async function RootLayout({
       redirect(`/login?next=${encodeURIComponent(pathname)}`);
     }
 
+    const product = await getTenantProductContext(user.tenantId);
+    if (!product.operationsAllowed && !isSaasRecoveryPath(pathname)) {
+      redirect("/subscription-status");
+    }
+
     const requiredPermission = requiredPermissionForPath(pathname);
     const denied =
       (isAdminOnlyPath(pathname) && user.role !== "ADMIN") ||
@@ -84,7 +90,6 @@ export default async function RootLayout({
 
     const requiredModule = requiredProductModuleForPath(pathname);
     if (requiredModule) {
-      const product = await getTenantProductContext(user.tenantId);
       if (!product.modules.includes(requiredModule)) {
         redirect("/?module=unavailable");
       }

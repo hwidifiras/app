@@ -48,10 +48,13 @@ await prisma.tenantModule.upsert({
     tenantId: tenant.id,
     moduleKey: "CLASS_MANAGEMENT",
     status: "ENABLED",
+    grantSource: "MANUAL",
     enabledAt: new Date(),
   },
   update: {
     status: "ENABLED",
+    grantSource: "MANUAL",
+    saasSubscriptionId: null,
     disabledAt: null,
   },
 });
