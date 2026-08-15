@@ -3,24 +3,9 @@
 import { useState } from "react";
 import { CheckCircle2, Clock3, Dumbbell, Search, ShieldAlert, XCircle } from "lucide-react";
 
+import { GymCredentialAdmission } from "@/components/gym/gym-credential-admission";
+import type { GymAccessDecisionDto as AccessDecision } from "@/components/gym/gym-types";
 import { formatMoney } from "@/lib/money";
-
-type AccessDecision = {
-  allowed: boolean;
-  override: boolean;
-  code: string | null;
-  message: string;
-  member: { id: string; firstName: string; lastName: string; phone: string } | null;
-  entitlement: {
-    id: string;
-    planName: string;
-    accessMode: "UNLIMITED" | "VISIT_QUOTA";
-    remainingUnits: number | null;
-    endDate: string | null;
-    amount: number;
-    totalPaid: number;
-  } | null;
-};
 
 export function GymCheckInPanel() {
   const [query, setQuery] = useState("");
@@ -83,9 +68,11 @@ export function GymCheckInPanel() {
 
   return (
     <div className="space-y-4">
+      <GymCredentialAdmission onAccessRecorded={() => { if (query.trim().length >= 2) void searchMembers(); }} />
+
       <form onSubmit={searchMembers} className="panel p-3 sm:p-4">
         <label htmlFor="gym-member-search" className="mb-2 block text-sm font-semibold text-[var(--foreground)]">
-          Rechercher ou scanner un membre
+          Rechercher manuellement un membre
         </label>
         <div className="flex flex-col gap-2 sm:flex-row">
           <div className="relative min-w-0 flex-1">
@@ -95,7 +82,7 @@ export function GymCheckInPanel() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               className="field h-11 w-full pl-9"
-              placeholder="Nom, téléphone ou futur code membre"
+              placeholder="Nom ou téléphone"
               autoComplete="off"
             />
           </div>

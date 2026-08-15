@@ -135,6 +135,17 @@ const rateLimitBackend = value("RATE_LIMIT_BACKEND").toLowerCase();
 if (rateLimitBackend && !["memory", "redis"].includes(rateLimitBackend)) {
   errors.push("RATE_LIMIT_BACKEND must be either memory or redis.");
 }
+
+const accessCredentialSecret = value("ACCESS_CREDENTIAL_SECRET");
+if (accessCredentialSecret) {
+  if (isPlaceholder(accessCredentialSecret)) {
+    errors.push("ACCESS_CREDENTIAL_SECRET must not use a default or placeholder value.");
+  } else if (accessCredentialSecret.length < 32) {
+    errors.push("ACCESS_CREDENTIAL_SECRET must contain at least 32 characters.");
+  } else if (accessCredentialSecret === authSecret) {
+    errors.push("ACCESS_CREDENTIAL_SECRET should be different from AUTH_SECRET.");
+  }
+}
 const usesSingleInstanceMemoryRateLimit = rateLimitBackend === "memory";
 
 if (!rateLimitUrlValue && !usesSingleInstanceMemoryRateLimit) {

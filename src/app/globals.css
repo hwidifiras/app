@@ -279,6 +279,27 @@ a {
     break-inside: avoid;
     page-break-inside: avoid;
   }
+
+  html[data-print-mode="gym-card"] body * {
+    visibility: hidden !important;
+  }
+
+  html[data-print-mode="gym-card"] [data-gym-access-card],
+  html[data-print-mode="gym-card"] [data-gym-access-card] * {
+    visibility: visible !important;
+  }
+
+  html[data-print-mode="gym-card"] [data-gym-access-card] {
+    position: fixed !important;
+    top: 12mm !important;
+    left: 50% !important;
+    width: 85.6mm !important;
+    height: 54mm !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+    border-radius: 3mm !important;
+    box-shadow: none !important;
+  }
 }
 
 .panel {

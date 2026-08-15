@@ -56,6 +56,8 @@
   "dependencies": {
     "@base-ui/react": "^1.4.1",
     "@prisma/client": "^6.19.3",
+    "@zxing/browser": "0.1.5",
+    "@zxing/library": "0.21.3",
     "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

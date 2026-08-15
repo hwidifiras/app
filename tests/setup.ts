@@ -3,7 +3,8 @@ import { beforeEach } from "vitest";
 Object.assign(process.env, {
   NODE_ENV: "test",
   DATABASE_URL: process.env.TEST_DATABASE_URL || "postgresql://gymday:gymday@localhost:5432/gymday_test?schema=public",
-  AUTH_SECRET: "test-secret",
+  AUTH_SECRET: "test-auth-secret-32-characters-minimum-value",
+  ACCESS_CREDENTIAL_SECRET: "test-access-card-secret-32-characters-minimum",
   APP_TIMEZONE: "Africa/Tunis",
   SAAS_ROOT_DOMAIN: "localhost",
   DEFAULT_TENANT_SLUG: "we-discipline",

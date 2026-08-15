@@ -155,6 +155,11 @@ enum GymVisitEntryType {
   REVERSAL
 }
 
+enum GymAccessAttemptOutcome {
+  DENIED
+  EXCEPTIONAL_ALLOWED
+}
+
 enum TenantModuleKey {
   CLASS_MANAGEMENT
   GYM_ACCESS
@@ -201,6 +206,8 @@ model Tenant {
   planEntitlements         PlanEntitlement[]
   subscriptionEntitlements SubscriptionEntitlement[]
   gymVisits                GymVisit[]
+  memberAccessCredentials  MemberAccessCredential[]
+  gymAccessAttempts        GymAccessAttempt[]
   subscriptionPauses       SubscriptionPause[]
   entitlementAdjustments   EntitlementAdjustment[]
   createdAt                DateTime                  @default(now())
@@ -208,24 +215,27 @@ model Tenant {
 }
 
 model User {
-  id                      String                  @id @default(cuid())
+  id                      String                   @id @default(cuid())
   tenantId                String?
-  tenant                  Tenant?                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  coachId                 String?                 @unique
-  coach                   Coach?                  @relation("CoachUserAccount", fields: [coachId], references: [id], onDelete: SetNull)
+  tenant                  Tenant?                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  coachId                 String?                  @unique
+  coach                   Coach?                   @relation("CoachUserAccount", fields: [coachId], references: [id], onDelete: SetNull)
   email                   String
   name                    String
   passwordHash            String
-  role                    UserRole                @default(STAFF)
-  isActive                Boolean                 @default(true)
+  role                    UserRole                 @default(STAFF)
+  isActive                Boolean                  @default(true)
   permissions             UserPermission[]
   notificationReads       NotificationRead[]
   passwordResetTokens     PasswordResetToken[]
-  gymVisitsChecked        GymVisit[]              @relation("GymVisitCheckedBy")
-  subscriptionPauseEvents SubscriptionPause[]     @relation("SubscriptionPauseActor")
-  entitlementAdjustments  EntitlementAdjustment[] @relation("EntitlementAdjustmentActor")
-  createdAt               DateTime                @default(now())
-  updatedAt               DateTime                @updatedAt
+  gymVisitsChecked        GymVisit[]               @relation("GymVisitCheckedBy")
+  gymCredentialsIssued    MemberAccessCredential[] @relation("GymCredentialIssuedBy")
+  gymCredentialsRevoked   MemberAccessCredential[] @relation("GymCredentialRevokedBy")
+  gymAccessAttempts       GymAccessAttempt[]       @relation("GymAccessAttemptActor")
+  subscriptionPauseEvents SubscriptionPause[]      @relation("SubscriptionPauseActor")
+  entitlementAdjustments  EntitlementAdjustment[]  @relation("EntitlementAdjustmentActor")
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -327,6 +337,8 @@ model ClubSettings {
   gymDuplicateScanWindowMinutes         Int         @default(2)
   gymDailyVisitLimit                    Int?
   gymAllowExceptionalAccess             Boolean     @default(true)
+  gymEnforceOpeningHours                Boolean     @default(false)
+  gymOpeningHours                       Json        @default("[]")
   receiptPrefix                         String      @default("WD")
   nextReceiptSequence                   Int         @default(1)
   receiptFooter                         String      @default("")
@@ -336,30 +348,32 @@ model ClubSettings {
 }
 
 model Member {
-  id            String               @id @default(cuid())
-  tenantId      String?
-  tenant        Tenant?              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  firstName     String
-  lastName      String
-  phone         String
-  email         String?
-  memberType    MemberType           @default(NOT_SPECIFIED)
-  gender        Gender               @default(NOT_SPECIFIED)
-  birthDate     DateTime?
-  address       String?
-  parentName    String?
-  parentPhone   String?
-  parentAddress String?
-  status        MemberStatus         @default(ACTIVE)
-  groups        GroupMember[]
-  subscriptions MemberSubscription[]
-  attendances   Attendance[]
-  gymVisits     GymVisit[]
-  householdLink HouseholdMember?
-  joinedAt      DateTime             @default(now())
-  archivedAt    DateTime?
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
+  id                String                   @id @default(cuid())
+  tenantId          String?
+  tenant            Tenant?                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  firstName         String
+  lastName          String
+  phone             String
+  email             String?
+  memberType        MemberType               @default(NOT_SPECIFIED)
+  gender            Gender                   @default(NOT_SPECIFIED)
+  birthDate         DateTime?
+  address           String?
+  parentName        String?
+  parentPhone       String?
+  parentAddress     String?
+  status            MemberStatus             @default(ACTIVE)
+  groups            GroupMember[]
+  subscriptions     MemberSubscription[]
+  attendances       Attendance[]
+  gymVisits         GymVisit[]
+  accessCredentials MemberAccessCredential[]
+  gymAccessAttempts GymAccessAttempt[]
+  householdLink     HouseholdMember?
+  joinedAt          DateTime                 @default(now())
+  archivedAt        DateTime?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
 
   @@unique([tenantId, phone])
   @@index([tenantId])
@@ -910,6 +924,49 @@ model GymVisit {
   @@index([memberId, checkedAt])
   @@index([subscriptionEntitlementId])
   @@index([correctsVisitId])
+}
+
+model MemberAccessCredential {
+  id           String             @id
+  tenantId     String
+  tenant       Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberId     String
+  member       Member             @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  codeHint     String
+  issuedAt     DateTime           @default(now())
+  issuedById   String?
+  issuedBy     User?              @relation("GymCredentialIssuedBy", fields: [issuedById], references: [id], onDelete: SetNull)
+  revokedAt    DateTime?
+  revokedById  String?
+  revokedBy    User?              @relation("GymCredentialRevokedBy", fields: [revokedById], references: [id], onDelete: SetNull)
+  revokeReason String?
+  attempts     GymAccessAttempt[]
+  createdAt    DateTime           @default(now())
+
+  @@index([tenantId, memberId, revokedAt])
+  @@index([tenantId, issuedAt])
+}
+
+model GymAccessAttempt {
+  id                    String                  @id @default(cuid())
+  tenantId              String
+  tenant                Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberId              String?
+  member                Member?                 @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  credentialId          String?
+  credential            MemberAccessCredential? @relation(fields: [credentialId], references: [id], onDelete: Restrict)
+  outcome               GymAccessAttemptOutcome
+  failureCode           String?
+  identifierFingerprint String?
+  overrideReason        String?
+  checkedById           String?
+  checkedBy             User?                   @relation("GymAccessAttemptActor", fields: [checkedById], references: [id], onDelete: SetNull)
+  occurredAt            DateTime                @default(now())
+
+  @@index([tenantId, occurredAt])
+  @@index([tenantId, outcome, occurredAt])
+  @@index([tenantId, memberId, occurredAt])
+  @@index([credentialId])
 }
 
 model AuditLog {

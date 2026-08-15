@@ -4,7 +4,7 @@ import { AUTH_COOKIE_NAME, verifyAuthToken, type AuthRole } from "@/lib/auth";
 import { parsePermissions } from "@/lib/permission-definitions";
 import { prisma } from "@/lib/prisma";
 import { enterTenantContext } from "@/lib/tenant-context";
-import { getTenantProductContext } from "@/platform/product/product-context";
+import { requireProductModule } from "@/lib/tenant-modules";
 import { requiredProductModuleForPath } from "@/platform/product/product-registry";
 
 export type RequestUser = {
@@ -72,10 +72,7 @@ export async function requireAuth(request: Request): Promise<RequestUser> {
 
   const requiredModule = requiredProductModuleForPath(new URL(request.url).pathname);
   if (requiredModule) {
-    const product = await getTenantProductContext(user.tenantId);
-    if (!product.modules.includes(requiredModule)) {
-      throw new Error("MODULE_DISABLED");
-    }
+    await requireProductModule(user.tenantId, requiredModule);
   }
 
   return user;

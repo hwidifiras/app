@@ -19,6 +19,7 @@ import {
   type ClubDay,
 } from "@/lib/club-working-days";
 import { normalizeDashboardDefaultMode, type DashboardDefaultMode } from "@/lib/dashboard-preferences";
+import type { GymOpeningWindow } from "@/modules/gym/opening-hours";
 
 export type ClubSettingsFormData = {
   clubName: string;
@@ -49,6 +50,8 @@ export type ClubSettingsFormData = {
   gymDuplicateScanWindowMinutes: number;
   gymDailyVisitLimit: number | null;
   gymAllowExceptionalAccess: boolean;
+  gymEnforceOpeningHours: boolean;
+  gymOpeningHours: GymOpeningWindow[];
   receiptPrefix: string;
   nextReceiptSequence: number;
   receiptFooter: string;
@@ -124,6 +127,8 @@ export function ClubSettingsForm({
   const [gymDuplicateWindow, setGymDuplicateWindow] = useState(String(initial.gymDuplicateScanWindowMinutes));
   const [gymDailyLimit, setGymDailyLimit] = useState(initial.gymDailyVisitLimit ? String(initial.gymDailyVisitLimit) : "");
   const [gymAllowExceptionalAccess, setGymAllowExceptionalAccess] = useState(initial.gymAllowExceptionalAccess);
+  const [gymEnforceOpeningHours, setGymEnforceOpeningHours] = useState(initial.gymEnforceOpeningHours);
+  const [gymOpeningHours, setGymOpeningHours] = useState<GymOpeningWindow[]>(initial.gymOpeningHours);
   const [receiptPrefix, setReceiptPrefix] = useState(initial.receiptPrefix || "WD");
   const [nextReceiptSequence, setNextReceiptSequence] = useState(String(initial.nextReceiptSequence || 1));
   const [receiptFooter, setReceiptFooter] = useState(initial.receiptFooter || "");
@@ -148,6 +153,11 @@ export function ClubSettingsForm({
 
     if (classModuleEnabled && workingDays.length === 0) {
       setMessage("Selectionnez au moins un jour d'ouverture du club");
+      return;
+    }
+
+    if (gymModuleEnabled && gymEnforceOpeningHours && gymOpeningHours.length === 0) {
+      setMessage("Ajoutez au moins un créneau salle avant d'activer le contrôle des horaires");
       return;
     }
 
@@ -196,6 +206,8 @@ export function ClubSettingsForm({
         gymDuplicateScanWindowMinutes: Math.max(0, Number.parseInt(gymDuplicateWindow, 10) || 0),
         gymDailyVisitLimit: gymDailyLimit.trim() ? Math.max(1, Number.parseInt(gymDailyLimit, 10) || 1) : null,
         gymAllowExceptionalAccess,
+        gymEnforceOpeningHours,
+        gymOpeningHours,
         receiptPrefix: receiptPrefix.trim().toUpperCase(),
         nextReceiptSequence: receiptSequence,
         receiptFooter: receiptFooter.trim(),
@@ -252,6 +264,8 @@ export function ClubSettingsForm({
     setGymDuplicateWindow(String(json.data.gymDuplicateScanWindowMinutes ?? 2));
     setGymDailyLimit(json.data.gymDailyVisitLimit ? String(json.data.gymDailyVisitLimit) : "");
     setGymAllowExceptionalAccess(json.data.gymAllowExceptionalAccess !== false);
+    setGymEnforceOpeningHours(Boolean(json.data.gymEnforceOpeningHours));
+    setGymOpeningHours(Array.isArray(json.data.gymOpeningHours) ? json.data.gymOpeningHours : []);
     setReceiptPrefix(json.data.receiptPrefix ?? "WD");
     setNextReceiptSequence(String(json.data.nextReceiptSequence ?? 1));
     setReceiptFooter(json.data.receiptFooter ?? "");
@@ -381,11 +395,15 @@ export function ClubSettingsForm({
           duplicateWindowMinutes={gymDuplicateWindow}
           dailyVisitLimit={gymDailyLimit}
           showDashboardWidget={dashboardShowGymOverview}
+          enforceOpeningHours={gymEnforceOpeningHours}
+          openingHours={gymOpeningHours}
           onAllowPartialPaymentChange={setGymAllowPartialPayment}
           onAllowExceptionalAccessChange={setGymAllowExceptionalAccess}
           onDuplicateWindowMinutesChange={setGymDuplicateWindow}
           onDailyVisitLimitChange={setGymDailyLimit}
           onShowDashboardWidgetChange={setDashboardShowGymOverview}
+          onEnforceOpeningHoursChange={setGymEnforceOpeningHours}
+          onOpeningHoursChange={setGymOpeningHours}
         />
       ) : null}
 

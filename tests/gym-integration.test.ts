@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { getClubSettings } from "@/lib/club-settings";
-import { evaluateGymAccess } from "@/lib/gym-access-policy";
+import { evaluateGymAccess, evaluateGymAccessBatch } from "@/lib/gym-access-policy";
 import { prisma } from "@/lib/prisma";
 import { createSubscriptionFromPlan } from "@/lib/subscription-service";
 import { isTenantModuleEnabled } from "@/lib/tenant-modules";
@@ -63,6 +63,8 @@ describe("gym access integration", () => {
         gymAllowExceptionalAccess: true,
         gymDuplicateScanWindowMinutes: 2,
         gymDailyVisitLimit: null,
+        gymEnforceOpeningHours: false,
+        gymOpeningHours: [],
       },
     });
   });
@@ -125,6 +127,37 @@ describe("gym access integration", () => {
     );
     expect(decision).toMatchObject({ allowed: true, code: null, unitsDelta: 0 });
     expect(decision.entitlement?.remainingUnits).toBeNull();
+  });
+
+  it("enforces opening windows and returns batched search decisions", async () => {
+    const fixture = await createGymFixture("VISIT_QUOTA", 3);
+    await prisma.payment.create({
+      data: { tenantId: TENANT_ID, memberSubscriptionId: fixture.subscription.id, amount: 5000 },
+    });
+    await prisma.clubSettings.update({
+      where: { tenantId: TENANT_ID },
+      data: {
+        gymEnforceOpeningHours: true,
+        gymOpeningHours: [{ dayOfWeek: "MONDAY", opensAt: "08:00", closesAt: "12:00" }],
+      },
+    });
+    const settings = await getClubSettings({ tenantId: TENANT_ID });
+    const closed = await prisma.$transaction((tx) => evaluateGymAccess(tx, {
+      tenantId: TENANT_ID,
+      memberId: fixture.member.id,
+      settings,
+      now: new Date("2026-08-17T12:00:00.000Z"),
+    }));
+    expect(closed).toMatchObject({ allowed: false, code: "CLUB_CLOSED" });
+
+    const open = await prisma.$transaction((tx) => evaluateGymAccessBatch(tx, {
+      tenantId: TENANT_ID,
+      memberIds: [fixture.member.id],
+      settings,
+      now: new Date("2026-08-17T09:00:00.000Z"),
+    }));
+    expect(open).toHaveLength(1);
+    expect(open[0]).toMatchObject({ allowed: true, code: null, unitsDelta: -1 });
   });
 
   it("does not resolve a member belonging to another tenant", async () => {

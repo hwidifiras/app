@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { DEFAULT_WORKING_DAYS, normalizeWorkingDays, type ClubDay } from "@/lib/club-working-days";
 import { normalizeDashboardDefaultMode, type DashboardDefaultMode } from "@/lib/dashboard-preferences";
 import { getTenantContext, getTenantId, withTenantContext } from "@/lib/tenant-context";
+import { normalizeGymOpeningHours, type GymOpeningWindow } from "@/modules/gym/opening-hours";
 
 export type ClubSettingsData = {
   id: string;
@@ -33,6 +34,8 @@ export type ClubSettingsData = {
   gymDuplicateScanWindowMinutes: number;
   gymDailyVisitLimit: number | null;
   gymAllowExceptionalAccess: boolean;
+  gymEnforceOpeningHours: boolean;
+  gymOpeningHours: GymOpeningWindow[];
   receiptPrefix: string;
   nextReceiptSequence: number;
   receiptFooter: string;
@@ -71,6 +74,8 @@ const DEFAULTS = {
   gymDuplicateScanWindowMinutes: 2,
   gymDailyVisitLimit: null,
   gymAllowExceptionalAccess: true,
+  gymEnforceOpeningHours: false,
+  gymOpeningHours: [] as GymOpeningWindow[],
   receiptPrefix: "WD",
   nextReceiptSequence: 1,
   receiptFooter: "",
@@ -165,6 +170,11 @@ function normalizeClubSettings(row: Record<string, unknown>): ClubSettingsData {
       typeof row.gymAllowExceptionalAccess === "boolean"
         ? row.gymAllowExceptionalAccess
         : DEFAULTS.gymAllowExceptionalAccess,
+    gymEnforceOpeningHours:
+      typeof row.gymEnforceOpeningHours === "boolean"
+        ? row.gymEnforceOpeningHours
+        : DEFAULTS.gymEnforceOpeningHours,
+    gymOpeningHours: normalizeGymOpeningHours(row.gymOpeningHours),
     receiptPrefix: typeof row.receiptPrefix === "string" ? row.receiptPrefix : DEFAULTS.receiptPrefix,
     nextReceiptSequence:
       typeof row.nextReceiptSequence === "number" && row.nextReceiptSequence > 0

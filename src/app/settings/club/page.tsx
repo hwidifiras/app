@@ -121,6 +121,8 @@ export default async function SettingsClubPage() {
             gymDuplicateScanWindowMinutes: settings.gymDuplicateScanWindowMinutes,
             gymDailyVisitLimit: settings.gymDailyVisitLimit,
             gymAllowExceptionalAccess: settings.gymAllowExceptionalAccess,
+            gymEnforceOpeningHours: settings.gymEnforceOpeningHours,
+            gymOpeningHours: settings.gymOpeningHours,
             receiptPrefix: settings.receiptPrefix,
             nextReceiptSequence: settings.nextReceiptSequence,
             receiptFooter: settings.receiptFooter,

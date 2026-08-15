@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
 
 import { getClubSettings } from "@/lib/club-settings";
-import { evaluateGymAccess } from "@/lib/gym-access-policy";
+import {
+  evaluateGymAccess,
+  evaluateGymAccessBatch,
+  invalidGymCredentialDecision,
+} from "@/lib/gym-access-policy";
 import { prisma } from "@/lib/prisma";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { gymCheckInSchema } from "@/lib/schemas/gym";
 import { requireTenantModule, tenantModuleErrorResponse } from "@/lib/tenant-modules";
+import { recordGymAccessDecision } from "@/modules/gym/access-attempts";
+import { resolveGymCredential } from "@/modules/gym/access-credentials";
 
 export const runtime = "nodejs";
 
@@ -24,10 +30,14 @@ export async function GET(request: Request) {
       const failure = tenantModuleErrorResponse(error);
       return NextResponse.json({ error: failure.error }, { status: failure.status });
     }
+    const code = error instanceof Error ? error.message : "UNKNOWN";
+    if (!["UNAUTHENTICATED", "FORBIDDEN"].includes(code)) {
+      console.error("[GET /api/gym/check-in authorize]", error);
+    }
     return jsonAuthFailureResponse(error);
   }
 
-  const query = new URL(request.url).searchParams.get("query")?.trim() ?? "";
+  const query = new URL(request.url).searchParams.get("query")?.trim().slice(0, 100) ?? "";
   if (query.length < 2) return NextResponse.json({ data: [] });
 
   const members = await prisma.member.findMany({
@@ -45,13 +55,11 @@ export async function GET(request: Request) {
     take: 10,
   });
   const settings = await getClubSettings({ tenantId: actor.tenantId });
-  const data = [];
-  for (const member of members) {
-    const decision = await prisma.$transaction((tx) =>
-      evaluateGymAccess(tx, { tenantId: actor.tenantId, memberId: member.id, settings }),
-    );
-    data.push(decision);
-  }
+  const data = await prisma.$transaction((tx) => evaluateGymAccessBatch(tx, {
+    tenantId: actor.tenantId,
+    memberIds: members.map((member) => member.id),
+    settings,
+  }));
   return NextResponse.json({ data });
 }
 
@@ -64,6 +72,10 @@ export async function POST(request: Request) {
       const failure = tenantModuleErrorResponse(error);
       return NextResponse.json({ error: failure.error }, { status: failure.status });
     }
+    const code = error instanceof Error ? error.message : "UNKNOWN";
+    if (!["UNAUTHENTICATED", "FORBIDDEN"].includes(code)) {
+      console.error("[POST /api/gym/check-in authorize]", error);
+    }
     return jsonAuthFailureResponse(error);
   }
 
@@ -75,14 +87,44 @@ export async function POST(request: Request) {
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${actor.tenantId}:${parsed.data.memberId}`}))`;
+      const now = new Date();
+      const resolvedCredential = parsed.data.credentialCode
+        ? await resolveGymCredential(tx, { tenantId: actor.tenantId, credentialCode: parsed.data.credentialCode })
+        : null;
+      if (resolvedCredential && resolvedCredential.status !== "ACTIVE") {
+        const decision = invalidGymCredentialDecision(resolvedCredential.status === "REVOKED");
+        await recordGymAccessDecision(tx, {
+          tenantId: actor.tenantId,
+          actorId: actor.id,
+          decision,
+          memberId: resolvedCredential.memberId,
+          credentialId: resolvedCredential.credential?.id,
+          identifierFingerprint: resolvedCredential.fingerprint,
+          occurredAt: now,
+        });
+        return { decision, visit: null };
+      }
+
+      const memberId = resolvedCredential?.memberId ?? parsed.data.memberId;
+      if (!memberId) throw new Error("MEMBER_NOT_FOUND");
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${actor.tenantId}:${memberId}`}))`;
       const decision = await evaluateGymAccess(tx, {
         tenantId: actor.tenantId,
-        memberId: parsed.data.memberId,
+        memberId,
         settings,
         overrideReason: parsed.data.overrideReason,
         actorId: actor.id,
         activatePending: true,
+        now,
+      });
+      await recordGymAccessDecision(tx, {
+        tenantId: actor.tenantId,
+        actorId: actor.id,
+        decision,
+        memberId,
+        credentialId: resolvedCredential?.credential.id,
+        overrideReason: parsed.data.overrideReason,
+        occurredAt: now,
       });
       if (!decision.allowed || !decision.entitlement || !decision.member) {
         return { decision, visit: null };
@@ -110,6 +152,7 @@ export async function POST(request: Request) {
           unitsDelta: decision.unitsDelta,
           checkedById: actor.id,
           overrideReason: decision.override ? parsed.data.overrideReason : null,
+          checkedAt: now,
         },
       });
       await tx.auditLog.create({
@@ -126,6 +169,7 @@ export async function POST(request: Request) {
             unitsDelta: decision.unitsDelta,
             override: decision.override,
             overrideReason: parsed.data.overrideReason ?? null,
+            credentialId: resolvedCredential?.credential.id ?? null,
           }),
         },
       });
@@ -142,6 +186,9 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof Error && error.message === "GYM_QUOTA_RACE") {
       return NextResponse.json({ error: "Quota de visites epuise", code: "PASS_EXHAUSTED" }, { status: 409 });
+    }
+    if (error instanceof Error && error.message === "MEMBER_NOT_FOUND") {
+      return NextResponse.json({ error: "Membre introuvable", code: "MEMBER_NOT_FOUND" }, { status: 404 });
     }
     console.error("[POST /api/gym/check-in]", error);
     return NextResponse.json({ error: "Enregistrement du passage impossible" }, { status: 500 });

@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const authState = vi.hoisted(() => ({ token: null as string | null }));
+const authState = vi.hoisted(() => {
+  const scope = globalThis as typeof globalThis & {
+    __gymdayTestAuthState?: { token: string | null };
+  };
+  return (scope.__gymdayTestAuthState ??= { token: null });
+});
 
 vi.mock("next/headers", () => ({
   cookies: async () => ({
@@ -87,9 +92,14 @@ async function resetData() {
     prisma.userPermission.deleteMany(),
     prisma.offerApplication.deleteMany(),
     prisma.offer.deleteMany(),
+    prisma.gymAccessAttempt.deleteMany(),
+    prisma.memberAccessCredential.deleteMany(),
+    prisma.gymVisit.deleteMany(),
     prisma.attendance.deleteMany(),
     prisma.receipt.deleteMany(),
     prisma.payment.deleteMany(),
+    prisma.entitlementAdjustment.deleteMany(),
+    prisma.subscriptionPause.deleteMany(),
     prisma.memberSubscription.deleteMany(),
     prisma.groupMember.deleteMany(),
     prisma.session.deleteMany(),

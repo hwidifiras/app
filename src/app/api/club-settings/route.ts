@@ -40,6 +40,8 @@ function serializeSettings(settings: Awaited<ReturnType<typeof getClubSettings>>
     gymDuplicateScanWindowMinutes: settings.gymDuplicateScanWindowMinutes,
     gymDailyVisitLimit: settings.gymDailyVisitLimit,
     gymAllowExceptionalAccess: settings.gymAllowExceptionalAccess,
+    gymEnforceOpeningHours: settings.gymEnforceOpeningHours,
+    gymOpeningHours: settings.gymOpeningHours,
     receiptPrefix: settings.receiptPrefix,
     nextReceiptSequence: settings.nextReceiptSequence,
     receiptFooter: settings.receiptFooter,
@@ -163,6 +165,15 @@ export async function PATCH(request: Request) {
 
   const before = await getClubSettings();
 
+  const nextGymEnforceOpeningHours = data.gymEnforceOpeningHours ?? before.gymEnforceOpeningHours;
+  const nextGymOpeningHours = data.gymOpeningHours ?? before.gymOpeningHours;
+  if (nextGymEnforceOpeningHours && nextGymOpeningHours.length === 0) {
+    return NextResponse.json(
+      { error: "Ajoutez au moins un créneau d'ouverture avant d'activer le contrôle des horaires." },
+      { status: 400 },
+    );
+  }
+
   if (data.workingDays !== undefined) {
     const nextWorkingDays = new Set(data.workingDays);
     const removedDays = before.workingDays.filter((day) => !nextWorkingDays.has(day));
@@ -245,6 +256,10 @@ export async function PATCH(request: Request) {
       ...(data.gymAllowExceptionalAccess !== undefined
         ? { gymAllowExceptionalAccess: data.gymAllowExceptionalAccess }
         : {}),
+      ...(data.gymEnforceOpeningHours !== undefined
+        ? { gymEnforceOpeningHours: data.gymEnforceOpeningHours }
+        : {}),
+      ...(data.gymOpeningHours !== undefined ? { gymOpeningHours: data.gymOpeningHours } : {}),
       ...(data.receiptPrefix !== undefined ? { receiptPrefix: data.receiptPrefix.toUpperCase() } : {}),
       ...(data.nextReceiptSequence !== undefined ? { nextReceiptSequence: data.nextReceiptSequence } : {}),
       ...(data.receiptFooter !== undefined ? { receiptFooter: data.receiptFooter } : {}),

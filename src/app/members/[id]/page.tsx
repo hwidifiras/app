@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, CalendarCheck2, Clock3, CreditCard, UsersRound } from "lucide-react";
 
 import { MemberDangerActions } from "@/components/members/member-danger-actions";
+import { GymMemberCardManager } from "@/components/gym/gym-member-card-manager";
 import { MemberEditCard } from "@/components/members/member-edit-card";
 import { MemberOffersSection } from "@/components/members/member-offers-section";
 import { MemberProfileHero } from "@/components/members/member-profile-hero";
@@ -22,8 +23,10 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { formatRoomLabel } from "@/lib/group-room";
 import { getEnrollmentRecoveryCandidatesForMember } from "@/lib/enrollment-recovery";
 import { prisma } from "@/lib/prisma";
+import { userHasPermission } from "@/lib/permissions";
 import { getAuthUser } from "@/lib/request-user";
 import { isTechnicalAdmin } from "@/lib/technical-admin";
+import { getTenantProductContext } from "@/platform/product/product-context";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -52,6 +55,11 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
       </main>
     );
   }
+
+  const [product, canManageGymCards] = await Promise.all([
+    getTenantProductContext(authUser.tenantId),
+    userHasPermission(authUser, "gym.manage"),
+  ]);
 
   const member = await prisma.member.findFirst({
     where: { id, tenantId: authUser.tenantId },
@@ -102,6 +110,11 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
             },
           },
         },
+      },
+      accessCredentials: {
+        where: { tenantId: authUser.tenantId, revokedAt: null },
+        select: { id: true, codeHint: true, issuedAt: true },
+        take: 1,
       },
     },
   });
@@ -369,6 +382,19 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
           </div>
 
           <aside className="grid min-w-0 gap-4 sm:gap-5">
+            {product.capabilities.gymAccess && canManageGymCards ? (
+              <GymMemberCardManager
+                memberId={member.id}
+                memberName={`${member.firstName} ${member.lastName}`}
+                initialCredential={member.accessCredentials[0]
+                  ? {
+                      id: member.accessCredentials[0].id,
+                      codeHint: member.accessCredentials[0].codeHint,
+                      issuedAt: member.accessCredentials[0].issuedAt.toISOString(),
+                    }
+                  : null}
+              />
+            ) : null}
             <MemberRecoveryGuide
               memberId={member.id}
               hasSubscriptions={member.subscriptions.length > 0}

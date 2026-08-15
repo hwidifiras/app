@@ -80,7 +80,14 @@ export const PRODUCT_ROUTE_REGISTRY: readonly ProductRouteDefinition[] = [
   },
   {
     id: "gym-management",
-    paths: ["/gym/visits", "/api/gym/visits"],
+    paths: [
+      "/gym/visits",
+      "/gym/import",
+      "/api/gym/visits",
+      "/api/gym/credentials",
+      "/api/gym/import",
+      "/api/gym/reports",
+    ],
     module: "GYM_ACCESS",
     permission: "gym.manage",
     navigationSection: "members",

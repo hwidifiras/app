@@ -42,6 +42,8 @@ export const TENANT_SCOPED_MODELS = new Set([
   "SubscriptionPause",
   "EntitlementAdjustment",
   "GymVisit",
+  "MemberAccessCredential",
+  "GymAccessAttempt",
   "AuditLog",
 ]);
 
