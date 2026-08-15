@@ -62,6 +62,7 @@ import {
   type TodaySession,
 } from "@/components/dashboard/dashboard-today-panel";
 import { cn } from "@/lib/utils";
+import { coachSessionWhere } from "@/modules/classes/coach-scope";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -858,6 +859,7 @@ export default async function Home({
         ? prisma.session.count({
             where: {
               tenantId,
+              ...coachSessionWhere(authUser),
               sessionDate: { gte: today, lt: tomorrow },
               status: { not: "CANCELLED" },
             },
@@ -893,6 +895,7 @@ export default async function Home({
         ? prisma.session.findMany({
             where: {
               tenantId,
+              ...coachSessionWhere(authUser),
               sessionDate: { gte: overdueSince, lt: tomorrow },
               status: { in: ["PLANNED", "RESCHEDULED", "COMPLETED"] },
             },

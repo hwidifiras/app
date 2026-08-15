@@ -10,6 +10,7 @@ import {
   expectedMemberIdsAtSession,
 } from "@/lib/session-lifecycle";
 import { getAuthUser } from "@/lib/request-user";
+import { coachGroupWhere, coachSessionWhere } from "@/modules/classes/coach-scope";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -78,7 +79,7 @@ export default async function AttendanceByGroupPage({
   toDate.setHours(23, 59, 59, 999);
 
   const groups = await prisma.group.findMany({
-    where: { tenantId, isActive: true },
+    where: { tenantId, isActive: true, ...coachGroupWhere(authUser) },
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });
@@ -86,6 +87,7 @@ export default async function AttendanceByGroupPage({
   const sessions = await prisma.session.findMany({
     where: {
       tenantId,
+      ...coachSessionWhere(authUser),
       ...(groupId ? { groupId } : {}),
       sessionDate: { gte: fromDate, lte: toDate },
     },

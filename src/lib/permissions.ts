@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   FULL_STAFF_PERMISSIONS,
+  hasPermission,
   PERMISSION_LABELS,
   PERMISSIONS,
   parsePermissions,
@@ -10,7 +11,7 @@ import {
 } from "@/lib/permission-definitions";
 import { requireAuth, type RequestUser } from "@/lib/request-user";
 
-export { FULL_STAFF_PERMISSIONS, PERMISSION_LABELS, PERMISSIONS, parsePermissions };
+export { FULL_STAFF_PERMISSIONS, PERMISSION_LABELS, PERMISSIONS, hasPermission, parsePermissions };
 export type { PermissionKey };
 
 export async function getUserPermissions(userId: string): Promise<PermissionKey[]> {
@@ -23,7 +24,12 @@ export async function getUserPermissions(userId: string): Promise<PermissionKey[
 
 export async function userHasPermission(user: RequestUser, permission: PermissionKey): Promise<boolean> {
   if (user.role === "ADMIN") return true;
-  return parsePermissions(user.permissions).includes(permission);
+  return hasPermission(user.permissions, permission);
+}
+
+export async function userHasAnyPermission(user: RequestUser, permissions: PermissionKey[]): Promise<boolean> {
+  if (user.role === "ADMIN") return true;
+  return permissions.some((permission) => hasPermission(user.permissions, permission));
 }
 
 export async function requirePermission(
@@ -32,6 +38,17 @@ export async function requirePermission(
 ): Promise<RequestUser> {
   const user = await requireAuth(request);
   if (!(await userHasPermission(user, permission))) {
+    throw new Error("FORBIDDEN");
+  }
+  return user;
+}
+
+export async function requireAnyPermission(
+  request: Request,
+  permissions: PermissionKey[],
+): Promise<RequestUser> {
+  const user = await requireAuth(request);
+  if (!(await userHasAnyPermission(user, permissions))) {
     throw new Error("FORBIDDEN");
   }
   return user;

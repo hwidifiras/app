@@ -1,4 +1,4 @@
-import { ClipboardList, Dumbbell, ShieldCheck } from "lucide-react";
+import { Building2, ClipboardList, Dumbbell, ShieldCheck } from "lucide-react";
 
 const roleGuides = [
   {
@@ -6,6 +6,13 @@ const roleGuides = [
     intent: "Pour propriétaire ou responsable club",
     description: "Configuration, utilisateurs, journal d'actions, formules, offres et règles sensibles.",
     icon: ShieldCheck,
+    tone: "blue",
+  },
+  {
+    title: "Responsable",
+    intent: "Pour manager opérationnel",
+    description: "Pilote les ventes, cours, salle et réglages sans gérer les administrateurs.",
+    icon: Building2,
     tone: "blue",
   },
   {
@@ -32,7 +39,7 @@ const toneClasses = {
 
 export function UserRoleGuide() {
   return (
-    <section className="mt-5 grid gap-3 lg:grid-cols-3">
+    <section className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
       {roleGuides.map((guide) => {
         const Icon = guide.icon;
         return (

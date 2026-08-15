@@ -5,8 +5,9 @@ import { EnrollmentWizard } from "@/components/enrollment/enrollment-wizard";
 import { SubscriptionAddForm } from "@/components/subscriptions/subscription-add-form";
 import { PageHeader } from "@/components/ui/page-header";
 import { getClubSettings } from "@/lib/club-settings";
-import { prisma } from "@/lib/prisma";
+import { hasPermission } from "@/lib/permission-definitions";
 import { getAuthUser } from "@/lib/request-user";
+import { loadEnrollmentContext, resolveEnrollmentType } from "@/modules/sales/enrollment-context";
 import { getTenantProductContext } from "@/platform/product/product-context";
 
 export const dynamic = "force-dynamic";
@@ -23,41 +24,13 @@ export default async function EnrollmentPage({
   const product = user ? await getTenantProductContext(user.tenantId) : null;
   const gymModuleEnabled = product?.capabilities.gymAccess ?? false;
   const classModuleEnabled = product?.capabilities.classManagement ?? false;
-  const selectedType = product?.profile === "GYM_ONLY"
-    ? "gym"
-    : product?.profile === "HYBRID" && (type === "gym" || type === "mixed")
-      ? type
-      : "class";
+  const selectedType = product ? resolveEnrollmentType(product, type) : "class";
   const initialStep = step === "2" || step === "3" ? Number(step) : 1;
+  const canManageMembers = user?.role === "ADMIN" || hasPermission(user?.permissions, "members.manage");
+  const canManagePlans = user?.role === "ADMIN" || hasPermission(user?.permissions, "plans.manage");
 
-  const accessData = user && selectedType !== "class"
-    ? await Promise.all([
-        prisma.member.findMany({
-          where: { tenantId: user.tenantId, status: "ACTIVE" },
-          orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
-          select: { id: true, firstName: true, lastName: true, phone: true },
-        }),
-        prisma.subscriptionPlan.findMany({
-          where: { tenantId: user.tenantId, isActive: true, planKind: selectedType === "gym" ? "GYM" : "MIXED" },
-          orderBy: { name: "asc" },
-          select: {
-            id: true,
-            name: true,
-            planKind: true,
-            price: true,
-            totalSessions: true,
-            validityDays: true,
-            entitlements: { select: { type: true, grantedUnits: true, gymAccessMode: true, sport: { select: { id: true, name: true } } }, orderBy: { sortOrder: "asc" } },
-          },
-        }),
-        selectedType === "mixed"
-          ? prisma.group.findMany({
-              where: { tenantId: user.tenantId, isActive: true },
-              orderBy: { name: "asc" },
-              select: { id: true, name: true, sportId: true, sport: { select: { name: true } } },
-            })
-          : Promise.resolve([]),
-      ])
+  const accessContext = user && product && selectedType !== "class"
+    ? await loadEnrollmentContext({ tenantId: user.tenantId, type: selectedType, product })
     : null;
 
   return (
@@ -66,7 +39,7 @@ export default async function EnrollmentPage({
         overline="Ventes"
         title="Inscrire"
         description={selectedType === "class" ? "Créer le dossier, choisir le cours, appliquer une offre et préparer l'encaissement." : selectedType === "gym" ? "Ouvrir un pass salle avec un seul prix et un seul solde." : "Vendre les cours et l'accès salle dans un abonnement unique."}
-        actions={selectedType !== "class" ? <Link href="/members/new" className="btn btn-ghost"><UserPlus className="size-4" /> Nouveau membre</Link> : undefined}
+        actions={selectedType !== "class" && canManageMembers ? <Link href="/members/new" className="btn btn-ghost"><UserPlus className="size-4" /> Nouveau membre</Link> : undefined}
       />
 
       {gymModuleEnabled && classModuleEnabled ? (
@@ -79,11 +52,11 @@ export default async function EnrollmentPage({
 
       {selectedType === "class" ? (
         <EnrollmentWizard initialMemberId={memberId ?? ""} initialOfferId={offerId ?? ""} initialStep={initialStep} receiptPrintDefault={settings.receiptPrintDefault} />
-      ) : accessData ? (
-        accessData[1].length > 0 ? (
-          <SubscriptionAddForm membersOptions={accessData[0]} plansOptions={accessData[1]} groupsOptions={accessData[2].map((group) => ({ id: group.id, name: group.name, sportId: group.sportId, sportName: group.sport.name }))} initialMemberId={memberId ?? ""} initialPlanKind={selectedType === "gym" ? "GYM" : "MIXED"} />
+      ) : accessContext ? (
+        accessContext.plans.length > 0 ? (
+          <SubscriptionAddForm membersOptions={accessContext.members} plansOptions={accessContext.plans} groupsOptions={accessContext.groups.map((group) => ({ id: group.id, name: group.name, sportId: group.sportId, sportName: group.sport.name }))} initialMemberId={memberId ?? ""} initialPlanKind={selectedType === "gym" ? "GYM" : "MIXED"} />
         ) : (
-          <section className="panel panel-soft p-6 text-center"><h2 className="font-semibold">Aucune formule disponible</h2><p className="mt-1 text-sm text-[var(--muted-foreground)]">Créez d&apos;abord une formule {selectedType === "gym" ? "Accès salle" : "Pack mixte"}.</p><Link href="/subscription-plans/new" className="btn btn-primary mt-4">Créer une formule</Link></section>
+          <section className="panel panel-soft p-6 text-center"><h2 className="font-semibold">Aucune formule disponible</h2><p className="mt-1 text-sm text-[var(--muted-foreground)]">Demandez à un responsable de créer une formule {selectedType === "gym" ? "Accès salle" : "Pack mixte"}.</p>{canManagePlans ? <Link href="/subscription-plans/new" className="btn btn-primary mt-4">Créer une formule</Link> : null}</section>
         )
       ) : null}
     </main>

@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { utcDateOnlyForTimeZone } from "@/lib/dates";
 import { sessionRoomFromGroup } from "@/lib/group-room";
 import { generateSessionsSchema } from "@/lib/schemas/session";
-import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
+import { jsonAuthFailureResponse, requireAnyPermission, requirePermission } from "@/lib/permissions";
+import { coachSessionWhere } from "@/modules/classes/coach-scope";
 import {
   deriveSessionLifecycle,
   expectedMemberIdsAtSession,
@@ -95,7 +96,7 @@ function toSessionDto(session: {
 export async function GET(request: Request) {
   let actor;
   try {
-    actor = await requirePermission(request, "catalog.manage");
+    actor = await requireAnyPermission(request, ["class.attendance", "class.manage"]);
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -111,6 +112,7 @@ export async function GET(request: Request) {
   const sessions = await prisma.session.findMany({
     where: {
       tenantId: actor.tenantId,
+      ...coachSessionWhere(actor),
       ...(groupId ? { groupId } : {}),
       ...(fromDate || toDate
         ? {
@@ -152,7 +154,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   let actor;
   try {
-    actor = await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "class.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }

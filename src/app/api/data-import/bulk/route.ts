@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getDataImportMode } from "@/lib/data-import-mode";
 import { applyBulkDataImport, previewBulkDataImport } from "@/lib/bulk-data-import";
-import { requireAdmin } from "@/lib/request-user";
+import { requirePermission } from "@/lib/permissions";
 import { withTenantContext } from "@/lib/tenant-context";
 
 export const runtime = "nodejs";
@@ -22,7 +22,7 @@ const bulkImportHeaderLabels: Record<string, string> = {
 
 async function adminOrResponse(request: Request) {
   try {
-    return { user: await requireAdmin(request), response: null };
+    return { user: await requirePermission(request, "settings.manage"), response: null };
   } catch (error) {
     const status = error instanceof Error && error.message === "UNAUTHENTICATED" ? 401 : 403;
     return { user: null, response: NextResponse.json({ error: "Acces administrateur requis" }, { status }) };

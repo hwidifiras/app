@@ -15,6 +15,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { CLUB_DAY_SHORT_LABELS } from "@/lib/club-working-days";
 import { getClubSettings } from "@/lib/club-settings";
 import { formatMoney } from "@/lib/money";
+import { hasPermission } from "@/lib/permission-definitions";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/request-user";
 import { getTenantProductContext } from "@/platform/product/product-context";
@@ -25,7 +26,7 @@ export const revalidate = 0;
 export default async function SettingsHomePage() {
   const authUser = await getAuthUser();
 
-  if (!authUser || authUser.role !== "ADMIN") {
+  if (!authUser || (authUser.role !== "ADMIN" && !hasPermission(authUser.permissions, "settings.manage"))) {
     return (
       <main className="app-shell py-4 md:py-8">
         <PageHeader
@@ -46,6 +47,9 @@ export default async function SettingsHomePage() {
   const product = await getTenantProductContext(authUser.tenantId);
   const hasClasses = product.capabilities.classManagement;
   const hasGym = product.capabilities.gymAccess;
+  const canManageClasses = authUser.role === "ADMIN" || hasPermission(authUser.permissions, "class.manage");
+  const canManageGym = authUser.role === "ADMIN" || hasPermission(authUser.permissions, "gym.manage");
+  const canManagePlans = authUser.role === "ADMIN" || hasPermission(authUser.permissions, "plans.manage");
   const planKinds = product.profile === "CLASS_ONLY"
     ? ["CLASS" as const]
     : product.profile === "GYM_ONLY"
@@ -98,7 +102,7 @@ export default async function SettingsHomePage() {
             settings.receiptEmailDefault ? "Email du reçu automatique" : "Email du reçu manuel",
           ]}
         />
-        {hasClasses ? (
+        {hasClasses && canManageClasses ? (
           <SettingsTile
             href="/settings/schedules"
             icon={CalendarClock}
@@ -108,7 +112,7 @@ export default async function SettingsHomePage() {
             meta={[`${templates} modèle${templates > 1 ? "s" : ""}`, `${activeGroups} groupe${activeGroups > 1 ? "s" : ""} actif${activeGroups > 1 ? "s" : ""}`]}
           />
         ) : null}
-        {hasGym ? (
+        {hasGym && canManageGym ? (
           <SettingsTile
             href="/gym/check-in"
             secondaryHref="/gym/visits"
@@ -120,7 +124,7 @@ export default async function SettingsHomePage() {
             meta={[product.profile === "HYBRID" ? "Module hybride actif" : "Module salle actif", "Accès sécurisés"]}
           />
         ) : null}
-        <SettingsTile
+        {canManagePlans ? <SettingsTile
           href="/subscription-plans"
           secondaryHref="/offers"
           secondaryLabel="Offres"
@@ -129,8 +133,8 @@ export default async function SettingsHomePage() {
           title="Formules et offres"
           description="Gardez les tarifs, quotas de séances, disciplines et remises lisibles pour la réception."
           meta={[`${activePlans} formule${activePlans > 1 ? "s" : ""}`, `${activeOffers} offre${activeOffers > 1 ? "s" : ""}`]}
-        />
-        {hasClasses ? (
+        /> : null}
+        {hasClasses && canManageClasses ? (
           <SettingsTile
             href="/settings/data-import"
             icon={Database}
@@ -140,7 +144,7 @@ export default async function SettingsHomePage() {
             meta={["Excel / CSV", "Contrôle avant import"]}
           />
         ) : null}
-        {hasClasses ? (
+        {hasClasses && canManageClasses ? (
           <SettingsTile
             href="/sports"
             secondaryHref="/coaches"
@@ -152,7 +156,7 @@ export default async function SettingsHomePage() {
             meta={[`${activeSports} discipline${activeSports > 1 ? "s" : ""}`, "Spécialités coachs"]}
           />
         ) : null}
-        <SettingsTile
+        {authUser.role === "ADMIN" ? <SettingsTile
           href="/settings/users"
           secondaryHref="/logs"
           secondaryLabel="Journal"
@@ -161,7 +165,7 @@ export default async function SettingsHomePage() {
           title="Utilisateurs et tracabilite"
           description="Créez les comptes Admin, Réception et Coach, puis contrôlez les actions sensibles dans le journal."
           meta={["Rôles et permissions", "Actions tracées"]}
-        />
+        /> : null}
       </section>
     </main>
   );

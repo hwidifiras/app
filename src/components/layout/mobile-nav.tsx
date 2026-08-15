@@ -32,29 +32,30 @@ export function MobileNav() {
     section.items.some((item) => isLinkActive(pathname, item.href)),
   );
   const showClubConfig = configOpen || inClubConfig;
-  const quickLinks = account?.productProfile === "GYM_ONLY"
+  const profileQuickLinks = account?.productProfile === "GYM_ONLY"
     ? [
         { href: "/", label: "Accueil", icon: Home },
-        { href: "/gym/check-in", label: "Accès", icon: Dumbbell },
-        { href: "/enrollment", label: "Inscrire", icon: PlusCircle, featured: true },
-        { href: "/payments/new", label: "Caisse", icon: Banknote },
-        { href: "/members", label: "Membres", icon: Search },
+        { href: "/gym/check-in", label: "Accès", icon: Dumbbell, moduleKey: "GYM_ACCESS" as const, permission: "gym.checkin" as const },
+        { href: "/enrollment", label: "Inscrire", icon: PlusCircle, featured: true, permission: "enrollment.sell" as const },
+        { href: "/payments/new", label: "Caisse", icon: Banknote, permission: "payments.collect" as const },
+        { href: "/members", label: "Membres", icon: Search, permission: "members.manage" as const },
       ]
     : account?.productProfile === "HYBRID"
       ? [
           { href: "/", label: "Accueil", icon: Home },
-          { href: "/attendance/today", label: "Pointage", icon: Clock },
-          { href: "/gym/check-in", label: "Accès", icon: Dumbbell },
-          { href: "/enrollment", label: "Inscrire", icon: PlusCircle, featured: true },
-          { href: "/payments/new", label: "Caisse", icon: Banknote },
+          { href: "/attendance/today", label: "Pointage", icon: Clock, moduleKey: "CLASS_MANAGEMENT" as const, permission: "class.attendance" as const },
+          { href: "/gym/check-in", label: "Accès", icon: Dumbbell, moduleKey: "GYM_ACCESS" as const, permission: "gym.checkin" as const },
+          { href: "/enrollment", label: "Inscrire", icon: PlusCircle, featured: true, permission: "enrollment.sell" as const },
+          { href: "/payments/new", label: "Caisse", icon: Banknote, permission: "payments.collect" as const },
         ]
       : [
           { href: "/", label: "Accueil", icon: Home },
-          { href: "/attendance/today", label: "Pointage", icon: Clock },
-          { href: "/enrollment", label: "Inscrire", icon: PlusCircle, featured: true },
-          { href: "/payments/new", label: "Caisse", icon: Banknote },
-          { href: "/members", label: "Membres", icon: Search },
+          { href: "/attendance/today", label: "Pointage", icon: Clock, moduleKey: "CLASS_MANAGEMENT" as const, permission: "class.attendance" as const },
+          { href: "/enrollment", label: "Inscrire", icon: PlusCircle, featured: true, permission: "enrollment.sell" as const },
+          { href: "/payments/new", label: "Caisse", icon: Banknote, permission: "payments.collect" as const },
+          { href: "/members", label: "Membres", icon: Search, permission: "members.manage" as const },
         ];
+  const quickLinks = profileQuickLinks.filter((item) => navItemIsVisible(item, account));
 
   const close = useCallback(() => setOpen(false), []);
 
@@ -167,7 +168,10 @@ export function MobileNav() {
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-8px_20px_rgba(15,23,42,0.1)] backdrop-blur lg:hidden dark:shadow-[0_-10px_28px_rgba(0,0,0,0.45)]">
-        <nav className="mobile-quick-nav grid grid-cols-5 gap-1">
+        <nav
+          className="mobile-quick-nav grid gap-1"
+          style={{ gridTemplateColumns: `repeat(${Math.max(1, quickLinks.length)}, minmax(0, 1fr))` }}
+        >
           {quickLinks.map((item) => (
             <QuickMobileLink
               key={item.href}

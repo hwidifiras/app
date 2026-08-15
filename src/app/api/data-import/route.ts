@@ -12,8 +12,8 @@ import {
   inspectDataImport,
   rollbackDataImport,
 } from "@/lib/data-import-service";
+import { requirePermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/request-user";
 import { dataImportPayloadSchema } from "@/lib/schemas/data-import";
 
 export const runtime = "nodejs";
@@ -21,7 +21,7 @@ export const dynamic = "force-dynamic";
 
 async function adminOrResponse(request: Request) {
   try {
-    return { user: await requireAdmin(request), response: null };
+    return { user: await requirePermission(request, "settings.manage"), response: null };
   } catch (error) {
     const status = error instanceof Error && error.message === "UNAUTHENTICATED" ? 401 : 403;
     return { user: null, response: NextResponse.json({ error: "Accès administrateur requis" }, { status }) };

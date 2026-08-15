@@ -7,8 +7,8 @@ import { requireTenantModule, tenantModuleErrorResponse } from "@/lib/tenant-mod
 
 export const runtime = "nodejs";
 
-async function authorize(request: Request) {
-  const actor = await requirePermission(request, "gym.manage");
+async function authorize(request: Request, permission: "gym.manage" | "gym.correct") {
+  const actor = await requirePermission(request, permission);
   await requireTenantModule(actor.tenantId, "GYM_ACCESS");
   return actor;
 }
@@ -24,7 +24,7 @@ function authFailure(error: unknown) {
 export async function GET(request: Request) {
   let actor;
   try {
-    actor = await authorize(request);
+    actor = await authorize(request, "gym.manage");
   } catch (error) {
     return authFailure(error);
   }
@@ -55,7 +55,7 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   let actor;
   try {
-    actor = await authorize(request);
+    actor = await authorize(request, "gym.correct");
   } catch (error) {
     return authFailure(error);
   }

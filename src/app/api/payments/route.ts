@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { createPaymentSchema, updatePaymentSchema } from "@/lib/schemas/payment";
-import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
+import { jsonAuthFailureResponse, requireAnyPermission, requirePermission } from "@/lib/permissions";
 import {
   getEffectivePaymentAmount,
   getSubscriptionLedgerTotal,
@@ -24,7 +24,7 @@ export const runtime = "nodejs";
 export async function GET(request: Request) {
   let actor;
   try {
-    actor = await requirePermission(request, "payments.manage");
+    actor = await requireAnyPermission(request, ["payments.collect", "payments.correct", "reports.finance"]);
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -72,7 +72,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   let actor;
   try {
-    actor = await requirePermission(request, "payments.manage");
+    actor = await requirePermission(request, "payments.collect");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -249,7 +249,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   let actor;
   try {
-    actor = await requirePermission(request, "payments.manage");
+    actor = await requirePermission(request, "payments.correct");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -436,7 +436,7 @@ export async function PATCH(request: Request) {
 export async function DELETE(request: Request) {
   let actor;
   try {
-    actor = await requirePermission(request, "payments.manage");
+    actor = await requirePermission(request, "payments.correct");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }

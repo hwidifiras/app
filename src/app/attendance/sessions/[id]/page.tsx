@@ -11,6 +11,8 @@ import {
 import { formatAttendanceOperator, isLikelyInternalId } from "@/lib/attendance-display";
 import { formatRoomLabel } from "@/lib/group-room";
 import { getAuthUser } from "@/lib/request-user";
+import { hasPermission } from "@/lib/permission-definitions";
+import { coachSessionWhere } from "@/modules/classes/coach-scope";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -70,7 +72,7 @@ export default async function SessionAttendanceDetailPage({
   }
 
   const session = await prisma.session.findFirst({
-    where: { id, tenantId: authUser.tenantId },
+    where: { id, tenantId: authUser.tenantId, ...coachSessionWhere(authUser) },
     include: {
       group: {
         select: {
@@ -100,6 +102,8 @@ export default async function SessionAttendanceDetailPage({
   });
 
   if (!session) notFound();
+
+  const canOpenMembers = authUser.role === "ADMIN" || hasPermission(authUser.permissions, "members.manage");
 
   const operatorIds = Array.from(
     new Set(
@@ -228,13 +232,19 @@ export default async function SessionAttendanceDetailPage({
                     key={gm.id}
                     className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 sm:flex-nowrap"
                   >
-                    <Link
-                      href={`/members/${gm.member.id}`}
-                      prefetch={false}
-                      className="min-w-0 flex-1 font-medium text-[var(--primary)] hover:underline"
-                    >
-                      {gm.member.firstName} {gm.member.lastName}
-                    </Link>
+                    {canOpenMembers ? (
+                      <Link
+                        href={`/members/${gm.member.id}`}
+                        prefetch={false}
+                        className="min-w-0 flex-1 font-medium text-[var(--primary)] hover:underline"
+                      >
+                        {gm.member.firstName} {gm.member.lastName}
+                      </Link>
+                    ) : (
+                      <span className="min-w-0 flex-1 font-medium text-[var(--foreground)]">
+                        {gm.member.firstName} {gm.member.lastName}
+                      </span>
+                    )}
                     {att ? (
                       <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--muted-foreground)]">
                         <StatusBadge variant={attendanceVariant(att.status)}>
@@ -279,13 +289,19 @@ export default async function SessionAttendanceDetailPage({
                       <tr key={a.id} className="hover:bg-[var(--surface-soft)]">
                         <td className="data-table-primary px-3 py-2" data-label="Élève">
                           <div className="flex flex-col items-start gap-1">
-                            <Link
-                              href={`/members/${a.member.id}`}
-                              prefetch={false}
-                              className="text-[var(--primary)] hover:underline"
-                            >
-                              {a.member.firstName} {a.member.lastName}
-                            </Link>
+                            {canOpenMembers ? (
+                              <Link
+                                href={`/members/${a.member.id}`}
+                                prefetch={false}
+                                className="text-[var(--primary)] hover:underline"
+                              >
+                                {a.member.firstName} {a.member.lastName}
+                              </Link>
+                            ) : (
+                              <span className="text-[var(--foreground)]">
+                                {a.member.firstName} {a.member.lastName}
+                              </span>
+                            )}
                             {!expectedIds.has(a.memberId) ? (
                               <StatusBadge variant="muted" className="text-[0.62rem]">
                                 Hors liste active

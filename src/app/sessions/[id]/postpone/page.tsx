@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { weekStartIsoForDate } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/request-user";
+import { coachSessionWhere } from "@/modules/classes/coach-scope";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -16,7 +17,7 @@ export default async function PostponeSessionPage({ params }: { params: Promise<
   }
 
   const session = await prisma.session.findFirst({
-    where: { id, tenantId: authUser.tenantId },
+    where: { id, tenantId: authUser.tenantId, ...coachSessionWhere(authUser) },
     select: { id: true, groupId: true, sessionDate: true },
   });
 

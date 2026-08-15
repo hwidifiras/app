@@ -192,6 +192,8 @@ model User {
   id                  String               @id @default(cuid())
   tenantId            String?
   tenant              Tenant?              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  coachId             String?              @unique
+  coach               Coach?               @relation("CoachUserAccount", fields: [coachId], references: [id], onDelete: SetNull)
   email               String
   name                String
   passwordHash        String
@@ -409,6 +411,7 @@ model Coach {
   qualifications CoachSportQualification[]
   groups         Group[]
   sessions       Session[]
+  userAccount    User?                     @relation("CoachUserAccount")
   createdAt      DateTime                  @default(now())
   updatedAt      DateTime                  @updatedAt
 

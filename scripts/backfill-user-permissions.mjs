@@ -2,14 +2,14 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-const keys = [
-  "members.manage",
-  "enrollment.manage",
-  "attendance.manage",
-  "payments.manage",
-  "catalog.manage",
-  "offers.manage",
-];
+const legacyGrants = {
+  "enrollment.manage": ["enrollment.sell"],
+  "attendance.manage": ["class.attendance"],
+  "payments.manage": ["payments.collect", "payments.correct", "reports.finance"],
+  "catalog.manage": ["class.manage", "plans.manage", "subscriptions.correct"],
+  "offers.manage": ["plans.manage"],
+  "gym.manage": ["gym.correct"],
+};
 
 const staffUsers = await prisma.user.findMany({
   where: { role: "STAFF" },
@@ -24,7 +24,10 @@ let inserted = 0;
 
 for (const user of staffUsers) {
   const existing = new Set(user.permissions.map((permission) => permission.key));
-  const missing = keys.filter((key) => !existing.has(key));
+  const implied = new Set(
+    user.permissions.flatMap((permission) => legacyGrants[permission.key] ?? []),
+  );
+  const missing = [...implied].filter((key) => !existing.has(key));
 
   if (missing.length === 0) continue;
 

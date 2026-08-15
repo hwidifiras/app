@@ -15,6 +15,7 @@ export type RequestUser = {
   email: string;
   name: string;
   permissions: string[];
+  coachId: string | null;
 };
 
 export async function getAuthUser(_request?: Request): Promise<RequestUser | null> {
@@ -42,6 +43,7 @@ export async function getAuthUser(_request?: Request): Promise<RequestUser | nul
       role: true,
       email: true,
       name: true,
+      coachId: true,
       isActive: true,
       tenant: { select: { slug: true, status: true } },
       permissions: { select: { key: true } },
@@ -58,6 +60,7 @@ export async function getAuthUser(_request?: Request): Promise<RequestUser | nul
     email: user.email,
     name: user.name,
     permissions: user.role === "ADMIN" ? [] : parsePermissions(user.permissions.map((permission) => permission.key)),
+    coachId: user.coachId,
   };
 }
 

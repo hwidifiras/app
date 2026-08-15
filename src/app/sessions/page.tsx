@@ -10,6 +10,8 @@ import {
 } from "@/lib/session-lifecycle";
 import { getClubSettings } from "@/lib/club-settings";
 import { getAuthUser } from "@/lib/request-user";
+import { hasPermission } from "@/lib/permission-definitions";
+import { coachGroupWhere, coachSessionWhere } from "@/modules/classes/coach-scope";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -37,6 +39,7 @@ export default async function SessionsPage({
   }
 
   const tenantId = authUser.tenantId;
+  const canManage = authUser.role === "ADMIN" || hasPermission(authUser.permissions, "class.manage");
   let hasSessionsDataError = false;
 
   const { week: weekParam, groupId: groupIdParam, sessionId: sessionIdParam } = await searchParams;
@@ -91,6 +94,7 @@ export default async function SessionsPage({
       prisma.session.findMany({
         where: {
           tenantId,
+          ...coachSessionWhere(authUser),
           sessionDate: {
             gte: weekStart,
             lt: weekEndExclusive,
@@ -121,11 +125,11 @@ export default async function SessionsPage({
         take: 300,
       }),
       prisma.group.findMany({
-        where: { tenantId, isActive: true },
+        where: { tenantId, isActive: true, ...coachGroupWhere(authUser) },
         select: { id: true, name: true, sportId: true },
         orderBy: { name: "asc" },
       }),
-      prisma.coach.findMany({
+      canManage ? prisma.coach.findMany({
         where: { tenantId, isActive: true },
         select: {
           id: true,
@@ -140,7 +144,7 @@ export default async function SessionsPage({
           },
         },
         orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
-      }),
+      }) : Promise.resolve([]),
       getClubSettings(),
     ]);
 
@@ -247,6 +251,7 @@ export default async function SessionsPage({
         groupsOptions={groupsOptions}
         coachesOptions={coachesOptions}
         planningPreferences={planningPreferences}
+        canManage={canManage}
         initialWeekStart={initialWeekStart}
         initialGroupId={groupIdParam ?? ""}
         initialSessionId={sessionIdParam ?? ""}

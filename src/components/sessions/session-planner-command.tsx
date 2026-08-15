@@ -21,6 +21,7 @@ export function PlanningCommandHeader({
   onCurrentWeek,
   onNextWeek,
   onPreviewGeneration,
+  canManage,
 }: {
   weekStart: string;
   weekEnd: string;
@@ -30,6 +31,7 @@ export function PlanningCommandHeader({
   onCurrentWeek: () => void;
   onNextWeek: () => void;
   onPreviewGeneration: () => void;
+  canManage: boolean;
 }) {
   return (
     <div className="flex flex-col gap-4 border-b border-[var(--border)] pb-4 xl:flex-row xl:items-start xl:justify-between">
@@ -53,10 +55,12 @@ export function PlanningCommandHeader({
           <span className="hidden sm:inline">Suivante</span>
           <ChevronRight className="size-4" />
         </button>
-        <button type="button" onClick={onPreviewGeneration} disabled={generating || loading} className="btn btn-primary">
-          <CalendarPlus className="size-4" />
-          {generating ? "Analyse..." : "Générer depuis horaires"}
-        </button>
+        {canManage ? (
+          <button type="button" onClick={onPreviewGeneration} disabled={generating || loading} className="btn btn-primary">
+            <CalendarPlus className="size-4" />
+            {generating ? "Analyse..." : "Générer depuis horaires"}
+          </button>
+        ) : null}
       </div>
     </div>
   );

@@ -75,14 +75,21 @@ export function EnrollmentWizard({
   const enrollmentIntent = useIdempotencyIntent();
 
   useEffect(() => {
-    Promise.all([
-      fetch("/api/members").then((r) => r.json()),
-      fetch("/api/groups").then((r) => r.json()),
-      fetch("/api/subscription-plans").then((r) => r.json()),
-      fetch("/api/offers").then((r) => r.json()),
-    ]).then(([m, g, p, o]) => {
+    let cancelled = false;
+    fetch("/api/enrollment/context?type=class", { cache: "no-store" })
+      .then(async (response) => {
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error ?? "Impossible de charger l'inscription");
+        return payload.data as Record<string, unknown>;
+      })
+      .then((context) => {
+      if (cancelled) return;
+      const contextMembers = context.members as Array<Record<string, unknown>> | undefined;
+      const contextGroups = context.groups as Array<Record<string, unknown>> | undefined;
+      const contextPlans = context.plans as Array<Record<string, unknown>> | undefined;
+      const contextOffers = context.offers as OfferOption[] | undefined;
       setMembers(
-        (m.data ?? []).map((x: Record<string, unknown>) => ({
+        (contextMembers ?? []).map((x) => ({
           id: x.id as string,
           firstName: x.firstName as string,
           lastName: x.lastName as string,
@@ -92,7 +99,7 @@ export function EnrollmentWizard({
         })),
       );
       setGroups(
-        (g.data ?? []).map((x: Record<string, unknown>) => ({
+        (contextGroups ?? []).map((x) => ({
           id: x.id as string,
           name: x.name as string,
           sportId: x.sportId as string,
@@ -104,7 +111,7 @@ export function EnrollmentWizard({
         })),
       );
       setPlans(
-        (p.data ?? []).map((x: Record<string, unknown>) => ({
+        (contextPlans ?? []).map((x) => ({
           id: x.id as string,
           name: x.name as string,
           price: x.price as number,
@@ -112,8 +119,17 @@ export function EnrollmentWizard({
           sportName: (x.sport as { name: string })?.name ?? "",
         })),
       );
-      setOffers(o.data ?? []);
-    });
+      setOffers(contextOffers ?? []);
+    })
+      .catch((error) => {
+        if (!cancelled) {
+          setMessage(error instanceof Error ? error.message : "Impossible de charger l'inscription");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const buildPayload = useCallback(() => {

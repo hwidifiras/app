@@ -31,7 +31,7 @@ function idempotencyErrorResponse(error: unknown) {
 export async function POST(request: Request) {
   let actor;
   try {
-    actor = await requirePermission(request, "enrollment.manage");
+    actor = await requirePermission(request, "enrollment.sell");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -313,7 +313,7 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   let actor;
   try {
-    actor = await requirePermission(request, "enrollment.manage");
+    actor = await requirePermission(request, "enrollment.sell");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }

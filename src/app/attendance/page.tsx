@@ -7,6 +7,7 @@ import {
 } from "@/components/attendance/attendance-history-list";
 import { formatAttendanceOperator, isLikelyInternalId } from "@/lib/attendance-display";
 import { getAuthUser } from "@/lib/request-user";
+import { coachAttendanceWhere } from "@/modules/classes/coach-scope";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -34,7 +35,7 @@ export default async function AttendancePage() {
 
   try {
     const data = await prisma.attendance.findMany({
-      where: { tenantId: authUser.tenantId },
+      where: { tenantId: authUser.tenantId, ...coachAttendanceWhere(authUser) },
       orderBy: { checkedAt: "desc" },
       include: {
         session: { select: { sessionDate: true, startTime: true, group: { select: { name: true } } } },

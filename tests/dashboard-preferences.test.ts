@@ -60,4 +60,20 @@ describe("dashboard preferences", () => {
     expect(hidden.cashTrend).toBe(false);
     expect(hidden.detailedDebts).toBe(false);
   });
+
+  it("does not expose finance or member widgets to coach-only accounts", () => {
+    const visible = getDashboardWidgetVisibility(
+      fullSettings,
+      "RECEPTION",
+      "STAFF",
+      ["class.attendance"],
+    );
+
+    expect(visible.todaySessions).toBe(true);
+    expect(visible.cashToday).toBe(false);
+    expect(visible.cashTrend).toBe(false);
+    expect(visible.membersOverview).toBe(false);
+    expect(visible.commercialInsights).toBe(false);
+    expect(visible.detailedDebts).toBe(false);
+  });
 });

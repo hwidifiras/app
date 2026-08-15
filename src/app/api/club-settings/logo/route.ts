@@ -4,8 +4,8 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 
 import { getClubSettings, writeClubLogoUrl } from "@/lib/club-settings";
+import { requirePermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/request-user";
 
 export const runtime = "nodejs";
 
@@ -54,7 +54,7 @@ async function removeLogoByUrl(logoUrl: string) {
 export async function POST(request: Request) {
   let admin;
   try {
-    admin = await requireAdmin(request);
+    admin = await requirePermission(request, "settings.manage");
   } catch (e) {
     const code = e instanceof Error ? e.message : "FORBIDDEN";
     return NextResponse.json(
@@ -125,7 +125,7 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   let admin;
   try {
-    admin = await requireAdmin(request);
+    admin = await requirePermission(request, "settings.manage");
   } catch (e) {
     const code = e instanceof Error ? e.message : "FORBIDDEN";
     return NextResponse.json(

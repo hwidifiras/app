@@ -72,6 +72,7 @@ describe("gym module safeguards", () => {
 
   it("registers separate check-in and management permissions", () => {
     expect(PERMISSIONS).toContain("gym.checkin");
+    expect(PERMISSIONS).toContain("gym.correct");
     expect(PERMISSIONS).toContain("gym.manage");
   });
 

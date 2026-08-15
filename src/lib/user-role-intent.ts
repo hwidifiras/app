@@ -6,22 +6,38 @@ import {
 } from "@/lib/permission-definitions";
 
 export type UserRole = "ADMIN" | "STAFF";
-export type UserRoleIntent = "ADMIN" | "RECEPTION" | "COACH";
+export type UserRoleIntent = "ADMIN" | "MANAGER" | "RECEPTION" | "COACH";
 
-export function deriveUserRoleIntent(role: UserRole, permissionKeys: string[]): UserRoleIntent {
+export function deriveUserRoleIntent(
+  role: UserRole,
+  permissionKeys: string[],
+  coachId?: string | null,
+): UserRoleIntent {
   if (role === "ADMIN") return "ADMIN";
+  if (coachId) return "COACH";
 
   const permissions = parsePermissions(permissionKeys);
+  const hasManagementWork =
+    permissions.includes("settings.manage") ||
+    permissions.includes("class.manage") ||
+    permissions.includes("gym.manage") ||
+    permissions.includes("plans.manage") ||
+    permissions.includes("payments.correct") ||
+    permissions.includes("subscriptions.correct");
+  if (hasManagementWork) return "MANAGER";
+
   const hasReceptionWork =
     permissions.includes("members.manage") ||
-    permissions.includes("enrollment.manage") ||
-    permissions.includes("payments.manage");
+    permissions.includes("enrollment.sell") ||
+    permissions.includes("payments.collect") ||
+    permissions.includes("gym.checkin");
 
   return hasReceptionWork ? "RECEPTION" : "COACH";
 }
 
 export function userRoleIntentLabel(intent: UserRoleIntent) {
   if (intent === "ADMIN") return "Admin";
+  if (intent === "MANAGER") return "Responsable";
   if (intent === "RECEPTION") return "Réception";
   return "Coach";
 }

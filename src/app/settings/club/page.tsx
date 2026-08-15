@@ -4,6 +4,7 @@ import { SettingsMetric } from "@/components/settings/settings-hub";
 import { PageHeader } from "@/components/ui/page-header";
 import { CLUB_DAY_SHORT_LABELS } from "@/lib/club-working-days";
 import { getClubSettings } from "@/lib/club-settings";
+import { hasPermission } from "@/lib/permission-definitions";
 import { getAuthUser } from "@/lib/request-user";
 import { getTenantProductContext } from "@/platform/product/product-context";
 
@@ -13,13 +14,13 @@ export const revalidate = 0;
 export default async function SettingsClubPage() {
   const authUser = await getAuthUser();
 
-  if (!authUser || authUser.role !== "ADMIN") {
+  if (!authUser || (authUser.role !== "ADMIN" && !hasPermission(authUser.permissions, "settings.manage"))) {
     return (
       <main className="app-shell py-4 md:py-8">
         <PageHeader
           overline="Réglages"
           title="Club"
-          description="Seul un administrateur peut modifier ces réglages."
+          description="Votre compte ne peut pas modifier ces réglages."
         />
         <section className="panel panel-soft p-5">
           <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>

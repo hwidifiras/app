@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { AUTH_COOKIE_NAME, shouldUseSecureCookies, signAuthToken } from "@/lib/auth";
 import { verifyPassword } from "@/lib/password";
+import { parsePermissions } from "@/lib/permission-definitions";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { enterTenantContext } from "@/lib/tenant-context";
@@ -83,6 +84,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Identifiants invalides" }, { status: 401 });
   }
 
+  const permissions = user.role === "ADMIN" ? [] : parsePermissions(user.permissions.map((permission) => permission.key));
   const token = await signAuthToken({
     userId: user.id,
     tenantId: tenant.context.tenantId,
@@ -90,7 +92,7 @@ export async function POST(request: Request) {
     email: user.email,
     name: user.name,
     role: user.role,
-    permissions: user.permissions.map((permission) => permission.key),
+    permissions,
   });
 
   const cookieStore = await cookies();
@@ -110,7 +112,7 @@ export async function POST(request: Request) {
       email: user.email,
       name: user.name,
       role: user.role,
-      permissions: user.permissions.map((permission) => permission.key),
+      permissions,
     },
   });
 }

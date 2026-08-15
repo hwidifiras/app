@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
+import { jsonAuthFailureResponse, requireAnyPermission } from "@/lib/permissions";
 import { sendReceiptEmailForReceipt } from "@/lib/receipt-email-delivery";
 
 export const runtime = "nodejs";
@@ -13,7 +13,7 @@ const sendReceiptSchema = z.object({
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   let actor;
   try {
-    actor = await requirePermission(request, "payments.manage");
+    actor = await requireAnyPermission(request, ["payments.collect", "reports.finance"]);
   } catch (error) {
     return jsonAuthFailureResponse(error);
   }

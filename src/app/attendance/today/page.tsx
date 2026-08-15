@@ -13,6 +13,7 @@ import {
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getAuthUser } from "@/lib/request-user";
+import { coachSessionWhere } from "@/modules/classes/coach-scope";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -89,6 +90,7 @@ export default async function AttendanceTodayPage({
     const rawSessions = await prisma.session.findMany({
       where: {
         tenantId,
+        ...coachSessionWhere(authUser),
         sessionDate: { gte: overdueSince, lt: tomorrow },
         status: { in: ["PLANNED", "RESCHEDULED", "COMPLETED"] },
       },

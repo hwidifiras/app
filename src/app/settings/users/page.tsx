@@ -9,6 +9,8 @@ import { UserCreateForm } from "@/components/settings/user-create-form";
 import { UserRoleGuide } from "@/components/settings/user-role-guide";
 import { UsersListClient } from "@/components/settings/users-list-client";
 import { deriveUserRoleIntent } from "@/lib/user-role-intent";
+import { parsePermissions } from "@/lib/permission-definitions";
+import { getTenantProductContext } from "@/platform/product/product-context";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -31,34 +33,51 @@ export default async function SettingsUsersPage() {
     );
   }
 
-  const users = await prisma.user.findMany({
-    where: { tenantId: authUser.tenantId },
-    orderBy: [{ role: "asc" }, { createdAt: "desc" }],
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      isActive: true,
-      createdAt: true,
-      permissions: { select: { key: true } },
-    },
-  });
+  const [users, coaches, product] = await Promise.all([
+    prisma.user.findMany({
+      where: { tenantId: authUser.tenantId },
+      orderBy: [{ role: "asc" }, { createdAt: "desc" }],
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        coachId: true,
+        coach: { select: { firstName: true, lastName: true } },
+        isActive: true,
+        createdAt: true,
+        permissions: { select: { key: true } },
+      },
+    }),
+    prisma.coach.findMany({
+      where: { tenantId: authUser.tenantId, isActive: true },
+      orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        userAccount: { select: { id: true } },
+      },
+    }),
+    getTenantProductContext(authUser.tenantId),
+  ]);
 
   const rows = users.map((u) => ({
     ...u,
     createdAt: u.createdAt.toISOString(),
+    permissions: parsePermissions(u.permissions.map((permission) => permission.key)).map((key) => ({ key })),
   }));
   const roleCounts = rows.reduce(
     (acc, user) => {
-      const intent = deriveUserRoleIntent(user.role, user.permissions.map((permission) => permission.key));
+      const intent = deriveUserRoleIntent(user.role, user.permissions.map((permission) => permission.key), user.coachId);
       if (intent === "ADMIN") acc.admin += 1;
+      if (intent === "MANAGER") acc.manager += 1;
       if (intent === "RECEPTION") acc.reception += 1;
       if (intent === "COACH") acc.coach += 1;
       if (!user.isActive) acc.inactive += 1;
       return acc;
     },
-    { admin: 0, reception: 0, coach: 0, inactive: 0 },
+    { admin: 0, manager: 0, reception: 0, coach: 0, inactive: 0 },
   );
 
   return (
@@ -74,8 +93,9 @@ export default async function SettingsUsersPage() {
         }
       />
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <SettingsMetric label="Admin" value={roleCounts.admin} detail="Configuration et journal" />
+        <SettingsMetric label="Responsable" value={roleCounts.manager} detail="Pilotage opérationnel" />
         <SettingsMetric label="Réception" value={roleCounts.reception} detail="Vente, caisse et élèves" />
         <SettingsMetric label="Coach" value={roleCounts.coach} detail="Pointage et suivi cours" />
         <SettingsMetric label="Désactivés" value={roleCounts.inactive} detail="Accès coupés immédiatement" />
@@ -97,7 +117,12 @@ export default async function SettingsUsersPage() {
             </p>
           </div>
           <div className="mt-4">
-            <UsersListClient users={rows} currentUserId={authUser.id} />
+            <UsersListClient
+              users={rows}
+              currentUserId={authUser.id}
+              coaches={coaches.map((coach) => ({ id: coach.id, firstName: coach.firstName, lastName: coach.lastName }))}
+              productProfile={product.profile}
+            />
           </div>
         </section>
 
@@ -111,7 +136,12 @@ export default async function SettingsUsersPage() {
             tracées dans le journal.
           </p>
           <div className="mt-4">
-            <UserCreateForm />
+            <UserCreateForm
+              coaches={coaches
+                .filter((coach) => !coach.userAccount)
+                .map((coach) => ({ id: coach.id, firstName: coach.firstName, lastName: coach.lastName }))}
+              productProfile={product.profile}
+            />
           </div>
         </section>
       </div>

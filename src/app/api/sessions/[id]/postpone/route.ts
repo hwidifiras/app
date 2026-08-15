@@ -41,7 +41,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   let actor;
   try {
-    actor = await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "class.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }

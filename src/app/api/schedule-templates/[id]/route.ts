@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { requirePermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/request-user";
 import { updateScheduleTemplateSchema } from "@/lib/schemas/schedule-template";
 import { toScheduleTemplateDto } from "@/lib/schedule-template-utils";
 
@@ -18,7 +18,7 @@ function authFailure(error: unknown) {
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   let admin;
   try {
-    admin = await requireAdmin(request);
+    admin = await requirePermission(request, "settings.manage");
   } catch (error) {
     return authFailure(error);
   }
@@ -97,7 +97,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   let admin;
   try {
-    admin = await requireAdmin(request);
+    admin = await requirePermission(request, "settings.manage");
   } catch (error) {
     return authFailure(error);
   }

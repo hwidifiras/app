@@ -6,27 +6,40 @@ import { AlertTriangle, Mail, Pencil, RotateCcw } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormField } from "@/components/ui/form-layout";
+import {
+  UserAccessFields,
+  type CoachAccountOption,
+  type UserAccessValue,
+} from "@/components/settings/user-access-fields";
 import { ListSearch } from "@/components/ui/list-controls";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { deriveUserRoleIntent, describeUserRights, userRoleIntentLabel } from "@/lib/user-role-intent";
+import { PERMISSIONS, type PermissionKey } from "@/lib/permission-definitions";
+import type { ProductProfile } from "@/platform/product/product-context";
 
 export type UserRow = {
   id: string;
   name: string;
   email: string;
   role: "ADMIN" | "STAFF";
+  coachId: string | null;
+  coach: { firstName: string; lastName: string } | null;
   isActive: boolean;
   createdAt: string;
-  permissions: { key: string }[];
+  permissions: { key: PermissionKey }[];
 };
 
 export function UsersListClient({
   users,
   currentUserId,
+  coaches,
+  productProfile,
 }: {
   users: UserRow[];
   currentUserId: string;
+  coaches: CoachAccountOption[];
+  productProfile: ProductProfile;
 }) {
   const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
@@ -35,15 +48,21 @@ export function UsersListClient({
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editActive, setEditActive] = useState(true);
+  const [editAccess, setEditAccess] = useState<UserAccessValue>({
+    role: "STAFF",
+    accessMode: "LIMITED",
+    permissions: [],
+    coachId: null,
+  });
   const [searchTerm, setSearchTerm] = useState("");
-  const [roleFilter, setRoleFilter] = useState<"ALL" | "ADMIN" | "RECEPTION" | "COACH">("ALL");
+  const [roleFilter, setRoleFilter] = useState<"ALL" | "ADMIN" | "MANAGER" | "RECEPTION" | "COACH">("ALL");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
 
   const filteredUsers = useMemo(() => {
     const query = searchTerm.trim().toLocaleLowerCase("fr");
     return users.filter((user) => {
       const permissionKeys = user.permissions.map((permission) => permission.key);
-      const roleIntent = deriveUserRoleIntent(user.role, permissionKeys);
+      const roleIntent = deriveUserRoleIntent(user.role, permissionKeys, user.coachId);
       const rightsLabel = describeUserRights(user.role, permissionKeys);
       const matchesSearch =
         !query ||
@@ -77,6 +96,13 @@ export function UsersListClient({
     setEditName(user.name);
     setEditEmail(user.email);
     setEditActive(user.isActive);
+    const permissions = user.permissions.map((permission) => permission.key);
+    setEditAccess({
+      role: user.role,
+      accessMode: user.role === "ADMIN" || permissions.length === PERMISSIONS.length ? "FULL" : "LIMITED",
+      permissions,
+      coachId: user.coachId,
+    });
     setMessage(null);
   }
 
@@ -92,7 +118,7 @@ export function UsersListClient({
     const res = await fetch(`/api/users/${userId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: editName, email: editEmail, isActive: editActive }),
+      body: JSON.stringify({ name: editName, email: editEmail, isActive: editActive, ...editAccess }),
     });
     const json = await res.json();
     setLoadingId(null);
@@ -157,6 +183,7 @@ export function UsersListClient({
             >
               <option value="ALL">Tous</option>
               <option value="ADMIN">Admin</option>
+              <option value="MANAGER">Responsable</option>
               <option value="RECEPTION">Réception</option>
               <option value="COACH">Coach</option>
             </select>
@@ -199,7 +226,7 @@ export function UsersListClient({
         const isEditing = editingId === u.id;
         const isSelf = u.id === currentUserId;
         const permKeys = u.permissions.map((p) => p.key);
-        const roleIntent = deriveUserRoleIntent(u.role, permKeys);
+        const roleIntent = deriveUserRoleIntent(u.role, permKeys, u.coachId);
         const rightsLabel = describeUserRights(u.role, permKeys);
 
         return (
@@ -217,6 +244,13 @@ export function UsersListClient({
                     onChange={(e) => setEditEmail(e.target.value)}
                   />
                 </FormField>
+                <UserAccessFields
+                  value={editAccess}
+                  onChange={setEditAccess}
+                  coaches={coaches}
+                  productProfile={productProfile}
+                  allowAdmin={!isSelf || u.role === "ADMIN"}
+                />
                 <label className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
@@ -270,6 +304,11 @@ export function UsersListClient({
                   </div>
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-[var(--muted-foreground)]">{rightsLabel}</p>
+                {u.coach ? (
+                  <p className="mt-1 text-xs font-semibold text-[var(--primary)]">
+                    Coach lié : {u.coach.firstName} {u.coach.lastName}
+                  </p>
+                ) : null}
                 <div className="list-card-actions mt-3">
                   <button type="button" className="btn btn-ghost btn-block-mobile" onClick={() => startEdit(u)}>
                     <Pencil className="size-3.5" />

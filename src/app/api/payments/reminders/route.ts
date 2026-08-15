@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
+import { jsonAuthFailureResponse, requireAnyPermission } from "@/lib/permissions";
 import { sendPaymentReminders } from "@/lib/payment-reminders";
 import { sendPaymentRemindersSchema } from "@/lib/schemas/payment-reminder";
 
@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   let actor;
   try {
-    actor = await requirePermission(request, "payments.manage");
+    actor = await requireAnyPermission(request, ["payments.collect", "reports.finance"]);
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }

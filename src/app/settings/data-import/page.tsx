@@ -2,6 +2,7 @@ import { DataImportWizard } from "@/components/settings/data-import-wizard";
 import { SettingsMetric } from "@/components/settings/settings-hub";
 import { PageHeader } from "@/components/ui/page-header";
 import { ReceptionInfoCard } from "@/components/ui/reception-info-card";
+import { hasPermission } from "@/lib/permission-definitions";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/request-user";
 
@@ -10,13 +11,13 @@ export const revalidate = 0;
 
 export default async function DataImportPage() {
   const authUser = await getAuthUser();
-  if (!authUser || authUser.role !== "ADMIN") {
+  if (!authUser || (authUser.role !== "ADMIN" && !hasPermission(authUser.permissions, "settings.manage"))) {
     return (
       <main className="app-shell py-4 md:py-8">
         <PageHeader
           overline="Réglages"
           title="Import ancien fichier"
-          description="Seul un administrateur peut ouvrir un import depuis un ancien registre."
+          description="Votre compte ne peut pas ouvrir un import depuis un ancien registre."
         />
         <section className="panel p-5 text-sm text-[var(--muted-foreground)]">Accès refusé.</section>
       </main>

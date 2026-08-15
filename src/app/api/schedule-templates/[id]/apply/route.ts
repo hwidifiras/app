@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { getClubSettings } from "@/lib/club-settings";
+import { requirePermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/request-user";
 import { applyScheduleTemplateSchema } from "@/lib/schemas/schedule-template";
 import {
   buildScheduleTemplateApplySummary,
@@ -23,7 +23,7 @@ function authFailure(error: unknown) {
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   let admin;
   try {
-    admin = await requireAdmin(request);
+    admin = await requirePermission(request, "settings.manage");
   } catch (error) {
     return authFailure(error);
   }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { requirePermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/request-user";
 import { createScheduleTemplateSchema } from "@/lib/schemas/schedule-template";
 import { toScheduleTemplateDto } from "@/lib/schedule-template-utils";
 
@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 export async function GET(request: Request) {
   let admin;
   try {
-    admin = await requireAdmin(request);
+    admin = await requirePermission(request, "settings.manage");
   } catch (error) {
     const code = error instanceof Error ? error.message : "FORBIDDEN";
     return NextResponse.json(
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   let admin;
   try {
-    admin = await requireAdmin(request);
+    admin = await requirePermission(request, "settings.manage");
   } catch (error) {
     const code = error instanceof Error ? error.message : "FORBIDDEN";
     return NextResponse.json(

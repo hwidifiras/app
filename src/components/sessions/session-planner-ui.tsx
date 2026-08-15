@@ -84,6 +84,7 @@ export function SessionTile({
   expanded,
   conflictReasons,
   hasConflict = false,
+  canManage,
 }: {
   item: SessionDto;
   onEdit: (session: SessionDto) => void;
@@ -92,6 +93,7 @@ export function SessionTile({
   expanded: boolean;
   conflictReasons: string[];
   hasConflict?: boolean;
+  canManage: boolean;
 }) {
   const displayedStatus = displayedSessionStatus(item);
   const canCancel = canCancelSession(item);
@@ -191,12 +193,14 @@ export function SessionTile({
                   {actionLabel === "Finaliser" ? <AlertTriangle className="size-3.5" /> : null}
                   {actionLabel}
                 </Link>
-              ) : (
+              ) : canManage ? (
                 <button type="button" onClick={() => onEdit(item)} className="btn btn-primary btn-sm min-w-0 flex-1">
                   Modifier
                 </button>
+              ) : (
+                <span className="btn btn-ghost btn-sm min-w-0 flex-1 cursor-default">À venir</span>
               )}
-              <details className="relative shrink-0">
+              {canManage ? <details className="relative shrink-0">
                 <summary className="btn btn-ghost btn-sm min-w-9 cursor-pointer list-none px-2" aria-label="Actions secondaires">
                   <MoreHorizontal className="size-4" />
                 </summary>
@@ -220,7 +224,7 @@ export function SessionTile({
                     Annuler
                   </button>
                 </div>
-              </details>
+              </details> : null}
             </div>
           </div>
         ) : null}
@@ -235,12 +239,14 @@ export function SessionDetailPanel({
   onEdit,
   onCancel,
   className,
+  canManage,
 }: {
   session: SessionDto | null;
   conflictReasons: string[];
   onEdit: (session: SessionDto) => void;
   onCancel: (session: SessionDto) => void;
   className?: string;
+  canManage: boolean;
 }) {
   if (!session) return null;
 
@@ -324,17 +330,21 @@ export function SessionDetailPanel({
             {actionLabel}
           </Link>
         ) : null}
-        <button type="button" onClick={() => onEdit(session)} className="btn btn-ghost btn-sm w-full">
-          Modifier la séance
-        </button>
-        <button
-          type="button"
-          onClick={() => onCancel(session)}
-          disabled={!canCancel}
-          className="btn btn-ghost btn-sm w-full border-[var(--danger)]/30 text-[var(--danger)] disabled:cursor-not-allowed disabled:opacity-45"
-        >
-          Annuler la séance
-        </button>
+        {canManage ? (
+          <>
+            <button type="button" onClick={() => onEdit(session)} className="btn btn-ghost btn-sm w-full">
+              Modifier la séance
+            </button>
+            <button
+              type="button"
+              onClick={() => onCancel(session)}
+              disabled={!canCancel}
+              className="btn btn-ghost btn-sm w-full border-[var(--danger)]/30 text-[var(--danger)] disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              Annuler la séance
+            </button>
+          </>
+        ) : null}
       </div>
     </aside>
   );

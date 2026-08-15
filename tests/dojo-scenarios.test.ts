@@ -9,7 +9,7 @@ vi.mock("next/headers", () => ({
 }));
 
 import { prisma } from "@/lib/prisma";
-import { POST as createAttendance, PATCH as patchAttendance, DELETE as deleteAttendance } from "@/app/api/attendances/route";
+import { GET as getAttendances, POST as createAttendance, PATCH as patchAttendance, DELETE as deleteAttendance } from "@/app/api/attendances/route";
 import { POST as createPayment, PATCH as patchPayment, DELETE as deletePayment } from "@/app/api/payments/route";
 import { DELETE as archiveMember } from "@/app/api/members/route";
 import { DELETE as deleteMemberDetail } from "@/app/api/members/[id]/route";
@@ -17,8 +17,9 @@ import { PATCH as postponeSession } from "@/app/api/sessions/[id]/postpone/route
 import { POST as finalizeSession } from "@/app/api/attendances/sessions/[id]/finalize/route";
 import { PATCH as patchSession, DELETE as deleteSession } from "@/app/api/sessions/[id]/route";
 import { DELETE as deleteSport } from "@/app/api/sports/route";
-import { DELETE as deleteSubscriptionPlan, POST as createSubscriptionPlan } from "@/app/api/subscription-plans/route";
+import { GET as getSubscriptionPlans, DELETE as deleteSubscriptionPlan, POST as createSubscriptionPlan } from "@/app/api/subscription-plans/route";
 import { POST as applyEnrollment } from "@/app/api/enrollment/apply/route";
+import { GET as getEnrollmentContext } from "@/app/api/enrollment/context/route";
 import { POST as revertEnrollment } from "@/app/api/enrollment/revert/route";
 import {
   DELETE as deleteMemberSubscription,
@@ -47,6 +48,7 @@ import { enrollmentQuoteSchema } from "@/lib/schemas/enrollment";
 import { createGroupSchema } from "@/lib/schemas/group";
 import { createSubscriptionPlanSchema } from "@/lib/schemas/subscription-plan";
 import { DELETE as deactivateGroup, PATCH as patchGroup, POST as createGroup } from "@/app/api/groups/route";
+import { GET as getSessions } from "@/app/api/sessions/route";
 import { validateSessionSlot } from "@/lib/session-slot-conflict";
 import {
   sessionAdjustmentDelta,
@@ -70,7 +72,7 @@ import { parseReceiptSnapshot } from "@/lib/receipts";
 import { previewBulkDataImport } from "@/lib/bulk-data-import";
 import type { DataImportPayload } from "@/lib/schemas/data-import";
 import { getWeekRangeUtc } from "@/lib/dates";
-import { setFallbackTenantContext } from "@/lib/tenant-context";
+import { setFallbackTenantContext, withTenantContext } from "@/lib/tenant-context";
 
 const TEST_TENANT_ID = "tenant_test";
 const TEST_TENANT_SLUG = "we-discipline";
@@ -1971,7 +1973,7 @@ describe("admin permissions and password reset", () => {
         password: "password123",
         role: "STAFF",
         accessMode: "LIMITED",
-        permissions: ["members.manage", "payments.manage"],
+        permissions: ["members.manage", "payments.collect"],
       }),
     );
     const body = await responseJson(response);
@@ -1982,8 +1984,8 @@ describe("admin permissions and password reset", () => {
     });
 
     expect(response.status).toBe(201);
-    expect(data.permissions.sort()).toEqual(["members.manage", "payments.manage"]);
-    expect(rows.map((row) => row.key).sort()).toEqual(["members.manage", "payments.manage"]);
+    expect(data.permissions.sort()).toEqual(["members.manage", "payments.collect"]);
+    expect(rows.map((row) => row.key).sort()).toEqual(["members.manage", "payments.collect"]);
   });
 
   it("returns ok without sending when forgot-password email is unknown", async () => {
@@ -2033,7 +2035,7 @@ describe("admin permissions and password reset", () => {
     expect(reused.status).toBe(400);
   });
 
-  it("lets admin update club settings and blocks staff", async () => {
+  it("lets settings managers update club settings and blocks staff without settings.manage", async () => {
     await signIn("ADMIN");
     const adminRes = await patchClubSettings(
       jsonRequest("PATCH", {
@@ -2060,6 +2062,30 @@ describe("admin permissions and password reset", () => {
     expect(settings.debtAlertThresholdCents).toBe(1500);
 
     await signIn("STAFF");
+    const managerRes = await patchClubSettings(
+      jsonRequest("PATCH", { maxStaffDiscountPercent: 20 }),
+    );
+    expect(managerRes.status).toBe(200);
+
+    const restrictedStaff = await prisma.user.create({
+      data: {
+        tenantId: TEST_TENANT_ID,
+        name: "Restricted Staff",
+        email: "restricted-settings@test.local",
+        role: "STAFF",
+        passwordHash: await hashPassword("password123"),
+        permissions: { create: [{ tenantId: TEST_TENANT_ID, key: "members.manage" }] },
+      },
+    });
+    authState.token = await signAuthToken({
+      userId: restrictedStaff.id,
+      tenantId: TEST_TENANT_ID,
+      tenantSlug: TEST_TENANT_SLUG,
+      email: restrictedStaff.email,
+      name: restrictedStaff.name,
+      role: "STAFF",
+      permissions: ["members.manage"],
+    });
     const staffRes = await patchClubSettings(
       jsonRequest("PATCH", { maxStaffDiscountPercent: 10 }),
     );
@@ -2103,7 +2129,7 @@ describe("admin permissions and password reset", () => {
     expect(settings.workingDays).toContain("MONDAY");
   });
 
-  it("blocks staff without payments.manage from recording payments", async () => {
+  it("blocks staff without payments.collect from recording payments", async () => {
     const staff = await prisma.user.create({
       data: {
         tenantId: TEST_TENANT_ID,
@@ -4056,5 +4082,136 @@ describe("concurrent invariant enforcement", () => {
 
     expect(activeTokens).toHaveLength(1);
     expect(issued.map((item) => hashResetToken(item.token))).toContain(activeTokens[0].tokenHash);
+  });
+});
+
+describe("scoped staff access", () => {
+  it("lets reception load enrollment choices without catalogue-management rights", async () => {
+    const fx = await dojoFixture();
+    await prisma.member.update({ where: { id: fx.kid.id }, data: { status: "ARCHIVED" } });
+
+    const suffix = Date.now();
+    const otherTenantId = `tenant-enrollment-other-${suffix}`;
+    const otherTenantSlug = `enrollment-other-${suffix}`;
+    await prisma.tenant.create({
+      data: { id: otherTenantId, slug: otherTenantSlug, name: "Other enrollment club" },
+    });
+    const foreignMember = await withTenantContext(
+      { tenantId: otherTenantId, tenantSlug: otherTenantSlug, host: `${otherTenantSlug}.test.local` },
+      async () => await prisma.member.create({
+        data: { firstName: "Hidden", lastName: "Enrollment", phone: `foreign-enrollment-${suffix}` },
+      }),
+    );
+    const reception = await prisma.user.create({
+      data: {
+        tenantId: TEST_TENANT_ID,
+        name: "Reception Enrollment",
+        email: "reception-enrollment@test.local",
+        role: "STAFF",
+        passwordHash: await hashPassword("password123"),
+        permissions: { create: [{ tenantId: TEST_TENANT_ID, key: "enrollment.sell" }] },
+      },
+    });
+    authState.token = await signAuthToken({
+      userId: reception.id,
+      tenantId: TEST_TENANT_ID,
+      tenantSlug: TEST_TENANT_SLUG,
+      email: reception.email,
+      name: reception.name,
+      role: "STAFF",
+      permissions: ["enrollment.sell"],
+    });
+
+    const response = await getEnrollmentContext(new Request("http://test.local/api/enrollment/context?type=class"));
+    const body = await responseJson(response);
+    const data = body.data as {
+      members: Array<{ id: string }>;
+      groups: Array<{ id: string }>;
+      plans: Array<{ id: string }>;
+    };
+
+    expect(response.status).toBe(200);
+    expect(data.members.map((member) => member.id)).toContain(fx.adult.id);
+    expect(data.members.map((member) => member.id)).not.toContain(fx.kid.id);
+    expect(data.members.map((member) => member.id)).not.toContain(foreignMember.id);
+    expect(data.groups.map((group) => group.id)).toContain(fx.adultBjj.id);
+    expect(data.plans.map((plan) => plan.id)).toContain(fx.bjjPlan.id);
+
+    const catalogueResponse = await getSubscriptionPlans(new Request("http://test.local/api/subscription-plans"));
+    expect(catalogueResponse.status).toBe(403);
+  });
+
+  it("limits linked coach reads and pointage mutations to assigned sessions", async () => {
+    const fx = await dojoFixture();
+    const otherCoach = await prisma.coach.create({
+      data: {
+        firstName: "Other",
+        lastName: "Coach",
+        phone: `other-coach-${Date.now()}`,
+        sportId: fx.bjj.id,
+      },
+    });
+    const otherGroup = await prisma.group.create({
+      data: {
+        name: "Other coach group",
+        sportId: fx.bjj.id,
+        coachId: otherCoach.id,
+        capacity: 20,
+      },
+    });
+    const ownSession = await createSessionForGroup(fx.adultBjj.id, {
+      coachId: null,
+      startTime: "16:00",
+      endTime: "17:00",
+    });
+    const foreignSession = await createSessionForGroup(otherGroup.id, {
+      startTime: "17:00",
+      endTime: "18:00",
+    });
+    const ownAttendance = await prisma.attendance.create({
+      data: { sessionId: ownSession.id, memberId: fx.adult.id, status: "PRESENT" },
+    });
+    const foreignAttendance = await prisma.attendance.create({
+      data: { sessionId: foreignSession.id, memberId: fx.adult.id, status: "PRESENT" },
+    });
+
+    const coachUser = await prisma.user.create({
+      data: {
+        tenantId: TEST_TENANT_ID,
+        name: "Coach Account",
+        email: "coach-account@test.local",
+        role: "STAFF",
+        coachId: fx.coach.id,
+        passwordHash: await hashPassword("password123"),
+        permissions: { create: [{ tenantId: TEST_TENANT_ID, key: "class.attendance" }] },
+      },
+    });
+    authState.token = await signAuthToken({
+      userId: coachUser.id,
+      tenantId: TEST_TENANT_ID,
+      tenantSlug: TEST_TENANT_SLUG,
+      email: coachUser.email,
+      name: coachUser.name,
+      role: "STAFF",
+      permissions: ["class.attendance"],
+    });
+
+    const sessionsResponse = await getSessions(new Request("http://test.local/api/sessions"));
+    const sessionsBody = await responseJson(sessionsResponse);
+    const sessionIds = ((sessionsBody.data ?? []) as Array<{ id: string }>).map((session) => session.id);
+    expect(sessionsResponse.status).toBe(200);
+    expect(sessionIds).toContain(ownSession.id);
+    expect(sessionIds).not.toContain(foreignSession.id);
+
+    const attendanceResponse = await getAttendances(new Request("http://test.local/api/attendances"));
+    const attendanceBody = await responseJson(attendanceResponse);
+    const attendanceIds = ((attendanceBody.data ?? []) as Array<{ id: string }>).map((attendance) => attendance.id);
+    expect(attendanceIds).toContain(ownAttendance.id);
+    expect(attendanceIds).not.toContain(foreignAttendance.id);
+
+    const guessedMutation = await createAttendance(
+      jsonRequest("POST", { sessionId: foreignSession.id, memberId: fx.kid.id, status: "PRESENT" }),
+    );
+    expect(guessedMutation.status).toBe(404);
   });
 });

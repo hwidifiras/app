@@ -30,6 +30,7 @@ import {
 import { useAppShellData, type NavigationBadge } from "@/components/layout/app-shell-data-provider";
 import { ClubBrandMark } from "@/components/layout/club-brand-mark";
 import { useClubBranding } from "@/components/layout/club-branding-provider";
+import { hasPermission, type PermissionKey } from "@/lib/permission-definitions";
 import { cn } from "@/lib/utils";
 import type { ProductModule } from "@/platform/product/product-context";
 
@@ -39,7 +40,7 @@ export type NavItem = {
   icon: React.ComponentType<{ className?: string }>;
   adminOnly?: boolean;
   moduleKey?: ProductModule;
-  permission?: string;
+  permission?: PermissionKey;
 };
 
 export type NavSection = {
@@ -51,8 +52,8 @@ export const dailySection: NavSection = {
   title: "Aujourd'hui",
   items: [
     { href: "/", label: "Accueil", icon: LayoutDashboard },
-    { href: "/attendance/today", label: "Pointage", icon: Clock, moduleKey: "CLASS_MANAGEMENT" },
-    { href: "/sessions", label: "Planning", icon: CalendarRange, moduleKey: "CLASS_MANAGEMENT" },
+    { href: "/attendance/today", label: "Pointage", icon: Clock, moduleKey: "CLASS_MANAGEMENT", permission: "class.attendance" },
+    { href: "/sessions", label: "Planning", icon: CalendarRange, moduleKey: "CLASS_MANAGEMENT", permission: "class.attendance" },
     { href: "/gym/check-in", label: "Accès salle", icon: Dumbbell, moduleKey: "GYM_ACCESS", permission: "gym.checkin" },
   ],
 };
@@ -60,19 +61,19 @@ export const dailySection: NavSection = {
 export const salesSection: NavSection = {
   title: "Ventes",
   items: [
-    { href: "/enrollment", label: "Inscrire", icon: UserPlus },
-    { href: "/payments/new", label: "Encaisser", icon: Banknote },
-    { href: "/subscriptions", label: "Abonnements", icon: CreditCard },
-    { href: "/payments", label: "Historique caisse", icon: Wallet },
+    { href: "/enrollment", label: "Inscrire", icon: UserPlus, permission: "enrollment.sell" },
+    { href: "/payments/new", label: "Encaisser", icon: Banknote, permission: "payments.collect" },
+    { href: "/subscriptions", label: "Abonnements", icon: CreditCard, permission: "enrollment.sell" },
+    { href: "/payments", label: "Historique caisse", icon: Wallet, permission: "reports.finance" },
   ],
 };
 
 export const studentsSection: NavSection = {
   title: "Élèves",
   items: [
-    { href: "/members", label: "Membres", icon: Users },
-    { href: "/attendance", label: "Historique présences", icon: Activity, moduleKey: "CLASS_MANAGEMENT" },
-    { href: "/attendance/groups", label: "Suivi groupes", icon: ClipboardCheck, moduleKey: "CLASS_MANAGEMENT" },
+    { href: "/members", label: "Membres", icon: Users, permission: "members.manage" },
+    { href: "/attendance", label: "Historique présences", icon: Activity, moduleKey: "CLASS_MANAGEMENT", permission: "class.attendance" },
+    { href: "/attendance/groups", label: "Suivi groupes", icon: ClipboardCheck, moduleKey: "CLASS_MANAGEMENT", permission: "class.attendance" },
     { href: "/gym/visits", label: "Historique accès", icon: Dumbbell, moduleKey: "GYM_ACCESS", permission: "gym.manage" },
   ],
 };
@@ -80,21 +81,21 @@ export const studentsSection: NavSection = {
 export const clubSection: NavSection = {
   title: "Club",
   items: [
-    { href: "/groups", label: "Groupes & horaires", icon: CalendarDays, moduleKey: "CLASS_MANAGEMENT" },
-    { href: "/coaches", label: "Coachs", icon: User, moduleKey: "CLASS_MANAGEMENT" },
-    { href: "/sports", label: "Disciplines", icon: Dumbbell, moduleKey: "CLASS_MANAGEMENT" },
+    { href: "/groups", label: "Groupes & horaires", icon: CalendarDays, moduleKey: "CLASS_MANAGEMENT", permission: "class.manage" },
+    { href: "/coaches", label: "Coachs", icon: User, moduleKey: "CLASS_MANAGEMENT", permission: "class.manage" },
+    { href: "/sports", label: "Disciplines", icon: Dumbbell, moduleKey: "CLASS_MANAGEMENT", permission: "class.manage" },
   ],
 };
 
 export const settingsSection: NavSection = {
   title: "Réglages",
   items: [
-    { href: "/settings", label: "Vue d'ensemble", icon: Settings },
-    { href: "/settings/club", label: "Club", icon: Building2 },
-    { href: "/settings/schedules", label: "Horaires & saisons", icon: CalendarClock, moduleKey: "CLASS_MANAGEMENT" },
-    { href: "/subscription-plans", label: "Formules", icon: ClipboardCheck },
-    { href: "/offers", label: "Offres", icon: CreditCard },
-    { href: "/settings/data-import", label: "Import ancien fichier", icon: Import, moduleKey: "CLASS_MANAGEMENT" },
+    { href: "/settings", label: "Vue d'ensemble", icon: Settings, permission: "settings.manage" },
+    { href: "/settings/club", label: "Club", icon: Building2, permission: "settings.manage" },
+    { href: "/settings/schedules", label: "Horaires & saisons", icon: CalendarClock, moduleKey: "CLASS_MANAGEMENT", permission: "settings.manage" },
+    { href: "/subscription-plans", label: "Formules", icon: ClipboardCheck, permission: "plans.manage" },
+    { href: "/offers", label: "Offres", icon: CreditCard, permission: "plans.manage" },
+    { href: "/settings/data-import", label: "Import ancien fichier", icon: Import, moduleKey: "CLASS_MANAGEMENT", permission: "settings.manage" },
   ],
 };
 
@@ -148,7 +149,7 @@ export function navItemIsVisible(
   if (!account) return false;
   if (item.adminOnly && account.role !== "ADMIN") return false;
   if (item.moduleKey && !account.modules.includes(item.moduleKey)) return false;
-  if (item.permission && account.role !== "ADMIN" && !account.permissions.includes(item.permission)) return false;
+  if (item.permission && account.role !== "ADMIN" && !hasPermission(account.permissions, item.permission)) return false;
   return true;
 }
 
@@ -156,8 +157,12 @@ export function getConfigurationSections(
   role: string | null,
   account?: { role: string; permissions: string[]; modules: string[] } | null,
 ) {
-  const sections = role === "ADMIN" ? [settingsSection, adminSection] : [accountSettingsSection];
-  if (!account) return sections;
+  const sections = [
+    settingsSection,
+    ...(role === "ADMIN" ? [adminSection] : []),
+    ...(role === "ADMIN" ? [] : [accountSettingsSection]),
+  ];
+  if (!account) return [];
   return sections
     .map((section) => ({ ...section, items: section.items.filter((item) => navItemIsVisible(item, account)) }))
     .filter((section) => section.items.length > 0);

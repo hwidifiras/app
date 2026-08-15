@@ -13,6 +13,7 @@ import {
   deriveSessionLifecycle,
   expectedMemberIdsAtSession,
 } from "@/lib/session-lifecycle";
+import { coachSessionWhere } from "@/modules/classes/coach-scope";
 
 export const runtime = "nodejs";
 
@@ -31,7 +32,7 @@ export async function POST(
 ) {
   let actor;
   try {
-    actor = await requirePermission(request, "attendance.manage");
+    actor = await requirePermission(request, "class.attendance");
   } catch (error) {
     return jsonAuthFailureResponse(error);
   }
@@ -65,7 +66,7 @@ export async function POST(
       },
       async (tx) => {
         const session = await tx.session.findFirst({
-          where: { id, tenantId: actor.tenantId },
+          where: { id, tenantId: actor.tenantId, ...coachSessionWhere(actor) },
           include: {
             group: {
               select: {

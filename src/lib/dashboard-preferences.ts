@@ -1,4 +1,5 @@
 import type { AuthRole } from "@/lib/auth";
+import { hasPermission } from "@/lib/permission-definitions";
 import { deriveUserRoleIntent } from "@/lib/user-role-intent";
 
 export const DASHBOARD_DEFAULT_MODES = ["AUTO", "RECEPTION", "PILOTAGE"] as const;
@@ -77,15 +78,25 @@ export function getDashboardWidgetVisibility(
   permissions: string[] = [],
 ): DashboardWidgetVisibility {
   const roleIntent = deriveUserRoleIntent(role, permissions);
-  const canSeePilotageWidgets = mode === "PILOTAGE" && roleIntent !== "COACH";
+  const isAdmin = role === "ADMIN";
+  const canSeeAttendance = isAdmin || hasPermission(permissions, "class.attendance") || hasPermission(permissions, "class.manage");
+  const canSeeCash = isAdmin || hasPermission(permissions, "payments.collect") || hasPermission(permissions, "reports.finance");
+  const canSeeFinance = isAdmin || hasPermission(permissions, "reports.finance");
+  const canSeeMembers = isAdmin || hasPermission(permissions, "members.manage") || hasPermission(permissions, "enrollment.sell");
+  const canSeeDataConfidence =
+    isAdmin ||
+    hasPermission(permissions, "settings.manage") ||
+    hasPermission(permissions, "class.manage") ||
+    hasPermission(permissions, "gym.manage");
+  const canSeePilotageWidgets = mode === "PILOTAGE" && roleIntent !== "COACH" && canSeeFinance;
 
   return {
-    todaySessions: settings.dashboardShowTodaySessions,
-    cashToday: settings.dashboardShowCashToday,
-    dataConfidence: settings.dashboardShowDataConfidence,
-    cashTrend: settings.dashboardShowCashTrend,
-    membersOverview: settings.dashboardShowMembersOverview,
+    todaySessions: settings.dashboardShowTodaySessions && canSeeAttendance,
+    cashToday: settings.dashboardShowCashToday && canSeeCash,
+    dataConfidence: settings.dashboardShowDataConfidence && canSeeDataConfidence,
+    cashTrend: settings.dashboardShowCashTrend && canSeeFinance,
+    membersOverview: settings.dashboardShowMembersOverview && canSeeMembers,
     commercialInsights: settings.dashboardShowCommercialInsights && canSeePilotageWidgets,
-    detailedDebts: settings.dashboardShowDetailedDebts,
+    detailedDebts: settings.dashboardShowDetailedDebts && canSeeFinance,
   };
 }

@@ -196,4 +196,41 @@ describe("tenant isolation", () => {
       `,
     ).rejects.toThrow(/TENANT_REASSIGNMENT_FORBIDDEN/);
   });
+
+  it("only links a coach account inside the same tenant", async () => {
+    const suffix = `${Date.now()}`;
+    const coach = await prisma.coach.create({
+      data: {
+        firstName: "Coach",
+        lastName: "Tenant A",
+        phone: `coach-${suffix}`,
+      },
+    });
+
+    await useTenant(OTHER_TENANT_ID, OTHER_TENANT_SLUG);
+    await expect(
+      prisma.user.create({
+        data: {
+          email: `cross-coach-${suffix}@test.local`,
+          name: "Cross tenant coach",
+          role: "STAFF",
+          passwordHash: "hash",
+          coachId: coach.id,
+        },
+      }),
+    ).rejects.toThrow(/TENANT_REFERENCE_MISMATCH/);
+
+    await useTenant(TEST_TENANT_ID, TEST_TENANT_SLUG);
+    await expect(
+      prisma.user.create({
+        data: {
+          email: `coach-${suffix}@test.local`,
+          name: "Coach account",
+          role: "STAFF",
+          passwordHash: "hash",
+          coachId: coach.id,
+        },
+      }),
+    ).resolves.toMatchObject({ tenantId: TEST_TENANT_ID, coachId: coach.id });
+  });
 });

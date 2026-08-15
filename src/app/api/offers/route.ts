@@ -17,7 +17,7 @@ export const runtime = "nodejs";
 export async function GET(request: Request) {
   let actor;
   try {
-    actor = await requirePermission(request, "offers.manage");
+    actor = await requirePermission(request, "plans.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   let actor;
   try {
-    actor = await requirePermission(request, "offers.manage");
+    actor = await requirePermission(request, "plans.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -156,7 +156,7 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   let actor;
   try {
-    actor = await requirePermission(request, "offers.manage");
+    actor = await requirePermission(request, "plans.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }

@@ -79,6 +79,7 @@ type SessionsPlannerProps = {
     allowCoachConcurrentSameRoomQualified: boolean;
     workingDays: ClubDay[];
   };
+  canManage: boolean;
 };
 
 export function SessionsPlanner({
@@ -89,6 +90,7 @@ export function SessionsPlanner({
   groupsOptions,
   coachesOptions,
   planningPreferences,
+  canManage,
 }: SessionsPlannerProps) {
   const [sessions, setSessions] = useState<SessionDto[]>(initialSessions);
   const [weekStart, setWeekStart] = useState(initialWeekStart);
@@ -143,7 +145,11 @@ export function SessionsPlanner({
     if (!session) return;
 
     deepLinkHandled.current = true;
-    openEdit(session);
+    const timeoutId = window.setTimeout(() => {
+      setExpandedSessionId(session.id);
+      setSelectedMobileDay(sessionDateKey(session));
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
   }, [initialSessionId, sessions]);
 
   async function reloadSessions(nextWeekStart: string, nextGroupId: string) {
@@ -193,6 +199,7 @@ export function SessionsPlanner({
   }
 
   function openEdit(session: SessionDto) {
+    if (!canManage) return;
     setExpandedSessionId(session.id);
     setEditingSession(session);
     setEditForm({
@@ -606,6 +613,7 @@ export function SessionsPlanner({
       expanded={expandedSessionId === item.id}
       conflictReasons={conflictDetailsBySessionId.get(item.id) ?? []}
       hasConflict={conflictSessionIds.has(item.id)}
+      canManage={canManage}
     />
   );
 
@@ -640,6 +648,7 @@ export function SessionsPlanner({
           onCurrentWeek={() => { void resetCurrentWeek(); }}
           onNextWeek={() => { void goToWeek(1); }}
           onPreviewGeneration={() => { void previewSessionsGeneration(); }}
+          canManage={canManage}
         />
 
         {generationPreview ? (
@@ -675,7 +684,7 @@ export function SessionsPlanner({
 
         {loading ? <p className="mt-4 text-sm text-[var(--muted-foreground)]">Chargement du planning...</p> : null}
         <FeedbackMessage message={message} className="mt-4" />
-        {canUndo ? (
+        {canManage && canUndo ? (
           <div className="mt-2">
             <UndoButton
               onClick={() => undoLast()}
@@ -725,6 +734,7 @@ export function SessionsPlanner({
               conflictReasons={selectedSession ? conflictDetailsBySessionId.get(selectedSession.id) ?? [] : []}
               onEdit={openEdit}
               onCancel={setPendingDeleteSession}
+              canManage={canManage}
               className="hidden 2xl:sticky 2xl:top-28 2xl:block"
             />
           ) : null}
@@ -736,6 +746,7 @@ export function SessionsPlanner({
             conflictReasons={selectedSession ? conflictDetailsBySessionId.get(selectedSession.id) ?? [] : []}
             onEdit={openEdit}
             onCancel={setPendingDeleteSession}
+            canManage={canManage}
             className="mt-4 2xl:hidden"
           />
         ) : null}
@@ -756,7 +767,7 @@ export function SessionsPlanner({
         onStatusFilterChange={setStatusFilter}
       />
 
-      {editingSession ? (
+      {canManage && editingSession ? (
         <SessionEditModal
           session={editingSession}
           editForm={editForm}
@@ -773,7 +784,7 @@ export function SessionsPlanner({
         />
       ) : null}
 
-      <ConfirmDialog
+      {canManage ? <ConfirmDialog
         open={pendingDeleteSession !== null}
         title="Annuler cette séance ?"
         description={
@@ -785,7 +796,7 @@ export function SessionsPlanner({
         loading={loading}
         onCancel={() => setPendingDeleteSession(null)}
         onConfirm={() => pendingDeleteSession ? deleteSession(pendingDeleteSession.id) : undefined}
-      />
+      /> : null}
     </div>
   );
 }

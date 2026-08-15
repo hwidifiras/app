@@ -3,6 +3,7 @@ import { SettingsMetric } from "@/components/settings/settings-hub";
 import { PageHeader } from "@/components/ui/page-header";
 import { CLUB_DAY_SHORT_LABELS } from "@/lib/club-working-days";
 import { getClubSettings } from "@/lib/club-settings";
+import { hasPermission } from "@/lib/permission-definitions";
 import { toScheduleTemplateDto } from "@/lib/schedule-template-utils";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/request-user";
@@ -12,13 +13,13 @@ export const revalidate = 0;
 
 export default async function SettingsSchedulesPage() {
   const authUser = await getAuthUser();
-  if (!authUser || authUser.role !== "ADMIN") {
+  if (!authUser || (authUser.role !== "ADMIN" && !hasPermission(authUser.permissions, "settings.manage"))) {
     return (
       <main className="app-shell py-4 md:py-8">
         <PageHeader
           overline="Horaires"
           title="Horaires & saisons"
-          description="Seul un administrateur peut gérer les modèles horaires."
+          description="Votre compte ne peut pas gérer les modèles horaires."
         />
         <section className="panel panel-soft p-5">
           <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>

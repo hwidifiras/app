@@ -36,7 +36,7 @@ function toScheduleDto(schedule: {
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   let actor;
   try {
-    actor = await requirePermission(_request, "catalog.manage");
+    actor = await requirePermission(_request, "class.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -63,7 +63,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   let actor;
   try {
-    actor = await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "class.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -320,7 +320,7 @@ async function generateSessionsForGroup(
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   let actor;
   try {
-    actor = await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "class.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -413,7 +413,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   let actor;
   try {
-    actor = await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "class.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }

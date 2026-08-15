@@ -22,7 +22,7 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   let actor;
   try {
-    actor = await requirePermission(request, "enrollment.manage");
+    actor = await requirePermission(request, "enrollment.sell");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }

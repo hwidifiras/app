@@ -10,6 +10,7 @@ type AccountData = {
   email: string;
   name: string;
   role: "ADMIN" | "STAFF";
+  coachId: string | null;
   isActive: boolean;
   permissions: string[];
   modules: string[];

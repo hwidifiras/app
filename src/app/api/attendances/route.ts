@@ -49,6 +49,7 @@ import {
   replayIdempotentResponse,
   runIdempotentSerializableTransaction,
 } from "@/lib/idempotency";
+import { coachAttendanceWhere, coachSessionWhere } from "@/modules/classes/coach-scope";
 
 export const runtime = "nodejs";
 
@@ -61,7 +62,7 @@ function tenantContextFor(actor: AttendanceActor) {
 export async function GET(request: Request) {
   let actor: AttendanceActor;
   try {
-    actor = await requirePermission(request, "attendance.manage");
+    actor = await requirePermission(request, "class.attendance");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -77,6 +78,7 @@ async function handleGet(request: Request, actor: AttendanceActor) {
   const attendances = await prisma.attendance.findMany({
     where: {
       tenantId: actor.tenantId,
+      ...coachAttendanceWhere(actor),
       ...(sessionId ? { sessionId } : {}),
       ...(memberId ? { memberId } : {}),
     },
@@ -101,7 +103,7 @@ async function handleGet(request: Request, actor: AttendanceActor) {
 export async function POST(request: Request) {
   let actor: AttendanceActor;
   try {
-    actor = await requirePermission(request, "attendance.manage");
+    actor = await requirePermission(request, "class.attendance");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -154,7 +156,7 @@ async function handlePost(request: Request, actor: AttendanceActor) {
     }
 
     const sessionExists = await prisma.session.findFirst({
-      where: { id: sessionId, tenantId: actor.tenantId },
+      where: { id: sessionId, tenantId: actor.tenantId, ...coachSessionWhere(actor) },
       include: {
         group: { select: { id: true, sportId: true, groupType: true } },
       },
@@ -503,7 +505,7 @@ async function handlePost(request: Request, actor: AttendanceActor) {
 export async function PATCH(request: Request) {
   let actor: AttendanceActor;
   try {
-    actor = await requirePermission(request, "attendance.manage");
+    actor = await requirePermission(request, "class.attendance");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -558,7 +560,7 @@ async function handlePatch(request: Request, actor: AttendanceActor) {
 
     const clubSettings = await getClubSettings();
     const existing = await prisma.attendance.findFirst({
-      where: { id: attendanceId, tenantId: actor.tenantId },
+      where: { id: attendanceId, tenantId: actor.tenantId, ...coachAttendanceWhere(actor) },
       select: {
         id: true,
         memberId: true,
@@ -687,7 +689,7 @@ async function handlePatch(request: Request, actor: AttendanceActor) {
 
     const updated = await runIdempotentSerializableTransaction(idempotencyParams, async (tx) => {
       const transactionExisting = await tx.attendance.findFirst({
-        where: { id: attendanceId, tenantId: actor.tenantId },
+        where: { id: attendanceId, tenantId: actor.tenantId, ...coachAttendanceWhere(actor) },
         select: {
           id: true,
           memberId: true,
@@ -892,7 +894,7 @@ async function handlePatch(request: Request, actor: AttendanceActor) {
 export async function DELETE(request: Request) {
   let actor: AttendanceActor;
   try {
-    actor = await requirePermission(request, "attendance.manage");
+    actor = await requirePermission(request, "class.attendance");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -933,7 +935,7 @@ async function handleDelete(request: Request, actor: AttendanceActor) {
 
     const clubSettings = await getClubSettings();
     const existing = await prisma.attendance.findFirst({
-      where: { id: attendanceId, tenantId: actor.tenantId },
+      where: { id: attendanceId, tenantId: actor.tenantId, ...coachAttendanceWhere(actor) },
       select: {
         memberId: true,
         status: true,
@@ -976,7 +978,7 @@ async function handleDelete(request: Request, actor: AttendanceActor) {
     const activeSub = await resolveActiveSubscription(existing.memberId, existing.session.group.sportId);
     const deleted = await runIdempotentSerializableTransaction(idempotencyParams, async (tx) => {
       const transactionExisting = await tx.attendance.findFirst({
-        where: { id: attendanceId, tenantId: actor.tenantId },
+        where: { id: attendanceId, tenantId: actor.tenantId, ...coachAttendanceWhere(actor) },
         select: {
           memberId: true,
           status: true,

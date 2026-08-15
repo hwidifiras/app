@@ -9,6 +9,7 @@ import { ThemeProvider } from "@/components/theme/theme-provider";
 import { getAppName } from "@/lib/app-name";
 import { resolveClubBranding } from "@/lib/club-branding";
 import { getClubSettings } from "@/lib/club-settings";
+import { hasPermission } from "@/lib/permission-definitions";
 import { isPublicPath } from "@/lib/public-paths";
 import { getAuthUser } from "@/lib/request-user";
 import { isAdminOnlyPath, requiredPermissionForPath } from "@/lib/route-permissions";
@@ -75,7 +76,7 @@ export default async function RootLayout({
     const requiredPermission = requiredPermissionForPath(pathname);
     const denied =
       (isAdminOnlyPath(pathname) && user.role !== "ADMIN") ||
-      (user.role !== "ADMIN" && requiredPermission !== null && !user.permissions.includes(requiredPermission));
+      (user.role !== "ADMIN" && requiredPermission !== null && !hasPermission(user.permissions, requiredPermission));
 
     if (denied) {
       redirect("/?denied=1");

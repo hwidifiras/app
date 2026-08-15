@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 
 import { getClubSettings } from "@/lib/club-settings";
 import { getWeekRangeUtc, utcDateOnlyForTimeZone } from "@/lib/dates";
-import { jsonAuthFailureResponse, userHasPermission } from "@/lib/permissions";
+import { jsonAuthFailureResponse, userHasAnyPermission, userHasPermission } from "@/lib/permissions";
 import { buildPlanningConflictDetails } from "@/lib/planning-conflicts";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/request-user";
+import { coachSessionWhere } from "@/modules/classes/coach-scope";
 import {
   deriveSessionLifecycle,
   expectedMemberIdsAtSession,
@@ -57,10 +58,11 @@ export async function GET(request: Request) {
     const tenantId = user.tenantId;
     const product = await getTenantProductContext(tenantId);
     const includeAttendance =
-      product.capabilities.classManagement && await userHasPermission(user, "attendance.manage");
-    const includePayments = await userHasPermission(user, "payments.manage");
-    const includeSubscriptions = await userHasPermission(user, "catalog.manage");
-    const includeClassCatalog = product.capabilities.classManagement && includeSubscriptions;
+      product.capabilities.classManagement && await userHasPermission(user, "class.attendance");
+    const includePayments = await userHasAnyPermission(user, ["payments.collect", "reports.finance"]);
+    const includeSubscriptions = await userHasAnyPermission(user, ["enrollment.sell", "subscriptions.correct"]);
+    const includeClassCatalog =
+      product.capabilities.classManagement && await userHasPermission(user, "class.manage");
     const now = new Date();
     const today = utcDateOnlyForTimeZone(now);
     const overdueSince = new Date(today);
@@ -72,6 +74,7 @@ export async function GET(request: Request) {
         ? prisma.session.findMany({
             where: {
               tenantId,
+              ...coachSessionWhere(user),
               status: { in: ["PLANNED", "RESCHEDULED"] },
               sessionDate: { gte: overdueSince, lte: today },
             },

@@ -9,7 +9,8 @@ import {
   utcWeekdayIndex,
 } from "@/lib/dates";
 import { updateSessionSchema } from "@/lib/schemas/session";
-import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
+import { jsonAuthFailureResponse, requireAnyPermission, requirePermission } from "@/lib/permissions";
+import { coachSessionWhere } from "@/modules/classes/coach-scope";
 import {
   formatSessionSlotLabel,
   validateSessionSlot,
@@ -37,7 +38,7 @@ export const runtime = "nodejs";
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   let actor;
   try {
-    actor = await requirePermission(_request, "catalog.manage");
+    actor = await requireAnyPermission(_request, ["class.attendance", "class.manage"]);
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -45,7 +46,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
 
   const session = await prisma.session.findFirst({
-    where: { id, tenantId: actor.tenantId },
+    where: { id, tenantId: actor.tenantId, ...coachSessionWhere(actor) },
     include: {
       group: { select: { name: true, sportId: true } },
       coach: { select: { firstName: true, lastName: true } },
@@ -93,7 +94,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   let actor;
   try {
-    actor = await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "class.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -542,7 +543,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   let actor;
   try {
-    actor = await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "class.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }

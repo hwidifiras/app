@@ -19,6 +19,7 @@ const createUserSchema = z.object({
   password: z.string().min(8),
   accessMode: z.enum(["FULL", "LIMITED"]).default("LIMITED"),
   permissions: z.array(z.enum(PERMISSIONS)).optional(),
+  coachId: z.string().trim().min(1).nullable().optional(),
 });
 
 export async function GET(request: Request) {
@@ -38,6 +39,8 @@ export async function GET(request: Request) {
       email: true,
       name: true,
       role: true,
+      coachId: true,
+      coach: { select: { firstName: true, lastName: true } },
       isActive: true,
       createdAt: true,
       permissions: { where: { tenantId: admin.tenantId }, select: { key: true } },
@@ -88,28 +91,68 @@ export async function POST(request: Request) {
       : parsed.data.accessMode === "FULL"
         ? FULL_STAFF_PERMISSIONS
         : parsePermissions(parsed.data.permissions ?? []);
+  const coachId = parsed.data.role === "STAFF" ? parsed.data.coachId ?? null : null;
+  const coachProfile =
+    parsed.data.role === "STAFF" &&
+    permissions.length === 1 &&
+    permissions[0] === "class.attendance";
 
-  const user = await prisma.user.create({
-    data: {
-      tenantId: admin.tenantId,
-      email,
-      name: parsed.data.name,
-      role: parsed.data.role,
-      passwordHash,
-      permissions: {
-        create: permissions.map((key) => ({ tenantId: admin.tenantId, key })),
+  if (coachProfile && !coachId) {
+    return NextResponse.json({ error: "Sélectionnez le coach lié à ce compte" }, { status: 400 });
+  }
+
+  if (coachId && !permissions.includes("class.attendance")) {
+    return NextResponse.json(
+      { error: "Un compte coach doit disposer du droit de pointage des cours" },
+      { status: 400 },
+    );
+  }
+
+  if (coachId) {
+    const coach = await prisma.coach.findFirst({
+      where: { id: coachId, tenantId: admin.tenantId, isActive: true },
+      select: { id: true, userAccount: { select: { id: true } } },
+    });
+    if (!coach) {
+      return NextResponse.json({ error: "Coach introuvable ou inactif" }, { status: 400 });
+    }
+    if (coach.userAccount) {
+      return NextResponse.json({ error: "Ce coach possède déjà un compte utilisateur" }, { status: 409 });
+    }
+  }
+
+  let user;
+  try {
+    user = await prisma.user.create({
+      data: {
+        tenantId: admin.tenantId,
+        email,
+        name: parsed.data.name,
+        role: parsed.data.role,
+        coachId,
+        passwordHash,
+        permissions: {
+          create: permissions.map((key) => ({ tenantId: admin.tenantId, key })),
+        },
       },
-    },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      role: true,
-      isActive: true,
-      createdAt: true,
-      permissions: { select: { key: true } },
-    },
-  });
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        coachId: true,
+        coach: { select: { firstName: true, lastName: true } },
+        isActive: true,
+        createdAt: true,
+        permissions: { select: { key: true } },
+      },
+    });
+  } catch (error) {
+    if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
+      return NextResponse.json({ error: "Email ou coach déjà utilisé" }, { status: 409 });
+    }
+    throw error;
+  }
 
   await prisma.auditLog.create({
     data: {
@@ -118,7 +161,7 @@ export async function POST(request: Request) {
       entityType: "User",
       entityId: user.id,
       userId: admin.id,
-      details: JSON.stringify({ tenantId: admin.tenantId, email: user.email, role: user.role, permissions }),
+      details: JSON.stringify({ tenantId: admin.tenantId, email: user.email, role: user.role, coachId, permissions }),
     },
   });
 

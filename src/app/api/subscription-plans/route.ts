@@ -62,7 +62,7 @@ export async function GET(request: Request) {
   let actor;
 
   try {
-    actor = await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "plans.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
   let actor;
 
   try {
-    actor = await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "plans.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -203,7 +203,7 @@ export async function PATCH(request: Request) {
   let actor;
 
   try {
-    actor = await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "plans.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -359,7 +359,7 @@ export async function DELETE(request: Request) {
   let actor;
 
   try {
-    actor = await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "plans.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword } from "@/lib/password";
+import { parsePermissions } from "@/lib/permission-definitions";
 import { setAuthSessionCookie } from "@/lib/auth-session";
 import { requireAuth } from "@/lib/request-user";
 import { getTenantProductContext } from "@/platform/product/product-context";
@@ -36,6 +37,7 @@ export async function GET(request: Request) {
           email: true,
           name: true,
           role: true,
+          coachId: true,
           isActive: true,
           createdAt: true,
           permissions: { select: { key: true } },
@@ -51,7 +53,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       data: {
         ...user,
-        permissions: user.permissions.map((p) => p.key),
+        permissions: user.role === "ADMIN" ? [] : parsePermissions(user.permissions.map((p) => p.key)),
         modules: product.modules,
         productProfile: product.profile,
         productCapabilities: product.capabilities,
@@ -104,6 +106,7 @@ export async function PATCH(request: Request) {
       email: true,
       name: true,
       role: true,
+      coachId: true,
       isActive: true,
       passwordHash: true,
       permissions: { select: { key: true } },
@@ -153,12 +156,13 @@ export async function PATCH(request: Request) {
       email: true,
       name: true,
       role: true,
+      coachId: true,
       isActive: true,
       permissions: { select: { key: true } },
     },
   });
 
-  const permissions = updated.permissions.map((p) => p.key);
+  const permissions = updated.role === "ADMIN" ? [] : parsePermissions(updated.permissions.map((p) => p.key));
 
   await setAuthSessionCookie({
     id: updated.id,
@@ -191,6 +195,7 @@ export async function PATCH(request: Request) {
       email: updated.email,
       name: updated.name,
       role: updated.role,
+      coachId: updated.coachId,
       isActive: updated.isActive,
       permissions,
     },

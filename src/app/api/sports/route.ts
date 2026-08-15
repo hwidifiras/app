@@ -27,7 +27,7 @@ function sportAuditSnapshot(sport: SportAuditSnapshot) {
 export async function GET(request: Request) {
   let actor;
   try {
-    actor = await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "class.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   let actor;
   try {
-    actor = await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "class.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -118,7 +118,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   let actor;
   try {
-    actor = await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "class.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }
@@ -222,7 +222,7 @@ export async function PATCH(request: Request) {
 export async function DELETE(request: Request) {
   let actor;
   try {
-    actor = await requirePermission(request, "catalog.manage");
+    actor = await requirePermission(request, "class.manage");
   } catch (e) {
     return jsonAuthFailureResponse(e);
   }

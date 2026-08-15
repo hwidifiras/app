@@ -52,6 +52,9 @@ describe("product route registry", () => {
   it("uses the most specific route metadata", () => {
     expect(productRouteForPath("/gym/visits")?.permission).toBe("gym.manage");
     expect(productRouteForPath("/gym/check-in")?.permission).toBe("gym.checkin");
-    expect(productRouteForPath("/api/group-members/bulk")?.permission).toBe("enrollment.manage");
+    expect(productRouteForPath("/api/group-members/bulk")?.permission).toBe("enrollment.sell");
+    expect(productRouteForPath("/api/enrollment/context")?.module).toBeNull();
+    expect(productRouteForPath("/api/enrollment/context")?.permission).toBe("enrollment.sell");
+    expect(productRouteForPath("/sessions")?.permission).toBe("class.attendance");
   });
 });

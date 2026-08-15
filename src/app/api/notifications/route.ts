@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getClubSettings } from "@/lib/club-settings";
+import { hasPermission, type PermissionKey } from "@/lib/permission-definitions";
 import { buildNotifications } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { jsonAuthFailureResponse } from "@/lib/permissions";
 import { requireAuth } from "@/lib/request-user";
+import { coachSessionWhere } from "@/modules/classes/coach-scope";
 import { utcDateOnlyForTimeZone } from "@/lib/dates";
 import {
   deriveSessionLifecycle,
@@ -26,8 +28,8 @@ const updateSchema = z.discriminatedUnion("action", [
   }),
 ]);
 
-function hasAccess(role: "ADMIN" | "STAFF", permissions: string[], permission: string) {
-  return role === "ADMIN" || permissions.includes(permission);
+function hasAccess(role: "ADMIN" | "STAFF", permissions: string[], permission: PermissionKey) {
+  return role === "ADMIN" || hasPermission(permissions, permission);
 }
 
 export async function GET(request: Request) {
@@ -35,10 +37,14 @@ export async function GET(request: Request) {
     const user = await requireAuth(request);
     const tenantId = user.tenantId;
     const product = await getTenantProductContext(tenantId);
-    const includePayments = hasAccess(user.role, user.permissions, "payments.manage");
-    const includeExpirations = hasAccess(user.role, user.permissions, "catalog.manage");
+    const includePayments =
+      hasAccess(user.role, user.permissions, "payments.collect") ||
+      hasAccess(user.role, user.permissions, "reports.finance");
+    const includeExpirations =
+      hasAccess(user.role, user.permissions, "enrollment.sell") ||
+      hasAccess(user.role, user.permissions, "subscriptions.correct");
     const includeAttendance =
-      product.capabilities.classManagement && hasAccess(user.role, user.permissions, "attendance.manage");
+      product.capabilities.classManagement && hasAccess(user.role, user.permissions, "class.attendance");
 
     if (!includePayments && !includeExpirations && !includeAttendance) {
       return NextResponse.json({ data: { notifications: [], unreadCount: 0 } });
@@ -71,6 +77,7 @@ export async function GET(request: Request) {
         ? prisma.session.findMany({
             where: {
               tenantId,
+              ...coachSessionWhere(user),
               status: { in: ["PLANNED", "RESCHEDULED"] },
               sessionDate: { gte: overdueSince, lte: today },
             },

@@ -3,9 +3,10 @@ import { NextResponse } from "next/server";
 import { getClubSettings, writeClubLogoUrl } from "@/lib/club-settings";
 import { CLUB_DAY_LABELS, DAY_INDEX_TO_CLUB_DAY, WORKING_DAY_ORDER, type ClubDay } from "@/lib/club-working-days";
 import { utcDateOnlyForTimeZone } from "@/lib/dates";
+import { requirePermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { updateClubSettingsSchema } from "@/lib/schemas/club-settings";
-import { requireAdmin, requireAuth } from "@/lib/request-user";
+import { requireAuth } from "@/lib/request-user";
 
 export const runtime = "nodejs";
 
@@ -134,7 +135,7 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   let admin;
   try {
-    admin = await requireAdmin(request);
+    admin = await requirePermission(request, "settings.manage");
   } catch (e) {
     const code = e instanceof Error ? e.message : "FORBIDDEN";
     return NextResponse.json(

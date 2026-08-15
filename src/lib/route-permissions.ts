@@ -2,10 +2,11 @@ import type { PermissionKey } from "@/lib/permission-definitions";
 import { productRouteForPath } from "@/platform/product/product-registry";
 
 export const ROUTE_PERMISSION_RULES: Array<{ paths: string[]; permission: PermissionKey }> = [
-  { paths: ["/enrollment", "/api/enrollment", "/api/group-members"], permission: "enrollment.manage" },
-  { paths: ["/attendance", "/api/attendances"], permission: "attendance.manage" },
-  { paths: ["/payments", "/receipts", "/api/payments", "/api/receipts"], permission: "payments.manage" },
-  { paths: ["/offers", "/api/offers"], permission: "offers.manage" },
+  { paths: ["/enrollment", "/api/enrollment", "/api/group-members"], permission: "enrollment.sell" },
+  { paths: ["/attendance", "/api/attendances"], permission: "class.attendance" },
+  { paths: ["/payments/new"], permission: "payments.collect" },
+  { paths: ["/payments", "/receipts", "/api/payments", "/api/receipts"], permission: "reports.finance" },
+  { paths: ["/offers", "/api/offers"], permission: "plans.manage" },
   { paths: ["/gym/check-in", "/api/gym/check-in"], permission: "gym.checkin" },
   { paths: ["/gym", "/api/gym"], permission: "gym.manage" },
   {
@@ -23,29 +24,27 @@ export const ROUTE_PERMISSION_RULES: Array<{ paths: string[]; permission: Permis
       "/api/subscription-plans",
       "/api/member-subscriptions",
     ],
-    permission: "catalog.manage",
+    permission: "class.manage",
   },
   {
     paths: ["/members", "/api/members", "/api/households"],
     permission: "members.manage",
   },
+  {
+    paths: ["/settings", "/api/club-settings", "/api/schedule-templates", "/api/data-import"],
+    permission: "settings.manage",
+  },
 ];
 
 export const ADMIN_ROUTE_PREFIXES = [
   "/settings/users",
-  "/settings/club",
-  "/settings/schedules",
-  "/settings/data-import",
   "/logs",
   "/api/users",
-  "/api/club-settings",
-  "/api/schedule-templates",
-  "/api/data-import",
 ] as const;
 
 export function requiredPermissionForPath(pathname: string): PermissionKey | null {
-  const productPermission = productRouteForPath(pathname)?.permission;
-  if (productPermission) return productPermission;
+  const productRoute = productRouteForPath(pathname);
+  if (productRoute) return productRoute.permission;
 
   for (const rule of ROUTE_PERMISSION_RULES) {
     if (rule.paths.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
