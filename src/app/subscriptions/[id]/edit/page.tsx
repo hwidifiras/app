@@ -8,6 +8,10 @@ import { MemberEnrollmentRecoveryPanel } from "@/components/members/member-enrol
 import { sumLedgerRows } from "@/lib/payment-ledger";
 import { getAuthUser } from "@/lib/request-user";
 import { getEnrollmentRecoveryCandidatesForSubscription } from "@/lib/enrollment-recovery";
+import {
+  resolveSubscriptionEffectiveState,
+  totalPauseSeconds,
+} from "@/modules/sales/subscription-lifecycle";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -31,18 +35,41 @@ export default async function EditSubscriptionPage({ params }: { params: Promise
     );
   }
 
-  const [subscription, plans] = await Promise.all([
+  const [subscription, plans, groups] = await Promise.all([
     prisma.memberSubscription.findFirst({
       where: { id, tenantId: authUser.tenantId },
       include: {
         member: { select: { firstName: true, lastName: true } },
+        plan: { select: { name: true } },
         payments: { where: { tenantId: authUser.tenantId }, select: { amount: true } },
+        entitlements: {
+          include: { sport: { select: { name: true } } },
+          orderBy: { createdAt: "asc" },
+        },
+        pauseEvents: { orderBy: { effectiveAt: "asc" } },
+        renewedBySubscription: {
+          select: { status: true, activationPolicy: true, activatedAt: true, startDate: true },
+        },
       },
     }),
     prisma.subscriptionPlan.findMany({
       where: { tenantId: authUser.tenantId, isActive: true },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, price: true, totalSessions: true, validityDays: true },
+      select: {
+        id: true,
+        name: true,
+        price: true,
+        planKind: true,
+        entitlements: {
+          select: { type: true, sportId: true, sport: { select: { name: true } } },
+          orderBy: { sortOrder: "asc" },
+        },
+      },
+    }),
+    prisma.group.findMany({
+      where: { tenantId: authUser.tenantId, isActive: true },
+      select: { id: true, name: true, sportId: true, sport: { select: { name: true } } },
+      orderBy: { name: "asc" },
     }),
   ]);
 
@@ -56,7 +83,16 @@ export default async function EditSubscriptionPage({ params }: { params: Promise
         ...plans,
         await prisma.subscriptionPlan.findFirstOrThrow({
           where: { id: subscription.planId, tenantId: authUser.tenantId },
-          select: { id: true, name: true, price: true, totalSessions: true, validityDays: true },
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            planKind: true,
+            entitlements: {
+              select: { type: true, sportId: true, sport: { select: { name: true } } },
+              orderBy: { sortOrder: "asc" },
+            },
+          },
         }),
       ];
   const enrollmentRecoveryCandidates = await getEnrollmentRecoveryCandidatesForSubscription(
@@ -76,7 +112,7 @@ export default async function EditSubscriptionPage({ params }: { params: Promise
       <PageHeader
         overline="Ventes"
         title="Corriger l'abonnement"
-        description="Ajuster dates, formule, séances ou statut avec motif quand une valeur sensible change."
+        description="Corriger une erreur par une action traçable sans réécrire la vente d'origine."
       />
 
       <div className="space-y-4">
@@ -86,14 +122,44 @@ export default async function EditSubscriptionPage({ params }: { params: Promise
               id: subscription.id,
               memberName: `${subscription.member.firstName} ${subscription.member.lastName}`,
               planId: subscription.planId,
+              planName: subscription.plan.name,
               startDate: subscription.startDate.toISOString(),
               endDate: subscription.endDate?.toISOString() ?? null,
               amount: subscription.amount,
               totalPaid: sumLedgerRows(subscription.payments),
-              remainingSessions: subscription.remainingSessions,
-              status: subscription.status,
+              storedStatus: subscription.status,
+              effectiveState: resolveSubscriptionEffectiveState(subscription),
+              activationDeadline: subscription.activationDeadline?.toISOString() ?? null,
+              freezeAllowanceCount: subscription.freezeAllowanceCount,
+              freezeMaxTotalDays: subscription.freezeMaxTotalDays,
+              usedPauseCount: subscription.pauseEvents.filter((event) => event.entryType === "PAUSE").length,
+              usedPauseDays: Math.floor(totalPauseSeconds(subscription.pauseEvents) / 86_400),
+              entitlements: subscription.entitlements.map((right) => ({
+                id: right.id,
+                type: right.type,
+                remainingUnits: right.remainingUnits,
+                label: right.type === "GYM_ACCESS"
+                  ? "Accès salle"
+                  : right.sport?.name ?? "Cours",
+              })),
             }}
-            plansOptions={plansOptions}
+            plansOptions={plansOptions.map((plan) => ({
+              id: plan.id,
+              name: plan.name,
+              price: plan.price,
+              planKind: plan.planKind,
+              entitlements: plan.entitlements.map((right) => ({
+                type: right.type,
+                sportId: right.sportId,
+                sportName: right.sport?.name ?? null,
+              })),
+            }))}
+            groupsOptions={groups.map((group) => ({
+              id: group.id,
+              name: group.name,
+              sportId: group.sportId,
+              sportName: group.sport.name,
+            }))}
           />
         </section>
 

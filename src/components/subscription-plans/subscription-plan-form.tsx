@@ -21,6 +21,10 @@ export type SubscriptionPlanFormValues = {
   validityDays: number;
   sportId: string | null;
   planKind?: PlanKind;
+  activationPolicy?: "FIXED_DATE" | "FIRST_USE";
+  activationWindowDays?: number;
+  freezeAllowanceCount?: number;
+  freezeMaxTotalDays?: number;
   entitlements?: Array<{
     type: "CLASS_SESSIONS" | "GYM_ACCESS";
     sportId: string | null;
@@ -60,6 +64,18 @@ export function SubscriptionPlanForm({
   const [description, setDescription] = useState(initialValues?.description ?? "");
   const [price, setPrice] = useState(initialValues ? (initialValues.price / 100).toFixed(2) : "");
   const [validityDays, setValidityDays] = useState(String(initialValues?.validityDays ?? 30));
+  const [activationPolicy, setActivationPolicy] = useState<"FIXED_DATE" | "FIRST_USE">(
+    initialValues?.activationPolicy ?? "FIXED_DATE",
+  );
+  const [activationWindowDays, setActivationWindowDays] = useState(
+    String(initialValues?.activationWindowDays ?? 90),
+  );
+  const [freezeAllowanceCount, setFreezeAllowanceCount] = useState(
+    String(initialValues?.freezeAllowanceCount ?? (initialKind === "GYM" ? 1 : 0)),
+  );
+  const [freezeMaxTotalDays, setFreezeMaxTotalDays] = useState(
+    String(initialValues?.freezeMaxTotalDays ?? (initialKind === "GYM" ? 30 : 0)),
+  );
   const [classRights, setClassRights] = useState<ClassRight[]>(initialClassRights);
   const [gymAccessMode, setGymAccessMode] = useState<"UNLIMITED" | "VISIT_QUOTA">(initialGym?.gymAccessMode ?? "UNLIMITED");
   const [gymVisitQuota, setGymVisitQuota] = useState(String(initialGym?.grantedUnits ?? 12));
@@ -87,6 +103,11 @@ export function SubscriptionPlanForm({
     if ((next === "CLASS" && !classModuleEnabled) || (next === "GYM" && !gymModuleEnabled)) return;
     if (next === "MIXED" && (!classModuleEnabled || !gymModuleEnabled)) return;
     setPlanKind(next);
+    if (next !== "GYM") setActivationPolicy("FIXED_DATE");
+    if (mode === "create" && next === "GYM" && Number(freezeAllowanceCount) === 0) {
+      setFreezeAllowanceCount("1");
+      setFreezeMaxTotalDays("30");
+    }
     setMessage(null);
     if ((next === "CLASS" || next === "MIXED") && classRights.length === 0) {
       setClassRights([{ sportId: "", sessionsPerWeek: 3, grantedUnits: 12 }]);
@@ -107,6 +128,10 @@ export function SubscriptionPlanForm({
       price: Math.round(Number(price.replace(",", ".")) * 100),
       validityDays: Number(validityDays),
       planKind,
+      activationPolicy,
+      activationWindowDays: Number(activationWindowDays),
+      freezeAllowanceCount: Number(freezeAllowanceCount),
+      freezeMaxTotalDays: Number(freezeMaxTotalDays),
       entitlements,
       isActive,
     };
@@ -178,6 +203,44 @@ export function SubscriptionPlanForm({
           </div>
         </section>
       ) : null}
+
+      <section className="border-t border-[var(--border)] pt-5">
+        <div>
+          <h2 className="font-semibold">Activation et pause</h2>
+          <p className="text-xs text-[var(--muted-foreground)]">Ces règles sont copiées dans l&apos;abonnement vendu et ne changent pas son historique.</p>
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <label>
+            <span className="mb-1 block text-xs font-medium">Début de validité</span>
+            <select
+              className="field"
+              value={activationPolicy}
+              onChange={(event) => setActivationPolicy(event.target.value as typeof activationPolicy)}
+              disabled={planKind !== "GYM"}
+            >
+              <option value="FIXED_DATE">À la date choisie</option>
+              {planKind === "GYM" ? <option value="FIRST_USE">Au premier passage</option> : null}
+            </select>
+          </label>
+          {activationPolicy === "FIRST_USE" ? (
+            <label>
+              <span className="mb-1 block text-xs font-medium">Délai pour activer (jours)</span>
+              <input className="field" type="number" min="1" max="3650" value={activationWindowDays} onChange={(event) => setActivationWindowDays(event.target.value)} required />
+            </label>
+          ) : <div />}
+          <label>
+            <span className="mb-1 block text-xs font-medium">Nombre de pauses autorisées</span>
+            <input className="field" type="number" min="0" max="24" value={freezeAllowanceCount} onChange={(event) => setFreezeAllowanceCount(event.target.value)} required />
+          </label>
+          <label>
+            <span className="mb-1 block text-xs font-medium">Total maximum de pause (jours)</span>
+            <input className="field" type="number" min="0" max="365" value={freezeMaxTotalDays} onChange={(event) => setFreezeMaxTotalDays(event.target.value)} required />
+          </label>
+        </div>
+        {Number(freezeAllowanceCount) === 0 || Number(freezeMaxTotalDays) === 0 ? (
+          <p className="mt-2 text-xs text-[var(--muted-foreground)]">Pause désactivée pour cette formule.</p>
+        ) : null}
+      </section>
 
       {mode === "edit" ? <label className="block border-t border-[var(--border)] pt-5"><span className="mb-1 block text-xs font-medium">Statut</span><select className="field" value={String(isActive)} onChange={(event) => setIsActive(event.target.value === "true")}><option value="true">Actif</option><option value="false">Inactif</option></select></label> : null}
       <FeedbackMessage message={message} />

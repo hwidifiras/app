@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { getRequiredTenantId } from "@/lib/tenant-context";
+import { findOpenPauseAt } from "@/modules/sales/subscription-lifecycle";
 
 type TransactionClient = Prisma.TransactionClient;
 
@@ -79,7 +80,7 @@ export async function resolveClassEntitlementForAttendance(
   const nextDay = new Date(dayStart);
   nextDay.setUTCDate(nextDay.getUTCDate() + 1);
 
-  return prisma.subscriptionEntitlement.findFirst({
+  const candidates = await prisma.subscriptionEntitlement.findMany({
     where: {
       tenantId,
       type: "CLASS_SESSIONS",
@@ -101,14 +102,42 @@ export async function resolveClassEntitlementForAttendance(
       memberSubscription: {
         select: {
           id: true,
+          status: true,
+          activationPolicy: true,
+          activatedAt: true,
+          startDate: true,
+          endDate: true,
           amount: true,
           payments: { select: { amount: true } },
           plan: { select: { name: true, sportId: true, sessionsPerWeek: true } },
+          pauseEvents: { orderBy: { effectiveAt: "asc" } },
+          renewedBySubscription: {
+            select: { status: true, activationPolicy: true, activatedAt: true, startDate: true },
+          },
         },
       },
     },
-    orderBy: [{ endDate: "asc" }, { createdAt: "asc" }],
+    orderBy: [{ startDate: "desc" }, { createdAt: "desc" }],
+    take: 10,
   });
+  return candidates.find((candidate) => {
+    const subscription = candidate.memberSubscription;
+    if (subscription.status === "CANCELLED" || subscription.status === "DRAFT") return false;
+    if (subscription.activationPolicy === "FIRST_USE" && !subscription.activatedAt) return false;
+    if (findOpenPauseAt(subscription.pauseEvents, sessionDate)) return false;
+    const successor = subscription.renewedBySubscription;
+    if (
+      successor &&
+      successor.status !== "CANCELLED" &&
+      successor.status !== "EXPIRED" &&
+      (successor.activationPolicy === "FIXED_DATE"
+        ? successor.startDate <= sessionDate
+        : Boolean(successor.activatedAt && successor.activatedAt <= sessionDate))
+    ) {
+      return false;
+    }
+    return true;
+  }) ?? null;
 }
 
 export async function findClassEntitlementForBalance(

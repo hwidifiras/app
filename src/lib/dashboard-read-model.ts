@@ -66,6 +66,8 @@ export async function loadDashboardSubscriptionReadModel(input: {
         ms."createdAt",
         ms."startDate",
         ms."endDate",
+        ms."activationPolicy",
+        ms."activatedAt",
         m."firstName",
         m."lastName",
         m.phone,
@@ -90,6 +92,8 @@ export async function loadDashboardSubscriptionReadModel(input: {
         ms."createdAt",
         ms."startDate",
         ms."endDate",
+        ms."activationPolicy",
+        ms."activatedAt",
         m."firstName",
         m."lastName",
         m.phone,
@@ -100,6 +104,19 @@ export async function loadDashboardSubscriptionReadModel(input: {
       FROM subscription_balances
       WHERE "startDate" <= ${input.now}
         AND ("endDate" IS NULL OR "endDate" >= ${input.now})
+        AND ("activationPolicy" <> 'FIRST_USE'::"PlanActivationPolicy" OR "activatedAt" IS NOT NULL)
+        AND NOT EXISTS (
+          SELECT 1
+          FROM "MemberSubscription" successor
+          WHERE successor."tenantId" = ${input.tenantId}
+            AND successor."renewsSubscriptionId" = subscription_balances.id
+            AND successor.status NOT IN ('CANCELLED'::"SubscriptionStatus", 'EXPIRED'::"SubscriptionStatus")
+            AND (
+              (successor."activationPolicy" = 'FIXED_DATE'::"PlanActivationPolicy" AND successor."startDate" <= ${input.now})
+              OR
+              (successor."activationPolicy" = 'FIRST_USE'::"PlanActivationPolicy" AND successor."activatedAt" IS NOT NULL AND successor."activatedAt" <= ${input.now})
+            )
+        )
     ),
     debt_rows AS (
       SELECT

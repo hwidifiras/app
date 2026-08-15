@@ -4,6 +4,7 @@ import { totalSessionsFromWeekly } from "@/lib/subscription-plan-utils";
 
 const optionalDescriptionSchema = z.string().trim().max(500).nullable().optional();
 const planKindSchema = z.enum(["CLASS", "GYM", "MIXED"]);
+const activationPolicySchema = z.enum(["FIXED_DATE", "FIRST_USE"]);
 const entitlementSchema = z
   .object({
     type: z.enum(["CLASS_SESSIONS", "GYM_ACCESS"]),
@@ -26,7 +27,11 @@ const entitlementSchema = z
   });
 
 function validateEntitlementMix(
-  value: { planKind: "CLASS" | "GYM" | "MIXED"; entitlements?: z.infer<typeof entitlementSchema>[] },
+  value: {
+    planKind: "CLASS" | "GYM" | "MIXED";
+    activationPolicy: "FIXED_DATE" | "FIRST_USE";
+    entitlements?: z.infer<typeof entitlementSchema>[];
+  },
   ctx: z.RefinementCtx,
 ) {
   if (!value.entitlements) return;
@@ -47,6 +52,13 @@ function validateEntitlementMix(
   if (value.planKind === "MIXED" && (gymRights.length !== 1 || classRights.length < 1)) {
     ctx.addIssue({ code: "custom", path: ["entitlements"], message: "Un pack mixte exige au moins un cours et un accès salle" });
   }
+  if (value.activationPolicy === "FIRST_USE" && value.planKind !== "GYM") {
+    ctx.addIssue({
+      code: "custom",
+      path: ["activationPolicy"],
+      message: "L'activation au premier passage est réservée aux pass salle",
+    });
+  }
 }
 
 export const createSubscriptionPlanSchema = z
@@ -55,6 +67,10 @@ export const createSubscriptionPlanSchema = z
     description: optionalDescriptionSchema,
     price: z.number().int().min(0, "Prix invalide").max(99999999, "Prix invalide"),
     planKind: planKindSchema.default("CLASS"),
+    activationPolicy: activationPolicySchema.default("FIXED_DATE"),
+    activationWindowDays: z.number().int().min(1).max(3650).default(90),
+    freezeAllowanceCount: z.number().int().min(0).max(24).optional(),
+    freezeMaxTotalDays: z.number().int().min(0).max(365).optional(),
     validityDays: z.number().int().min(1, "Durée minimum 1 jour").max(3650, "Durée maximum 10 ans"),
     sportId: z.string().trim().min(1).optional(),
     sessionsPerWeek: z.number().int().min(1).max(7).optional(),
@@ -77,6 +93,8 @@ export const createSubscriptionPlanSchema = z
       sportId: data.planKind === "CLASS" ? classRights[0]?.sportId : undefined,
       sessionsPerWeek: data.planKind === "CLASS" ? classRights[0]?.sessionsPerWeek ?? undefined : undefined,
       totalSessions: classRights.reduce((sum, item) => sum + (item.grantedUnits ?? 0), 0),
+      freezeAllowanceCount: data.freezeAllowanceCount ?? (data.planKind === "GYM" ? 1 : 0),
+      freezeMaxTotalDays: data.freezeMaxTotalDays ?? (data.planKind === "GYM" ? 30 : 0),
     };
   })
   .superRefine(validateEntitlementMix);
@@ -89,6 +107,10 @@ export const updateSubscriptionPlanSchema = z
     description: optionalDescriptionSchema,
     price: z.number().int().min(0).max(99999999).optional(),
     planKind: planKindSchema.optional(),
+    activationPolicy: activationPolicySchema.optional(),
+    activationWindowDays: z.number().int().min(1).max(3650).optional(),
+    freezeAllowanceCount: z.number().int().min(0).max(24).optional(),
+    freezeMaxTotalDays: z.number().int().min(0).max(365).optional(),
     sessionsPerWeek: z.number().int().min(1).max(7).optional(),
     validityDays: z.number().int().min(1).max(3650).optional(),
     isActive: z.boolean().optional(),

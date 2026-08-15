@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { SubscriptionsListClient } from "@/components/subscriptions/subscriptions-list-client";
 import type { SubscriptionStatus } from "@prisma/client";
 import { getAuthUser } from "@/lib/request-user";
+import { resolveSubscriptionEffectiveState, type SubscriptionEffectiveState } from "@/modules/sales/subscription-lifecycle";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -40,6 +41,7 @@ export default async function SubscriptionsPage() {
     startDate: string;
     endDate: string | null;
     status: SubscriptionStatus;
+    effectiveState: SubscriptionEffectiveState;
     totalPaid: number;
     remainingSessions: number;
     totalSessions: number;
@@ -58,6 +60,10 @@ export default async function SubscriptionsPage() {
         plan: { select: { name: true, planKind: true, totalSessions: true } },
         payments: { where: { tenantId: authUser.tenantId }, select: { amount: true } },
         entitlements: { include: { sport: { select: { name: true } } }, orderBy: { createdAt: "asc" } },
+        pauseEvents: { orderBy: { effectiveAt: "asc" } },
+        renewedBySubscription: {
+          select: { status: true, activationPolicy: true, activatedAt: true, startDate: true },
+        },
       },
     });
 
@@ -73,6 +79,7 @@ export default async function SubscriptionsPage() {
       startDate: s.startDate.toISOString(),
       endDate: s.endDate?.toISOString() ?? null,
       status: s.status,
+      effectiveState: resolveSubscriptionEffectiveState(s),
       totalPaid: s.payments.reduce((sum, p) => sum + p.amount, 0),
       remainingSessions: s.remainingSessions,
       totalSessions: s.plan.totalSessions,

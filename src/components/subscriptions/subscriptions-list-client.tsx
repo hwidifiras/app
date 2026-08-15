@@ -24,6 +24,7 @@ import {
   Th,
 } from "@/components/ui/responsive-table";
 import type { SubscriptionStatus } from "@prisma/client";
+import type { SubscriptionEffectiveState } from "@/modules/sales/subscription-lifecycle";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 
 export type SubscriptionRow = {
@@ -38,6 +39,7 @@ export type SubscriptionRow = {
   startDate: string;
   endDate: string | null;
   status: SubscriptionStatus;
+  effectiveState: SubscriptionEffectiveState;
   totalPaid: number;
   remainingSessions: number;
   totalSessions: number;
@@ -51,31 +53,38 @@ type OperationalMode = "TO_COLLECT" | "TO_RENEW" | "ACTIVE" | "ALL";
 
 const RENEWAL_WINDOW_DAYS = 7;
 
-function statusVariant(status: SubscriptionStatus) {
+function statusVariant(status: SubscriptionEffectiveState) {
   switch (status) {
     case "ACTIVE":
       return "success";
-    case "DRAFT":
+    case "SCHEDULED":
+    case "PENDING_ACTIVATION":
       return "info";
     case "EXPIRED":
       return "warning";
     case "CANCELLED":
       return "danger";
+    case "FROZEN":
+      return "warning";
     default:
       return "muted";
   }
 }
 
-function statusLabel(status: SubscriptionStatus) {
+function statusLabel(status: SubscriptionEffectiveState) {
   switch (status) {
     case "ACTIVE":
       return "Actif";
-    case "DRAFT":
-      return "Brouillon";
+    case "SCHEDULED":
+      return "Planifié";
+    case "PENDING_ACTIVATION":
+      return "À activer";
     case "EXPIRED":
       return "Expiré";
     case "CANCELLED":
       return "Résilié";
+    case "FROZEN":
+      return "En pause";
     default:
       return status;
   }
@@ -98,7 +107,7 @@ function daysUntilEnd(subscription: SubscriptionRow) {
 }
 
 function needsRenewal(subscription: SubscriptionRow) {
-  if (subscription.status !== "ACTIVE") return false;
+  if (subscription.effectiveState !== "ACTIVE") return false;
   return daysUntilEnd(subscription) <= RENEWAL_WINDOW_DAYS || subscription.lowUnits;
 }
 
@@ -118,7 +127,7 @@ const OPERATIONAL_MODES: Array<{ id: OperationalMode; label: string }> = [
 export function SubscriptionsListClient({ subscriptions }: { subscriptions: SubscriptionRow[] }) {
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | SubscriptionStatus>("ALL");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | SubscriptionEffectiveState>("ALL");
   const [paymentFilter, setPaymentFilter] = useState<"ALL" | "PAID" | "OPEN">("ALL");
   const [operationalMode, setOperationalMode] = useState<OperationalMode>(() => chooseInitialMode(subscriptions));
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -127,7 +136,7 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
     () => ({
       TO_COLLECT: subscriptions.filter((subscription) => remainingCents(subscription) > 0).length,
       TO_RENEW: subscriptions.filter(needsRenewal).length,
-      ACTIVE: subscriptions.filter((subscription) => subscription.status === "ACTIVE").length,
+      ACTIVE: subscriptions.filter((subscription) => subscription.effectiveState === "ACTIVE").length,
       ALL: subscriptions.length,
     }),
     [subscriptions],
@@ -140,13 +149,13 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
         operationalMode === "ALL" ||
         (operationalMode === "TO_COLLECT" && remainingCents(subscription) > 0) ||
         (operationalMode === "TO_RENEW" && needsRenewal(subscription)) ||
-        (operationalMode === "ACTIVE" && subscription.status === "ACTIVE");
+        (operationalMode === "ACTIVE" && subscription.effectiveState === "ACTIVE");
       const matchesSearch =
         !query ||
         subscription.memberName.toLocaleLowerCase("fr").includes(query) ||
         subscription.memberPhone.toLocaleLowerCase("fr").includes(query) ||
         subscription.planName.toLocaleLowerCase("fr").includes(query);
-      const matchesStatus = statusFilter === "ALL" || subscription.status === statusFilter;
+      const matchesStatus = statusFilter === "ALL" || subscription.effectiveState === statusFilter;
       const matchesPayment =
         paymentFilter === "ALL" ||
         (paymentFilter === "PAID"
@@ -229,7 +238,9 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
           >
             <option value="ALL">Tous les statuts</option>
             <option value="ACTIVE">Actifs</option>
-            <option value="DRAFT">Brouillons</option>
+            <option value="PENDING_ACTIVATION">À activer</option>
+            <option value="SCHEDULED">Planifiés</option>
+            <option value="FROZEN">En pause</option>
             <option value="EXPIRED">Expirés</option>
             <option value="CANCELLED">Résiliés</option>
           </select>
@@ -330,7 +341,7 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
                 ) : null}
               </Td>
               <Td label="Statut" className="whitespace-nowrap">
-                <StatusBadge variant={statusVariant(sub.status)}>{statusLabel(sub.status)}</StatusBadge>
+                <StatusBadge variant={statusVariant(sub.effectiveState)}>{statusLabel(sub.effectiveState)}</StatusBadge>
               </Td>
               <Td label="Droits" mobileDetail className="hidden max-w-[15rem] text-center sm:table-cell">
                 <span className={sub.lowUnits ? "text-amber-700" : "text-[var(--primary)]"}>{sub.rightsLabel}</span>
@@ -339,7 +350,7 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
                 {sub.rightsLabel}
               </Td>
               <TableActionsCell>
-                {sub.status === "ACTIVE" && sub.totalPaid < sub.amount ? (
+                {sub.effectiveState !== "CANCELLED" && sub.totalPaid < sub.amount ? (
                   <Link
                     href={`/payments/new?memberSubscriptionId=${sub.id}`}
                     prefetch={false}
@@ -388,7 +399,9 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
         >
           <option value="ALL">Tous les statuts</option>
           <option value="ACTIVE">Actifs</option>
-          <option value="DRAFT">Brouillons</option>
+          <option value="PENDING_ACTIVATION">À activer</option>
+          <option value="SCHEDULED">Planifiés</option>
+          <option value="FROZEN">En pause</option>
           <option value="EXPIRED">Expirés</option>
           <option value="CANCELLED">Résiliés</option>
         </select>

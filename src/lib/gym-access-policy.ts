@@ -2,12 +2,18 @@ import type { Prisma } from "@prisma/client";
 
 import type { ClubSettingsData } from "@/lib/club-settings";
 import { sumLedgerRows } from "@/lib/payment-ledger";
+import { resolveSubscriptionEffectiveState } from "@/modules/sales/subscription-lifecycle";
+import {
+  activateFirstUseSubscription,
+  synchronizeDueRenewals,
+} from "@/modules/sales/subscription-lifecycle-service";
 
 export type GymAccessFailureCode =
   | "MEMBER_NOT_FOUND"
   | "MEMBER_ARCHIVED"
   | "NO_GYM_PASS"
   | "PASS_INACTIVE"
+  | "PASS_FROZEN"
   | "PASS_UNPAID"
   | "PASS_EXHAUSTED"
   | "DUPLICATE_SCAN"
@@ -48,6 +54,8 @@ export async function evaluateGymAccess(
     settings: ClubSettingsData;
     now?: Date;
     overrideReason?: string | null;
+    actorId?: string | null;
+    activatePending?: boolean;
   },
 ): Promise<GymAccessDecision> {
   const now = params.now ?? new Date();
@@ -61,6 +69,10 @@ export async function evaluateGymAccess(
   const publicMember = { id: member.id, firstName: member.firstName, lastName: member.lastName, phone: member.phone };
   if (member.status !== "ACTIVE") {
     return { allowed: false, override: false, code: "MEMBER_ARCHIVED", message: "Membre resilie: acces impossible", member: publicMember, entitlement: null, unitsDelta: 0 };
+  }
+
+  if (params.activatePending) {
+    await synchronizeDueRenewals(tx, { tenantId: params.tenantId, memberId: member.id, at: now });
   }
 
   const entitlements = await tx.subscriptionEntitlement.findMany({
@@ -79,9 +91,18 @@ export async function evaluateGymAccess(
       memberSubscription: {
         select: {
           status: true,
+          activationPolicy: true,
+          activationDeadline: true,
+          activatedAt: true,
+          startDate: true,
+          endDate: true,
           amount: true,
-          plan: { select: { name: true } },
+          plan: { select: { name: true, validityDays: true } },
           payments: { select: { amount: true } },
+          pauseEvents: { orderBy: { effectiveAt: "asc" } },
+          renewedBySubscription: {
+            select: { status: true, activationPolicy: true, activatedAt: true, startDate: true },
+          },
         },
       },
     },
@@ -92,11 +113,15 @@ export async function evaluateGymAccess(
     return { allowed: false, override: false, code: "NO_GYM_PASS", message: "Aucun pass salle", member: publicMember, entitlement: null, unitsDelta: 0 };
   }
 
-  const active = entitlements.find((item) => {
-    const dateActive = item.startDate <= now && (!item.endDate || item.endDate >= now);
-    return dateActive && item.memberSubscription.status === "ACTIVE";
-  });
-  const selected = active ?? entitlements[0];
+  const withState = entitlements.map((item) => ({
+    item,
+    state: resolveSubscriptionEffectiveState(item.memberSubscription, now),
+  }));
+  const active = withState.find((candidate) => candidate.state === "ACTIVE");
+  const frozen = withState.find((candidate) => candidate.state === "FROZEN");
+  const pending = withState.find((candidate) => candidate.state === "PENDING_ACTIVATION");
+  const selectedCandidate = active ?? frozen ?? pending ?? withState[0];
+  const selected = selectedCandidate.item;
   const totalPaid = sumLedgerRows(selected.memberSubscription.payments);
   const accessMode = selected.gymAccessMode ?? "UNLIMITED";
   const entitlement = {
@@ -112,7 +137,10 @@ export async function evaluateGymAccess(
 
   let code: GymAccessFailureCode | null = null;
   let message = "Acces autorise";
-  if (!active) {
+  if (selectedCandidate.state === "FROZEN") {
+    code = "PASS_FROZEN";
+    message = "Pass salle en pause";
+  } else if (selectedCandidate.state !== "ACTIVE" && selectedCandidate.state !== "PENDING_ACTIVATION") {
     code = "PASS_INACTIVE";
     message = "Pass salle inactif ou expire";
   } else if (selected.memberSubscription.amount > 0 && totalPaid < selected.memberSubscription.amount) {
@@ -160,6 +188,16 @@ export async function evaluateGymAccess(
       code = "DAILY_LIMIT_REACHED";
       message = "Limite quotidienne atteinte";
     }
+  }
+
+  if (!code && selectedCandidate.state === "PENDING_ACTIVATION" && params.activatePending) {
+    const activated = await activateFirstUseSubscription(tx, {
+      tenantId: params.tenantId,
+      subscriptionId: selected.memberSubscriptionId,
+      actorId: params.actorId,
+      at: now,
+    });
+    entitlement.endDate = activated.endDate;
   }
 
   if (!code) {

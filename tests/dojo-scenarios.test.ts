@@ -1627,7 +1627,7 @@ describe("api route scenarios", () => {
     expect(data.remainingSessions).toBe(fx.bjjPlan.totalSessions + 4);
   });
 
-  it("requires adjustmentReason when admin changes amount or remaining sessions", async () => {
+  it("keeps sold subscription snapshots immutable even when an edit reason is supplied", async () => {
     await signIn("ADMIN");
     const fx = await dojoFixture();
     const sub = await createActiveSubscription(fx);
@@ -1638,7 +1638,7 @@ describe("api route scenarios", () => {
         payload: { remainingSessions: 5 },
       }),
     );
-    expect(missingReason.status).toBe(400);
+    expect(missingReason.status).toBe(409);
 
     const withReason = await patchMemberSubscription(
       jsonRequest("PATCH", {
@@ -1646,11 +1646,10 @@ describe("api route scenarios", () => {
         payload: { remainingSessions: 5, adjustmentReason: "Correction compteur réception" },
       }),
     );
-    const body = await responseJson(withReason);
-    const data = body.data as { remainingSessions: number };
+    const refreshed = await prisma.memberSubscription.findUniqueOrThrow({ where: { id: sub.id } });
 
-    expect(withReason.status).toBe(200);
-    expect(data.remainingSessions).toBe(5);
+    expect(withReason.status).toBe(409);
+    expect(refreshed.remainingSessions).toBe(sub.remainingSessions);
   });
 
   it("rejects deleting a linked sport and deletes an unused sport", async () => {
@@ -2867,7 +2866,9 @@ describe("payment corrections and member archive", () => {
       data: { groupId: fx.adultBjj.id, memberId: fx.adult.id, startDate: new Date("2026-05-01T00:00:00.000Z"), status: "ACTIVE" },
     });
 
-    const subscriptionResponse = await deleteMemberSubscription(jsonRequest("DELETE", { subscriptionId: sub.id }));
+    const subscriptionResponse = await deleteMemberSubscription(
+      jsonRequest("DELETE", { subscriptionId: sub.id, reason: "Résiliation demandée par le membre" }),
+    );
     const assignmentResponse = await closeGroupMember(jsonRequest("DELETE", { groupMemberId: assignment.id }));
     const refreshedSub = await prisma.memberSubscription.findUniqueOrThrow({ where: { id: sub.id } });
     const refreshedAssignment = await prisma.groupMember.findUniqueOrThrow({ where: { id: assignment.id } });

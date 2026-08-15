@@ -17,6 +17,20 @@ export class IdempotencyKeyConflictError extends Error {
   }
 }
 
+export function describeIdempotencyError(error: unknown) {
+  if (error instanceof InvalidIdempotencyKeyError) {
+    return { status: 400, error: "Clé d'idempotence invalide", code: error.message } as const;
+  }
+  if (error instanceof IdempotencyKeyConflictError) {
+    return {
+      status: 409,
+      error: "Cette clé d'idempotence a déjà servi pour une autre requête",
+      code: error.message,
+    } as const;
+  }
+  return null;
+}
+
 export function readIdempotencyKey(request: Request): string | null {
   const raw = request.headers.get("idempotency-key");
   if (raw === null) return null;

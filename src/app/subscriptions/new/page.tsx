@@ -33,7 +33,7 @@ export default async function NewSubscriptionPage({
 
   let hasError = false;
   let membersOptions: Array<{ id: string; firstName: string; lastName: string; phone: string }> = [];
-  let plansOptions: Array<{ id: string; name: string; planKind: "CLASS" | "GYM" | "MIXED"; price: number; totalSessions: number; validityDays: number; entitlements: Array<{ type: "CLASS_SESSIONS" | "GYM_ACCESS"; grantedUnits: number | null; gymAccessMode: "UNLIMITED" | "VISIT_QUOTA" | null; sport: { id: string; name: string } | null }> }> = [];
+  let plansOptions: Array<{ id: string; name: string; planKind: "CLASS" | "GYM" | "MIXED"; price: number; totalSessions: number; validityDays: number; activationPolicy: "FIXED_DATE" | "FIRST_USE"; activationWindowDays: number; freezeAllowanceCount: number; freezeMaxTotalDays: number; entitlements: Array<{ type: "CLASS_SESSIONS" | "GYM_ACCESS"; grantedUnits: number | null; gymAccessMode: "UNLIMITED" | "VISIT_QUOTA" | null; sport: { id: string; name: string } | null }> }> = [];
   let groupsOptions: Array<{ id: string; name: string; sportId: string; sportName: string }> = [];
 
   try {
@@ -46,7 +46,7 @@ export default async function NewSubscriptionPage({
       prisma.subscriptionPlan.findMany({
         where: { tenantId: authUser.tenantId, isActive: true },
         orderBy: { name: "asc" },
-        select: { id: true, name: true, planKind: true, price: true, totalSessions: true, validityDays: true, entitlements: { select: { type: true, grantedUnits: true, gymAccessMode: true, sport: { select: { id: true, name: true } } }, orderBy: { sortOrder: "asc" } } },
+        select: { id: true, name: true, planKind: true, price: true, totalSessions: true, validityDays: true, activationPolicy: true, activationWindowDays: true, freezeAllowanceCount: true, freezeMaxTotalDays: true, entitlements: { select: { type: true, grantedUnits: true, gymAccessMode: true, sport: { select: { id: true, name: true } } }, orderBy: { sortOrder: "asc" } } },
       }),
       prisma.group.findMany({
         where: { tenantId: authUser.tenantId, isActive: true },

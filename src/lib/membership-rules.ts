@@ -155,13 +155,57 @@ export async function expireStaleSubscriptions(memberId?: string) {
   const tenantId = getRequiredTenantId();
   const now = new Date();
   const { dayStart } = businessDayWindow(now);
+  const superseded = await prisma.memberSubscription.findMany({
+    where: {
+      tenantId,
+      status: "ACTIVE",
+      ...(memberId ? { memberId } : {}),
+      renewedBySubscription: {
+        is: {
+          tenantId,
+          status: "ACTIVE",
+          OR: [
+            { activationPolicy: "FIXED_DATE", startDate: { lte: now } },
+            { activationPolicy: "FIRST_USE", activatedAt: { lte: now } },
+          ],
+        },
+      },
+    },
+    select: { id: true, renewedBySubscription: { select: { id: true } } },
+  });
+  if (superseded.length > 0) {
+    await prisma.$transaction([
+      prisma.memberSubscription.updateMany({
+        where: { tenantId, id: { in: superseded.map((item) => item.id) }, status: "ACTIVE" },
+        data: { status: "EXPIRED" },
+      }),
+      prisma.auditLog.createMany({
+        data: superseded.map((item) => ({
+          tenantId,
+          action: "SUBSCRIPTION_RENEWAL_ACTIVATED",
+          entityType: "MemberSubscription",
+          entityId: item.id,
+          details: JSON.stringify({
+            tenantId,
+            previousSubscriptionId: item.id,
+            renewalSubscriptionId: item.renewedBySubscription?.id ?? null,
+            synchronizedAt: now.toISOString(),
+          }),
+        })),
+      }),
+    ]);
+  }
   await prisma.memberSubscription.updateMany({
     where: {
       tenantId,
       status: "ACTIVE",
       ...(memberId ? { memberId } : {}),
+      pauseEvents: {
+        none: { entryType: "PAUSE", resumeEvent: { is: null } },
+      },
       OR: [
         { endDate: { lt: dayStart } },
+        { activationPolicy: "FIRST_USE", activatedAt: null, activationDeadline: { lt: dayStart } },
         { plan: { planKind: "CLASS" }, remainingSessions: { lte: 0 } },
       ],
     },

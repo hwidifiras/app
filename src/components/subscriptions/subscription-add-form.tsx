@@ -6,12 +6,14 @@ import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FieldControl } from "@/components/ui/field-control";
 import { FormActions, FormField, FormGrid, FormSection, FormSectionNav } from "@/components/ui/form-layout";
 import { SubscriptionBillingSummary } from "@/components/ui/reception-info-card";
+import { EnrollmentCompletionPanel } from "@/components/enrollment/enrollment-completion-panel";
 import { AccessMemberFields, EMPTY_ACCESS_MEMBER, type AccessNewMember } from "@/components/subscriptions/access-member-fields";
 import { useIdempotencyIntent } from "@/hooks/use-idempotency-intent";
+import type { EnrollmentUndoSnapshot } from "@/lib/enrollment-undo";
 import { formatMoney, MONEY_INPUT_SUFFIX } from "@/lib/money";
 
 type MemberOption = { id: string; firstName: string; lastName: string; phone: string };
-type PlanOption = { id: string; name: string; planKind: "CLASS" | "GYM" | "MIXED"; price: number; totalSessions: number; validityDays: number; entitlements: Array<{ type: "CLASS_SESSIONS" | "GYM_ACCESS"; grantedUnits: number | null; gymAccessMode: "UNLIMITED" | "VISIT_QUOTA" | null; sport: { id: string; name: string } | null }> };
+type PlanOption = { id: string; name: string; planKind: "CLASS" | "GYM" | "MIXED"; price: number; totalSessions: number; validityDays: number; activationPolicy: "FIXED_DATE" | "FIRST_USE"; activationWindowDays: number; freezeAllowanceCount: number; freezeMaxTotalDays: number; entitlements: Array<{ type: "CLASS_SESSIONS" | "GYM_ACCESS"; grantedUnits: number | null; gymAccessMode: "UNLIMITED" | "VISIT_QUOTA" | null; sport: { id: string; name: string } | null }> };
 type GroupOption = { id: string; name: string; sportId: string; sportName: string };
 type SubscriptionPreview = {
   id: string;
@@ -31,9 +33,17 @@ type SubscriptionAddFormProps = {
   initialMemberId?: string;
   initialPlanKind?: "GYM" | "MIXED";
   groupsOptions?: GroupOption[];
+  receiptPrintDefault?: boolean;
 };
 
-export function SubscriptionAddForm({ membersOptions, plansOptions, initialMemberId = "", initialPlanKind, groupsOptions = [] }: SubscriptionAddFormProps) {
+type EnrollmentCompletion = {
+  memberIds: string[];
+  receipts: Array<{ id: string; receiptNumber: string }>;
+  undoSnapshot: EnrollmentUndoSnapshot;
+  recoveryKey: string;
+};
+
+export function SubscriptionAddForm({ membersOptions, plansOptions, initialMemberId = "", initialPlanKind, groupsOptions = [], receiptPrintDefault = true }: SubscriptionAddFormProps) {
   const router = useRouter();
   const subscriptionIntent = useIdempotencyIntent();
   const initialPlan = plansOptions.find((plan) => plan.planKind === initialPlanKind);
@@ -44,7 +54,7 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
   const [planId, setPlanId] = useState(initialPlan?.id ?? "");
   const [startDate, setStartDate] = useState(initialStartDate);
   const [endDate, setEndDate] = useState(() => {
-    if (!initialPlan) return "";
+    if (!initialPlan || initialPlan.activationPolicy === "FIRST_USE") return "";
     const end = new Date(initialStartDate);
     end.setDate(end.getDate() + initialPlan.validityDays);
     return end.toISOString().split("T")[0];
@@ -58,11 +68,14 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [preview, setPreview] = useState<SubscriptionPreview | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [completion, setCompletion] = useState<EnrollmentCompletion | null>(null);
+  const [voidReason, setVoidReason] = useState("");
+  const [voiding, setVoiding] = useState(false);
 
   const selectedPlan = plansOptions.find((p) => p.id === planId);
   const selectedMember = membersOptions.find((member) => member.id === memberId);
   const paymentNum = Math.round(parseFloat(paymentCents.replace(",", ".")) * 100) || 0;
-  const canCarryOver = selectedPlan?.planKind === "CLASS" && preview?.status === "ACTIVE" && preview.remainingSessions > 0;
+  const canCarryOver = selectedPlan?.planKind === "CLASS" && preview?.status === "ACTIVE" && preview.remainingSessions > 0 && new Date(startDate) <= new Date();
   const paymentTooHigh = selectedPlan ? paymentNum > selectedPlan.price : false;
   const renewalBalance = selectedPlan ? Math.max(0, selectedPlan.price - paymentNum) : 0;
 
@@ -81,15 +94,23 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
         const rows = (payload.data ?? []) as Array<{
           id: string;
           status: string;
+          effectiveState: string;
           startDate: string;
           endDate: string | null;
           amount: number;
           remainingSessions: number;
           plan: { name: string; totalSessions: number };
+          entitlements: Array<{ type: "CLASS_SESSIONS" | "GYM_ACCESS"; sportId: string | null }>;
           payments: Array<{ amount: number }>;
         }>;
 
-        const active = rows.find((row) => row.status === "ACTIVE") ?? rows[0];
+        const selectedSports = new Set(selectedPlan?.entitlements.filter((right) => right.type === "CLASS_SESSIONS").map((right) => right.sport?.id).filter(Boolean) ?? []);
+        const needsGym = selectedPlan?.entitlements.some((right) => right.type === "GYM_ACCESS") ?? false;
+        const overlapsPlan = (row: typeof rows[number]) => row.entitlements.some((right) =>
+          (right.type === "GYM_ACCESS" && needsGym) ||
+          (right.type === "CLASS_SESSIONS" && Boolean(right.sportId && selectedSports.has(right.sportId))),
+        );
+        const active = rows.find((row) => ["ACTIVE", "FROZEN"].includes(row.effectiveState) && overlapsPlan(row)) ?? rows.find(overlapsPlan) ?? rows[0];
         if (!active) {
           setPreview(null);
           setCarryOverRemainingSessions(false);
@@ -110,6 +131,15 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
           planName: active.plan.name,
           totalSessions: active.plan.totalSessions,
         });
+        if (selectedPlan?.activationPolicy === "FIXED_DATE" && active.endDate) {
+          const queuedStart = new Date(active.endDate);
+          queuedStart.setDate(queuedStart.getDate() + 1);
+          const value = queuedStart.toISOString().split("T")[0];
+          setStartDate(value);
+          const queuedEnd = new Date(value);
+          queuedEnd.setDate(queuedEnd.getDate() + selectedPlan.validityDays);
+          setEndDate(queuedEnd.toISOString().split("T")[0]);
+        }
       })
       .catch((error) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
@@ -121,7 +151,7 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
       });
 
     return () => controller.abort();
-  }, [memberId]);
+  }, [memberId, selectedPlan]);
 
   function handleMemberChange(nextMemberId: string) {
     setMemberId(nextMemberId);
@@ -137,7 +167,9 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
     const plan = plansOptions.find((p) => p.id === nextPlanId);
     if (plan) {
       setPaymentCents((plan.price / 100).toFixed(2));
-      if (startDate && plan.validityDays) {
+      if (plan.activationPolicy === "FIRST_USE") {
+        setEndDate("");
+      } else if (startDate && plan.validityDays) {
         const d = new Date(startDate);
         d.setDate(d.getDate() + plan.validityDays);
         setEndDate(d.toISOString().split("T")[0]);
@@ -147,7 +179,9 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
 
   function handleStartDateChange(date: string) {
     setStartDate(date);
-    if (selectedPlan?.validityDays && date) {
+    if (selectedPlan?.activationPolicy === "FIRST_USE") {
+      setEndDate("");
+    } else if (selectedPlan?.validityDays && date) {
       const d = new Date(date);
       d.setDate(d.getDate() + selectedPlan.validityDays);
       setEndDate(d.toISOString().split("T")[0]);
@@ -195,7 +229,13 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
       return;
     }
 
-    const result = await response.json();
+    const result = await response.json() as {
+      data?: { member?: { id: string } };
+      receipt?: { id: string; receiptNumber: string } | null;
+      undoSnapshot?: EnrollmentUndoSnapshot;
+      recoveryKey?: string;
+      error?: string;
+    };
 
     if (!response.ok) {
       setMessage(result.error ?? "Erreur lors du renouvellement de l'abonnement");
@@ -203,9 +243,67 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
       return;
     }
     subscriptionIntent.complete(requestPayload);
-
-    router.push("/subscriptions");
+    if (result.data?.member?.id && result.undoSnapshot && result.recoveryKey) {
+      setCompletion({
+        memberIds: [result.data.member.id],
+        receipts: result.receipt ? [result.receipt] : [],
+        undoSnapshot: result.undoSnapshot,
+        recoveryKey: result.recoveryKey,
+      });
+      setMessage("Inscription confirmée.");
+    } else {
+      router.push("/subscriptions");
+    }
     router.refresh();
+  }
+
+  async function voidCompletedEnrollment() {
+    if (!completion || voidReason.trim().length < 3) return;
+    setVoiding(true);
+    setMessage(null);
+    const payload = {
+      recoveryKey: completion.recoveryKey,
+      undoSnapshot: completion.undoSnapshot,
+      reason: voidReason.trim(),
+    };
+    try {
+      const response = await fetch("/api/enrollment/revert", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": subscriptionIntent.keyFor(payload),
+        },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json() as { error?: string; data?: { voided?: boolean } };
+      if (!response.ok || !result.data?.voided) {
+        setMessage(result.error ?? "Annulation impossible");
+        return;
+      }
+      subscriptionIntent.complete(payload);
+      setCompletion(null);
+      setVoidReason("");
+      setMessage("Inscription annulée avec trace.");
+      router.refresh();
+    } catch {
+      setMessage("Connexion interrompue. Réessayez sans risque de doubler l'annulation.");
+    } finally {
+      setVoiding(false);
+    }
+  }
+
+  if (completion) {
+    return (
+      <EnrollmentCompletionPanel
+        memberIds={completion.memberIds}
+        receipts={completion.receipts}
+        receiptPrintDefault={receiptPrintDefault}
+        voidReason={voidReason}
+        voiding={voiding}
+        onVoidReasonChange={setVoidReason}
+        onVoid={voidCompletedEnrollment}
+      />
+    );
   }
 
   return (
@@ -291,7 +389,7 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
             ) : null}
 
             <FormGrid className="mt-4">
-              <FormField label="Début *">
+              <FormField label={selectedPlan?.activationPolicy === "FIRST_USE" ? "Disponible à partir du *" : "Début *"}>
                 <input
                   type="date"
                   value={startDate}
@@ -300,9 +398,15 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
                   required
                 />
               </FormField>
-              <FormField label="Fin (auto)">
-                <input type="date" value={endDate} readOnly className="field bg-[var(--surface-soft)]" />
-              </FormField>
+              {selectedPlan?.activationPolicy === "FIRST_USE" ? (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+                  La validité de {selectedPlan.validityDays} jours commencera au premier passage, dans un délai de {selectedPlan.activationWindowDays} jours.
+                </div>
+              ) : (
+                <FormField label="Fin (auto)">
+                  <input type="date" value={endDate} readOnly className="field bg-[var(--surface-soft)]" />
+                </FormField>
+              )}
             </FormGrid>
 
             {canCarryOver && selectedPlan && (

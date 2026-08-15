@@ -68,6 +68,23 @@ enum SubscriptionStatus {
   CANCELLED
 }
 
+enum PlanActivationPolicy {
+  FIXED_DATE
+  FIRST_USE
+}
+
+enum SubscriptionPauseEntryType {
+  PAUSE
+  RESUME
+}
+
+enum EntitlementAdjustmentKind {
+  UNITS
+  EXPIRY
+  ACTIVATION
+  REPLACEMENT
+}
+
 enum AttendanceStatus {
   PRESENT
   ABSENT
@@ -149,62 +166,66 @@ enum TenantModuleStatus {
 }
 
 model Tenant {
-  id                    String                    @id @default(cuid())
-  slug                  String                    @unique
-  name                  String
-  status                TenantStatus              @default(ACTIVE)
-  rootDomainAlias       String?                   @unique
-  users                 User[]
-  userPermissions       UserPermission[]
-  passwordResetTokens   PasswordResetToken[]
-  idempotencyRecords    IdempotencyRecord[]
-  notificationReads     NotificationRead[]
-  clubSettings          ClubSettings?
-  members               Member[]
-  households            Household[]
-  householdMembers      HouseholdMember[]
-  sports                Sport[]
-  coaches               Coach[]
-  coachQualifications   CoachSportQualification[]
-  groups                Group[]
-  groupMembers          GroupMember[]
-  groupSchedules        GroupSchedule[]
-  scheduleTemplates     ScheduleTemplate[]
-  scheduleTemplateSlots ScheduleTemplateSlot[]
-  sessions              Session[]
-  subscriptionPlans     SubscriptionPlan[]
-  memberSubscriptions   MemberSubscription[]
-  payments              Payment[]
-  receipts              Receipt[]
-  offers                Offer[]
-  offerApplications     OfferApplication[]
-  attendances           Attendance[]
-  auditLogs             AuditLog[]
-  modules               TenantModule[]
-  planEntitlements      PlanEntitlement[]
+  id                       String                    @id @default(cuid())
+  slug                     String                    @unique
+  name                     String
+  status                   TenantStatus              @default(ACTIVE)
+  rootDomainAlias          String?                   @unique
+  users                    User[]
+  userPermissions          UserPermission[]
+  passwordResetTokens      PasswordResetToken[]
+  idempotencyRecords       IdempotencyRecord[]
+  notificationReads        NotificationRead[]
+  clubSettings             ClubSettings?
+  members                  Member[]
+  households               Household[]
+  householdMembers         HouseholdMember[]
+  sports                   Sport[]
+  coaches                  Coach[]
+  coachQualifications      CoachSportQualification[]
+  groups                   Group[]
+  groupMembers             GroupMember[]
+  groupSchedules           GroupSchedule[]
+  scheduleTemplates        ScheduleTemplate[]
+  scheduleTemplateSlots    ScheduleTemplateSlot[]
+  sessions                 Session[]
+  subscriptionPlans        SubscriptionPlan[]
+  memberSubscriptions      MemberSubscription[]
+  payments                 Payment[]
+  receipts                 Receipt[]
+  offers                   Offer[]
+  offerApplications        OfferApplication[]
+  attendances              Attendance[]
+  auditLogs                AuditLog[]
+  modules                  TenantModule[]
+  planEntitlements         PlanEntitlement[]
   subscriptionEntitlements SubscriptionEntitlement[]
-  gymVisits             GymVisit[]
-  createdAt             DateTime                  @default(now())
-  updatedAt             DateTime                  @updatedAt
+  gymVisits                GymVisit[]
+  subscriptionPauses       SubscriptionPause[]
+  entitlementAdjustments   EntitlementAdjustment[]
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
 }
 
 model User {
-  id                  String               @id @default(cuid())
-  tenantId            String?
-  tenant              Tenant?              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  coachId             String?              @unique
-  coach               Coach?               @relation("CoachUserAccount", fields: [coachId], references: [id], onDelete: SetNull)
-  email               String
-  name                String
-  passwordHash        String
-  role                UserRole             @default(STAFF)
-  isActive            Boolean              @default(true)
-  permissions         UserPermission[]
-  notificationReads   NotificationRead[]
-  passwordResetTokens PasswordResetToken[]
-  gymVisitsChecked    GymVisit[]           @relation("GymVisitCheckedBy")
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  id                      String                  @id @default(cuid())
+  tenantId                String?
+  tenant                  Tenant?                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  coachId                 String?                 @unique
+  coach                   Coach?                  @relation("CoachUserAccount", fields: [coachId], references: [id], onDelete: SetNull)
+  email                   String
+  name                    String
+  passwordHash            String
+  role                    UserRole                @default(STAFF)
+  isActive                Boolean                 @default(true)
+  permissions             UserPermission[]
+  notificationReads       NotificationRead[]
+  passwordResetTokens     PasswordResetToken[]
+  gymVisitsChecked        GymVisit[]              @relation("GymVisitCheckedBy")
+  subscriptionPauseEvents SubscriptionPause[]     @relation("SubscriptionPauseActor")
+  entitlementAdjustments  EntitlementAdjustment[] @relation("EntitlementAdjustmentActor")
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -293,19 +314,19 @@ model ClubSettings {
   workingDays                           DayOfWeek[] @default([MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY])
   maxStaffDiscountPercent               Int         @default(30)
   debtAlertThresholdCents               Int         @default(0)
-  dashboardDefaultMode                   String      @default("AUTO")
-  dashboardShowTodaySessions             Boolean     @default(true)
-  dashboardShowCashToday                 Boolean     @default(true)
-  dashboardShowDataConfidence            Boolean     @default(true)
-  dashboardShowCashTrend                 Boolean     @default(true)
-  dashboardShowMembersOverview           Boolean     @default(true)
+  dashboardDefaultMode                  String      @default("AUTO")
+  dashboardShowTodaySessions            Boolean     @default(true)
+  dashboardShowCashToday                Boolean     @default(true)
+  dashboardShowDataConfidence           Boolean     @default(true)
+  dashboardShowCashTrend                Boolean     @default(true)
+  dashboardShowMembersOverview          Boolean     @default(true)
   dashboardShowCommercialInsights       Boolean     @default(true)
-  dashboardShowDetailedDebts             Boolean     @default(true)
-  dashboardShowGymOverview               Boolean     @default(true)
-  gymAllowCheckInWithPartialPayment       Boolean     @default(true)
-  gymDuplicateScanWindowMinutes           Int         @default(2)
-  gymDailyVisitLimit                      Int?
-  gymAllowExceptionalAccess               Boolean     @default(true)
+  dashboardShowDetailedDebts            Boolean     @default(true)
+  dashboardShowGymOverview              Boolean     @default(true)
+  gymAllowCheckInWithPartialPayment     Boolean     @default(true)
+  gymDuplicateScanWindowMinutes         Int         @default(2)
+  gymDailyVisitLimit                    Int?
+  gymAllowExceptionalAccess             Boolean     @default(true)
   receiptPrefix                         String      @default("WD")
   nextReceiptSequence                   Int         @default(1)
   receiptFooter                         String      @default("")
@@ -375,22 +396,22 @@ model HouseholdMember {
 }
 
 model Sport {
-  id                  String                    @id @default(cuid())
-  tenantId            String?
-  tenant              Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name                String
-  description         String?
-  isActive            Boolean                   @default(true)
-  coaches             Coach[]
-  coachQualifications CoachSportQualification[]
-  groups              Group[]
-  subscriptionPlans   SubscriptionPlan[]
-  memberSubscriptions MemberSubscription[]
-  offers              Offer[]
-  planEntitlements    PlanEntitlement[]
+  id                       String                    @id @default(cuid())
+  tenantId                 String?
+  tenant                   Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name                     String
+  description              String?
+  isActive                 Boolean                   @default(true)
+  coaches                  Coach[]
+  coachQualifications      CoachSportQualification[]
+  groups                   Group[]
+  subscriptionPlans        SubscriptionPlan[]
+  memberSubscriptions      MemberSubscription[]
+  offers                   Offer[]
+  planEntitlements         PlanEntitlement[]
   subscriptionEntitlements SubscriptionEntitlement[]
-  createdAt           DateTime                  @default(now())
-  updatedAt           DateTime                  @updatedAt
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
 
   @@unique([tenantId, name])
   @@index([tenantId])
@@ -438,24 +459,24 @@ model CoachSportQualification {
 }
 
 model Group {
-  id        String          @id @default(cuid())
-  tenantId  String?
-  tenant    Tenant?         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name      String
-  groupType GroupType       @default(ADULTS)
+  id           String            @id @default(cuid())
+  tenantId     String?
+  tenant       Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name         String
+  groupType    GroupType         @default(ADULTS)
   genderPolicy GroupGenderPolicy @default(MIXED)
-  sportId   String
-  sport     Sport           @relation(fields: [sportId], references: [id], onDelete: Restrict)
-  coachId   String
-  coach     Coach           @relation(fields: [coachId], references: [id], onDelete: Restrict)
-  capacity  Int
-  room      String?
-  isActive  Boolean         @default(true)
-  members   GroupMember[]
-  schedules GroupSchedule[]
-  sessions  Session[]
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  sportId      String
+  sport        Sport             @relation(fields: [sportId], references: [id], onDelete: Restrict)
+  coachId      String
+  coach        Coach             @relation(fields: [coachId], references: [id], onDelete: Restrict)
+  capacity     Int
+  room         String?
+  isActive     Boolean           @default(true)
+  members      GroupMember[]
+  schedules    GroupSchedule[]
+  sessions     Session[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
   @@index([tenantId])
   @@index([tenantId, sportId, isActive])
@@ -559,77 +580,96 @@ model Session {
 }
 
 model SubscriptionPlan {
-  id              String               @id @default(cuid())
-  tenantId        String?
-  tenant          Tenant?              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name            String
-  description     String?
-  price           Int
-  totalSessions   Int
-  sessionsPerWeek Int?
-  validityDays    Int
-  isActive        Boolean              @default(true)
-  planKind         PlanKind             @default(CLASS)
-  sportId          String?
-  sport            Sport?               @relation(fields: [sportId], references: [id], onDelete: Restrict)
-  entitlements     PlanEntitlement[]
-  subscriptions   MemberSubscription[]
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
+  id                   String               @id @default(cuid())
+  tenantId             String?
+  tenant               Tenant?              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name                 String
+  description          String?
+  price                Int
+  totalSessions        Int
+  sessionsPerWeek      Int?
+  validityDays         Int
+  isActive             Boolean              @default(true)
+  planKind             PlanKind             @default(CLASS)
+  activationPolicy     PlanActivationPolicy @default(FIXED_DATE)
+  activationWindowDays Int                  @default(90)
+  freezeAllowanceCount Int                  @default(0)
+  freezeMaxTotalDays   Int                  @default(0)
+  sportId              String?
+  sport                Sport?               @relation(fields: [sportId], references: [id], onDelete: Restrict)
+  entitlements         PlanEntitlement[]
+  subscriptions        MemberSubscription[]
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
 
   @@unique([tenantId, name])
   @@index([tenantId])
 }
 
 model MemberSubscription {
-  id                 String             @id @default(cuid())
-  tenantId           String?
-  tenant             Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  memberId           String
-  member             Member             @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  planId             String
-  plan               SubscriptionPlan   @relation(fields: [planId], references: [id], onDelete: Restrict)
-  sportId            String?
-  sport              Sport?             @relation(fields: [sportId], references: [id], onDelete: Restrict)
-  startDate          DateTime
-  endDate            DateTime?
-  amount             Int
-  listPriceCents     Int?
-  discountCents      Int                @default(0)
-  offerApplicationId String?
-  offerApplication   OfferApplication?  @relation(fields: [offerApplicationId], references: [id], onDelete: SetNull)
-  offerName          String?
-  remainingSessions  Int
-  status             SubscriptionStatus @default(DRAFT)
-  payments           Payment[]
-  attendances        Attendance[]
-  entitlements       SubscriptionEntitlement[]
-  gymVisits          GymVisit[]
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  id                     String                    @id @default(cuid())
+  tenantId               String?
+  tenant                 Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberId               String
+  member                 Member                    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  planId                 String
+  plan                   SubscriptionPlan          @relation(fields: [planId], references: [id], onDelete: Restrict)
+  sportId                String?
+  sport                  Sport?                    @relation(fields: [sportId], references: [id], onDelete: Restrict)
+  startDate              DateTime
+  endDate                DateTime?
+  amount                 Int
+  listPriceCents         Int?
+  discountCents          Int                       @default(0)
+  offerApplicationId     String?
+  offerApplication       OfferApplication?         @relation(fields: [offerApplicationId], references: [id], onDelete: SetNull)
+  offerName              String?
+  remainingSessions      Int
+  status                 SubscriptionStatus        @default(DRAFT)
+  activationPolicy       PlanActivationPolicy      @default(FIXED_DATE)
+  activationWindowDays   Int?
+  activationDeadline     DateTime?
+  activatedAt            DateTime?
+  freezeAllowanceCount   Int                       @default(0)
+  freezeMaxTotalDays     Int                       @default(0)
+  renewsSubscriptionId   String?                   @unique
+  renewsSubscription     MemberSubscription?       @relation("SubscriptionRenewal", fields: [renewsSubscriptionId], references: [id], onDelete: SetNull)
+  renewedBySubscription  MemberSubscription?       @relation("SubscriptionRenewal")
+  replacesSubscriptionId String?                   @unique
+  replacesSubscription   MemberSubscription?       @relation("SubscriptionReplacement", fields: [replacesSubscriptionId], references: [id], onDelete: SetNull)
+  replacedBySubscription MemberSubscription?       @relation("SubscriptionReplacement")
+  payments               Payment[]
+  attendances            Attendance[]
+  entitlements           SubscriptionEntitlement[]
+  gymVisits              GymVisit[]
+  pauseEvents            SubscriptionPause[]
+  entitlementAdjustments EntitlementAdjustment[]
+  createdAt              DateTime                  @default(now())
+  updatedAt              DateTime                  @updatedAt
 
   @@index([tenantId])
   @@index([memberId, sportId, status])
   @@index([tenantId, status, createdAt])
   @@index([tenantId, status, memberId, createdAt])
+  @@index([tenantId, memberId, activationDeadline])
 }
 
 model PlanEntitlement {
-  id                String           @id @default(cuid())
-  tenantId          String?
-  tenant            Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  planId            String
-  plan              SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
-  type              EntitlementType
-  sportId           String?
-  sport             Sport?           @relation(fields: [sportId], references: [id], onDelete: Restrict)
-  sessionsPerWeek   Int?
-  grantedUnits      Int?
-  gymAccessMode     GymAccessMode?
-  sortOrder         Int              @default(0)
+  id                       String                    @id @default(cuid())
+  tenantId                 String?
+  tenant                   Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  planId                   String
+  plan                     SubscriptionPlan          @relation(fields: [planId], references: [id], onDelete: Cascade)
+  type                     EntitlementType
+  sportId                  String?
+  sport                    Sport?                    @relation(fields: [sportId], references: [id], onDelete: Restrict)
+  sessionsPerWeek          Int?
+  grantedUnits             Int?
+  gymAccessMode            GymAccessMode?
+  sortOrder                Int                       @default(0)
   subscriptionEntitlements SubscriptionEntitlement[]
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
 
   @@index([tenantId])
   @@index([planId])
@@ -637,16 +677,16 @@ model PlanEntitlement {
 }
 
 model SubscriptionEntitlement {
-  id                   String             @id @default(cuid())
+  id                   String                  @id @default(cuid())
   tenantId             String?
-  tenant               Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant               Tenant?                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   memberSubscriptionId String
-  memberSubscription   MemberSubscription @relation(fields: [memberSubscriptionId], references: [id], onDelete: Cascade)
+  memberSubscription   MemberSubscription      @relation(fields: [memberSubscriptionId], references: [id], onDelete: Cascade)
   planEntitlementId    String?
-  planEntitlement      PlanEntitlement?   @relation(fields: [planEntitlementId], references: [id], onDelete: SetNull)
+  planEntitlement      PlanEntitlement?        @relation(fields: [planEntitlementId], references: [id], onDelete: SetNull)
   type                 EntitlementType
   sportId              String?
-  sport                Sport?             @relation(fields: [sportId], references: [id], onDelete: Restrict)
+  sport                Sport?                  @relation(fields: [sportId], references: [id], onDelete: Restrict)
   sessionsPerWeek      Int?
   grantedUnits         Int?
   remainingUnits       Int?
@@ -655,13 +695,61 @@ model SubscriptionEntitlement {
   endDate              DateTime?
   attendances          Attendance[]
   gymVisits            GymVisit[]
-  createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @updatedAt
+  adjustments          EntitlementAdjustment[]
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
 
   @@index([tenantId])
   @@index([memberSubscriptionId])
   @@index([planEntitlementId])
   @@index([sportId, type])
+}
+
+model SubscriptionPause {
+  id                   String                     @id @default(cuid())
+  tenantId             String
+  tenant               Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberSubscriptionId String
+  memberSubscription   MemberSubscription         @relation(fields: [memberSubscriptionId], references: [id], onDelete: Restrict)
+  entryType            SubscriptionPauseEntryType
+  pauseEventId         String?                    @unique
+  pauseEvent           SubscriptionPause?         @relation("SubscriptionPauseResume", fields: [pauseEventId], references: [id], onDelete: Restrict)
+  resumeEvent          SubscriptionPause?         @relation("SubscriptionPauseResume")
+  effectiveAt          DateTime                   @default(now())
+  durationSeconds      Int?
+  reason               String
+  createdById          String?
+  createdBy            User?                      @relation("SubscriptionPauseActor", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt            DateTime                   @default(now())
+
+  @@index([tenantId, memberSubscriptionId, effectiveAt])
+  @@index([tenantId, entryType, effectiveAt])
+}
+
+model EntitlementAdjustment {
+  id                        String                    @id @default(cuid())
+  tenantId                  String
+  tenant                    Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberSubscriptionId      String
+  memberSubscription        MemberSubscription        @relation(fields: [memberSubscriptionId], references: [id], onDelete: Restrict)
+  subscriptionEntitlementId String
+  subscriptionEntitlement   SubscriptionEntitlement   @relation(fields: [subscriptionEntitlementId], references: [id], onDelete: Restrict)
+  kind                      EntitlementAdjustmentKind
+  unitsDelta                Int                       @default(0)
+  endDateDeltaSeconds       Int                       @default(0)
+  previousRemainingUnits    Int?
+  nextRemainingUnits        Int?
+  previousStartDate         DateTime?
+  nextStartDate             DateTime?
+  previousEndDate           DateTime?
+  nextEndDate               DateTime?
+  reason                    String
+  createdById               String?
+  createdBy                 User?                     @relation("EntitlementAdjustmentActor", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt                 DateTime                  @default(now())
+
+  @@index([tenantId, memberSubscriptionId, createdAt])
+  @@index([tenantId, subscriptionEntitlementId, createdAt])
 }
 
 model Payment {
@@ -758,23 +846,23 @@ model OfferApplication {
 }
 
 model Attendance {
-  id                   String              @id @default(cuid())
-  tenantId             String?
-  tenant               Tenant?             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  sessionId            String
-  session              Session             @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  memberId             String
-  member               Member              @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  memberSubscriptionId String?
-  memberSubscription   MemberSubscription? @relation(fields: [memberSubscriptionId], references: [id], onDelete: SetNull)
+  id                        String                   @id @default(cuid())
+  tenantId                  String?
+  tenant                    Tenant?                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sessionId                 String
+  session                   Session                  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  memberId                  String
+  member                    Member                   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  memberSubscriptionId      String?
+  memberSubscription        MemberSubscription?      @relation(fields: [memberSubscriptionId], references: [id], onDelete: SetNull)
   subscriptionEntitlementId String?
-  subscriptionEntitlement SubscriptionEntitlement? @relation(fields: [subscriptionEntitlementId], references: [id], onDelete: SetNull)
-  status               AttendanceStatus
-  overrideReason       String?
-  checkedBy            String?
-  checkedAt            DateTime            @default(now())
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
+  subscriptionEntitlement   SubscriptionEntitlement? @relation(fields: [subscriptionEntitlementId], references: [id], onDelete: SetNull)
+  status                    AttendanceStatus
+  overrideReason            String?
+  checkedBy                 String?
+  checkedAt                 DateTime                 @default(now())
+  createdAt                 DateTime                 @default(now())
+  updatedAt                 DateTime                 @updatedAt
 
   @@unique([tenantId, sessionId, memberId])
   @@index([tenantId])
@@ -797,26 +885,26 @@ model TenantModule {
 }
 
 model GymVisit {
-  id                        String               @id @default(cuid())
+  id                        String                  @id @default(cuid())
   tenantId                  String
-  tenant                    Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant                    Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   memberId                  String
-  member                    Member               @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  member                    Member                  @relation(fields: [memberId], references: [id], onDelete: Restrict)
   memberSubscriptionId      String
-  memberSubscription        MemberSubscription   @relation(fields: [memberSubscriptionId], references: [id], onDelete: Restrict)
+  memberSubscription        MemberSubscription      @relation(fields: [memberSubscriptionId], references: [id], onDelete: Restrict)
   subscriptionEntitlementId String
   subscriptionEntitlement   SubscriptionEntitlement @relation(fields: [subscriptionEntitlementId], references: [id], onDelete: Restrict)
-  entryType                 GymVisitEntryType    @default(CHECK_IN)
+  entryType                 GymVisitEntryType       @default(CHECK_IN)
   correctsVisitId           String?
-  correctsVisit             GymVisit?            @relation("GymVisitCorrections", fields: [correctsVisitId], references: [id], onDelete: Restrict)
-  corrections               GymVisit[]           @relation("GymVisitCorrections")
-  unitsDelta                Int                  @default(0)
-  checkedAt                 DateTime             @default(now())
+  correctsVisit             GymVisit?               @relation("GymVisitCorrections", fields: [correctsVisitId], references: [id], onDelete: Restrict)
+  corrections               GymVisit[]              @relation("GymVisitCorrections")
+  unitsDelta                Int                     @default(0)
+  checkedAt                 DateTime                @default(now())
   checkedById               String?
-  checkedBy                 User?                @relation("GymVisitCheckedBy", fields: [checkedById], references: [id], onDelete: SetNull)
+  checkedBy                 User?                   @relation("GymVisitCheckedBy", fields: [checkedById], references: [id], onDelete: SetNull)
   overrideReason            String?
   correctionReason          String?
-  createdAt                 DateTime             @default(now())
+  createdAt                 DateTime                @default(now())
 
   @@index([tenantId, checkedAt])
   @@index([memberId, checkedAt])

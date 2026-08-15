@@ -1,21 +1,22 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 
-import { createSubscriptionEntitlementSnapshots } from "@/lib/subscription-entitlements";
+import { getClubSettings } from "@/lib/club-settings";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { enrollmentApplySchema } from "@/lib/schemas/enrollment";
 import { familyBundleRulesSchema } from "@/lib/schemas/offer";
 import {
   buildEnrollmentQuote,
   checkScheduleConflictForMember,
-  computeEndDate,
   ensureSharedHouseholdForMembers,
   isMemberAllowedInGroup,
 } from "@/lib/membership-rules";
 import { emptyEnrollmentUndoSnapshot } from "@/lib/enrollment-undo";
 import { resolveMemberPhone } from "@/lib/member-phone";
-import { issueReceiptForPayment } from "@/lib/receipts";
+import { sendReceiptEmailForReceipt, type ReceiptEmailDeliveryResult } from "@/lib/receipt-email-delivery";
 import { withTenantContext } from "@/lib/tenant-context";
+import { recordSubscriptionPayment } from "@/modules/finance/payment-service";
+import { sellSubscription } from "@/modules/sales/subscription-sale-service";
 import {
   IdempotencyKeyConflictError,
   InvalidIdempotencyKeyError,
@@ -207,97 +208,42 @@ export async function POST(request: Request) {
             const mustCreateFreshSub = !quoteLine.reusesExistingSubscription;
 
             if (mustCreateFreshSub) {
+              const payCents = line.paymentCents ?? 0;
+              if (payCents > quoteLine.finalAmountCents) throw new Error(`LINE_OVERPAY_${i}`);
               const expiredActive = await tx.memberSubscription.findMany({
                 where: { tenantId: actor.tenantId, memberId, sportId: plan.sportId, status: "ACTIVE" },
                 select: { id: true },
               });
-              if (expiredActive.length > 0) {
-                await tx.memberSubscription.updateMany({
-                  where: { tenantId: actor.tenantId, id: { in: expiredActive.map((row) => row.id) } },
-                  data: { status: "EXPIRED" },
-                });
+              const sale = await sellSubscription(tx, {
+                tenantId: actor.tenantId,
+                actorId: actor.id,
+                memberId,
+                plan,
+                startDate,
+                source: "enrollment",
+                amountCents: quoteLine.finalAmountCents,
+                listPriceCents: quoteLine.listPriceCents,
+                discountCents: quoteLine.discountCents,
+                offerName: quote.offerName,
+                paymentCents: payCents,
+                paymentMethod: line.paymentMethod?.trim() || "CASH",
+                paymentNotes: line.paymentNotes,
+              });
+              const sub = sale.subscription;
+              if (
+                expiredActive.length > 0 &&
+                sub.activationPolicy === "FIXED_DATE" &&
+                sub.startDate <= new Date()
+              ) {
                 undoSnapshot.expiredSubscriptionIds.push(
                   ...expiredActive.map((row) => row.id),
                 );
               }
-
-              const endDate = computeEndDate(startDate, plan.validityDays);
-              const sub = await tx.memberSubscription.create({
-                data: {
-                  tenantId: actor.tenantId,
-                  memberId,
-                  planId: plan.id,
-                  sportId: plan.sportId,
-                  startDate,
-                  endDate,
-                  amount: quoteLine.finalAmountCents,
-                  listPriceCents: quoteLine.listPriceCents,
-                  discountCents: quoteLine.discountCents,
-                  offerName: quote.offerName,
-                  remainingSessions: plan.totalSessions,
-                  status: "ACTIVE",
-                },
-              });
-              await createSubscriptionEntitlementSnapshots(tx, {
-                tenantId: actor.tenantId,
-                memberSubscriptionId: sub.id,
-                planId: plan.id,
-                startDate: sub.startDate,
-                endDate: sub.endDate,
-                legacyRemainingSessions: sub.remainingSessions,
-              });
               subscriptionIds.push(sub.id);
               undoSnapshot.createdSubscriptionIds.push(sub.id);
-
-              const payCents = line.paymentCents ?? 0;
-              if (payCents > 0) {
-                if (payCents > quoteLine.finalAmountCents) {
-                  throw new Error(`LINE_OVERPAY_${i}`);
-                }
-                const payment = await tx.payment.create({
-                  data: {
-                    tenantId: actor.tenantId,
-                    memberSubscriptionId: sub.id,
-                    amount: payCents,
-                    createdById: actor.id,
-                    paymentMethod: line.paymentMethod?.trim() || "CASH",
-                    notes: line.paymentNotes?.trim() || null,
-                  },
-                });
-                undoSnapshot.createdPaymentIds.push(payment.id);
-                await tx.auditLog.create({
-                  data: {
-                    tenantId: actor.tenantId,
-                    action: "PAYMENT_CREATED",
-                    entityType: "Payment",
-                    entityId: payment.id,
-                    userId: actor.id,
-                    details: JSON.stringify({
-                      tenantId: actor.tenantId,
-                      source: "enrollment",
-                      amount: payCents,
-                      memberId,
-                      subscriptionId: sub.id,
-                    }),
-                  },
-                });
-                const receipt = await issueReceiptForPayment(tx, payment.id, actor.id, actor.tenantId);
-                receipts.push({ id: receipt.id, receiptNumber: receipt.receiptNumber });
-                await tx.auditLog.create({
-                  data: {
-                    tenantId: actor.tenantId,
-                    action: "RECEIPT_ISSUED",
-                    entityType: "Receipt",
-                    entityId: receipt.id,
-                    userId: actor.id,
-                    details: JSON.stringify({
-                      tenantId: actor.tenantId,
-                      paymentId: payment.id,
-                      receiptNumber: receipt.receiptNumber,
-                      source: "enrollment",
-                    }),
-                  },
-                });
+              if (sale.payment) undoSnapshot.createdPaymentIds.push(sale.payment.id);
+              if (sale.receipt) {
+                receipts.push({ id: sale.receipt.id, receiptNumber: sale.receipt.receiptNumber });
               }
             } else {
               const existing = await tx.memberSubscription.findFirst({
@@ -314,56 +260,27 @@ export async function POST(request: Request) {
 
               const payCents = line.paymentCents ?? 0;
               if (payCents > 0) {
-                const totalPaid = existing.payments.reduce(
-                  (sum, p) => sum + p.amount,
-                  0,
-                );
-                if (totalPaid + payCents > existing.amount) {
-                  throw new Error(`LINE_OVERPAY_${i}`);
-                }
-                const payment = await tx.payment.create({
-                  data: {
+                let paymentResult: Awaited<ReturnType<typeof recordSubscriptionPayment>>;
+                try {
+                  paymentResult = await recordSubscriptionPayment(tx, {
                     tenantId: actor.tenantId,
                     memberSubscriptionId: existing.id,
                     amount: payCents,
-                    createdById: actor.id,
+                    actorId: actor.id,
+                    source: "enrollment-existing-subscription",
                     paymentMethod: line.paymentMethod?.trim() || "CASH",
-                    notes: line.paymentNotes?.trim() || null,
-                  },
-                });
-                undoSnapshot.createdPaymentIds.push(payment.id);
-                await tx.auditLog.create({
-                  data: {
-                    tenantId: actor.tenantId,
-                    action: "PAYMENT_CREATED",
-                    entityType: "Payment",
-                    entityId: payment.id,
-                    userId: actor.id,
-                    details: JSON.stringify({
-                      tenantId: actor.tenantId,
-                      source: "enrollment-existing-subscription",
-                      amount: payCents,
-                      memberId,
-                      subscriptionId: existing.id,
-                    }),
-                  },
-                });
-                const receipt = await issueReceiptForPayment(tx, payment.id, actor.id, actor.tenantId);
-                receipts.push({ id: receipt.id, receiptNumber: receipt.receiptNumber });
-                await tx.auditLog.create({
-                  data: {
-                    tenantId: actor.tenantId,
-                    action: "RECEIPT_ISSUED",
-                    entityType: "Receipt",
-                    entityId: receipt.id,
-                    userId: actor.id,
-                    details: JSON.stringify({
-                      tenantId: actor.tenantId,
-                      paymentId: payment.id,
-                      receiptNumber: receipt.receiptNumber,
-                      source: "enrollment-existing-subscription",
-                    }),
-                  },
+                    notes: line.paymentNotes,
+                  });
+                } catch (error) {
+                  if (error instanceof Error && error.message === "OVERPAY") {
+                    throw new Error(`LINE_OVERPAY_${i}`);
+                  }
+                  throw error;
+                }
+                undoSnapshot.createdPaymentIds.push(paymentResult.payment.id);
+                receipts.push({
+                  id: paymentResult.receipt.id,
+                  receiptNumber: paymentResult.receipt.receiptNumber,
                 });
               }
             }
@@ -377,7 +294,14 @@ export async function POST(request: Request) {
               });
               await tx.groupMember.update({
                 where: { id: existingAssign.id },
-                data: { status: "ACTIVE", startDate, endDate: null },
+                data: {
+                  status: "ACTIVE",
+                  startDate:
+                    existingAssign.status === "ACTIVE" && existingAssign.startDate <= startDate
+                      ? existingAssign.startDate
+                      : startDate,
+                  endDate: null,
+                },
               });
             } else {
               const groupMember = await tx.groupMember.create({
@@ -475,10 +399,40 @@ export async function POST(request: Request) {
           };
         });
 
-        return NextResponse.json(result.response.body, {
-          status: result.response.status,
-          headers: idempotencyResponseHeaders(result.replayed),
-        });
+        if (result.replayed) {
+          return NextResponse.json(result.response.body, {
+            status: result.response.status,
+            headers: idempotencyResponseHeaders(true),
+          });
+        }
+
+        const deliveries: ReceiptEmailDeliveryResult[] = [];
+        try {
+          const settings = await getClubSettings({ tenantId: actor.tenantId });
+          if (settings.receiptEmailDefault) {
+            for (const receipt of result.response.body.data.receipts) {
+              deliveries.push(await sendReceiptEmailForReceipt({
+                receiptId: receipt.id,
+                tenantId: actor.tenantId,
+                requestUrl: request.url,
+                actorId: actor.id,
+              }));
+            }
+          }
+        } catch (emailError) {
+          console.error("[POST /api/enrollment/apply] receipt email error:", emailError);
+          deliveries.push({
+            delivered: false,
+            code: "EMAIL_SEND_FAILED",
+            error: "Echec d'envoi email",
+            status: 503,
+          });
+        }
+
+        return NextResponse.json({
+          ...result.response.body,
+          data: { ...result.response.body.data, receiptEmailDeliveries: deliveries },
+        }, { status: result.response.status });
       } catch (error) {
         if (error instanceof IdempotencyKeyConflictError) {
           return NextResponse.json(
@@ -487,6 +441,16 @@ export async function POST(request: Request) {
           );
         }
         const msg = error instanceof Error ? error.message : "";
+        const lifecycleMessage: Record<string, string> = {
+          RENEWAL_ALREADY_QUEUED: "Un renouvellement est déjà planifié pour l'un des membres.",
+          CARRY_OVER_REQUIRES_IMMEDIATE_RENEWAL: "Le report de séances exige un renouvellement immédiat.",
+          FIRST_USE_GYM_ONLY: "L'activation au premier passage est réservée aux formules salle.",
+          PLAN_ENTITLEMENTS_REQUIRED: "Une formule sélectionnée ne contient aucun droit utilisable.",
+          CLASS_PLAN_SPORT_REQUIRED: "Une formule cours sélectionnée n'a pas de discipline.",
+        };
+        if (lifecycleMessage[msg]) {
+          return NextResponse.json({ error: lifecycleMessage[msg], code: msg }, { status: 409 });
+        }
         if (msg.startsWith("LINE_")) {
           return NextResponse.json(
             { error: "Erreur sur une ligne d'inscription", code: msg },

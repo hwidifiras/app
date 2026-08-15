@@ -1,259 +1,218 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { SubscriptionCorrectionSummary } from "@/components/subscriptions/subscription-correction-summary";
+import { Ban, Pause, Play, RefreshCw, SlidersHorizontal } from "lucide-react";
+
 import { FeedbackMessage } from "@/components/ui/feedback-message";
-import { FormActions, FormSectionNav } from "@/components/ui/form-layout";
 import { ReceptionInfoCard } from "@/components/ui/reception-info-card";
 import { useIdempotencyIntent } from "@/hooks/use-idempotency-intent";
 import { formatMoney } from "@/lib/money";
 
-type PlanOption = { id: string; name: string; price: number; totalSessions: number; validityDays: number };
-type StatusValue = "DRAFT" | "ACTIVE" | "EXPIRED" | "CANCELLED";
+type EffectiveState = "PENDING_ACTIVATION" | "SCHEDULED" | "ACTIVE" | "FROZEN" | "EXPIRED" | "CANCELLED";
+
+type PlanOption = {
+  id: string;
+  name: string;
+  price: number;
+  planKind: "CLASS" | "GYM" | "MIXED";
+  entitlements: Array<{ type: "CLASS_SESSIONS" | "GYM_ACCESS"; sportId: string | null; sportName: string | null }>;
+};
+
+type GroupOption = { id: string; name: string; sportId: string; sportName: string };
 
 type SubscriptionEditFormProps = {
   subscription: {
     id: string;
     memberName: string;
+    planName: string;
     planId: string;
     startDate: string;
     endDate: string | null;
     amount: number;
     totalPaid: number;
-    remainingSessions: number;
-    status: StatusValue;
+    storedStatus: string;
+    effectiveState: EffectiveState;
+    activationDeadline: string | null;
+    freezeAllowanceCount: number;
+    freezeMaxTotalDays: number;
+    usedPauseCount: number;
+    usedPauseDays: number;
+    entitlements: Array<{
+      id: string;
+      label: string;
+      type: "CLASS_SESSIONS" | "GYM_ACCESS";
+      remainingUnits: number | null;
+    }>;
   };
   plansOptions: PlanOption[];
+  groupsOptions: GroupOption[];
 };
 
-function dateInputValue(value: string | null) {
-  if (!value) return "";
+const stateLabels: Record<EffectiveState, string> = {
+  PENDING_ACTIVATION: "En attente du premier passage",
+  SCHEDULED: "Planifié",
+  ACTIVE: "Actif",
+  FROZEN: "En pause",
+  EXPIRED: "Expiré",
+  CANCELLED: "Résilié",
+};
+
+function dateInputValue(value: string) {
   return new Date(value).toISOString().split("T")[0];
 }
 
-export function SubscriptionEditForm({ subscription, plansOptions }: SubscriptionEditFormProps) {
+export function SubscriptionEditForm({ subscription, plansOptions, groupsOptions }: SubscriptionEditFormProps) {
   const router = useRouter();
-  const [planId, setPlanId] = useState(subscription.planId);
-  const [startDate, setStartDate] = useState(dateInputValue(subscription.startDate));
-  const [endDate, setEndDate] = useState(dateInputValue(subscription.endDate));
-  const [amount, setAmount] = useState((subscription.amount / 100).toString());
-  const [remainingSessions, setRemainingSessions] = useState(subscription.remainingSessions.toString());
-  const [status, setStatus] = useState<StatusValue>(subscription.status);
-  const [adjustmentReason, setAdjustmentReason] = useState("");
-  const [loading, setLoading] = useState(false);
+  const intent = useIdempotencyIntent();
+  const finiteEntitlements = subscription.entitlements.filter((right) => right.remainingUnits !== null);
+  const [reason, setReason] = useState("");
+  const [selectedEntitlementId, setSelectedEntitlementId] = useState(finiteEntitlements[0]?.id ?? "");
+  const [unitsDelta, setUnitsDelta] = useState("0");
+  const [replacementPlanId, setReplacementPlanId] = useState(subscription.planId);
+  const [replacementStartDate, setReplacementStartDate] = useState(dateInputValue(subscription.startDate));
+  const [groupBySport, setGroupBySport] = useState<Record<string, string>>({});
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const subscriptionIntent = useIdempotencyIntent();
 
-  const amountNum = Math.round(parseFloat(amount || "0") * 100);
-  const sessionsNum = Math.max(0, Math.round(Number(remainingSessions || 0)));
-  const formulaChanged = planId !== subscription.planId;
-  const statusChanged = status !== subscription.status;
-  const needsAdjustmentReason =
-    formulaChanged ||
-    statusChanged ||
-    amountNum !== subscription.amount ||
-    sessionsNum !== subscription.remainingSessions;
-  const amountBelowPaid = amountNum < subscription.totalPaid;
+  const replacementPlan = plansOptions.find((plan) => plan.id === replacementPlanId) ?? null;
+  const replacementClassRights = useMemo(
+    () => replacementPlan?.entitlements.filter((right) => right.type === "CLASS_SESSIONS" && right.sportId) ?? [],
+    [replacementPlan],
+  );
+  const canPause =
+    subscription.effectiveState === "ACTIVE" &&
+    subscription.freezeAllowanceCount > subscription.usedPauseCount &&
+    subscription.freezeMaxTotalDays > subscription.usedPauseDays;
+  const canResume = subscription.effectiveState === "FROZEN";
 
-  function handlePlanChange(nextPlanId: string) {
-    setPlanId(nextPlanId);
-    const plan = plansOptions.find((item) => item.id === nextPlanId);
-    if (!plan) return;
-    setAmount((plan.price / 100).toString());
-    setRemainingSessions(plan.totalSessions.toString());
-    if (startDate) {
-      const nextEnd = new Date(startDate);
-      nextEnd.setDate(nextEnd.getDate() + plan.validityDays);
-      setEndDate(nextEnd.toISOString().split("T")[0]);
+  async function runAction(action: string, url: string, payload: Record<string, unknown>, method = "POST") {
+    if (reason.trim().length < 3) {
+      setMessage("Indiquez un motif précis avant de confirmer.");
+      return false;
     }
-  }
-
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setLoading(true);
+    setLoadingAction(action);
     setMessage(null);
-
-    if (needsAdjustmentReason && adjustmentReason.trim().length < 3) {
-      setMessage("Indiquez un motif pour modifier la formule, le statut, le montant ou les séances.");
-      setLoading(false);
-      return;
-    }
-
-    if (amountBelowPaid) {
-      setMessage("Le montant ne peut pas être inférieur au total déjà encaissé.");
-      setLoading(false);
-      return;
-    }
-
-    const requestPayload = {
-      subscriptionId: subscription.id,
-      payload: {
-        planId,
-        startDate: new Date(startDate).toISOString(),
-        endDate: endDate ? new Date(endDate).toISOString() : null,
-        amount: amountNum,
-        remainingSessions: sessionsNum,
-        status,
-        ...(needsAdjustmentReason ? { adjustmentReason: adjustmentReason.trim() } : {}),
-      },
-    };
-    let response: Response;
+    const requestPayload = { ...payload, reason: reason.trim() };
     try {
-      response = await fetch("/api/member-subscriptions", {
-        method: "PATCH",
+      const response = await fetch(url, {
+        method,
         headers: {
           "Content-Type": "application/json",
-          "Idempotency-Key": subscriptionIntent.keyFor(requestPayload),
+          "Idempotency-Key": intent.keyFor({ action, ...requestPayload }),
         },
         body: JSON.stringify(requestPayload),
       });
+      const result = await response.json();
+      if (!response.ok) {
+        setMessage(result.error ?? "Action impossible");
+        return false;
+      }
+      intent.complete({ action, ...requestPayload });
+      setReason("");
+      router.refresh();
+      return true;
     } catch {
-      setLoading(false);
-      setMessage("Connexion interrompue. Réessayez sans risque de doubler la correction.");
+      setMessage("Connexion interrompue. Réessayez: la même action ne sera pas enregistrée deux fois.");
+      return false;
+    } finally {
+      setLoadingAction(null);
+    }
+  }
+
+  async function adjustUnits() {
+    const delta = Number(unitsDelta);
+    if (!selectedEntitlementId || !Number.isInteger(delta) || delta === 0) {
+      setMessage("Choisissez un droit et indiquez un nombre entier différent de zéro.");
       return;
     }
+    const ok = await runAction(
+      "adjust",
+      `/api/member-subscriptions/${subscription.id}/entitlements/${selectedEntitlementId}/adjust`,
+      { unitsDelta: delta },
+    );
+    if (ok) setUnitsDelta("0");
+  }
 
-    const result = await response.json();
-
-    if (!response.ok) {
-      setMessage(result.error ?? "Erreur lors de la modification de l'abonnement");
-      setLoading(false);
+  async function replaceSale() {
+    const groupIds = replacementClassRights.map((right) => groupBySport[right.sportId as string]).filter(Boolean);
+    if (!replacementPlanId || !replacementStartDate) {
+      setMessage("Choisissez une formule et une date de correction.");
       return;
     }
-    subscriptionIntent.complete(requestPayload);
-
-    router.push("/subscriptions");
-    router.refresh();
+    const ok = await runAction("replace", `/api/member-subscriptions/${subscription.id}/replace`, {
+      planId: replacementPlanId,
+      startDate: new Date(replacementStartDate).toISOString(),
+      transferCents: subscription.totalPaid,
+      groupIds,
+    });
+    if (ok) router.push("/subscriptions");
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-5 pb-4 lg:pb-0">
-      <ReceptionInfoCard variant="warning" title="Correction admin">
-        Toute modification de formule, statut, montant ou séances exige un motif traçable dans le journal.
+    <div className="space-y-5">
+      <ReceptionInfoCard variant="warning" title="Historique protégé">
+        Une vente enregistrée n&apos;est jamais réécrite. Choisissez l&apos;action exacte; le motif, l&apos;ancienne valeur et la nouvelle valeur restent traçables.
       </ReceptionInfoCard>
 
-      <SubscriptionCorrectionSummary
-        totalPaidCents={subscription.totalPaid}
-        originalAmountCents={subscription.amount}
-        proposedAmountCents={amountNum}
-        originalRemainingSessions={subscription.remainingSessions}
-        proposedRemainingSessions={sessionsNum}
-        formulaChanged={formulaChanged}
-        statusChanged={statusChanged}
-        needsAdjustmentReason={needsAdjustmentReason}
-        amountBelowPaid={amountBelowPaid}
-      />
+      <section className="grid gap-3 border-b border-[var(--border)] pb-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div><p className="text-xs font-semibold text-[var(--muted-foreground)]">Membre</p><p className="mt-1 font-semibold">{subscription.memberName}</p></div>
+        <div><p className="text-xs font-semibold text-[var(--muted-foreground)]">Formule</p><p className="mt-1 font-semibold">{subscription.planName}</p></div>
+        <div><p className="text-xs font-semibold text-[var(--muted-foreground)]">État réel</p><p className="mt-1 font-semibold text-[var(--primary)]">{stateLabels[subscription.effectiveState]}</p></div>
+        <div><p className="text-xs font-semibold text-[var(--muted-foreground)]">Payé / total</p><p className="mt-1 font-semibold">{formatMoney(subscription.totalPaid)} / {formatMoney(subscription.amount)}</p></div>
+      </section>
 
-      <FormSectionNav
-        items={[
-          { href: "#subscription-member", label: "Membre" },
-          { href: "#subscription-plan", label: "Formule" },
-          { href: "#subscription-period", label: "Période" },
-          { href: "#subscription-values", label: "Valeurs" },
-        ]}
-      />
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Motif commun à l&apos;action *</span>
+        <textarea className="field min-h-20 resize-y py-2" value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Ex. erreur de formule constatée avec le responsable" />
+      </label>
 
-      <div id="subscription-member" className="form-section-anchor rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
-        <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">Membre</p>
-        <p className="mt-1 text-sm font-semibold text-[var(--foreground)]">{subscription.memberName}</p>
-        <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2">
-            <span className="block font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
-              Déjà encaissé
-            </span>
-            <span className="mt-1 block text-sm font-bold text-[var(--foreground)]">{formatMoney(subscription.totalPaid)}</span>
+      {(canPause || canResume) ? (
+        <section className="border-t border-[var(--border)] pt-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div><h2 className="font-semibold">Pause de l&apos;abonnement</h2><p className="mt-1 text-xs text-[var(--muted-foreground)]">{subscription.usedPauseCount}/{subscription.freezeAllowanceCount} pause(s), {subscription.usedPauseDays}/{subscription.freezeMaxTotalDays} jours utilisés.</p></div>
+            {canPause ? <button type="button" className="btn btn-ghost" disabled={Boolean(loadingAction)} onClick={() => runAction("pause", `/api/member-subscriptions/${subscription.id}/pause`, {})}><Pause className="size-4" /> Mettre en pause</button> : null}
+            {canResume ? <button type="button" className="btn btn-primary" disabled={Boolean(loadingAction)} onClick={() => runAction("resume", `/api/member-subscriptions/${subscription.id}/resume`, {})}><Play className="size-4" /> Reprendre</button> : null}
           </div>
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2">
-            <span className="block font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
-              Montant minimum
-            </span>
-            <span className="mt-1 block text-sm font-bold text-[var(--foreground)]">{formatMoney(subscription.totalPaid)}</span>
+        </section>
+      ) : null}
+
+      {finiteEntitlements.length > 0 && subscription.effectiveState !== "CANCELLED" ? (
+        <section className="border-t border-[var(--border)] pt-5">
+          <div><h2 className="font-semibold">Corriger un solde</h2><p className="mt-1 text-xs text-[var(--muted-foreground)]">Ajoutez ou retirez des unités sans effacer les consommations déjà enregistrées.</p></div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem_auto] sm:items-end">
+            <label><span className="mb-1 block text-xs font-medium">Droit</span><select className="field" value={selectedEntitlementId} onChange={(event) => setSelectedEntitlementId(event.target.value)}>{finiteEntitlements.map((right) => <option key={right.id} value={right.id}>{right.label} · reste {right.remainingUnits}</option>)}</select></label>
+            <label><span className="mb-1 block text-xs font-medium">Correction</span><input className="field" type="number" step="1" value={unitsDelta} onChange={(event) => setUnitsDelta(event.target.value)} /></label>
+            <button type="button" className="btn btn-ghost" disabled={Boolean(loadingAction)} onClick={adjustUnits}><SlidersHorizontal className="size-4" /> Appliquer</button>
           </div>
-        </div>
-      </div>
+        </section>
+      ) : null}
 
-      <div id="subscription-plan" className="form-section-anchor">
-        <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Plan *</label>
-        <select value={planId} onChange={(e) => handlePlanChange(e.target.value)} className="field" required>
-          {plansOptions.map((plan) => (
-            <option key={plan.id} value={plan.id}>
-              {plan.name} - {formatMoney(plan.price)}
-            </option>
-          ))}
-        </select>
-      </div>
+      {subscription.effectiveState !== "CANCELLED" ? (
+        <details className="border-t border-[var(--border)] pt-5">
+          <summary className="cursor-pointer list-none font-semibold text-[var(--foreground)]">Remplacer une vente incorrecte</summary>
+          <p className="mt-1 text-xs text-[var(--muted-foreground)]">L&apos;abonnement actuel sera résilié, le crédit transféré et un nouveau reçu émis. L&apos;original reste conservé et annulé.</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label><span className="mb-1 block text-xs font-medium">Nouvelle formule</span><select className="field" value={replacementPlanId} onChange={(event) => { setReplacementPlanId(event.target.value); setGroupBySport({}); }}>{plansOptions.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {formatMoney(plan.price)}</option>)}</select></label>
+            <label><span className="mb-1 block text-xs font-medium">Date corrigée</span><input className="field" type="date" value={replacementStartDate} onChange={(event) => setReplacementStartDate(event.target.value)} /></label>
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2"><span className="block text-xs font-medium text-[var(--muted-foreground)]">Crédit transféré</span><strong className="mt-1 block text-sm">{formatMoney(subscription.totalPaid)}</strong><span className="mt-1 block text-xs text-[var(--muted-foreground)]">La totalité est déplacée pour garder des reçus cohérents.</span></div>
+            {replacementClassRights.map((right) => {
+              const sportId = right.sportId as string;
+              return <label key={sportId}><span className="mb-1 block text-xs font-medium">Groupe · {right.sportName}</span><select className="field" value={groupBySport[sportId] ?? ""} onChange={(event) => setGroupBySport((current) => ({ ...current, [sportId]: event.target.value }))}><option value="">Conserver le groupe actif</option>{groupsOptions.filter((group) => group.sportId === sportId).map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}</select></label>;
+            })}
+          </div>
+          <button type="button" className="btn btn-primary mt-4" disabled={Boolean(loadingAction)} onClick={replaceSale}><RefreshCw className="size-4" /> Résilier et remplacer</button>
+        </details>
+      ) : null}
 
-      <div id="subscription-period" className="form-section-anchor grid gap-4 sm:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Début *</label>
-          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="field" required />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Fin</label>
-          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="field" />
-        </div>
-      </div>
+      {subscription.effectiveState !== "CANCELLED" ? (
+        <section className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-5">
+          <div><h2 className="font-semibold">Résilier sans remplacement</h2><p className="mt-1 text-xs text-[var(--muted-foreground)]">Les paiements et droits passés restent visibles.</p></div>
+          <button type="button" className="btn btn-danger" disabled={Boolean(loadingAction)} onClick={() => runAction("cancel", "/api/member-subscriptions", { subscriptionId: subscription.id }, "DELETE")}><Ban className="size-4" /> Résilier</button>
+        </section>
+      ) : null}
 
-      <div id="subscription-values" className="form-section-anchor grid gap-4 sm:grid-cols-3">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Montant (TND) *</label>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className={`field ${amountBelowPaid ? "border-[var(--danger)] ring-1 ring-[var(--danger)]" : ""}`}
-            required
-          />
-          {amountBelowPaid ? (
-            <p className="mt-1 text-xs font-medium text-[var(--danger)]">
-              Minimum: {formatMoney(subscription.totalPaid)} déjà encaissé.
-            </p>
-          ) : null}
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Séances restantes *</label>
-          <input type="number" min="0" value={remainingSessions} onChange={(e) => setRemainingSessions(e.target.value)} className="field" required />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Statut *</label>
-          <select value={status} onChange={(e) => setStatus(e.target.value as StatusValue)} className="field" required>
-            <option value="ACTIVE">Actif</option>
-            <option value="DRAFT">Brouillon</option>
-            <option value="EXPIRED">Expiré</option>
-            <option value="CANCELLED">Résilié</option>
-          </select>
-        </div>
-      </div>
-
-      {needsAdjustmentReason && (
-        <div id="subscription-reason" className="form-section-anchor">
-          <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Motif de correction *</label>
-          <textarea
-            value={adjustmentReason}
-            onChange={(e) => setAdjustmentReason(e.target.value)}
-            className="field min-h-[80px]"
-            placeholder="Ex. report séances convenu avec le responsable"
-            required
-          />
-        </div>
-      )}
-
-      <FeedbackMessage message={message} />
-
-      <FormActions sticky>
-        <button type="button" onClick={() => router.push("/subscriptions")} className="btn btn-ghost btn-block-mobile">
-          Annuler
-        </button>
-        <button type="button" onClick={() => setStatus("CANCELLED")} className="btn btn-danger btn-block-mobile">
-          Préparer résiliation
-        </button>
-        <button type="submit" disabled={loading || amountBelowPaid} className="btn btn-primary btn-block-mobile">
-          {loading ? "Enregistrement..." : "Enregistrer la correction"}
-        </button>
-      </FormActions>
-    </form>
+      <FeedbackMessage message={message ?? (loadingAction ? "Enregistrement en cours..." : null)} />
+    </div>
   );
 }

@@ -25,6 +25,10 @@ type SubscriptionPlanAuditSnapshot = {
   isActive: boolean;
   sportId: string | null;
   planKind: "CLASS" | "GYM" | "MIXED";
+  activationPolicy: "FIXED_DATE" | "FIRST_USE";
+  activationWindowDays: number;
+  freezeAllowanceCount: number;
+  freezeMaxTotalDays: number;
   sport?: { name: string } | null;
 };
 
@@ -41,6 +45,10 @@ function planAuditSnapshot(plan: SubscriptionPlanAuditSnapshot) {
     sportId: plan.sportId,
     sportName: plan.sport?.name ?? null,
     planKind: plan.planKind,
+    activationPolicy: plan.activationPolicy,
+    activationWindowDays: plan.activationWindowDays,
+    freezeAllowanceCount: plan.freezeAllowanceCount,
+    freezeMaxTotalDays: plan.freezeMaxTotalDays,
   };
 }
 
@@ -151,6 +159,10 @@ export async function POST(request: Request) {
           sessionsPerWeek: parsed.data.sessionsPerWeek ?? null,
           validityDays: parsed.data.validityDays,
           planKind: parsed.data.planKind,
+          activationPolicy: parsed.data.activationPolicy,
+          activationWindowDays: parsed.data.activationWindowDays,
+          freezeAllowanceCount: parsed.data.freezeAllowanceCount,
+          freezeMaxTotalDays: parsed.data.freezeMaxTotalDays,
           sportId: parsed.data.sportId ?? null,
         },
         include: { sport: { select: { name: true } } },
@@ -253,6 +265,10 @@ export async function PATCH(request: Request) {
       description: payload.description === undefined ? currentPlan.description : payload.description,
       price: payload.price ?? currentPlan.price,
       planKind: payload.planKind ?? currentPlan.planKind,
+      activationPolicy: payload.activationPolicy ?? currentPlan.activationPolicy,
+      activationWindowDays: payload.activationWindowDays ?? currentPlan.activationWindowDays,
+      freezeAllowanceCount: payload.freezeAllowanceCount ?? currentPlan.freezeAllowanceCount,
+      freezeMaxTotalDays: payload.freezeMaxTotalDays ?? currentPlan.freezeMaxTotalDays,
       validityDays: payload.validityDays ?? currentPlan.validityDays,
       sportId: payload.sportId === undefined ? currentPlan.sportId ?? undefined : payload.sportId || undefined,
       sessionsPerWeek: payload.sessionsPerWeek ?? currentPlan.sessionsPerWeek ?? undefined,
@@ -288,6 +304,10 @@ export async function PATCH(request: Request) {
           description: merged.data.description?.trim() || null,
           price: merged.data.price,
           planKind: merged.data.planKind,
+          activationPolicy: merged.data.activationPolicy,
+          activationWindowDays: merged.data.activationWindowDays,
+          freezeAllowanceCount: merged.data.freezeAllowanceCount,
+          freezeMaxTotalDays: merged.data.freezeMaxTotalDays,
           totalSessions: merged.data.totalSessions,
           sessionsPerWeek: merged.data.sessionsPerWeek ?? null,
           validityDays: merged.data.validityDays,

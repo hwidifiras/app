@@ -1,6 +1,9 @@
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import type { SubscriptionStatus } from "@prisma/client";
 
+import { getClubSettings } from "@/lib/club-settings";
+import { emptyEnrollmentUndoSnapshot } from "@/lib/enrollment-undo";
 import { prisma } from "@/lib/prisma";
 import {
   createMemberSubscriptionSchema,
@@ -13,11 +16,10 @@ import {
   expireStaleSubscriptions,
 } from "@/lib/membership-rules";
 import { checkGroupMemberCompatibility } from "@/lib/demographics";
-import { createSubscriptionFromPlan } from "@/lib/subscription-service";
 import { sumLedgerRows } from "@/lib/payment-ledger";
-import { issueReceiptForPayment } from "@/lib/receipts";
 import { resolveMemberPhone } from "@/lib/member-phone";
 import { memberAuditSnapshot } from "@/lib/member-audit";
+import { sendReceiptEmailForReceipt, type ReceiptEmailDeliveryResult } from "@/lib/receipt-email-delivery";
 import { activeAssignmentWindow } from "@/lib/assignment-policy";
 import {
   IdempotencyKeyConflictError,
@@ -28,6 +30,9 @@ import {
   runIdempotentSerializableTransaction,
 } from "@/lib/idempotency";
 import { getTenantProductContext } from "@/platform/product/product-context";
+import { sellSubscription } from "@/modules/sales/subscription-sale-service";
+import { resolveSubscriptionEffectiveState } from "@/modules/sales/subscription-lifecycle";
+import { cancelSubscription } from "@/modules/sales/subscription-lifecycle-service";
 
 export const runtime = "nodejs";
 
@@ -45,6 +50,15 @@ function idempotencyErrorResponse(error: unknown) {
   }
   return null;
 }
+
+const subscriptionCreationErrors: Record<string, string> = {
+  RENEWAL_ALREADY_QUEUED: "Un renouvellement est déjà planifié pour ces droits.",
+  CARRY_OVER_REQUIRES_IMMEDIATE_RENEWAL: "Le report de séances est réservé à un renouvellement qui commence immédiatement.",
+  FIRST_USE_GYM_ONLY: "L'activation au premier passage est réservée aux formules salle.",
+  PLAN_ENTITLEMENTS_REQUIRED: "Cette formule ne contient aucun droit utilisable.",
+  CLASS_PLAN_SPORT_REQUIRED: "Cette formule cours doit être liée à une discipline.",
+  OVERPAY: "Le paiement dépasse le montant de la formule.",
+};
 
 type SubscriptionAuditSnapshotInput = {
   id: string;
@@ -117,18 +131,35 @@ export async function GET(request: Request) {
       amount: true,
       remainingSessions: true,
       status: true,
+      activationPolicy: true,
+      activationWindowDays: true,
+      activationDeadline: true,
+      activatedAt: true,
+      freezeAllowanceCount: true,
+      freezeMaxTotalDays: true,
+      renewsSubscriptionId: true,
+      replacesSubscriptionId: true,
       createdAt: true,
       member: { select: { id: true, firstName: true, lastName: true, phone: true } },
       plan: { select: { id: true, name: true, planKind: true, price: true, totalSessions: true, sessionsPerWeek: true, validityDays: true } },
       sport: { select: { id: true, name: true } },
       payments: { select: { id: true, amount: true, paymentDate: true } },
       entitlements: { include: { sport: { select: { id: true, name: true } } }, orderBy: { createdAt: "asc" } },
+      pauseEvents: { orderBy: { effectiveAt: "asc" } },
+      renewedBySubscription: {
+        select: { status: true, activationPolicy: true, activatedAt: true, startDate: true },
+      },
     },
     orderBy: { createdAt: "desc" },
     take: 100,
   });
 
-  return NextResponse.json({ data: subscriptions });
+  return NextResponse.json({
+    data: subscriptions.map((subscription) => ({
+      ...subscription,
+      effectiveState: resolveSubscriptionEffectiveState(subscription),
+    })),
+  });
 }
 
 export async function POST(request: Request) {
@@ -272,6 +303,8 @@ export async function POST(request: Request) {
     }
 
     const result = await runIdempotentSerializableTransaction(idempotencyParams, async (tx) => {
+      const undoSnapshot = emptyEnrollmentUndoSnapshot();
+      const recoveryKey = randomUUID();
       let memberId = requestedMemberId ?? "";
       if (newMember) {
         const createdMember = await tx.member.create({
@@ -291,6 +324,7 @@ export async function POST(request: Request) {
           },
         });
         memberId = createdMember.id;
+        undoSnapshot.createdMemberIds.push(createdMember.id);
         await tx.auditLog.create({
           data: {
             tenantId: actor.tenantId,
@@ -302,6 +336,26 @@ export async function POST(request: Request) {
           },
         });
       }
+
+      const rightOverlap = [
+        ...classRights
+          .filter((right) => right.sportId)
+          .map((right) => ({ type: "CLASS_SESSIONS" as const, sportId: right.sportId as string })),
+        ...(plan.entitlements.some((right) => right.type === "GYM_ACCESS")
+          ? [{ type: "GYM_ACCESS" as const }]
+          : []),
+      ];
+      const activeBeforeSale = rightOverlap.length > 0
+        ? await tx.memberSubscription.findMany({
+            where: {
+              tenantId: actor.tenantId,
+              memberId,
+              status: "ACTIVE",
+              entitlements: { some: { OR: rightOverlap } },
+            },
+            select: { id: true },
+          })
+        : [];
 
       for (const selectedGroup of selectedGroups) {
         const freshGroup = await tx.group.findFirst({
@@ -323,91 +377,67 @@ export async function POST(request: Request) {
         }
       }
 
-      const created = await createSubscriptionFromPlan(
-        tx,
-        {
-          tenantId: actor.tenantId,
-          memberId,
-          plan,
-          startDate: start,
-        },
-        { carryOverRemainingSessions: carryOverRemainingSessions === true },
-      );
+      const sale = await sellSubscription(tx, {
+        tenantId: actor.tenantId,
+        actorId: actor.id,
+        memberId,
+        plan,
+        startDate: start,
+        source: "member-subscription",
+        paymentCents: payCents,
+        paymentMethod: paymentMethod?.trim() || "CASH",
+        carryOverRemainingSessions: carryOverRemainingSessions === true,
+      });
+      const created = sale.subscription;
+      undoSnapshot.createdSubscriptionIds.push(created.id);
+      if (sale.payment) undoSnapshot.createdPaymentIds.push(sale.payment.id);
+      if (activeBeforeSale.length > 0) {
+        const expired = await tx.memberSubscription.findMany({
+          where: {
+            tenantId: actor.tenantId,
+            id: { in: activeBeforeSale.map((item) => item.id) },
+            status: "EXPIRED",
+          },
+          select: { id: true },
+        });
+        undoSnapshot.expiredSubscriptionIds.push(...expired.map((item) => item.id));
+      }
 
       for (const group of selectedGroups) {
-        await tx.groupMember.upsert({
+        const assignment = await tx.groupMember.findUnique({
           where: { tenantId_groupId_memberId: { tenantId: actor.tenantId, groupId: group.id, memberId } },
-          update: { status: "ACTIVE", startDate: start, endDate: created.endDate },
-          create: { tenantId: actor.tenantId, groupId: group.id, memberId, status: "ACTIVE", startDate: start, endDate: created.endDate },
         });
-      }
-
-      if (payCents > 0) {
-        const payment = await tx.payment.create({
-          data: {
-            tenantId: actor.tenantId,
-            memberSubscriptionId: created.id,
-            amount: payCents,
-            createdById: actor.id,
-            paymentMethod: paymentMethod?.trim() || "CASH",
-          },
-        });
-
-        await tx.auditLog.create({
-          data: {
-            tenantId: actor.tenantId,
-            action: "PAYMENT_CREATED",
-            entityType: "Payment",
-            entityId: payment.id,
-            userId: actor.id,
-            details: JSON.stringify({
+        if (assignment) {
+          undoSnapshot.reactivatedGroupMembers.push({
+            id: assignment.id,
+            previousStatus: assignment.status,
+            previousStartDate: assignment.startDate.toISOString(),
+            previousEndDate: assignment.endDate?.toISOString() ?? null,
+          });
+          await tx.groupMember.update({
+            where: { id: assignment.id },
+            data: {
+              status: "ACTIVE",
+              startDate: assignment.status === "ACTIVE" && assignment.startDate <= start
+                ? assignment.startDate
+                : start,
+              endDate: created.endDate,
+            },
+          });
+        } else {
+          const createdAssignment = await tx.groupMember.create({
+            data: {
               tenantId: actor.tenantId,
-              source: "member-subscription",
-              amount: payCents,
+              groupId: group.id,
               memberId,
-              subscriptionId: created.id,
-            }),
-          },
-        });
-
-        const receipt = await issueReceiptForPayment(tx, payment.id, actor.id, actor.tenantId);
-        await tx.auditLog.create({
-          data: {
-            tenantId: actor.tenantId,
-            action: "RECEIPT_ISSUED",
-            entityType: "Receipt",
-            entityId: receipt.id,
-            userId: actor.id,
-            details: JSON.stringify({
-              tenantId: actor.tenantId,
-              paymentId: payment.id,
-              receiptNumber: receipt.receiptNumber,
-              source: "member-subscription",
-            }),
-          },
-        });
+              status: "ACTIVE",
+              startDate: start,
+              endDate: created.endDate,
+            },
+          });
+          undoSnapshot.createdGroupMemberIds.push(createdAssignment.id);
+        }
       }
-
-      await tx.auditLog.create({
-        data: {
-          tenantId: actor.tenantId,
-          action: "MEMBER_SUBSCRIPTION_CREATED",
-          entityType: "MemberSubscription",
-          entityId: created.id,
-          userId: actor.id,
-          details: JSON.stringify({
-            tenantId: actor.tenantId,
-            memberId,
-            planId,
-            sportId: plan.sportId,
-            amount: created.amount,
-            remainingSessions: created.remainingSessions,
-            carryOverRemainingSessions: carryOverRemainingSessions === true,
-            paymentCents: payCents,
-            startDate: start.toISOString(),
-          }),
-        },
-      });
 
       const withRelations = await tx.memberSubscription.findFirstOrThrow({
         where: { id: created.id, tenantId: actor.tenantId },
@@ -423,16 +453,80 @@ export async function POST(request: Request) {
         },
       });
 
-      return { status: 201, body: { data: withRelations } };
+      await tx.auditLog.create({
+        data: {
+          tenantId: actor.tenantId,
+          action: "ENROLLMENT_APPLIED",
+          entityType: "Enrollment",
+          entityId: created.id,
+          userId: actor.id,
+          details: JSON.stringify({
+            tenantId: actor.tenantId,
+            recoveryKey,
+            undoSnapshot,
+            memberIds: [memberId],
+            subscriptionIds: [created.id],
+            totalFinalCents: created.amount,
+            lines: [{
+              memberName: `${withRelations.member.firstName} ${withRelations.member.lastName}`.trim(),
+              planName: withRelations.plan.name,
+              planKind: plan.planKind,
+              amountCents: created.amount,
+            }],
+          }),
+        },
+      });
+
+      return {
+        status: 201,
+        body: {
+          data: withRelations,
+          receipt: sale.receipt
+            ? { id: sale.receipt.id, receiptNumber: sale.receipt.receiptNumber }
+            : null,
+          undoSnapshot,
+          recoveryKey,
+        },
+      };
     });
 
-    return NextResponse.json(result.response.body, {
+    if (result.replayed) {
+      return NextResponse.json(result.response.body, {
+        status: result.response.status,
+        headers: idempotencyResponseHeaders(true),
+      });
+    }
+
+    let receiptEmailDelivery: ReceiptEmailDeliveryResult | null = null;
+    const responseBody = result.response.body;
+    try {
+      const settings = await getClubSettings({ tenantId: actor.tenantId });
+      if (settings.receiptEmailDefault && responseBody.receipt?.id) {
+        receiptEmailDelivery = await sendReceiptEmailForReceipt({
+          receiptId: responseBody.receipt.id,
+          tenantId: actor.tenantId,
+          requestUrl: request.url,
+          actorId: actor.id,
+        });
+      }
+    } catch (emailError) {
+      console.error("[POST /api/member-subscriptions] receipt email error:", emailError);
+      receiptEmailDelivery = {
+        delivered: false,
+        code: "EMAIL_SEND_FAILED",
+        error: "Echec d'envoi email",
+        status: 503,
+      };
+    }
+
+    return NextResponse.json({ ...responseBody, receiptEmailDelivery }, {
       status: result.response.status,
-      headers: idempotencyResponseHeaders(result.replayed),
     });
   } catch (error) {
     const idempotencyResponse = idempotencyErrorResponse(error);
     if (idempotencyResponse) return idempotencyResponse;
+    const creationMessage = error instanceof Error ? subscriptionCreationErrors[error.message] : null;
+    if (creationMessage) return NextResponse.json({ error: creationMessage }, { status: 409 });
     if (error instanceof Error && error.message === "GROUP_CAPACITY_REACHED") {
       return NextResponse.json({ error: "Un groupe sélectionné est complet" }, { status: 409 });
     }
@@ -540,6 +634,16 @@ export async function PATCH(request: Request) {
 
     if (!existing) {
       return NextResponse.json({ error: "Abonnement introuvable" }, { status: 404 });
+    }
+
+    if (existing.status !== "DRAFT") {
+      return NextResponse.json(
+        {
+          error: "Une vente enregistrée ne peut pas être réécrite. Utilisez une correction de droit, une résiliation ou un remplacement traçable.",
+          code: "SOLD_SUBSCRIPTION_IMMUTABLE",
+        },
+        { status: 409 },
+      );
     }
 
     if (existing.member.status !== "ACTIVE") {
@@ -747,8 +851,10 @@ export async function DELETE(request: Request) {
   }
 
   const reasonValue = (body as { reason?: unknown }).reason;
-  const rawReason = typeof reasonValue === "string" ? reasonValue.trim() : "";
-  const reason = rawReason || "Résiliation admin";
+  const reason = typeof reasonValue === "string" ? reasonValue.trim() : "";
+  if (reason.length < 3 || reason.length > 500) {
+    return NextResponse.json({ error: "Un motif précis est obligatoire pour résilier l'abonnement" }, { status: 400 });
+  }
   let idempotencyKey: string | null;
   try {
     idempotencyKey = readIdempotencyKey(request);
@@ -776,53 +882,14 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    const now = new Date();
-    const existing = await prisma.memberSubscription.findFirst({
-      where: { id: subscriptionId, tenantId: actor.tenantId },
-      select: {
-        id: true,
-        memberId: true,
-        planId: true,
-        sportId: true,
-        startDate: true,
-        endDate: true,
-        status: true,
-        amount: true,
-        remainingSessions: true,
-      },
-    });
-
-    if (!existing) {
-      return NextResponse.json({ error: "Abonnement introuvable" }, { status: 404 });
-    }
-
-    const beforeSnapshot = subscriptionAuditSnapshot(existing);
     const result = await runIdempotentSerializableTransaction(idempotencyParams, async (tx) => {
-      const subscription = await tx.memberSubscription.update({
-        where: { id: subscriptionId },
-        data: { status: "CANCELLED" },
+      const cancelled = await cancelSubscription(tx, {
+        tenantId: actor.tenantId,
+        subscriptionId,
+        actorId: actor.id,
+        reason,
       });
-      const afterSnapshot = subscriptionAuditSnapshot(subscription);
-
-      await tx.auditLog.create({
-        data: {
-          tenantId: actor.tenantId,
-          action: "MEMBER_SUBSCRIPTION_CANCELLED",
-          entityType: "MemberSubscription",
-          entityId: subscriptionId,
-          userId: actor.id,
-          details: JSON.stringify({
-            tenantId: actor.tenantId,
-            cancelledAt: now.toISOString(),
-            reason,
-            changedFields: changedSubscriptionFields(beforeSnapshot, afterSnapshot),
-            before: beforeSnapshot,
-            after: afterSnapshot,
-          }),
-        },
-      });
-
-      return { status: 200, body: { data: subscription } };
+      return { status: 200, body: { data: cancelled.subscription, closedAssignments: cancelled.closedAssignments } };
     });
 
     return NextResponse.json(result.response.body, {
@@ -832,6 +899,18 @@ export async function DELETE(request: Request) {
   } catch (error) {
     const idempotencyResponse = idempotencyErrorResponse(error);
     if (idempotencyResponse) return idempotencyResponse;
+    if (error instanceof Error && error.message === "SUBSCRIPTION_NOT_FOUND") {
+      return NextResponse.json({ error: "Abonnement introuvable" }, { status: 404 });
+    }
+    if (error instanceof Error && error.message === "SUBSCRIPTION_ALREADY_CANCELLED") {
+      return NextResponse.json({ error: "Cet abonnement est déjà résilié" }, { status: 409 });
+    }
+    if (error instanceof Error && error.message === "SUBSCRIPTION_HAS_QUEUED_RENEWAL") {
+      return NextResponse.json(
+        { error: "Annulez ou traitez d'abord le renouvellement déjà planifié." },
+        { status: 409 },
+      );
+    }
     const isNotFound =
       typeof error === "object" &&
       error !== null &&

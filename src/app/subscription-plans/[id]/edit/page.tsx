@@ -46,6 +46,10 @@ export default async function EditSubscriptionPlanPage({
       isActive: true,
       sportId: true,
       planKind: true,
+      activationPolicy: true,
+      activationWindowDays: true,
+      freezeAllowanceCount: true,
+      freezeMaxTotalDays: true,
       entitlements: { orderBy: { sortOrder: "asc" } },
     },
   });
@@ -91,6 +95,10 @@ export default async function EditSubscriptionPlanPage({
             validityDays: plan.validityDays,
             sportId: plan.sportId,
             planKind: plan.planKind,
+            activationPolicy: plan.activationPolicy,
+            activationWindowDays: plan.activationWindowDays,
+            freezeAllowanceCount: plan.freezeAllowanceCount,
+            freezeMaxTotalDays: plan.freezeMaxTotalDays,
             entitlements: plan.entitlements,
             isActive: plan.isActive,
           }}

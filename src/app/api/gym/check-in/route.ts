@@ -81,6 +81,8 @@ export async function POST(request: Request) {
         memberId: parsed.data.memberId,
         settings,
         overrideReason: parsed.data.overrideReason,
+        actorId: actor.id,
+        activatePending: true,
       });
       if (!decision.allowed || !decision.entitlement || !decision.member) {
         return { decision, visit: null };
