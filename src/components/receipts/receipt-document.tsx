@@ -10,7 +10,7 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat("fr-FR", {
     dateStyle: "medium",
     timeStyle: "short",
-    timeZone: "Europe/Paris",
+    timeZone: "Africa/Tunis",
   }).format(date);
 }
 
@@ -109,6 +109,14 @@ export function ReceiptDocument({
       </div>
 
       <section className="mt-5 rounded-lg border border-[var(--border)]">
+        {(snapshot.subscription.discountCents ?? 0) > 0 ? (
+          <div className="grid grid-cols-2 border-b border-[var(--border)] p-3 text-sm sm:grid-cols-4">
+            <span className="font-semibold text-[var(--muted-foreground)]">Prix catalogue</span>
+            <span className="font-bold text-[#0B1220]">{formatMoney(snapshot.subscription.listPriceCents ?? snapshot.subscription.amountCents)}</span>
+            <span className="font-semibold text-[var(--muted-foreground)]">{snapshot.subscription.offerName ?? "Offre"}</span>
+            <span className="font-bold text-emerald-700">− {formatMoney(snapshot.subscription.discountCents ?? 0)}</span>
+          </div>
+        ) : null}
         <div className="grid grid-cols-2 border-b border-[var(--border)] p-3 text-sm sm:grid-cols-4">
           <span className="font-semibold text-[var(--muted-foreground)]">Paiement</span>
           <span className="font-bold text-[#0B1220]">{formatMoney(snapshot.payment.amountCents)}</span>

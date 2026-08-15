@@ -47,6 +47,9 @@ export type ReceiptSnapshot = {
     sportName: string;
     entitlements?: Array<{ label: string; detail: string }>;
     amountCents: number;
+    listPriceCents?: number;
+    discountCents?: number;
+    offerName?: string | null;
     startDate: string;
     endDate: string | null;
   };
@@ -218,6 +221,9 @@ export async function issueReceiptForPayment(
             : `${right.grantedUnits ?? 0} séances · ${right.sessionsPerWeek ?? 0}/semaine`,
       })),
       amountCents: payment.memberSubscription.amount,
+      listPriceCents: payment.memberSubscription.listPriceCents ?? payment.memberSubscription.amount,
+      discountCents: payment.memberSubscription.discountCents,
+      offerName: payment.memberSubscription.offerName,
       startDate: payment.memberSubscription.startDate.toISOString(),
       endDate: payment.memberSubscription.endDate?.toISOString() ?? null,
     },

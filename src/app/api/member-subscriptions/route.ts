@@ -33,6 +33,7 @@ import { getTenantProductContext } from "@/platform/product/product-context";
 import { sellSubscription } from "@/modules/sales/subscription-sale-service";
 import { resolveSubscriptionEffectiveState } from "@/modules/sales/subscription-lifecycle";
 import { cancelSubscription } from "@/modules/sales/subscription-lifecycle-service";
+import { quoteSinglePlanOffer } from "@/modules/sales/single-plan-offer";
 
 export const runtime = "nodejs";
 
@@ -58,6 +59,9 @@ const subscriptionCreationErrors: Record<string, string> = {
   PLAN_ENTITLEMENTS_REQUIRED: "Cette formule ne contient aucun droit utilisable.",
   CLASS_PLAN_SPORT_REQUIRED: "Cette formule cours doit être liée à une discipline.",
   OVERPAY: "Le paiement dépasse le montant de la formule.",
+  OFFER_NOT_APPLICABLE: "Cette offre ne s'applique pas à cette formule.",
+  OFFER_REQUIRES_MULTI_LINE_ENROLLMENT: "Cette offre nécessite le parcours d'inscription aux cours.",
+  OFFER_SPORT_NOT_APPLICABLE: "Cette offre est réservée à une autre discipline.",
 };
 
 type SubscriptionAuditSnapshotInput = {
@@ -213,7 +217,7 @@ export async function POST(request: Request) {
     throw error;
   }
 
-  const { memberId: requestedMemberId, newMember, planId, startDate, carryOverRemainingSessions, paymentCents, paymentMethod, groupIds = [] } =
+  const { memberId: requestedMemberId, newMember, planId, offerId, startDate, carryOverRemainingSessions, paymentCents, paymentMethod, groupIds = [] } =
     parsed.data;
   const start = new Date(startDate);
 
@@ -247,6 +251,19 @@ export async function POST(request: Request) {
         : product.capabilities.mixedSales;
     if (!planKindEnabled) {
       return NextResponse.json({ error: "Ce type de formule n'est pas actif pour ce club" }, { status: 403 });
+    }
+    const selectedOffer = offerId
+      ? await prisma.offer.findFirst({ where: { id: offerId, tenantId: actor.tenantId } })
+      : null;
+    if (offerId && !selectedOffer) {
+      return NextResponse.json({ error: "Offre introuvable" }, { status: 404 });
+    }
+    let saleQuote;
+    try {
+      saleQuote = quoteSinglePlanOffer(plan, selectedOffer);
+    } catch (error) {
+      const message = error instanceof Error ? subscriptionCreationErrors[error.message] : null;
+      return NextResponse.json({ error: message ?? "Offre invalide" }, { status: 409 });
     }
     if (plan.planKind !== "MIXED" && groupIds.length > 0) {
       return NextResponse.json({ error: "Les groupes sont reserves aux packs mixtes dans ce parcours" }, { status: 400 });
@@ -298,7 +315,7 @@ export async function POST(request: Request) {
     }
 
     const payCents = paymentCents ?? 0;
-    if (payCents > plan.price) {
+    if (payCents > saleQuote.finalAmountCents) {
       return NextResponse.json({ error: "Dépassement du montant dû pour cette formule" }, { status: 409 });
     }
 
@@ -336,6 +353,32 @@ export async function POST(request: Request) {
           },
         });
       }
+
+      const transactionOffer = offerId
+        ? await tx.offer.findFirst({ where: { id: offerId, tenantId: actor.tenantId } })
+        : null;
+      if (offerId && !transactionOffer) throw new Error("OFFER_NOT_APPLICABLE");
+      const transactionQuote = quoteSinglePlanOffer(plan, transactionOffer);
+      if (payCents > transactionQuote.finalAmountCents) throw new Error("OVERPAY");
+      const offerApplication = transactionOffer
+        ? await tx.offerApplication.create({
+            data: {
+              tenantId: actor.tenantId,
+              offerId: transactionOffer.id,
+              memberIds: JSON.stringify([memberId]),
+              subscriptionIds: "[]",
+              quoteSnapshot: JSON.stringify({
+                source: "single-plan-enrollment",
+                planId: plan.id,
+                planKind: plan.planKind,
+                memberId,
+                ...transactionQuote,
+              }),
+              createdById: actor.id,
+            },
+          })
+        : null;
+      if (offerApplication) undoSnapshot.offerApplicationId = offerApplication.id;
 
       const rightOverlap = [
         ...classRights
@@ -384,11 +427,22 @@ export async function POST(request: Request) {
         plan,
         startDate: start,
         source: "member-subscription",
+        amountCents: transactionQuote.finalAmountCents,
+        listPriceCents: transactionQuote.listPriceCents,
+        discountCents: transactionQuote.discountCents,
+        offerApplicationId: offerApplication?.id ?? null,
+        offerName: transactionQuote.offerName,
         paymentCents: payCents,
         paymentMethod: paymentMethod?.trim() || "CASH",
         carryOverRemainingSessions: carryOverRemainingSessions === true,
       });
       const created = sale.subscription;
+      if (offerApplication) {
+        await tx.offerApplication.update({
+          where: { id: offerApplication.id },
+          data: { subscriptionIds: JSON.stringify([created.id]) },
+        });
+      }
       undoSnapshot.createdSubscriptionIds.push(created.id);
       if (sale.payment) undoSnapshot.createdPaymentIds.push(sale.payment.id);
       if (activeBeforeSale.length > 0) {
@@ -467,11 +521,15 @@ export async function POST(request: Request) {
             memberIds: [memberId],
             subscriptionIds: [created.id],
             totalFinalCents: created.amount,
+            offerId: transactionQuote.offerId,
+            offerName: transactionQuote.offerName,
             lines: [{
               memberName: `${withRelations.member.firstName} ${withRelations.member.lastName}`.trim(),
               planName: withRelations.plan.name,
               planKind: plan.planKind,
               amountCents: created.amount,
+              listPriceCents: transactionQuote.listPriceCents,
+              discountCents: transactionQuote.discountCents,
             }],
           }),
         },

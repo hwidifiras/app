@@ -7,6 +7,7 @@ import {
   CreditCard,
   Dumbbell,
   Repeat2,
+  ShieldAlert,
   UserPlus,
   UsersRound,
   Wallet,
@@ -14,6 +15,7 @@ import {
 
 import { CashRegisterPanel, CashTrendPanel } from "@/components/dashboard/dashboard-cash-panels";
 import { DashboardDebtsSection } from "@/components/dashboard/dashboard-debts-section";
+import { DashboardHybridPanel } from "@/components/dashboard/dashboard-hybrid-panel";
 import {
   buildCashTrend,
   formatPaymentMethodLabel,
@@ -63,6 +65,10 @@ import {
 } from "@/components/dashboard/dashboard-today-panel";
 import { cn } from "@/lib/utils";
 import { coachSessionWhere } from "@/modules/classes/coach-scope";
+import {
+  EMPTY_HYBRID_PORTFOLIO_REPORT,
+  loadHybridPortfolioReport,
+} from "@/modules/reports/hybrid-portfolio";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -270,14 +276,25 @@ function DashboardMetric({ icon: Icon, label, value, tone }: { icon: ComponentTy
   return <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3"><Icon className={`size-5 rounded-md p-0.5 ${toneClass}`} /><p className="mt-3 text-xl font-bold text-[var(--foreground)]">{value}</p><p className="text-xs text-[var(--muted-foreground)]">{label}</p></div>;
 }
 
-function GymOverviewPanel({ visitsToday, activePasses, expiringSoon }: { visitsToday: number; activePasses: number; expiringSoon: number }) {
+function GymOverviewPanel({
+  visitsToday,
+  activePasses,
+  expiringSoon,
+  deniedToday,
+}: {
+  visitsToday: number;
+  activePasses: number;
+  expiringSoon: number;
+  deniedToday: number;
+}) {
   return (
     <DashboardPanel labelledBy="dashboard-gym-title">
       <DashboardSectionHeader titleId="dashboard-gym-title" title="Accès salle" eyebrow="Module gym" action={<Link href="/gym/check-in" className="text-xs font-semibold text-[var(--primary)] hover:underline">Pointer une entrée</Link>} />
-      <div className="grid gap-2 p-3 sm:grid-cols-3">
+      <div className="grid gap-2 p-3 sm:grid-cols-2 xl:grid-cols-4">
         <DashboardMetric icon={Dumbbell} label="Entrées aujourd'hui" value={String(visitsToday)} tone="blue" />
         <DashboardMetric icon={CreditCard} label="Pass actifs" value={String(activePasses)} tone="green" />
         <DashboardMetric icon={CalendarClock} label="Expirent bientôt" value={String(expiringSoon)} tone={expiringSoon > 0 ? "amber" : "green"} />
+        <DashboardMetric icon={ShieldAlert} label="Accès refusés" value={String(deniedToday)} tone={deniedToday > 0 ? "amber" : "green"} />
       </div>
     </DashboardPanel>
   );
@@ -794,7 +811,8 @@ export default async function Home({
   let dataConfidenceItems: DataConfidenceItem[] = [];
   let emailConfigured = false;
   let showGymOverview = true;
-  let gymStats = { visitsToday: 0, activePasses: 0, expiringSoon: 0 };
+  let gymStats = { visitsToday: 0, activePasses: 0, expiringSoon: 0, deniedToday: 0 };
+  let hybridPortfolio = EMPTY_HYBRID_PORTFOLIO_REPORT;
   let dashboardPreferences: DashboardPreferenceSettings = {
     dashboardDefaultMode: "AUTO",
     dashboardShowTodaySessions: true,
@@ -834,12 +852,21 @@ export default async function Home({
       dashboardShowDetailedDebts: clubSettings.dashboardShowDetailedDebts,
     };
     if (gymModuleEnabled) {
-      const [visitsToday, activePasses, expiringSoon] = await Promise.all([
+      const [visitsToday, activePasses, expiringSoon, deniedToday] = await Promise.all([
         prisma.gymVisit.count({ where: { tenantId, entryType: "CHECK_IN", checkedAt: { gte: today, lt: tomorrow }, corrections: { none: { entryType: "REVERSAL" } } } }),
         prisma.subscriptionEntitlement.count({ where: { tenantId, type: "GYM_ACCESS", startDate: { lte: now }, OR: [{ endDate: null }, { endDate: { gte: now } }], memberSubscription: { status: "ACTIVE", member: { status: "ACTIVE" } } } }),
         prisma.subscriptionEntitlement.count({ where: { tenantId, type: "GYM_ACCESS", endDate: { gte: now, lte: sevenDaysFromToday }, memberSubscription: { status: "ACTIVE", member: { status: "ACTIVE" } } } }),
+        prisma.gymAccessAttempt.count({ where: { tenantId, outcome: "DENIED", occurredAt: { gte: today, lt: tomorrow } } }),
       ]);
-      gymStats = { visitsToday, activePasses, expiringSoon };
+      gymStats = { visitsToday, activePasses, expiringSoon, deniedToday };
+    }
+    if (product.profile === "HYBRID") {
+      hybridPortfolio = await loadHybridPortfolioReport(prisma, {
+        tenantId,
+        monthStart,
+        monthEnd: tomorrow,
+        now,
+      });
     }
 
     const [
@@ -1204,8 +1231,10 @@ export default async function Home({
     />
   ) : null;
   const gymOverviewPanel = gymModuleEnabled && showGymOverview ? <GymOverviewPanel {...gymStats} /> : null;
+  const hybridPortfolioPanel = product.profile === "HYBRID" ? (
+    <DashboardHybridPanel report={hybridPortfolio} />
+  ) : null;
   const primaryOperationsPanel = classModuleEnabled ? todayPanel : gymOverviewPanel;
-  const secondaryGymPanel = classModuleEnabled && gymModuleEnabled ? gymOverviewPanel : null;
   const commercialPanel = dashboardVisibility.commercialInsights ? (
     hasCommercialActivity ? (
       <SalesSnapshotPanel
@@ -1252,6 +1281,7 @@ export default async function Home({
     cashTrendPanel,
     membersOverviewPanel,
     gymOverviewPanel,
+    hybridPortfolioPanel,
     commercialPanel,
     detailedDebtsPanel,
   ].filter(Boolean).length;
@@ -1285,10 +1315,14 @@ export default async function Home({
               </div>
               <div className="rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 backdrop-blur sm:px-4 sm:py-3">
                 <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[var(--hero-muted)]">
-                  {product.profile === "GYM_ONLY" ? "Entrées" : "Séances"}
+                  {product.profile === "GYM_ONLY" ? "Entrées" : product.profile === "HYBRID" ? "Activité" : "Séances"}
                 </p>
                 <p className="mt-2 text-sm font-bold text-white">
-                  {product.profile === "GYM_ONLY" ? gymStats.visitsToday : sessionsToday} aujourd&apos;hui
+                  {product.profile === "GYM_ONLY"
+                    ? `${gymStats.visitsToday} aujourd'hui`
+                    : product.profile === "HYBRID"
+                      ? `${sessionsToday} séances · ${gymStats.visitsToday} entrées`
+                      : `${sessionsToday} aujourd'hui`}
                 </p>
               </div>
               <div className="rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 backdrop-blur sm:px-4 sm:py-3">
@@ -1322,18 +1356,34 @@ export default async function Home({
         ) : dashboardMode === "PILOTAGE" ? (
           <>
             <DashboardGridRow variant="balanced">{[cashPanel, cashTrendPanel]}</DashboardGridRow>
-            <DashboardGridRow variant="wideLeft">{[membersOverviewPanel, primaryOperationsPanel]}</DashboardGridRow>
-            {secondaryGymPanel}
+            {product.profile === "HYBRID" ? (
+              <>
+                <DashboardGridRow variant="balanced">{[membersOverviewPanel, hybridPortfolioPanel]}</DashboardGridRow>
+                <DashboardGridRow variant="wideLeft">{[todayPanel, gymOverviewPanel]}</DashboardGridRow>
+              </>
+            ) : (
+              <DashboardGridRow variant="wideLeft">{[membersOverviewPanel, primaryOperationsPanel]}</DashboardGridRow>
+            )}
             {dataConfidencePanel}
             {commercialPanel}
             {detailedDebtsPanel}
           </>
         ) : (
           <>
-            <DashboardGridRow variant="wideLeft">{[primaryOperationsPanel, cashPanel]}</DashboardGridRow>
+            {product.profile === "HYBRID" ? (
+              <DashboardGridRow variant="wideLeft">{[todayPanel, gymOverviewPanel]}</DashboardGridRow>
+            ) : (
+              <DashboardGridRow variant="wideLeft">{[primaryOperationsPanel, cashPanel]}</DashboardGridRow>
+            )}
             {dataConfidencePanel}
-            <DashboardGridRow variant="balanced">{[cashTrendPanel, membersOverviewPanel]}</DashboardGridRow>
-            {secondaryGymPanel}
+            {product.profile === "HYBRID" ? (
+              <>
+                <DashboardGridRow variant="balanced">{[cashPanel, membersOverviewPanel]}</DashboardGridRow>
+                <DashboardGridRow variant="balanced">{[cashTrendPanel, hybridPortfolioPanel]}</DashboardGridRow>
+              </>
+            ) : (
+              <DashboardGridRow variant="balanced">{[cashTrendPanel, membersOverviewPanel]}</DashboardGridRow>
+            )}
             {detailedDebtsPanel}
           </>
         )}

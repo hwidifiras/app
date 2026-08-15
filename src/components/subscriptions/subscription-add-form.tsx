@@ -11,10 +11,15 @@ import { AccessMemberFields, EMPTY_ACCESS_MEMBER, type AccessNewMember } from "@
 import { useIdempotencyIntent } from "@/hooks/use-idempotency-intent";
 import type { EnrollmentUndoSnapshot } from "@/lib/enrollment-undo";
 import { formatMoney, MONEY_INPUT_SUFFIX } from "@/lib/money";
+import {
+  quoteSinglePlanOffer,
+  type SinglePlanOffer,
+} from "@/modules/sales/single-plan-offer";
 
 type MemberOption = { id: string; firstName: string; lastName: string; phone: string };
 type PlanOption = { id: string; name: string; planKind: "CLASS" | "GYM" | "MIXED"; price: number; totalSessions: number; validityDays: number; activationPolicy: "FIXED_DATE" | "FIRST_USE"; activationWindowDays: number; freezeAllowanceCount: number; freezeMaxTotalDays: number; entitlements: Array<{ type: "CLASS_SESSIONS" | "GYM_ACCESS"; grantedUnits: number | null; gymAccessMode: "UNLIMITED" | "VISIT_QUOTA" | null; sport: { id: string; name: string } | null }> };
 type GroupOption = { id: string; name: string; sportId: string; sportName: string };
+type OfferOption = SinglePlanOffer;
 type SubscriptionPreview = {
   id: string;
   status: string;
@@ -32,7 +37,9 @@ type SubscriptionAddFormProps = {
   plansOptions: PlanOption[];
   initialMemberId?: string;
   initialPlanKind?: "GYM" | "MIXED";
+  initialOfferId?: string;
   groupsOptions?: GroupOption[];
+  offersOptions?: OfferOption[];
   receiptPrintDefault?: boolean;
 };
 
@@ -43,7 +50,16 @@ type EnrollmentCompletion = {
   recoveryKey: string;
 };
 
-export function SubscriptionAddForm({ membersOptions, plansOptions, initialMemberId = "", initialPlanKind, groupsOptions = [], receiptPrintDefault = true }: SubscriptionAddFormProps) {
+export function SubscriptionAddForm({
+  membersOptions,
+  plansOptions,
+  initialMemberId = "",
+  initialPlanKind,
+  initialOfferId = "",
+  groupsOptions = [],
+  offersOptions = [],
+  receiptPrintDefault = true,
+}: SubscriptionAddFormProps) {
   const router = useRouter();
   const subscriptionIntent = useIdempotencyIntent();
   const initialPlan = plansOptions.find((plan) => plan.planKind === initialPlanKind);
@@ -52,6 +68,9 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
   const [memberMode, setMemberMode] = useState<"EXISTING" | "NEW">("EXISTING");
   const [newMember, setNewMember] = useState<AccessNewMember>(EMPTY_ACCESS_MEMBER);
   const [planId, setPlanId] = useState(initialPlan?.id ?? "");
+  const [offerId, setOfferId] = useState(
+    offersOptions.some((offer) => offer.id === initialOfferId) ? initialOfferId : "",
+  );
   const [startDate, setStartDate] = useState(initialStartDate);
   const [endDate, setEndDate] = useState(() => {
     if (!initialPlan || initialPlan.activationPolicy === "FIRST_USE") return "";
@@ -59,7 +78,11 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
     end.setDate(end.getDate() + initialPlan.validityDays);
     return end.toISOString().split("T")[0];
   });
-  const [paymentCents, setPaymentCents] = useState(() => initialPlan ? (initialPlan.price / 100).toFixed(2) : "");
+  const [paymentCents, setPaymentCents] = useState(() => {
+    if (!initialPlan) return "";
+    const initialOffer = offersOptions.find((offer) => offer.id === initialOfferId);
+    return (quoteSinglePlanOffer(initialPlan, initialOffer).finalAmountCents / 100).toFixed(2);
+  });
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [carryOverRemainingSessions, setCarryOverRemainingSessions] = useState(false);
   const [groupBySport, setGroupBySport] = useState<Record<string, string>>({});
@@ -73,11 +96,13 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
   const [voiding, setVoiding] = useState(false);
 
   const selectedPlan = plansOptions.find((p) => p.id === planId);
+  const selectedOffer = offersOptions.find((offer) => offer.id === offerId) ?? null;
+  const saleQuote = selectedPlan ? quoteSinglePlanOffer(selectedPlan, selectedOffer) : null;
   const selectedMember = membersOptions.find((member) => member.id === memberId);
   const paymentNum = Math.round(parseFloat(paymentCents.replace(",", ".")) * 100) || 0;
   const canCarryOver = selectedPlan?.planKind === "CLASS" && preview?.status === "ACTIVE" && preview.remainingSessions > 0 && new Date(startDate) <= new Date();
-  const paymentTooHigh = selectedPlan ? paymentNum > selectedPlan.price : false;
-  const renewalBalance = selectedPlan ? Math.max(0, selectedPlan.price - paymentNum) : 0;
+  const paymentTooHigh = saleQuote ? paymentNum > saleQuote.finalAmountCents : false;
+  const renewalBalance = saleQuote ? Math.max(0, saleQuote.finalAmountCents - paymentNum) : 0;
 
   useEffect(() => {
     if (!memberId) return;
@@ -166,7 +191,8 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
     setGroupBySport({});
     const plan = plansOptions.find((p) => p.id === nextPlanId);
     if (plan) {
-      setPaymentCents((plan.price / 100).toFixed(2));
+      const quote = quoteSinglePlanOffer(plan, selectedOffer);
+      setPaymentCents((quote.finalAmountCents / 100).toFixed(2));
       if (plan.activationPolicy === "FIRST_USE") {
         setEndDate("");
       } else if (startDate && plan.validityDays) {
@@ -207,6 +233,7 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
           parentPhone: newMember.memberType === "KID" ? newMember.parentPhone : undefined,
         } : undefined,
       planId,
+      offerId: offerId || undefined,
       startDate: new Date(startDate).toISOString(),
       carryOverRemainingSessions: carryOverRemainingSessions || undefined,
       paymentCents: paymentNum > 0 ? paymentNum : undefined,
@@ -292,6 +319,14 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
     }
   }
 
+  function handleOfferChange(nextOfferId: string) {
+    setOfferId(nextOfferId);
+    if (!selectedPlan) return;
+    const offer = offersOptions.find((item) => item.id === nextOfferId) ?? null;
+    const quote = quoteSinglePlanOffer(selectedPlan, offer);
+    setPaymentCents((quote.finalAmountCents / 100).toFixed(2));
+  }
+
   if (completion) {
     return (
       <EnrollmentCompletionPanel
@@ -374,6 +409,28 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
               </select>
             </FormField>
 
+            {offersOptions.length > 0 ? (
+              <div className="mt-4">
+                <FormField label="Offre (optionnelle)">
+                  <select value={offerId} onChange={(event) => handleOfferChange(event.target.value)} className="field">
+                    <option value="">Aucune offre</option>
+                    {offersOptions.map((offer) => (
+                      <option key={offer.id} value={offer.id}>
+                        {offer.name} — {offer.kind === "PERCENT_OFF"
+                          ? `${offer.percentOff ?? 0} %`
+                          : formatMoney(offer.amountOffCents ?? 0)}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+                {saleQuote && saleQuote.discountCents > 0 ? (
+                  <p className="mt-2 text-xs font-medium text-[var(--success)]">
+                    Remise appliquée : {formatMoney(saleQuote.discountCents)} · prix final {formatMoney(saleQuote.finalAmountCents)}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
             {selectedPlan?.planKind === "MIXED" ? (
               <div className="mt-4 space-y-3 border-t border-[var(--border)] pt-4">
                 <div><p className="text-sm font-semibold">Groupes du pack</p><p className="text-xs text-[var(--muted-foreground)]">Choisissez un groupe pour chaque discipline incluse.</p></div>
@@ -441,7 +498,7 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
                   />
                 </FieldControl>
                 {selectedPlan && (
-                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">Maximum {formatMoney(selectedPlan.price)}</p>
+                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">Maximum {formatMoney(saleQuote?.finalAmountCents ?? selectedPlan.price)}</p>
                 )}
               </FormField>
               <FormField label="Méthode">
@@ -482,6 +539,20 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
                 <dd className="text-right font-medium">{endDate ? new Date(endDate).toLocaleDateString("fr-FR") : "—"}</dd>
               </div>
               <div className="flex items-start justify-between gap-3 py-2.5">
+                <dt className="text-[var(--muted-foreground)]">Prix catalogue</dt>
+                <dd className="text-right font-medium">{saleQuote ? formatMoney(saleQuote.listPriceCents) : "—"}</dd>
+              </div>
+              {saleQuote && saleQuote.discountCents > 0 ? (
+                <div className="flex items-start justify-between gap-3 py-2.5 text-[var(--success)]">
+                  <dt>{saleQuote.offerName ?? "Offre"}</dt>
+                  <dd className="text-right font-semibold">− {formatMoney(saleQuote.discountCents)}</dd>
+                </div>
+              ) : null}
+              <div className="flex items-start justify-between gap-3 py-2.5">
+                <dt className="font-semibold text-[var(--foreground)]">Prix final</dt>
+                <dd className="text-right font-bold text-[var(--foreground)]">{saleQuote ? formatMoney(saleQuote.finalAmountCents) : "—"}</dd>
+              </div>
+              <div className="flex items-start justify-between gap-3 py-2.5">
                 <dt className="text-[var(--muted-foreground)]">Paiement initial</dt>
                 <dd className="text-right font-semibold text-[var(--primary)]">
                   {paymentNum > 0 ? formatMoney(paymentNum) : "Aucun"}
@@ -506,7 +577,7 @@ export function SubscriptionAddForm({ membersOptions, plansOptions, initialMembe
           Annuler
         </button>
         <button type="submit" disabled={loading || paymentTooHigh} className="btn btn-primary btn-block-mobile">
-          {loading ? "Enregistrement..." : "Renouveler"}
+          {loading ? "Enregistrement..." : memberMode === "NEW" ? "Confirmer l'inscription" : "Renouveler"}
         </button>
       </FormActions>
     </form>

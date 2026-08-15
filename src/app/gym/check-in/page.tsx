@@ -10,7 +10,12 @@ import { isTenantModuleEnabled } from "@/lib/tenant-modules";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function GymCheckInPage() {
+export default async function GymCheckInPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ query?: string }>;
+}) {
+  const { query = "" } = await searchParams;
   const user = await getAuthUser();
   const enabled = user ? await isTenantModuleEnabled(user.tenantId, "GYM_ACCESS") : false;
   const permitted = user ? await userHasPermission(user, "gym.checkin") : false;
@@ -33,7 +38,7 @@ export default async function GymCheckInPage() {
         description="Vérifiez le pass et enregistrez l'entrée du membre."
         actions={canManageVisits ? <Link href="/gym/visits" className="btn btn-ghost"><History className="size-4" /> Historique</Link> : undefined}
       />
-      <GymCheckInPanel />
+      <GymCheckInPanel key={query} initialQuery={query} />
     </main>
   );
 }

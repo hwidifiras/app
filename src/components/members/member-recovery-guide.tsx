@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ComponentType } from "react";
-import { Banknote, CalendarCheck2, CreditCard, PencilLine, ShieldCheck, UsersRound } from "lucide-react";
+import { Banknote, CalendarCheck2, CreditCard, Dumbbell, PencilLine, ShieldCheck, UsersRound } from "lucide-react";
 
 import { MemberEnrollmentRecoveryPanel } from "@/components/members/member-enrollment-recovery-panel";
 import type { EnrollmentRecoveryCandidate } from "@/lib/enrollment-recovery";
@@ -9,6 +9,9 @@ type MemberRecoveryGuideProps = {
   memberId: string;
   hasSubscriptions: boolean;
   hasAttendances: boolean;
+  hasGymVisits: boolean;
+  hasClassModule: boolean;
+  hasGymModule: boolean;
   enrollmentRecoveryCandidates: EnrollmentRecoveryCandidate[];
 };
 
@@ -24,6 +27,9 @@ export function MemberRecoveryGuide({
   memberId,
   hasSubscriptions,
   hasAttendances,
+  hasGymVisits,
+  hasClassModule,
+  hasGymModule,
   enrollmentRecoveryCandidates,
 }: MemberRecoveryGuideProps) {
   const items: RecoveryItem[] = [
@@ -50,22 +56,37 @@ export function MemberRecoveryGuide({
       action: "Historique",
       icon: Banknote,
     },
-    {
-      label: "Pointage",
-      description: hasAttendances
-        ? "Rouvrir ou corriger depuis la séance concernée pour garder la trace."
-        : "Les corrections seront disponibles après le premier pointage.",
-      href: hasAttendances ? "#member-attendance" : "/attendance/today",
-      action: hasAttendances ? "Voir" : "Pointage",
-      icon: CalendarCheck2,
-    },
-    {
-      label: "Affectation",
-      description: "Ajouter ce membre au bon cours ou corriger son groupe actif.",
-      href: `/members/${memberId}/add-to-group`,
-      action: "Affecter",
-      icon: UsersRound,
-    },
+    ...(hasClassModule
+      ? [
+          {
+            label: "Pointage",
+            description: hasAttendances
+              ? "Rouvrir ou corriger depuis la séance concernée pour garder la trace."
+              : "Les corrections seront disponibles après le premier pointage.",
+            href: hasAttendances ? "#member-attendance" : "/attendance/today",
+            action: hasAttendances ? "Voir" : "Pointage",
+            icon: CalendarCheck2,
+          },
+          {
+            label: "Affectation",
+            description: "Ajouter ce membre au bon cours ou corriger son groupe actif.",
+            href: `/members/${memberId}/add-to-group`,
+            action: "Affecter",
+            icon: UsersRound,
+          },
+        ]
+      : []),
+    ...(hasGymModule
+      ? [{
+          label: "Accès salle",
+          description: hasGymVisits
+            ? "Corriger un passage depuis l'historique sans supprimer sa trace."
+            : "Les corrections seront disponibles après le premier passage.",
+          href: hasGymVisits ? "/gym/visits" : "/gym/check-in",
+          action: hasGymVisits ? "Historique" : "Contrôler",
+          icon: Dumbbell,
+        }]
+      : []),
   ];
 
   return (
@@ -77,8 +98,7 @@ export function MemberRecoveryGuide({
         <div className="min-w-0">
           <h2 className="text-sm font-semibold text-[var(--foreground)]">Corriger une erreur</h2>
           <p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">
-            Les erreurs se corrigent par élément: identité, abonnement, paiement, pointage ou affectation. Les actions
-            sensibles gardent un motif dans le journal.
+            Corrigez chaque élément depuis son historique. Les actions sensibles gardent le motif et l&apos;original dans le journal.
           </p>
         </div>
       </div>

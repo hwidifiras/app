@@ -1,17 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { getClubSettings } from "@/lib/club-settings";
-import {
-  evaluateGymAccess,
-  evaluateGymAccessBatch,
-  invalidGymCredentialDecision,
-} from "@/lib/gym-access-policy";
+import { evaluateGymAccessBatch } from "@/lib/gym-access-policy";
 import { prisma } from "@/lib/prisma";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
 import { gymCheckInSchema } from "@/lib/schemas/gym";
 import { requireTenantModule, tenantModuleErrorResponse } from "@/lib/tenant-modules";
-import { recordGymAccessDecision } from "@/modules/gym/access-attempts";
-import { resolveGymCredential } from "@/modules/gym/access-credentials";
+import { recordGymCheckIn } from "@/modules/gym/check-in-service";
 
 export const runtime = "nodejs";
 
@@ -86,94 +81,13 @@ export async function POST(request: Request) {
   const settings = await getClubSettings({ tenantId: actor.tenantId });
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
-      const now = new Date();
-      const resolvedCredential = parsed.data.credentialCode
-        ? await resolveGymCredential(tx, { tenantId: actor.tenantId, credentialCode: parsed.data.credentialCode })
-        : null;
-      if (resolvedCredential && resolvedCredential.status !== "ACTIVE") {
-        const decision = invalidGymCredentialDecision(resolvedCredential.status === "REVOKED");
-        await recordGymAccessDecision(tx, {
-          tenantId: actor.tenantId,
-          actorId: actor.id,
-          decision,
-          memberId: resolvedCredential.memberId,
-          credentialId: resolvedCredential.credential?.id,
-          identifierFingerprint: resolvedCredential.fingerprint,
-          occurredAt: now,
-        });
-        return { decision, visit: null };
-      }
-
-      const memberId = resolvedCredential?.memberId ?? parsed.data.memberId;
-      if (!memberId) throw new Error("MEMBER_NOT_FOUND");
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${actor.tenantId}:${memberId}`}))`;
-      const decision = await evaluateGymAccess(tx, {
-        tenantId: actor.tenantId,
-        memberId,
-        settings,
-        overrideReason: parsed.data.overrideReason,
-        actorId: actor.id,
-        activatePending: true,
-        now,
-      });
-      await recordGymAccessDecision(tx, {
-        tenantId: actor.tenantId,
-        actorId: actor.id,
-        decision,
-        memberId,
-        credentialId: resolvedCredential?.credential.id,
-        overrideReason: parsed.data.overrideReason,
-        occurredAt: now,
-      });
-      if (!decision.allowed || !decision.entitlement || !decision.member) {
-        return { decision, visit: null };
-      }
-
-      if (decision.unitsDelta < 0) {
-        const debit = await tx.subscriptionEntitlement.updateMany({
-          where: {
-            id: decision.entitlement.id,
-            tenantId: actor.tenantId,
-            remainingUnits: { gte: Math.abs(decision.unitsDelta) },
-          },
-          data: { remainingUnits: { decrement: Math.abs(decision.unitsDelta) } },
-        });
-        if (debit.count !== 1) throw new Error("GYM_QUOTA_RACE");
-      }
-
-      const visit = await tx.gymVisit.create({
-        data: {
-          tenantId: actor.tenantId,
-          memberId: decision.member.id,
-          memberSubscriptionId: decision.entitlement.memberSubscriptionId,
-          subscriptionEntitlementId: decision.entitlement.id,
-          entryType: "CHECK_IN",
-          unitsDelta: decision.unitsDelta,
-          checkedById: actor.id,
-          overrideReason: decision.override ? parsed.data.overrideReason : null,
-          checkedAt: now,
-        },
-      });
-      await tx.auditLog.create({
-        data: {
-          tenantId: actor.tenantId,
-          action: "GYM_CHECK_IN_CREATED",
-          entityType: "GymVisit",
-          entityId: visit.id,
-          userId: actor.id,
-          details: JSON.stringify({
-            memberId: decision.member.id,
-            subscriptionId: decision.entitlement.memberSubscriptionId,
-            entitlementId: decision.entitlement.id,
-            unitsDelta: decision.unitsDelta,
-            override: decision.override,
-            overrideReason: parsed.data.overrideReason ?? null,
-            credentialId: resolvedCredential?.credential.id ?? null,
-          }),
-        },
-      });
-      return { decision, visit };
+    const result = await recordGymCheckIn(prisma, {
+      tenantId: actor.tenantId,
+      actorId: actor.id,
+      settings,
+      memberId: parsed.data.memberId,
+      credentialCode: parsed.data.credentialCode,
+      overrideReason: parsed.data.overrideReason,
     });
 
     if (!result.visit) {

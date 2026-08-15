@@ -7,8 +7,8 @@ import { GymCredentialAdmission } from "@/components/gym/gym-credential-admissio
 import type { GymAccessDecisionDto as AccessDecision } from "@/components/gym/gym-types";
 import { formatMoney } from "@/lib/money";
 
-export function GymCheckInPanel() {
-  const [query, setQuery] = useState("");
+export function GymCheckInPanel({ initialQuery = "" }: { initialQuery?: string }) {
+  const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<AccessDecision[]>([]);
   const [loading, setLoading] = useState(false);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
@@ -16,9 +16,9 @@ export function GymCheckInPanel() {
   const [overrideReason, setOverrideReason] = useState("");
   const [message, setMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
 
-  async function searchMembers(event?: React.FormEvent) {
-    event?.preventDefault();
-    if (query.trim().length < 2) {
+  async function loadMembers(searchQuery: string) {
+    const normalized = searchQuery.trim();
+    if (normalized.length < 2) {
       setResults([]);
       setMessage({ tone: "error", text: "Saisissez au moins 2 caractères." });
       return;
@@ -26,7 +26,7 @@ export function GymCheckInPanel() {
     setLoading(true);
     setMessage(null);
     try {
-      const response = await fetch(`/api/gym/check-in?query=${encodeURIComponent(query.trim())}`, { cache: "no-store" });
+      const response = await fetch(`/api/gym/check-in?query=${encodeURIComponent(normalized)}`, { cache: "no-store" });
       const json = (await response.json()) as { data?: AccessDecision[]; error?: string };
       if (!response.ok) throw new Error(json.error || "Recherche impossible");
       setResults(json.data ?? []);
@@ -35,6 +35,11 @@ export function GymCheckInPanel() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function searchMembers(event?: React.FormEvent) {
+    event?.preventDefault();
+    await loadMembers(query);
   }
 
   async function checkIn(decision: AccessDecision, exceptional = false) {

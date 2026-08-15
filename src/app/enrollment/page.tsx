@@ -32,6 +32,18 @@ export default async function EnrollmentPage({
   const accessContext = user && product && selectedType !== "class"
     ? await loadEnrollmentContext({ tenantId: user.tenantId, type: selectedType, product })
     : null;
+  const accessOffers = (accessContext?.offers ?? [])
+    .filter((offer) => (offer.kind === "PERCENT_OFF" || offer.kind === "FIXED_OFF") && !offer.sportId)
+    .map((offer) => ({
+      id: offer.id,
+      name: offer.name,
+      kind: offer.kind,
+      planScope: offer.planScope,
+      isActive: offer.isActive,
+      percentOff: offer.percentOff,
+      amountOffCents: offer.amountOffCents,
+      sportId: offer.sportId,
+    }));
 
   return (
     <main className="app-shell py-4 md:py-8">
@@ -54,7 +66,16 @@ export default async function EnrollmentPage({
         <EnrollmentWizard initialMemberId={memberId ?? ""} initialOfferId={offerId ?? ""} initialStep={initialStep} receiptPrintDefault={settings.receiptPrintDefault} />
       ) : accessContext ? (
         accessContext.plans.length > 0 ? (
-          <SubscriptionAddForm membersOptions={accessContext.members} plansOptions={accessContext.plans} groupsOptions={accessContext.groups.map((group) => ({ id: group.id, name: group.name, sportId: group.sportId, sportName: group.sport.name }))} initialMemberId={memberId ?? ""} initialPlanKind={selectedType === "gym" ? "GYM" : "MIXED"} receiptPrintDefault={settings.receiptPrintDefault} />
+          <SubscriptionAddForm
+            membersOptions={accessContext.members}
+            plansOptions={accessContext.plans}
+            groupsOptions={accessContext.groups.map((group) => ({ id: group.id, name: group.name, sportId: group.sportId, sportName: group.sport.name }))}
+            offersOptions={accessOffers}
+            initialMemberId={memberId ?? ""}
+            initialPlanKind={selectedType === "gym" ? "GYM" : "MIXED"}
+            initialOfferId={offerId ?? ""}
+            receiptPrintDefault={settings.receiptPrintDefault}
+          />
         ) : (
           <section className="panel panel-soft p-6 text-center"><h2 className="font-semibold">Aucune formule disponible</h2><p className="mt-1 text-sm text-[var(--muted-foreground)]">Demandez à un responsable de créer une formule {selectedType === "gym" ? "Accès salle" : "Pack mixte"}.</p>{canManagePlans ? <Link href="/subscription-plans/new" className="btn btn-primary mt-4">Créer une formule</Link> : null}</section>
         )

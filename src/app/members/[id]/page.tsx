@@ -6,7 +6,10 @@ import { MemberDangerActions } from "@/components/members/member-danger-actions"
 import { GymMemberCardManager } from "@/components/gym/gym-member-card-manager";
 import { MemberEditCard } from "@/components/members/member-edit-card";
 import { MemberOffersSection } from "@/components/members/member-offers-section";
-import { MemberProfileHero } from "@/components/members/member-profile-hero";
+import {
+  MemberProfileHero,
+  type MemberProfileAction,
+} from "@/components/members/member-profile-hero";
 import { MemberRecoveryGuide } from "@/components/members/member-recovery-guide";
 import { MemberSubscriptionCards } from "@/components/members/member-subscription-cards";
 import { HouseholdCard } from "@/components/members/household-card";
@@ -26,6 +29,7 @@ import { prisma } from "@/lib/prisma";
 import { userHasPermission } from "@/lib/permissions";
 import { getAuthUser } from "@/lib/request-user";
 import { isTechnicalAdmin } from "@/lib/technical-admin";
+import { buildMemberProductHealth } from "@/modules/members/member-product-health";
 import { getTenantProductContext } from "@/platform/product/product-context";
 
 export const dynamic = "force-dynamic";
@@ -56,38 +60,51 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
     );
   }
 
-  const [product, canManageGymCards] = await Promise.all([
+  const [
+    product,
+    canManageGymCards,
+    canCollectPayments,
+    canSellEnrollment,
+    canCheckInGym,
+    canCorrectSubscriptions,
+  ] = await Promise.all([
     getTenantProductContext(authUser.tenantId),
     userHasPermission(authUser, "gym.manage"),
+    userHasPermission(authUser, "payments.collect"),
+    userHasPermission(authUser, "enrollment.sell"),
+    userHasPermission(authUser, "gym.checkin"),
+    userHasPermission(authUser, "subscriptions.correct"),
   ]);
 
   const member = await prisma.member.findFirst({
     where: { id, tenantId: authUser.tenantId },
     include: {
-      groups: {
-        where: { tenantId: authUser.tenantId },
-        include: {
-          group: {
-            select: {
-              id: true,
-              name: true,
-              sport: { select: { name: true } },
-              coach: { select: { firstName: true, lastName: true } },
-              room: true,
-              schedules: { where: { tenantId: authUser.tenantId }, orderBy: { createdAt: "asc" }, take: 1 },
-            },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-      },
       subscriptions: {
         where: { tenantId: authUser.tenantId },
         orderBy: { createdAt: "desc" },
         take: 20,
         include: {
           sport: { select: { id: true, name: true } },
-          plan: { select: { name: true, price: true, totalSessions: true } },
+          plan: { select: { name: true, price: true, totalSessions: true, planKind: true } },
           entitlements: { include: { sport: { select: { name: true } } }, orderBy: { createdAt: "asc" } },
+          pauseEvents: {
+            select: {
+              id: true,
+              entryType: true,
+              pauseEventId: true,
+              effectiveAt: true,
+              durationSeconds: true,
+            },
+            orderBy: { effectiveAt: "asc" },
+          },
+          renewedBySubscription: {
+            select: {
+              status: true,
+              activationPolicy: true,
+              activatedAt: true,
+              startDate: true,
+            },
+          },
           payments: {
             where: { tenantId: authUser.tenantId },
             select: { amount: true, paymentDate: true },
@@ -96,26 +113,6 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
           },
         },
       },
-      attendances: {
-        where: { tenantId: authUser.tenantId },
-        orderBy: { checkedAt: "desc" },
-        take: 20,
-        include: {
-          session: {
-            select: {
-              id: true,
-              sessionDate: true,
-              startTime: true,
-              group: { select: { name: true } },
-            },
-          },
-        },
-      },
-      accessCredentials: {
-        where: { tenantId: authUser.tenantId, revokedAt: null },
-        select: { id: true, codeHint: true, issuedAt: true },
-        take: 1,
-      },
     },
   });
 
@@ -123,33 +120,147 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
     notFound();
   }
 
-  const activeGroups = member.groups.filter((assignment) => assignment.status === "ACTIVE");
-  const inactiveGroups = member.groups.filter((assignment) => assignment.status === "INACTIVE");
-  const activeSubscriptions = member.subscriptions.filter((subscription) => subscription.status === "ACTIVE");
-  const activeRemainingSessions = activeSubscriptions.reduce((sum, subscription) => sum + subscription.remainingSessions, 0);
-  const latestAttendance = member.attendances[0] ?? null;
-  const activeSubscriptionLabel =
-    activeSubscriptions.length === 0
-      ? "À renouveler"
-      : activeSubscriptions.length === 1
-        ? activeSubscriptions[0].plan.name
-        : `${activeSubscriptions.length} actifs`;
-  const remainingSessionsLabel =
-    activeSubscriptions.length === 0
-      ? "Aucun quota actif"
-      : `${activeRemainingSessions} séance${activeRemainingSessions > 1 ? "s" : ""}`;
-  const lastAttendanceLabel = latestAttendance
-    ? `${attendanceStatus(latestAttendance.status).label} · ${formatDate(latestAttendance.session.sessionDate)}`
-    : "Aucun pointage";
-  const totalDebt = member.subscriptions.reduce((sum, subscription) => {
-    const totalPaid = subscription.payments.reduce((acc, payment) => acc + payment.amount, 0);
-    return sum + Math.max(0, subscription.amount - totalPaid);
-  }, 0);
-  const enrollmentRecoveryCandidates = await getEnrollmentRecoveryCandidatesForMember(
-    member.id,
-    authUser.tenantId,
-  );
+  const [
+    memberGroups,
+    memberAttendances,
+    accessCredentials,
+    latestGymVisit,
+    enrollmentRecoveryCandidates,
+  ] = await Promise.all([
+    product.capabilities.classManagement
+      ? prisma.groupMember.findMany({
+          where: { tenantId: authUser.tenantId, memberId: member.id },
+          include: {
+            group: {
+              select: {
+                id: true,
+                name: true,
+                sport: { select: { name: true } },
+                coach: { select: { firstName: true, lastName: true } },
+                room: true,
+                schedules: {
+                  where: { tenantId: authUser.tenantId },
+                  orderBy: { createdAt: "asc" },
+                  take: 1,
+                },
+              },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        })
+      : Promise.resolve([]),
+    product.capabilities.classManagement
+      ? prisma.attendance.findMany({
+          where: { tenantId: authUser.tenantId, memberId: member.id },
+          orderBy: { checkedAt: "desc" },
+          take: 20,
+          include: {
+            session: {
+              select: {
+                id: true,
+                sessionDate: true,
+                startTime: true,
+                group: { select: { name: true } },
+              },
+            },
+          },
+        })
+      : Promise.resolve([]),
+    product.capabilities.gymAccess && canManageGymCards
+      ? prisma.memberAccessCredential.findMany({
+          where: { tenantId: authUser.tenantId, memberId: member.id, revokedAt: null },
+          select: { id: true, codeHint: true, issuedAt: true },
+          orderBy: { issuedAt: "desc" },
+          take: 1,
+        })
+      : Promise.resolve([]),
+    product.capabilities.gymAccess
+      ? prisma.gymVisit.findFirst({
+          where: {
+            tenantId: authUser.tenantId,
+            memberId: member.id,
+            entryType: "CHECK_IN",
+            corrections: { none: { entryType: "REVERSAL" } },
+          },
+          select: { checkedAt: true },
+          orderBy: { checkedAt: "desc" },
+        })
+      : Promise.resolve(null),
+    getEnrollmentRecoveryCandidatesForMember(member.id, authUser.tenantId),
+  ]);
 
+  const activeGroups = memberGroups.filter((assignment) => assignment.status === "ACTIVE");
+  const inactiveGroups = memberGroups.filter((assignment) => assignment.status === "INACTIVE");
+  const health = buildMemberProductHealth({
+    memberStatus: member.status,
+    subscriptions: member.subscriptions,
+    activeGroupsCount: activeGroups.length,
+    hasClassModule: product.capabilities.classManagement,
+    hasGymModule: product.capabilities.gymAccess,
+    lastClassAttendanceAt: memberAttendances[0]?.checkedAt ?? null,
+    lastGymVisitAt: latestGymVisit?.checkedAt ?? null,
+  });
+
+  const enrollmentType = health.nextActionPlanKind === "GYM"
+    ? "gym"
+    : health.nextActionPlanKind === "MIXED"
+      ? "mixed"
+      : product.profile === "GYM_ONLY"
+        ? "gym"
+        : "class";
+  const memberActions: MemberProfileAction[] = [];
+  if (member.status === "ACTIVE" && health.debtCents > 0 && canCollectPayments) {
+    memberActions.push({
+      kind: "COLLECT",
+      label: "Encaisser",
+      href: `/payments/new?memberId=${member.id}`,
+    });
+  }
+  if (
+    member.status === "ACTIVE"
+    && health.nextActionKind === "RESUME"
+    && health.nextActionSubscriptionId
+    && canCorrectSubscriptions
+  ) {
+    memberActions.push({
+      kind: "RESUME",
+      label: "Reprendre",
+      href: `/subscriptions/${health.nextActionSubscriptionId}/edit`,
+    });
+  }
+  if (member.status === "ACTIVE" && canSellEnrollment) {
+    memberActions.push({
+      kind: "RENEW",
+      label: "Renouveler",
+      href: `/enrollment?memberId=${member.id}&type=${enrollmentType}`,
+    });
+  }
+  if (member.status === "ACTIVE" && product.capabilities.classManagement && canSellEnrollment) {
+    memberActions.push({
+      kind: "ASSIGN_CLASS",
+      label: "Affecter",
+      href: `/members/${member.id}/add-to-group`,
+    });
+  }
+  if (member.status === "ACTIVE" && product.capabilities.gymAccess && canCheckInGym) {
+    memberActions.push({
+      kind: "GYM_CHECK_IN",
+      label: "Accès salle",
+      href: `/gym/check-in?query=${encodeURIComponent(member.phone)}`,
+    });
+  }
+  if (member.status === "ACTIVE") {
+    memberActions.push({ kind: "ARCHIVE", label: "Archiver", href: "#member-danger" });
+  }
+  const recommendedActionKind = memberActions.find((action) => action.kind === health.nextActionKind)?.kind ?? null;
+  const nextReflex = {
+    COLLECT: "Encaissez le solde avant le prochain accès, sauf passage exceptionnel autorisé.",
+    RESUME: "Reprenez la formule quand le membre revient afin de réactiver tous ses droits.",
+    GYM_CHECK_IN: "Le premier passage en salle activera cette formule automatiquement.",
+    ASSIGN_CLASS: "Affectez le membre au bon cours avant son prochain pointage.",
+    RENEW: "Préparez le renouvellement pour éviter une interruption d'accès.",
+    NONE: "Le dossier est à jour. Aucune action urgente n'est nécessaire.",
+  }[health.nextActionKind];
   const subscriptionCards = member.subscriptions.map((subscription) => ({
     id: subscription.id,
     planName: subscription.plan.name,
@@ -191,17 +302,26 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
             parentName: member.parentName,
             parentPhone: member.parentPhone,
           }}
-          totalDebtCents={totalDebt}
-          activeSubscriptionsCount={activeSubscriptions.length}
-          activeGroupsCount={activeGroups.length}
-          activeSubscriptionLabel={activeSubscriptionLabel}
-          remainingSessionsLabel={remainingSessionsLabel}
-          lastAttendanceLabel={lastAttendanceLabel}
+          totalDebtCents={health.debtCents}
+          activeSubscriptionsCount={health.currentSubscriptionCount}
+          activityScopeLabel={product.profile === "GYM_ONLY"
+            ? "accès salle"
+            : product.profile === "HYBRID"
+              ? `${activeGroups.length} cours · salle`
+              : `${activeGroups.length} cours`}
+          subscriptionLabel={health.subscriptionLabel}
+          classRightsLabel={health.classRightsLabel}
+          gymAccessLabel={health.gymAccessLabel}
+          validityLabel={health.validityLabel}
+          lastActivityLabel={health.lastActivityLabel}
+          actions={memberActions}
+          recommendedActionKind={recommendedActionKind}
         />
 
         <div className="grid min-w-0 items-start gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
           <div className="grid min-w-0 gap-4 sm:gap-5">
-            <section id="member-subscriptions" className="panel min-w-0 scroll-mt-24 p-4 sm:p-5">
+            {product.capabilities.classManagement ? (
+            <section id="member-classes" className="panel min-w-0 scroll-mt-24 p-4 sm:p-5">
               <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-[var(--primary)]">
@@ -277,8 +397,9 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                 </ul>
               )}
             </section>
+            ) : null}
 
-            <section id="member-attendance" className="panel min-w-0 scroll-mt-24 p-4 sm:p-5">
+            <section id="member-subscriptions" className="panel min-w-0 scroll-mt-24 p-4 sm:p-5">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-[var(--primary)]">
@@ -293,20 +414,21 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
               <MemberSubscriptionCards subscriptions={subscriptionCards} />
             </section>
 
-            <section className="panel min-w-0 p-4 sm:p-5">
+            {product.capabilities.classManagement ? (
+            <section id="member-attendance" className="panel min-w-0 scroll-mt-24 p-4 sm:p-5">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-[var(--primary)]">
                     Présences
                   </p>
                   <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                    Récentes ({member.attendances.length})
+                    Récentes ({memberAttendances.length})
                   </h2>
                 </div>
                 <CalendarCheck2 className="size-5 text-[var(--muted-foreground)]" />
               </div>
 
-              {member.attendances.length === 0 ? (
+              {memberAttendances.length === 0 ? (
                 <EmptyState
                   icon={<CalendarCheck2 className="size-8 opacity-45" />}
                   title="Aucun pointage"
@@ -325,7 +447,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                     </tr>
                   </DataTableHead>
                   <DataTableBody>
-                    {member.attendances.map((attendance) => {
+                    {memberAttendances.map((attendance) => {
                       const status = attendanceStatus(attendance.status);
                       return (
                         <DataTableRow key={attendance.id}>
@@ -355,10 +477,11 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                 </DataTable>
               )}
             </section>
+            ) : null}
 
             <MemberOffersSection memberId={member.id} memberName={`${member.firstName} ${member.lastName}`} wide />
 
-            {inactiveGroups.length > 0 ? (
+            {product.capabilities.classManagement && inactiveGroups.length > 0 ? (
               <details className="panel min-w-0 p-4 sm:p-5">
                 <summary className="cursor-pointer text-sm font-semibold text-[var(--foreground)]">
                   Anciennes affectations ({inactiveGroups.length})
@@ -386,11 +509,11 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
               <GymMemberCardManager
                 memberId={member.id}
                 memberName={`${member.firstName} ${member.lastName}`}
-                initialCredential={member.accessCredentials[0]
+                initialCredential={accessCredentials[0]
                   ? {
-                      id: member.accessCredentials[0].id,
-                      codeHint: member.accessCredentials[0].codeHint,
-                      issuedAt: member.accessCredentials[0].issuedAt.toISOString(),
+                      id: accessCredentials[0].id,
+                      codeHint: accessCredentials[0].codeHint,
+                      issuedAt: accessCredentials[0].issuedAt.toISOString(),
                     }
                   : null}
               />
@@ -398,7 +521,10 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
             <MemberRecoveryGuide
               memberId={member.id}
               hasSubscriptions={member.subscriptions.length > 0}
-              hasAttendances={member.attendances.length > 0}
+              hasAttendances={memberAttendances.length > 0}
+              hasGymVisits={Boolean(latestGymVisit)}
+              hasClassModule={product.capabilities.classManagement}
+              hasGymModule={product.capabilities.gymAccess}
               enrollmentRecoveryCandidates={enrollmentRecoveryCandidates}
             />
             <div id="member-edit" className="scroll-mt-24">
@@ -429,7 +555,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                 Prochain réflexe
               </div>
               <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-                Vérifiez le solde, puis affectez le membre au bon cours avant le prochain pointage.
+                {nextReflex}
               </p>
             </div>
             <div id="member-danger" className="scroll-mt-24">
