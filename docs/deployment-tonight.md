@@ -1,55 +1,38 @@
-# Deployment Tonight
+# Deployment checklist
 
-## Recommended path for tonight
+The supported deployment is the PostgreSQL multi-tenant stack in `docs/vps-deployment.md`. Do not create a new production deployment on a file database.
 
-Use the VPS Docker path in `docs/vps-deployment.md`.
+## Before the maintenance window
 
-This project currently uses SQLite Prisma migrations. That makes the safest same-night deployment:
+- [ ] CI is green: Prisma validate/generate, typecheck, lint, PostgreSQL scenarios, and build.
+- [ ] The target commit SHA and migration list are recorded.
+- [ ] `.env.production` passes `docker compose --env-file .env.production config --quiet`.
+- [ ] `POSTGRES_PASSWORD` and `AUTH_SECRET` are unique, non-default secrets.
+- [ ] `APP_URL`, `SAAS_ROOT_DOMAIN`, and `DEFAULT_TENANT_SLUG` match the intended tenant routing.
+- [ ] Shared REST Redis rate limiting is configured and reachable, and `TRUSTED_PROXY_HOPS` matches the real proxy chain.
+- [ ] A compressed PostgreSQL backup exists, is non-empty, and has a checksum.
+- [ ] The previous application image/tag and rollback owner are known.
 
-- Dockerized Next.js app.
-- SQLite database persisted in a Docker volume.
-- Nginx reverse proxy.
-- Certbot SSL.
+## Deploy
 
-## Recommended SaaS path after launch
+```bash
+git pull --ff-only origin main
+docker compose --env-file .env.production up -d --build
+docker compose --env-file .env.production ps --all
+docker compose --env-file .env.production logs --tail=150 dojo-migrate dojo-app
+```
 
-Use Vercel + Neon Postgres for a real SaaS path:
+Accept the deployment only when `dojo-migrate` exited `0`, `dojo-app` is healthy, and both probes succeed:
 
-1. Create a Neon Postgres database.
-2. Set `DATABASE_URL` to the Neon pooled connection string.
-3. Set `AUTH_SECRET` to a long random value.
-4. Set `APP_URL` to the deployed URL.
-5. Configure password reset email:
-   - `RESEND_API_KEY`
-   - `PASSWORD_RESET_FROM`
-6. Run `npx prisma migrate deploy` during deployment.
-7. Run `npx prisma db seed` once for the first admin/demo data, or manually create the first admin in the database.
+```bash
+curl --fail http://127.0.0.1:3000/api/health
+curl --fail http://127.0.0.1:3000/api/ready
+```
 
-## Free and paid options
+Then smoke-test login, tenant isolation, one read, and one reversible write through the public TLS hostname.
 
-- Vercel + Neon: best free/cheap option for Next.js and future multi-dojo SaaS.
-- Render + Render Postgres: simple, paid recommended because free services sleep.
-- Railway: fastest setup, usually paid/trial, very convenient.
-- VPS + SQLite: cheapest quick demo path, but not recommended for production SaaS.
-- Azure App Service/Container Apps + Azure Database for PostgreSQL: professional, more expensive and more setup.
+## Stop conditions
 
-## Production checklist
+Stop the promotion if configuration validation fails, the migration service exits non-zero, readiness returns `503`, tenant resolution is wrong, or a write smoke test crosses tenant boundaries. Do not repeatedly restart the web service to retry a failed schema migration; diagnose the one-shot migration logs first.
 
-- `DATABASE_URL` must be Postgres for production.
-- `AUTH_SECRET` must not be the dev default.
-- `ALLOW_PUBLIC_REGISTER` should stay disabled unless intentionally onboarding staff publicly.
-- First admin should create staff accounts from `/settings/users`.
-- Staff accounts should be created with either full staff access or selected limited permissions.
-- Password reset requires email configuration in production.
-
-## Multi-dojo future
-
-The app is still deployed as one-dojo tonight. To support 100 dojos later, add:
-
-- `Club` or `Tenant` model.
-- `clubId` on users, members, sports, coaches, groups, plans, offers, payments, attendances, and audit logs.
-- Tenant scoping in every Prisma query.
-- Admin hierarchy: platform admin, club admin, staff.
-- Per-club settings and subscription billing.
-
-Do not add 100-dojo support by duplicating databases manually unless it is a temporary white-glove deployment.
+Database rollback is migration-specific. A previous app image does not reverse PostgreSQL schema or data changes. If compatibility is uncertain, stop writes and use the reviewed restoration/forward-fix plan.

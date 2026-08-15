@@ -1,96 +1,81 @@
-# Dev fork (parallel environment)
+# Development environments
 
-Use a **separate dev environment** while you ship many changes. Production (client VPS or `docker compose` on port **3000**) stays untouched.
+PostgreSQL is required for local development, tests, staging, and production. Keep each environment on a separate database and never point reset scripts at production.
 
-## What is isolated
+| Environment | Database | App port | Environment file |
+| --- | --- | --- | --- |
+| Local hot reload | `gymday_dev` on local PostgreSQL | 3000 | `.env.development` |
+| Docker development | `gymday_dev` in `dojo_postgres_dev` | 3001 | `.env.development` |
+| Tests | disposable database containing `test` in its name | none | `TEST_DATABASE_URL` |
+| Production | `gymday_prod` in `dojo_postgres` or managed PostgreSQL | 3000 by default | `.env.production` |
 
-| | Production | Dev fork |
-|---|------------|----------|
-| Database | `prod.db` (Docker volume) or your prod file | `prisma/dev.db` or Docker volume `dojo_data_dev` |
-| Port (Docker) | 3000 | **3001** |
-| Env file | `.env.production` | `.env.development` |
-| Hot reload | No (`next start`) | Yes (`npm run dev`) |
+## Local hot reload
 
-## Option A — Local dev (recommended for UI work)
-
-Best when you change screens often (tables, forms, mobile layout).
+Start PostgreSQL 16 on `localhost:5432`, then:
 
 ```powershell
-cd app
+Copy-Item .env.development.example .env.development
 npm run dev:setup
 npm run dev
 ```
 
-Open http://localhost:3000
+`dev:setup` applies migrations and generates the Prisma client using `.env.development`. Open `http://localhost:3000`.
 
-- Uses `.env.development` (create it with `dev:setup` from the example).
-- SQLite file: `prisma/dev.db` (not your production DB).
-- Edit code → browser refreshes automatically.
-
-Create a dev admin (once):
+Create a development admin with:
 
 ```powershell
-npm run admin:create
+npm run admin:create:dev
 ```
 
-## Option B — Docker dev sandbox (port 3001)
+## Docker development stack
 
-Same production image as the VPS, but **another database** and port. Good to test migrations/build before deploying.
+The Docker stack uses a separate PostgreSQL volume and the production image shape:
 
 ```powershell
-cd app
-copy .env.development.example .env.development
-# Edit AUTH_SECRET and APP_URL=http://localhost:3001 in .env.development
-
+Copy-Item .env.development.example .env.development
 npm run docker:dev:up
+docker compose -f docker-compose.dev.yml ps --all
 ```
 
-Open http://localhost:3001
+Open `http://localhost:3001`. `dojo-dev-migrate` exits `0` after applying migrations; `dojo-dev` then starts and becomes healthy through `/api/ready`.
 
-Stop dev container (prod on 3000 unaffected):
+Stop it without deleting data:
 
 ```powershell
 npm run docker:dev:down
 ```
 
-## Option C — Git branch for a dev period
+## Tests
+
+Start a disposable PostgreSQL database, then set `TEST_DATABASE_URL` if it is not available at the default local URL:
 
 ```powershell
-git checkout -b dev/sprint-may
-# work, commit often
-git push -u origin dev/sprint-may
+$env:TEST_DATABASE_URL = "postgresql://gymday:gymday@localhost:5432/gymday_test?schema=public"
+npm test
 ```
 
-When stable, merge into `main` and redeploy production only when ready.
+The pretest guard refuses a non-local or non-test-looking database unless an explicit override is set. Do not use that override in routine development or CI.
 
-## Running prod + dev at the same time
+## Reset development data
 
-| Stack | Command | URL |
-|-------|---------|-----|
-| Production Docker | `docker compose up -d` | http://localhost:3000 |
-| Dev Docker | `docker compose -f docker-compose.dev.yml up -d` | http://localhost:3001 |
-| Local hot reload | `npm run dev` | http://localhost:3000 |
-
-Do not run **local `npm run dev`** and **production Docker on 3000** together — same port. Use dev Docker on **3001** or stop prod first.
-
-## Reset dev data only
+Local reset and seed:
 
 ```powershell
-# Local SQLite
-Remove-Item prisma\dev.db -ErrorAction SilentlyContinue
-npm run dev:setup
+npm run dev:reset
+```
 
-# Docker dev volume
+Docker-only reset:
+
+```powershell
 docker compose -f docker-compose.dev.yml down -v
 npm run docker:dev:up
 ```
 
-Production `dojo_data` volume is **not** removed by the commands above.
+Both commands are destructive to development data. They do not target the production Compose volume.
 
-## Promote dev → production
+## Promote a change
 
-1. Run tests: `npm test`
-2. Build: `npm run build`
-3. On VPS: pull code, `docker compose up -d --build` (see `docs/vps-deployment.md`)
-
-Never copy `prisma/dev.db` over production `prod.db`.
+1. Run `npm run typecheck`, `npm run lint -- --no-cache`, `npm test`, and `npm run build`.
+2. Review migrations and confirm they are backward compatible with the intended rollout.
+3. Back up production PostgreSQL.
+4. Follow `docs/vps-deployment.md`; the one-shot migration service must exit `0` before the app becomes ready.
