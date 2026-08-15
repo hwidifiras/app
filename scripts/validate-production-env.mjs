@@ -131,9 +131,17 @@ const rateLimitUrlValue =
   value("RATE_LIMIT_REDIS_REST_URL") || value("UPSTASH_REDIS_REST_URL");
 const rateLimitToken =
   value("RATE_LIMIT_REDIS_REST_TOKEN") || value("UPSTASH_REDIS_REST_TOKEN");
-if (!rateLimitUrlValue) {
-  errors.push("RATE_LIMIT_REDIS_REST_URL is required for shared production rate limiting.");
-} else {
+const rateLimitBackend = value("RATE_LIMIT_BACKEND").toLowerCase();
+if (rateLimitBackend && !["memory", "redis"].includes(rateLimitBackend)) {
+  errors.push("RATE_LIMIT_BACKEND must be either memory or redis.");
+}
+const usesSingleInstanceMemoryRateLimit = rateLimitBackend === "memory";
+
+if (!rateLimitUrlValue && !usesSingleInstanceMemoryRateLimit) {
+  errors.push(
+    "RATE_LIMIT_REDIS_REST_URL is required unless RATE_LIMIT_BACKEND=memory is explicitly selected for one app replica.",
+  );
+} else if (rateLimitUrlValue) {
   try {
     const rateLimitUrl = new URL(rateLimitUrlValue);
     if (rateLimitUrl.protocol !== "https:") {
@@ -143,7 +151,7 @@ if (!rateLimitUrlValue) {
     errors.push("RATE_LIMIT_REDIS_REST_URL must be a valid absolute URL.");
   }
 }
-if (!rateLimitToken || isPlaceholder(rateLimitToken)) {
+if ((!rateLimitToken || isPlaceholder(rateLimitToken)) && !usesSingleInstanceMemoryRateLimit) {
   errors.push("RATE_LIMIT_REDIS_REST_TOKEN is required and must not be a placeholder.");
 }
 
@@ -167,6 +175,12 @@ if (errors.length > 0) {
   console.error("Production configuration is invalid:");
   for (const error of errors) console.error(`- ${error}`);
   process.exit(1);
+}
+
+if (usesSingleInstanceMemoryRateLimit) {
+  console.warn(
+    "Production rate limiting uses bounded process memory. Run exactly one app replica or configure REST Redis before scaling.",
+  );
 }
 
 console.log("Production configuration is valid.");

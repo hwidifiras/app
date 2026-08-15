@@ -61,6 +61,10 @@ function sharedBackendConfig(): SharedBackendConfig | null | "invalid" {
   };
 }
 
+function allowsSingleInstanceMemoryBackend(): boolean {
+  return process.env.RATE_LIMIT_BACKEND?.trim().toLowerCase() === "memory";
+}
+
 function storageKey(key: string, prefix = "memory"): string {
   const digest = createHash("sha256").update(key).digest("hex");
   return `${prefix}:${digest}`;
@@ -173,11 +177,16 @@ async function consumeShared(
  * Consumes one request from a fixed-window rate limit.
  *
  * Production deliberately fails closed when the shared REST Redis backend is
- * absent or unavailable. Development and tests use a bounded in-memory store.
+ * absent or unavailable unless a single-replica deployment explicitly selects
+ * RATE_LIMIT_BACKEND=memory. Development and tests use the bounded memory store.
  */
 export async function checkRateLimit(key: string, limit: number, windowMs: number): Promise<RateLimitResult> {
   if (!Number.isInteger(limit) || limit < 1 || !Number.isFinite(windowMs) || windowMs < 1) {
     throw new TypeError("Invalid rate-limit policy");
+  }
+
+  if (allowsSingleInstanceMemoryBackend()) {
+    return consumeMemory(key, limit, windowMs);
   }
 
   const backend = sharedBackendConfig();
@@ -185,7 +194,9 @@ export async function checkRateLimit(key: string, limit: number, windowMs: numbe
     return consumeShared(backend, key, limit, windowMs);
   }
 
-  if (backend === "invalid" || process.env.NODE_ENV === "production") {
+  if (
+    backend === "invalid" || process.env.NODE_ENV === "production"
+  ) {
     return { allowed: false, reason: "unavailable", retryAfterSeconds: 60 };
   }
 

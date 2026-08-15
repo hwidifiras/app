@@ -18,8 +18,9 @@ Copy `.env.production.example` to `.env.production` and configure:
 | `DEFAULT_TENANT_SLUG` | Yes | DNS-safe slug for the first tenant. |
 | `APP_TIMEZONE` | Yes | Club reporting timezone, for example `Africa/Tunis`. |
 | `ALLOW_PUBLIC_REGISTER` | No | Keep `false`; admins create staff users. |
-| `RATE_LIMIT_REDIS_REST_URL` | Yes | HTTPS REST Redis endpoint shared by all replicas. |
-| `RATE_LIMIT_REDIS_REST_TOKEN` | Yes | Secret token for the shared rate-limit backend. |
+| `RATE_LIMIT_BACKEND` | Yes | `memory` only for one app replica; use `redis` before scaling out. |
+| `RATE_LIMIT_REDIS_REST_URL` | With Redis | HTTPS REST Redis endpoint shared by all replicas. |
+| `RATE_LIMIT_REDIS_REST_TOKEN` | With Redis | Secret token for the shared rate-limit backend. |
 | `TRUSTED_PROXY_HOPS` | Yes | `1` for direct Nginx-to-app; change only for a reviewed proxy chain. |
 | `RESEND_API_KEY` | Optional | Configure together with `PASSWORD_RESET_FROM`. |
 | `PASSWORD_RESET_FROM` | Optional | Verified sender used for reset email. |

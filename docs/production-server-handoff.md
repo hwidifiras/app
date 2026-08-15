@@ -27,7 +27,7 @@ Record these values for each production promotion:
 - App readiness response through localhost and the public TLS endpoint.
 - Login and one tenant-scoped read/write smoke test.
 
-Never copy a development environment file onto the server. Keep `.env.production` mode `0600`, outside source control, and use real values for `POSTGRES_PASSWORD`, `AUTH_SECRET`, `APP_URL`, `SAAS_ROOT_DOMAIN`, `DEFAULT_TENANT_SLUG`, `RATE_LIMIT_REDIS_REST_URL`, and `RATE_LIMIT_REDIS_REST_TOKEN`. Set `TRUSTED_PROXY_HOPS=1` for the documented direct Nginx-to-app topology; any other value requires a reviewed proxy chain.
+Never copy a development environment file onto the server. Keep `.env.production` mode `0600`, outside source control, and use real values for `POSTGRES_PASSWORD`, `AUTH_SECRET`, `APP_URL`, `SAAS_ROOT_DOMAIN`, and `DEFAULT_TENANT_SLUG`. Set `RATE_LIMIT_BACKEND=memory` only for one app replica; otherwise configure the Redis REST URL/token. Set `TRUSTED_PROXY_HOPS=1` for the documented direct Nginx-to-app topology; any other value requires a reviewed proxy chain.
 
 ## Safe update sequence
 

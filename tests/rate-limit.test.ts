@@ -19,6 +19,7 @@ describe("rate-limit storage", () => {
     vi.stubEnv("RATE_LIMIT_REDIS_REST_TOKEN", "");
     vi.stubEnv("UPSTASH_REDIS_REST_URL", "");
     vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "");
+    vi.stubEnv("RATE_LIMIT_BACKEND", "");
   });
 
   afterEach(() => {
@@ -54,6 +55,19 @@ describe("rate-limit storage", () => {
       retryAfterSeconds: 60,
     });
     expect(getRateLimitBucketCountForTests()).toBe(0);
+  });
+
+  it("allows an explicit bounded memory backend for a single production replica", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("RATE_LIMIT_BACKEND", "memory");
+
+    await expect(checkRateLimit("login:tenant:client", 1, 60_000)).resolves.toEqual({
+      allowed: true,
+    });
+    await expect(checkRateLimit("login:tenant:client", 1, 60_000)).resolves.toMatchObject({
+      allowed: false,
+      reason: "limit",
+    });
   });
 
   it("uses an atomic REST Redis command when a shared backend is configured", async () => {

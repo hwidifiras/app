@@ -44,6 +44,7 @@ APP_URL="https://first-club.example.com"
 SAAS_ROOT_DOMAIN="example.com"
 DEFAULT_TENANT_SLUG="first-club"
 ALLOW_PUBLIC_REGISTER="false"
+RATE_LIMIT_BACKEND="redis"
 RATE_LIMIT_REDIS_REST_URL="https://your-rest-redis-endpoint"
 RATE_LIMIT_REDIS_REST_TOKEN="paste-the-rest-redis-token"
 TRUSTED_PROXY_HOPS="1"
@@ -62,9 +63,9 @@ npm ci
 npm run config:validate:production
 ```
 
-The Redis REST endpoint must be shared by every app replica; production authentication rate limits fail closed if it is missing or unavailable. `TRUSTED_PROXY_HOPS=1` is correct only for the direct Nginx-to-app topology shown below. Increase it only when another trusted proxy is deliberately added to the chain.
+The Redis REST endpoint must be shared by every app replica. A VPS running exactly one app replica may instead set `RATE_LIMIT_BACKEND="memory"` and omit the Redis values. Switch to Redis before adding another replica because memory counters are process-local. Production authentication rate limits otherwise fail closed if the selected backend is missing or unavailable. `TRUSTED_PROXY_HOPS=1` is correct only for the direct Nginx-to-app topology shown below. Increase it only when another trusted proxy is deliberately added to the chain.
 
-The validator rejects missing values, development defaults, placeholder secrets, non-PostgreSQL URLs, missing shared rate-limit storage, invalid proxy trust, and an insecure public `APP_URL`.
+The validator rejects missing values, development defaults, placeholder secrets, non-PostgreSQL URLs, an undeclared rate-limit backend, invalid proxy trust, and an insecure public `APP_URL`.
 
 ## 4. Start the stack
 

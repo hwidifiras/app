@@ -9,7 +9,7 @@ The supported deployment is the PostgreSQL multi-tenant stack in `docs/vps-deplo
 - [ ] `.env.production` passes `docker compose --env-file .env.production config --quiet`.
 - [ ] `POSTGRES_PASSWORD` and `AUTH_SECRET` are unique, non-default secrets.
 - [ ] `APP_URL`, `SAAS_ROOT_DOMAIN`, and `DEFAULT_TENANT_SLUG` match the intended tenant routing.
-- [ ] Shared REST Redis rate limiting is configured and reachable, and `TRUSTED_PROXY_HOPS` matches the real proxy chain.
+- [ ] Rate limiting is either shared REST Redis or explicit single-replica `RATE_LIMIT_BACKEND=memory`; `TRUSTED_PROXY_HOPS` matches the real proxy chain.
 - [ ] A compressed PostgreSQL backup exists, is non-empty, and has a checksum.
 - [ ] The previous application image/tag and rollback owner are known.
 
