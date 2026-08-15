@@ -528,6 +528,19 @@ beforeEach(async () => {
 });
 
 describe("temporary data import", () => {
+  beforeEach(async () => {
+    await prisma.user.create({
+      data: {
+        id: "admin-import",
+        tenantId: TEST_TENANT_ID,
+        email: "admin-import@test.local",
+        name: "Admin Import",
+        role: "ADMIN",
+        passwordHash: await hashPassword("password123"),
+      },
+    });
+  });
+
   it("generates a member code when the import file has no code column", async () => {
     const fx = await dojoFixture();
     const rows = [

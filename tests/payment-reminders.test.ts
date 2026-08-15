@@ -66,6 +66,15 @@ describe("payment reminders", () => {
   });
 
   it("sends reminder email and writes audit log", async () => {
+    await prisma.user.create({
+      data: {
+        id: "staff-1",
+        email: "staff-1@example.com",
+        name: "Staff Reminder",
+        role: "STAFF",
+        passwordHash: "not-used-in-this-test",
+      },
+    });
     const sport = await prisma.sport.create({ data: { name: `Sport-${Date.now()}` } });
     const plan = await prisma.subscriptionPlan.create({
       data: {
