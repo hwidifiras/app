@@ -506,24 +506,24 @@ async function restoreSnapshot(tx, tenantId, snapshot) {
   await tx.tenantModule.deleteMany({
     where: { tenantId, moduleKey: { notIn: snapshotKeys } },
   });
-  for (const module of snapshot.modules) {
+  for (const moduleGrant of snapshot.modules) {
     await tx.tenantModule.upsert({
-      where: { tenantId_moduleKey: { tenantId, moduleKey: module.moduleKey } },
+      where: { tenantId_moduleKey: { tenantId, moduleKey: moduleGrant.moduleKey } },
       create: {
         tenantId,
-        moduleKey: module.moduleKey,
-        status: module.status,
-        grantSource: module.grantSource,
-        saasSubscriptionId: module.saasSubscriptionId,
-        enabledAt: dateOrNull(module.enabledAt),
-        disabledAt: dateOrNull(module.disabledAt),
+        moduleKey: moduleGrant.moduleKey,
+        status: moduleGrant.status,
+        grantSource: moduleGrant.grantSource,
+        saasSubscriptionId: moduleGrant.saasSubscriptionId,
+        enabledAt: dateOrNull(moduleGrant.enabledAt),
+        disabledAt: dateOrNull(moduleGrant.disabledAt),
       },
       update: {
-        status: module.status,
-        grantSource: module.grantSource,
-        saasSubscriptionId: module.saasSubscriptionId,
-        enabledAt: dateOrNull(module.enabledAt),
-        disabledAt: dateOrNull(module.disabledAt),
+        status: moduleGrant.status,
+        grantSource: moduleGrant.grantSource,
+        saasSubscriptionId: moduleGrant.saasSubscriptionId,
+        enabledAt: dateOrNull(moduleGrant.enabledAt),
+        disabledAt: dateOrNull(moduleGrant.disabledAt),
       },
     });
   }
