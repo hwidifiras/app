@@ -1048,7 +1048,7 @@ model WorkspaceSignup {
   id                     String                    @id @default(cuid())
   email                  String
   ownerName              String
-  passwordHash           String
+  passwordHash           String?
   clubName               String?
   clubPhone              String                    @default("")
   clubAddress            String                    @default("")

@@ -28,6 +28,8 @@
     "tenant:create": "node scripts/create-tenant.mjs",
     "tenant:module": "node scripts/set-tenant-module.mjs",
     "saas:control": "node scripts/manage-saas-subscription.mjs",
+    "signup:invite": "node scripts/manage-signup-invites.mjs",
+    "signup:prune": "node scripts/prune-signup-records.mjs",
     "release:data-snapshot": "node scripts/release-data-snapshot.mjs",
     "saas:migrate:sqlite": "node scripts/migrate-sqlite-to-postgres.mjs",
     "saas:verify:migration": "node scripts/verify-saas-migration.mjs",

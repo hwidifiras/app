@@ -150,6 +150,10 @@ export async function provisionWorkspace(input: {
   if (signup.status !== "VERIFIED" || !signup.emailVerifiedAt) {
     throw new SignupServiceError("SIGNUP_NOT_VERIFIED", 403);
   }
+  const ownerPasswordHash = signup.passwordHash;
+  if (!ownerPasswordHash) {
+    throw new SignupServiceError("PROVISIONING_FAILED", 500);
+  }
   if (config.mode === "INVITE_ONLY" && !signup.inviteId) {
     throw new SignupServiceError("SIGNUP_INVITE_INVALID", 403);
   }
@@ -269,7 +273,7 @@ export async function provisionWorkspace(input: {
           tenantId,
           email: signup.email,
           name: signup.ownerName,
-          passwordHash: signup.passwordHash,
+          passwordHash: ownerPasswordHash,
           role: "ADMIN",
           isActive: true,
         },
@@ -339,6 +343,8 @@ export async function provisionWorkspace(input: {
           adminUserId,
           completedAt: now,
           failureCode: null,
+          passwordHash: null,
+          requestFingerprint: null,
         },
       });
       await tx.platformAuditLog.create({

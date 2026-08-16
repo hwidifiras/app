@@ -155,6 +155,11 @@ describe("atomic owner workspace provisioning", () => {
       status: "IN_PROGRESS",
       selectedTemplateKeys: ["martial-arts-dojo"],
     });
+    const completedSignup = await prisma.workspaceSignup.findUniqueOrThrow({
+      where: { id: started.state.signupId },
+      select: { passwordHash: true, requestFingerprint: true },
+    });
+    expect(completedSignup).toEqual({ passwordHash: null, requestFingerprint: null });
 
     const handoffUser = await claimWorkspaceHandoff({
       context: { tenantId: provisioned.tenantId, tenantSlug },
