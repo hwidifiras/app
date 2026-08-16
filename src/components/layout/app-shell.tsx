@@ -3,6 +3,7 @@
 import { createContext, useContext, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 
+import { LogoutButton } from "@/components/auth/logout-button";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppShellDataProvider } from "@/components/layout/app-shell-data-provider";
 import { DesktopTopNav } from "@/components/layout/desktop-top-nav";
@@ -98,9 +99,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isPublicReceiptRoute = pathname === "/receipts/verify";
   const isReceiptRoute = pathname.startsWith("/receipts/") && !isPublicReceiptRoute;
   const isSubscriptionStatusRoute = pathname === "/subscription-status" || pathname.startsWith("/subscription-status/");
+  const isOnboardingRoute = pathname === "/onboarding" || pathname.startsWith("/onboarding/");
 
   if (isAuthRoute || isMarketingRoute || isPublicReceiptRoute) {
     return <div className="relative min-h-screen">{children}</div>;
+  }
+
+  if (isOnboardingRoute) {
+    return (
+      <div className="min-h-screen bg-[var(--background)]">
+        <header className="border-b border-[var(--border)] bg-[var(--surface)]">
+          <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+            <div className="flex min-w-0 items-center gap-2.5"><ClubBrandMark size="md" /></div>
+            <LogoutButton className="w-auto border border-[var(--border)] bg-[var(--surface-soft)] px-3" />
+          </div>
+        </header>
+        <main id="main-content">{children}</main>
+      </div>
+    );
   }
 
   if (isSubscriptionStatusRoute) {

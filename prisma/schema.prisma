@@ -1125,6 +1125,7 @@ model TenantOnboarding {
   acknowledgedStepKeys    String[]               @default([])
   skippedOptionalStepKeys String[]               @default([])
   selectedTemplateKeys    String[]               @default([])
+  selectedDisciplineNames String[]               @default([])
   templateCatalogVersion  Int                    @default(1)
   startedAt               DateTime               @default(now())
   completedAt             DateTime?

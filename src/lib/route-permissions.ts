@@ -37,6 +37,7 @@ export const ROUTE_PERMISSION_RULES: Array<{ paths: string[]; permission: Permis
 ];
 
 export const ADMIN_ROUTE_PREFIXES = [
+  "/onboarding",
   "/settings/users",
   "/logs",
   "/api/users",

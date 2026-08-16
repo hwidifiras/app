@@ -109,6 +109,10 @@ const ACTION_LABELS: Record<string, string> = {
   RECEIPT_EMAIL_SENT: "Reçu envoyé par email",
   RECEIPT_EMAIL_FAILED: "Échec envoi reçu email",
   ADMIN_BOOTSTRAPPED: "Premier administrateur créé",
+  ONBOARDING_PROFILE_SAVED: "Identité du club configurée",
+  ONBOARDING_ACTIVITIES_SAVED: "Activités initiales configurées",
+  ONBOARDING_POLICIES_SAVED: "Règles d’accueil configurées",
+  ONBOARDING_COMPLETED: "Configuration initiale terminée",
 };
 
 export function auditActionsMatchingQuery(query: string): string[] {

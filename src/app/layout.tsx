@@ -17,6 +17,7 @@ import { enterTenantContext, getTenantContext } from "@/lib/tenant-context";
 import { resolveTenantFromHost } from "@/lib/tenant-resolver";
 import { THEME_INIT_SCRIPT } from "@/lib/theme-init-script";
 import { isSaasRecoveryPath } from "@/platform/billing/saas-access";
+import { tenantNeedsSelfServeOnboarding } from "@/platform/onboarding/onboarding-access";
 import { getTenantProductContext } from "@/platform/product/product-context";
 import { requiredProductModuleForPath } from "@/platform/product/product-registry";
 import "./globals.css";
@@ -77,6 +78,14 @@ export default async function RootLayout({
     const product = await getTenantProductContext(user.tenantId);
     if (!product.operationsAllowed && !isSaasRecoveryPath(pathname)) {
       redirect("/subscription-status");
+    }
+
+    if (
+      user.role === "ADMIN"
+      && pathname !== "/onboarding"
+      && await tenantNeedsSelfServeOnboarding(user.tenantId)
+    ) {
+      redirect("/onboarding");
     }
 
     const requiredPermission = requiredPermissionForPath(pathname);
