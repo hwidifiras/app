@@ -1,6 +1,9 @@
 export function isPublicPath(pathname: string): boolean {
   if (pathname === "/login") return true;
   if (pathname === "/register") return true;
+  if (pathname === "/signup" || pathname.startsWith("/signup/")) return true;
+  if (pathname === "/find-workspace") return true;
+  if (pathname === "/auth/activate") return true;
   if (pathname === "/forgot-password") return true;
   if (pathname === "/reset-password") return true;
   if (pathname === "/accueil") return true;
@@ -10,6 +13,7 @@ export function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/branding/")) return true;
   if (pathname.startsWith("/templates")) return true;
   if (pathname.startsWith("/api/auth")) return true;
+  if (pathname.startsWith("/api/saas-signup")) return true;
   if (pathname === "/api/health") return true;
   if (pathname === "/api/ready") return true;
   if (pathname.startsWith("/_next")) return true;

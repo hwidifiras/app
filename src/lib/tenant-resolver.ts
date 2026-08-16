@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { normalizeHost, tenantSlugFromHost } from "@/lib/tenant-host";
+import { isPlatformHost, normalizeHost, tenantSlugFromHost } from "@/lib/tenant-host";
 import type { TenantContext } from "@/lib/tenant-context";
 
 export type ResolvedTenant =
   | { ok: true; context: TenantContext }
-  | { ok: false; reason: "missing-host" | "unknown-tenant" | "suspended-tenant"; host: string };
+  | { ok: false; reason: "missing-host" | "platform-host" | "unknown-tenant" | "suspended-tenant"; host: string };
 
 function hostFromRequest(request: Request): string {
   return (
@@ -17,6 +17,7 @@ function hostFromRequest(request: Request): string {
 export async function resolveTenantFromHost(hostValue: string | null | undefined): Promise<ResolvedTenant> {
   const host = normalizeHost(hostValue);
   if (!host) return { ok: false, reason: "missing-host", host: "" };
+  if (isPlatformHost(host)) return { ok: false, reason: "platform-host", host };
 
   const slug = tenantSlugFromHost(host);
   const tenant = await prisma.tenant.findFirst({

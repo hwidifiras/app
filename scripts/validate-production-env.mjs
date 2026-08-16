@@ -127,6 +127,40 @@ if (tenantSlug && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(tenantSlug)) {
   errors.push("DEFAULT_TENANT_SLUG must be a lowercase DNS-safe slug.");
 }
 
+const signupMode = (value("SAAS_SIGNUP_MODE") || "DISABLED").toUpperCase();
+if (!["DISABLED", "INVITE_ONLY", "PUBLIC"].includes(signupMode)) {
+  errors.push("SAAS_SIGNUP_MODE must be DISABLED, INVITE_ONLY, or PUBLIC.");
+}
+const signupEnabled = signupMode === "INVITE_ONLY" || signupMode === "PUBLIC";
+const signupTrialDays = Number.parseInt(value("SAAS_SIGNUP_TRIAL_DAYS") || "14", 10);
+if (!Number.isInteger(signupTrialDays) || signupTrialDays < 1 || signupTrialDays > 90) {
+  errors.push("SAAS_SIGNUP_TRIAL_DAYS must be an integer from 1 to 90.");
+}
+
+const platformAppUrlValue = value("PLATFORM_APP_URL");
+if (signupEnabled && !platformAppUrlValue) {
+  errors.push("PLATFORM_APP_URL is required when SaaS owner signup is enabled.");
+}
+if (platformAppUrlValue) {
+  try {
+    const platformAppUrl = new URL(platformAppUrlValue);
+    if (platformAppUrl.protocol !== "https:") {
+      errors.push("PLATFORM_APP_URL must use https:// in production.");
+    }
+    if (isPlaceholder(platformAppUrl.hostname)) {
+      errors.push("PLATFORM_APP_URL must use the real public platform hostname.");
+    }
+    if (platformAppUrl.hostname === rootDomain) {
+      errors.push("PLATFORM_APP_URL must use a dedicated hostname, not the tenant root domain.");
+    }
+    if (!platformAppUrl.hostname.endsWith(`.${rootDomain}`)) {
+      errors.push("PLATFORM_APP_URL must be a hostname below SAAS_ROOT_DOMAIN.");
+    }
+  } catch {
+    errors.push("PLATFORM_APP_URL must be a valid absolute URL.");
+  }
+}
+
 const rateLimitUrlValue =
   value("RATE_LIMIT_REDIS_REST_URL") || value("UPSTASH_REDIS_REST_URL");
 const rateLimitToken =
@@ -165,6 +199,9 @@ if (!rateLimitUrlValue && !usesSingleInstanceMemoryRateLimit) {
 if ((!rateLimitToken || isPlaceholder(rateLimitToken)) && !usesSingleInstanceMemoryRateLimit) {
   errors.push("RATE_LIMIT_REDIS_REST_TOKEN is required and must not be a placeholder.");
 }
+if (signupMode === "PUBLIC" && usesSingleInstanceMemoryRateLimit) {
+  errors.push("Public SaaS signup requires the shared Redis rate-limit backend.");
+}
 
 const trustedProxyHops = Number.parseInt(value("TRUSTED_PROXY_HOPS"), 10);
 if (!Number.isInteger(trustedProxyHops) || trustedProxyHops < 1 || trustedProxyHops > 10) {
@@ -173,12 +210,38 @@ if (!Number.isInteger(trustedProxyHops) || trustedProxyHops < 1 || trustedProxyH
 
 const resendApiKey = value("RESEND_API_KEY");
 const passwordResetFrom = value("PASSWORD_RESET_FROM");
+const signupFrom = value("SAAS_SIGNUP_FROM") || passwordResetFrom;
 if (resendApiKey || passwordResetFrom) {
   if (!resendApiKey || isPlaceholder(resendApiKey)) {
     errors.push("RESEND_API_KEY must be configured when password reset email is enabled.");
   }
   if (!passwordResetFrom || isPlaceholder(passwordResetFrom)) {
     errors.push("PASSWORD_RESET_FROM must be configured when password reset email is enabled.");
+  }
+}
+if (signupEnabled) {
+  if (!resendApiKey || isPlaceholder(resendApiKey)) {
+    errors.push("RESEND_API_KEY is required when SaaS owner signup is enabled.");
+  }
+  if (!signupFrom || isPlaceholder(signupFrom)) {
+    errors.push("SAAS_SIGNUP_FROM or PASSWORD_RESET_FROM is required when SaaS owner signup is enabled.");
+  }
+}
+
+const antiBotProvider = (value("NEXT_PUBLIC_SIGNUP_ANTI_BOT_PROVIDER") || "NONE").toUpperCase();
+if (!["NONE", "TURNSTILE", "RECAPTCHA"].includes(antiBotProvider)) {
+  errors.push("NEXT_PUBLIC_SIGNUP_ANTI_BOT_PROVIDER must be NONE, TURNSTILE, or RECAPTCHA.");
+}
+if (signupMode === "PUBLIC" && antiBotProvider === "NONE") {
+  errors.push("Public SaaS signup requires TURNSTILE or RECAPTCHA bot protection.");
+}
+if (antiBotProvider !== "NONE") {
+  if (!value("NEXT_PUBLIC_SIGNUP_ANTI_BOT_SITE_KEY")) {
+    errors.push("NEXT_PUBLIC_SIGNUP_ANTI_BOT_SITE_KEY is required for the selected bot provider.");
+  }
+  const antiBotSecret = value("SIGNUP_ANTI_BOT_SECRET");
+  if (!antiBotSecret || isPlaceholder(antiBotSecret)) {
+    errors.push("SIGNUP_ANTI_BOT_SECRET is required and must not be a placeholder for the selected bot provider.");
   }
 }
 

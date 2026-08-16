@@ -84,6 +84,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/login/") ||
     pathname === "/register" ||
     pathname.startsWith("/register/") ||
+    pathname === "/signup" ||
+    pathname.startsWith("/signup/") ||
+    pathname === "/find-workspace" ||
+    pathname === "/auth/activate" ||
     pathname === "/forgot-password" ||
     pathname === "/reset-password";
   const isMarketingRoute =
