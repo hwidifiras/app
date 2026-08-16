@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const authState = vi.hoisted(() => ({ token: null as string | null }));
+const authState = vi.hoisted(() => {
+  const scope = globalThis as typeof globalThis & {
+    __gymdayTestAuthState?: { token: string | null };
+  };
+  return (scope.__gymdayTestAuthState ??= { token: null });
+});
 
 vi.mock("next/headers", () => ({
   cookies: async () => ({

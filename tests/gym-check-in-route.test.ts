@@ -31,7 +31,7 @@ async function withRouteTenant<T>(operation: () => Promise<T>) {
 }
 
 function request(body: unknown) {
-  return new Request("http://test.local/api/gym/check-in", {
+  return new Request(`http://${TENANT_SLUG}.localhost/api/gym/check-in`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),

@@ -21,7 +21,7 @@ const TENANT_ID = "tenant_access_offer_route";
 const TENANT_SLUG = "access-offer-route";
 
 function request(body: unknown) {
-  return new Request("http://test.local/api/member-subscriptions", {
+  return new Request(`http://${TENANT_SLUG}.localhost/api/member-subscriptions`, {
     method: "POST",
     headers: {
       "content-type": "application/json",

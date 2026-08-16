@@ -38,7 +38,7 @@ if (skipTestDbSetup) {
         name: "Test Tenant",
         rootDomainAlias: "test.local",
       },
-      update: { status: "ACTIVE" },
+      update: { status: "ACTIVE", rootDomainAlias: "test.local" },
     });
 
     await prisma.tenantModule.upsert({
