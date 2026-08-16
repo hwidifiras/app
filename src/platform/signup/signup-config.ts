@@ -10,6 +10,8 @@ export type SaasSignupConfig = {
   antiBotProvider: SignupAntiBotProvider;
   antiBotSiteKey: string | null;
   antiBotSecretConfigured: boolean;
+  termsUrl: string | null;
+  privacyUrl: string | null;
 };
 
 type Environment = Record<string, string | undefined>;
@@ -36,6 +38,8 @@ export function resolveSaasSignupConfig(env: Environment = process.env): SaasSig
     ),
     antiBotSiteKey: env.NEXT_PUBLIC_SIGNUP_ANTI_BOT_SITE_KEY?.trim() || null,
     antiBotSecretConfigured: Boolean(env.SIGNUP_ANTI_BOT_SECRET?.trim()),
+    termsUrl: env.SAAS_TERMS_URL?.trim() || null,
+    privacyUrl: env.SAAS_PRIVACY_URL?.trim() || null,
   };
 }
 

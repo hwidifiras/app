@@ -71,6 +71,35 @@ function handoffPayload(tenantSlug: string, userId: string, token: string): Work
   };
 }
 
+export async function resumeCompletedWorkspace(signupId: string): Promise<{
+  tenantId: string;
+  tenantSlug: string;
+  handoff: WorkspaceHandoff;
+  trialEndsAt: Date;
+}> {
+  const signup = await prisma.workspaceSignup.findUnique({
+    where: { id: signupId },
+    select: {
+      status: true,
+      tenantId: true,
+      adminUserId: true,
+      email: true,
+      tenant: { select: { slug: true } },
+    },
+  });
+  if (!signup) throw new SignupServiceError("SIGNUP_SESSION_INVALID", 401);
+  if (signup.status !== "COMPLETED") throw new SignupServiceError("SIGNUP_NOT_VERIFIED", 403);
+  const handoff = await handoffForCompletedSignup(signup);
+  const tenantId = signup.tenantId as string;
+  const tenantSlug = signup.tenant?.slug as string;
+  return {
+    tenantId,
+    tenantSlug,
+    handoff,
+    trialEndsAt: await currentTrialEnd(tenantId, tenantSlug),
+  };
+}
+
 export async function provisionWorkspace(input: {
   signupId: string;
   data: SignupProvisionInput;
@@ -112,13 +141,7 @@ export async function provisionWorkspace(input: {
   });
   if (!signup) throw new SignupServiceError("SIGNUP_SESSION_INVALID", 401);
   if (signup.status === "COMPLETED") {
-    const handoff = await handoffForCompletedSignup(signup);
-    return {
-      tenantId: signup.tenantId as string,
-      tenantSlug: signup.tenant?.slug as string,
-      handoff,
-      trialEndsAt: await currentTrialEnd(signup.tenantId as string, signup.tenant?.slug as string),
-    };
+    return resumeCompletedWorkspace(signup.id);
   }
   const now = new Date();
   if (signup.expiresAt <= now || signup.status === "EXPIRED") {

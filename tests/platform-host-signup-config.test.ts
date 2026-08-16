@@ -85,6 +85,8 @@ describe("signup configuration", () => {
       antiBotProvider: "RECAPTCHA",
       antiBotSiteKey: "site-key",
       antiBotSecretConfigured: true,
+      termsUrl: null,
+      privacyUrl: null,
     });
   });
 });

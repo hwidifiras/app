@@ -6,21 +6,34 @@ import type { NextConfig } from "next";
 /** Force Turbopack root to this app (avoids picking C:\\Users\\...\\package-lock.json). */
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
 
+export function buildProductionContentSecurityPolicy(rootDomainValue?: string) {
+  const rootDomain = (rootDomainValue ?? process.env.SAAS_ROOT_DOMAIN ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/^\.+|\.+$/g, "");
+  const tenantFormTarget = /^[a-z0-9.-]+$/.test(rootDomain) && rootDomain !== "localhost"
+    ? ` https://*.${rootDomain}`
+    : "";
+
+  return [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+    `form-action 'self'${tenantFormTarget}`,
+    "img-src 'self' data: blob:",
+    "font-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://www.google.com https://www.gstatic.com",
+    "style-src 'self' 'unsafe-inline'",
+    "connect-src 'self' https://challenges.cloudflare.com https://www.google.com",
+    "frame-src https://challenges.cloudflare.com https://www.google.com",
+  ].join("; ");
+}
+
 export const productionSecurityHeaders = [
   {
     key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      "base-uri 'self'",
-      "object-src 'none'",
-      "frame-ancestors 'none'",
-      "form-action 'self'",
-      "img-src 'self' data: blob:",
-      "font-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
-      "style-src 'self' 'unsafe-inline'",
-      "connect-src 'self'",
-    ].join("; "),
+    value: buildProductionContentSecurityPolicy(),
   },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },

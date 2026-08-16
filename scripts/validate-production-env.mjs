@@ -147,6 +147,22 @@ if (signupEnabled) {
   }
 }
 
+for (const legalUrlName of ["SAAS_TERMS_URL", "SAAS_PRIVACY_URL"]) {
+  const legalUrlValue = value(legalUrlName);
+  if (signupEnabled && !legalUrlValue) {
+    errors.push(`${legalUrlName} is required when SaaS owner signup is enabled.`);
+    continue;
+  }
+  if (legalUrlValue) {
+    try {
+      const legalUrl = new URL(legalUrlValue);
+      if (legalUrl.protocol !== "https:") errors.push(`${legalUrlName} must use https:// in production.`);
+    } catch {
+      errors.push(`${legalUrlName} must be a valid absolute URL.`);
+    }
+  }
+}
+
 const platformAppUrlValue = value("PLATFORM_APP_URL");
 if (signupEnabled && !platformAppUrlValue) {
   errors.push("PLATFORM_APP_URL is required when SaaS owner signup is enabled.");

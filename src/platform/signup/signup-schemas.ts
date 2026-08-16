@@ -43,5 +43,9 @@ export const signupProvisionSchema = z.object({
     .default([]),
 });
 
+export const workspaceLookupSchema = z.object({
+  slug: z.string().trim().min(2).max(80),
+});
+
 export type SignupStartInput = z.infer<typeof signupStartSchema>;
 export type SignupProvisionInput = z.infer<typeof signupProvisionSchema>;
