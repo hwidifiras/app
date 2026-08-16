@@ -2798,7 +2798,7 @@ describe("payment corrections and member archive", () => {
       role: "ADMIN",
     });
 
-    const disabledMe = await getAuthMe();
+    const disabledMe = await getAuthMe(new Request("http://test.local/api/auth/me"));
     expect((await responseJson(disabledMe)).data).toBeNull();
     const disabledApi = await createPayment(jsonRequest("POST", { memberSubscriptionId: "missing", amount: 100 }));
     expect(disabledApi.status).toBe(401);

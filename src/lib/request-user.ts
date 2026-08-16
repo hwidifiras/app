@@ -1,9 +1,10 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 import { AUTH_COOKIE_NAME, verifyAuthToken, type AuthRole } from "@/lib/auth";
 import { parsePermissions } from "@/lib/permission-definitions";
 import { prisma } from "@/lib/prisma";
 import { enterTenantContext } from "@/lib/tenant-context";
+import { resolveTenantFromHost, resolveTenantFromRequest } from "@/lib/tenant-resolver";
 import { requireProductModule } from "@/lib/tenant-modules";
 import { isSaasRecoveryPath } from "@/platform/billing/saas-access";
 import { getTenantProductContext } from "@/platform/product/product-context";
@@ -20,9 +21,7 @@ export type RequestUser = {
   coachId: string | null;
 };
 
-export async function getAuthUser(_request?: Request): Promise<RequestUser | null> {
-  void _request;
-
+export async function getAuthUser(request?: Request): Promise<RequestUser | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
   if (!token) return null;
@@ -32,13 +31,27 @@ export async function getAuthUser(_request?: Request): Promise<RequestUser | nul
 
   if (!payload.tenantId || !payload.tenantSlug) return null;
 
-  enterTenantContext({
-    tenantId: payload.tenantId,
-    tenantSlug: payload.tenantSlug,
-  });
+  const resolvedTenant = request
+    ? await resolveTenantFromRequest(request)
+    : await (async () => {
+        const requestHeaders = await headers();
+        return resolveTenantFromHost(
+          requestHeaders.get("host") ?? requestHeaders.get("x-forwarded-host"),
+        );
+      })();
+
+  if (
+    !resolvedTenant.ok
+    || resolvedTenant.context.tenantId !== payload.tenantId
+    || resolvedTenant.context.tenantSlug !== payload.tenantSlug
+  ) {
+    return null;
+  }
+
+  enterTenantContext(resolvedTenant.context);
 
   const user = await prisma.user.findFirst({
-    where: { id: payload.userId, tenantId: payload.tenantId },
+    where: { id: payload.userId, tenantId: resolvedTenant.context.tenantId },
     select: {
       id: true,
       tenantId: true,
@@ -56,8 +69,8 @@ export async function getAuthUser(_request?: Request): Promise<RequestUser | nul
 
   return {
     id: user.id,
-    tenantId: user.tenantId ?? payload.tenantId,
-    tenantSlug: user.tenant?.slug ?? payload.tenantSlug,
+    tenantId: resolvedTenant.context.tenantId,
+    tenantSlug: resolvedTenant.context.tenantSlug,
     role: user.role,
     email: user.email,
     name: user.name,
