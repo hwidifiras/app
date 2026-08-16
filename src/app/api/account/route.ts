@@ -60,6 +60,9 @@ export async function GET(request: Request) {
         saasStatus: product.saasStatus,
         operationsAllowed: product.operationsAllowed,
         billingWarning: product.billingWarning,
+        subscriptionBlockReason: product.subscriptionBlockReason,
+        subscriptionDeadlineAt: product.subscriptionDeadlineAt,
+        subscriptionDaysRemaining: product.subscriptionDaysRemaining,
         saasSubscription: product.saasSubscription,
       },
     });

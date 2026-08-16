@@ -67,6 +67,7 @@ describe("signup configuration", () => {
     expect(resolveSaasSignupConfig({})).toMatchObject({
       mode: "DISABLED",
       trialDays: 14,
+      trialGraceDays: 3,
       antiBotProvider: "NONE",
     });
     expect(resolveSaasSignupConfig({ SAAS_SIGNUP_TRIAL_DAYS: "999" }).trialDays).toBe(90);
@@ -76,12 +77,14 @@ describe("signup configuration", () => {
     expect(resolveSaasSignupConfig({
       SAAS_SIGNUP_MODE: "invite_only",
       SAAS_SIGNUP_TRIAL_DAYS: "21",
+      SAAS_SIGNUP_TRIAL_GRACE_DAYS: "5",
       NEXT_PUBLIC_SIGNUP_ANTI_BOT_PROVIDER: "recaptcha",
       NEXT_PUBLIC_SIGNUP_ANTI_BOT_SITE_KEY: "site-key",
       SIGNUP_ANTI_BOT_SECRET: "secret",
     })).toEqual({
       mode: "INVITE_ONLY",
       trialDays: 21,
+      trialGraceDays: 5,
       antiBotProvider: "RECAPTCHA",
       antiBotSiteKey: "site-key",
       antiBotSecretConfigured: true,

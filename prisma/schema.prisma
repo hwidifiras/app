@@ -990,6 +990,7 @@ model TenantSaasSubscription {
   saasPlanId         String
   saasPlan           SaasPlan               @relation(fields: [saasPlanId], references: [id], onDelete: Restrict)
   status             SaasSubscriptionStatus @default(TRIAL)
+  automaticLifecycle Boolean                @default(false)
   isCurrent          Boolean                @default(true)
   startsAt           DateTime               @default(now())
   trialEndsAt        DateTime?

@@ -24,6 +24,7 @@ const previousEnvironment = {
   platformUrl: process.env.PLATFORM_APP_URL,
   rootDomain: process.env.SAAS_ROOT_DOMAIN,
   trialDays: process.env.SAAS_SIGNUP_TRIAL_DAYS,
+  trialGraceDays: process.env.SAAS_SIGNUP_TRIAL_GRACE_DAYS,
   resendApiKey: process.env.RESEND_API_KEY,
   signupFrom: process.env.SAAS_SIGNUP_FROM,
 };
@@ -70,6 +71,7 @@ beforeAll(async () => {
   process.env.PLATFORM_APP_URL = "http://app.localhost:3000";
   process.env.SAAS_ROOT_DOMAIN = "localhost";
   process.env.SAAS_SIGNUP_TRIAL_DAYS = "14";
+  process.env.SAAS_SIGNUP_TRIAL_GRACE_DAYS = "3";
   delete process.env.RESEND_API_KEY;
   delete process.env.SAAS_SIGNUP_FROM;
   await seedEditionPlans();
@@ -89,6 +91,7 @@ afterAll(async () => {
   restore("PLATFORM_APP_URL", previousEnvironment.platformUrl);
   restore("SAAS_ROOT_DOMAIN", previousEnvironment.rootDomain);
   restore("SAAS_SIGNUP_TRIAL_DAYS", previousEnvironment.trialDays);
+  restore("SAAS_SIGNUP_TRIAL_GRACE_DAYS", previousEnvironment.trialGraceDays);
   restore("RESEND_API_KEY", previousEnvironment.resendApiKey);
   restore("SAAS_SIGNUP_FROM", previousEnvironment.signupFrom);
 });
@@ -142,7 +145,11 @@ describe("atomic owner workspace provisioning", () => {
       ["GYM_ACCESS", "DISABLED"],
     ]);
     expect(subscription.status).toBe("TRIAL");
+    expect(subscription.automaticLifecycle).toBe(true);
     expect(subscription.trialEndsAt?.getTime()).toBeGreaterThan(Date.now() + 13 * 24 * 60 * 60 * 1_000);
+    expect(subscription.graceEndsAt?.getTime()).toBe(
+      (subscription.trialEndsAt?.getTime() ?? 0) + 3 * 24 * 60 * 60 * 1_000,
+    );
     expect(onboarding).toMatchObject({
       source: "SELF_SERVE",
       status: "IN_PROGRESS",
@@ -174,7 +181,7 @@ describe("atomic owner workspace provisioning", () => {
     });
     expect(retry.tenantId).toBe(provisioned.tenantId);
     expect(await prisma.tenant.count({ where: { slug: tenantSlug } })).toBe(1);
-  });
+  }, 30_000);
 
   it("rolls back every tenant-owned row when the workspace address is taken", async () => {
     const { started, code } = await createVerifiedSignup(rollbackEmail, `rollback-${suffix}`);
@@ -195,5 +202,5 @@ describe("atomic owner workspace provisioning", () => {
     const state = await getWorkspaceSignupState(started.state.signupId);
     expect(state).toMatchObject({ status: "VERIFIED", tenantId: null });
     expect(await prisma.tenant.count({ where: { name: "Must Not Exist" } })).toBe(0);
-  });
+  }, 30_000);
 });

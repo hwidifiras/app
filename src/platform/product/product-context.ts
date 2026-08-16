@@ -34,6 +34,9 @@ export type TenantProductContext = {
   saasStatus: TenantSaasStatus;
   operationsAllowed: boolean;
   billingWarning: SaasOperationalAccess["warning"];
+  subscriptionBlockReason: SaasOperationalAccess["blockReason"];
+  subscriptionDeadlineAt: Date | null;
+  subscriptionDaysRemaining: number | null;
   saasSubscription: SaasOperationalAccess["subscription"];
   modules: ProductModule[];
   profile: ProductProfile;
@@ -89,6 +92,7 @@ export function getTenantProductContext(tenantId = getRequiredTenantId()): Promi
           select: {
             id: true,
             status: true,
+            automaticLifecycle: true,
             startsAt: true,
             trialEndsAt: true,
             currentPeriodEnd: true,
@@ -126,6 +130,9 @@ export function getTenantProductContext(tenantId = getRequiredTenantId()): Promi
       saasStatus: access.status,
       operationsAllowed: access.canOperate,
       billingWarning: access.warning,
+      subscriptionBlockReason: access.blockReason,
+      subscriptionDeadlineAt: access.deadlineAt,
+      subscriptionDaysRemaining: access.daysRemaining,
       saasSubscription: access.subscription,
       modules,
       profile: deriveProductProfile(modules),

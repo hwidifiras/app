@@ -12,6 +12,13 @@ enforcement.
 - `TRIAL`, `ACTIVE`, `PAST_DUE`, and `GRACE` can operate.
 - `PAST_DUE` and `GRACE` show an admin warning in the private app shell.
 - `SUSPENDED` and `CANCELLED` block staff operations and preserve all data.
+- Date-driven lifecycle is opt-in through `automaticLifecycle`. Existing and
+  manually assigned subscriptions default to `false`; self-serve trials use
+  `true`.
+- An automatic trial operates until `trialEndsAt`, then uses `graceEndsAt` when
+  configured, and finally blocks operations without deleting tenant data.
+- Automatic active/past-due subscriptions respect `currentPeriodEnd` and
+  `graceEndsAt`. A missing grace deadline never causes an unexpected hard block.
 - A blocked user can still open `/subscription-status`, manage their account,
   and log out.
 - `userLimit` and `memberLimit` are stored on the SaaS plan but are not enforced
@@ -52,6 +59,7 @@ npm run saas:control -- assign \
   --starts-at 2026-08-15T00:00:00Z \
   --trial-ends-at 2026-08-29T23:59:59Z \
   --period-end 2026-08-29T23:59:59Z \
+  --automatic-lifecycle true \
   --operator hwidifiras \
   --dry-run
 ```
@@ -72,6 +80,10 @@ npm run saas:control -- status \
 
 Supported states are `TRIAL`, `ACTIVE`, `PAST_DUE`, `GRACE`, `SUSPENDED`, and
 `CANCELLED`.
+
+Use `--automatic-lifecycle false` for subscriptions that must remain under
+manual operator control. Always provide coherent trial, period and grace dates
+before enabling automatic lifecycle.
 
 Rollback an assignment or status change using the audit ID returned by the
 mutation:

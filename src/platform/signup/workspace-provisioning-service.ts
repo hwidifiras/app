@@ -190,6 +190,9 @@ export async function provisionWorkspace(input: {
   const adminUserId = randomUUID();
   const saasSubscriptionId = randomUUID();
   const trialEndsAt = new Date(now.getTime() + config.trialDays * 24 * 60 * 60 * 1_000);
+  const graceEndsAt = config.trialGraceDays > 0
+    ? new Date(trialEndsAt.getTime() + config.trialGraceDays * 24 * 60 * 60 * 1_000)
+    : null;
   let provisionedHandoffToken = "";
   try {
     provisionedHandoffToken = await withTenantContext(
@@ -277,11 +280,13 @@ export async function provisionWorkspace(input: {
           tenantId,
           saasPlanId: plan.id,
           status: "TRIAL",
+          automaticLifecycle: true,
           isCurrent: true,
           startsAt: now,
           trialEndsAt,
           currentPeriodStart: now,
           currentPeriodEnd: trialEndsAt,
+          graceEndsAt,
           operatorNote: "Essai cree par inscription libre-service",
         },
       });

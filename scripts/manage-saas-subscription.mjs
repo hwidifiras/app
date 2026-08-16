@@ -32,6 +32,7 @@ function usage() {
   npm run saas:control -- status --tenant <slug|id> --status <status> --operator <identity> [dates] [--dry-run]
   npm run saas:control -- rollback --audit-id <id> --operator <identity> [--dry-run]
 
+Lifecycle options: --automatic-lifecycle <true|false>.
 Date options: --starts-at, --trial-ends-at, --period-start, --period-end, --grace-ends-at.
 Use --clear-trial-end, --clear-period-end or --clear-grace-end to remove an optional date.`);
 }
@@ -69,6 +70,14 @@ function parseDateOption(options, key) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) throw new Error(`Date invalide pour --${key}: ${value}`);
   return date;
+}
+
+function parseBooleanOption(options, key, fallback) {
+  const value = options[key];
+  if (value === undefined) return fallback;
+  if (value === true || value === "true") return true;
+  if (value === "false") return false;
+  throw new Error(`--${key} attend true ou false`);
 }
 
 function iso(value) {
@@ -129,6 +138,7 @@ async function snapshotTenant(tenantId, client = prisma) {
           planCode: subscription.saasPlan.code,
           planName: subscription.saasPlan.name,
           status: subscription.status,
+          automaticLifecycle: subscription.automaticLifecycle,
           isCurrent: subscription.isCurrent,
           startsAt: iso(subscription.startsAt),
           trialEndsAt: iso(subscription.trialEndsAt),
@@ -314,10 +324,16 @@ async function assignSubscription(options, operator, dryRun) {
   const before = await snapshotTenant(tenant.id);
   const samePlan = before.currentSubscription?.saasPlanId === plan.id;
   const dates = subscriptionDates(options, samePlan ? before.currentSubscription : null);
+  const automaticLifecycle = parseBooleanOption(
+    options,
+    "automatic-lifecycle",
+    samePlan ? before.currentSubscription?.automaticLifecycle ?? false : false,
+  );
   const note = typeof options.note === "string" ? options.note.trim() || null : samePlan ? before.currentSubscription?.operatorNote ?? null : null;
   const desired = {
     planCode,
     status,
+    automaticLifecycle,
     startsAt: iso(dates.startsAt),
     trialEndsAt: iso(dates.trialEndsAt),
     currentPeriodStart: iso(dates.currentPeriodStart),
@@ -333,6 +349,7 @@ async function assignSubscription(options, operator, dryRun) {
     ? {
         planCode: before.currentSubscription.planCode,
         status: before.currentSubscription.status,
+        automaticLifecycle: before.currentSubscription.automaticLifecycle,
         startsAt: before.currentSubscription.startsAt,
         trialEndsAt: before.currentSubscription.trialEndsAt,
         currentPeriodStart: before.currentSubscription.currentPeriodStart,
@@ -366,6 +383,7 @@ async function assignSubscription(options, operator, dryRun) {
         where: { id: before.currentSubscription.id },
         data: {
           status,
+          automaticLifecycle,
           startsAt: dates.startsAt,
           trialEndsAt: dates.trialEndsAt,
           currentPeriodStart: dates.currentPeriodStart,
@@ -385,6 +403,7 @@ async function assignSubscription(options, operator, dryRun) {
           tenantId: tenant.id,
           saasPlanId: plan.id,
           status,
+          automaticLifecycle,
           startsAt: dates.startsAt,
           trialEndsAt: dates.trialEndsAt,
           currentPeriodStart: dates.currentPeriodStart,
@@ -425,10 +444,16 @@ async function changeStatus(options, operator, dryRun) {
   const before = await snapshotTenant(tenant.id);
   if (!before.currentSubscription) throw new Error("Aucun abonnement SaaS courant pour ce tenant");
   const dates = subscriptionDates(options, before.currentSubscription);
+  const automaticLifecycle = parseBooleanOption(
+    options,
+    "automatic-lifecycle",
+    before.currentSubscription.automaticLifecycle,
+  );
   const note = typeof options.note === "string" ? options.note.trim() || null : before.currentSubscription.operatorNote;
   const desired = {
     ...before.currentSubscription,
     status,
+    automaticLifecycle,
     startsAt: iso(dates.startsAt),
     trialEndsAt: iso(dates.trialEndsAt),
     currentPeriodStart: iso(dates.currentPeriodStart),
@@ -438,7 +463,7 @@ async function changeStatus(options, operator, dryRun) {
     operatorNote: note,
   };
   const currentComparable = { ...before.currentSubscription, cancelledAt: before.currentSubscription.cancelledAt };
-  const noDateChange = ["startsAt", "trialEndsAt", "currentPeriodStart", "currentPeriodEnd", "graceEndsAt", "operatorNote"]
+  const noDateChange = ["automaticLifecycle", "startsAt", "trialEndsAt", "currentPeriodStart", "currentPeriodEnd", "graceEndsAt", "operatorNote"]
     .every((key) => desired[key] === currentComparable[key]);
   if (status === before.currentSubscription.status && noDateChange) {
     console.log(json({ action: "status", changed: false, tenant, state: before }));
@@ -454,6 +479,7 @@ async function changeStatus(options, operator, dryRun) {
       where: { id: before.currentSubscription.id },
       data: {
         status,
+        automaticLifecycle,
         startsAt: dates.startsAt,
         trialEndsAt: dates.trialEndsAt,
         currentPeriodStart: dates.currentPeriodStart,
@@ -491,6 +517,7 @@ async function restoreSnapshot(tx, tenantId, snapshot) {
       data: {
         isCurrent: true,
         status: subscription.status,
+        automaticLifecycle: subscription.automaticLifecycle ?? false,
         startsAt: new Date(subscription.startsAt),
         trialEndsAt: dateOrNull(subscription.trialEndsAt),
         currentPeriodStart: dateOrNull(subscription.currentPeriodStart),

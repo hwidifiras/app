@@ -10,7 +10,6 @@ import { DesktopTopNav } from "@/components/layout/desktop-top-nav";
 import { ClubBrandMark } from "@/components/layout/club-brand-mark";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { SaasSubscriptionBanner } from "@/components/layout/saas-subscription-banner";
-import { UserAccountMenu } from "@/components/layout/user-account-menu";
 import {
   DISPLAY_MODE_STORAGE_KEY,
   isDisplayMode,
@@ -121,15 +120,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (isSubscriptionStatusRoute) {
     return (
-      <AppShellDataProvider>
-        <div className="min-h-screen bg-[var(--background)]">
-          <header className="flex min-h-14 items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-4 sm:px-6">
-            <ClubBrandMark size="md" />
-            <UserAccountMenu />
-          </header>
-          <main id="main-content">{children}</main>
-        </div>
-      </AppShellDataProvider>
+      <div className="min-h-screen bg-[var(--background)]">
+        <header className="flex min-h-14 items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-4 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2.5"><ClubBrandMark size="md" /></div>
+          <LogoutButton className="w-auto border border-[var(--border)] bg-[var(--surface-soft)] px-3" />
+        </header>
+        <main id="main-content">{children}</main>
+      </div>
     );
   }
 

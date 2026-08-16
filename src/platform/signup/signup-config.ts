@@ -7,6 +7,7 @@ export type SignupAntiBotProvider = (typeof SIGNUP_ANTI_BOT_PROVIDERS)[number];
 export type SaasSignupConfig = {
   mode: SaasSignupMode;
   trialDays: number;
+  trialGraceDays: number;
   antiBotProvider: SignupAntiBotProvider;
   antiBotSiteKey: string | null;
   antiBotSecretConfigured: boolean;
@@ -31,6 +32,7 @@ export function resolveSaasSignupConfig(env: Environment = process.env): SaasSig
   return {
     mode: enumValue(env.SAAS_SIGNUP_MODE, SAAS_SIGNUP_MODES, "DISABLED"),
     trialDays: boundedInteger(env.SAAS_SIGNUP_TRIAL_DAYS, 14, 1, 90),
+    trialGraceDays: boundedInteger(env.SAAS_SIGNUP_TRIAL_GRACE_DAYS, 3, 0, 30),
     antiBotProvider: enumValue(
       env.NEXT_PUBLIC_SIGNUP_ANTI_BOT_PROVIDER,
       SIGNUP_ANTI_BOT_PROVIDERS,

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Activity, ChevronDown, CircleUser, LogOut, Users } from "lucide-react";
+import { Activity, BadgeCheck, ChevronDown, CircleUser, LogOut, Users } from "lucide-react";
 
 import { useAppShellData } from "@/components/layout/app-shell-data-provider";
 import { DisplayModeToggle } from "@/components/layout/display-mode-toggle";
@@ -114,6 +114,9 @@ export function UserAccountMenu({
               <p className="px-2 py-1 text-[0.6rem] font-bold uppercase tracking-[0.14em] text-[var(--muted-foreground)] opacity-70">
                 Administration
               </p>
+              <AccountMenuLink href="/subscription-status" icon={BadgeCheck} onClick={close}>
+                Abonnement
+              </AccountMenuLink>
               <AccountMenuLink href="/settings/users" icon={Users} onClick={close}>
                 Utilisateurs
               </AccountMenuLink>

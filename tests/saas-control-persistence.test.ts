@@ -73,6 +73,31 @@ describe("manual SaaS subscription persistence", () => {
     ).rejects.toThrow();
   });
 
+  it("enforces an expired automatic trial through the tenant product context", async () => {
+    const plan = await ensurePlan();
+    await prisma.tenantSaasSubscription.create({
+      data: {
+        tenantId: TEST_TENANT_ID,
+        saasPlanId: plan.id,
+        status: "TRIAL",
+        automaticLifecycle: true,
+        startsAt: new Date("2020-01-01T00:00:00.000Z"),
+        trialEndsAt: new Date("2020-01-14T00:00:00.000Z"),
+        currentPeriodEnd: new Date("2020-01-14T00:00:00.000Z"),
+        graceEndsAt: new Date("2020-01-17T00:00:00.000Z"),
+      },
+    });
+
+    const product = await getTenantProductContext(TEST_TENANT_ID);
+    expect(product).toMatchObject({
+      saasStatus: "SUSPENDED",
+      operationsAllowed: false,
+      billingWarning: null,
+      subscriptionBlockReason: "TRIAL_EXPIRED",
+      subscriptionDaysRemaining: 0,
+    });
+  });
+
   it("rejects a module grant linked to another tenant's subscription", async () => {
     const plan = await ensurePlan();
     const foreignTenant = await prisma.tenant.upsert({

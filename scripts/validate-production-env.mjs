@@ -136,6 +136,10 @@ const signupTrialDays = Number.parseInt(value("SAAS_SIGNUP_TRIAL_DAYS") || "14",
 if (!Number.isInteger(signupTrialDays) || signupTrialDays < 1 || signupTrialDays > 90) {
   errors.push("SAAS_SIGNUP_TRIAL_DAYS must be an integer from 1 to 90.");
 }
+const signupTrialGraceDays = Number.parseInt(value("SAAS_SIGNUP_TRIAL_GRACE_DAYS") || "3", 10);
+if (!Number.isInteger(signupTrialGraceDays) || signupTrialGraceDays < 0 || signupTrialGraceDays > 30) {
+  errors.push("SAAS_SIGNUP_TRIAL_GRACE_DAYS must be an integer from 0 to 30.");
+}
 const signupTokenSecret = value("SIGNUP_TOKEN_SECRET");
 if (signupEnabled) {
   if (!signupTokenSecret || isPlaceholder(signupTokenSecret)) {

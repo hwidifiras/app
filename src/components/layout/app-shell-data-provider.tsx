@@ -26,11 +26,21 @@ export type AccountData = {
   };
   saasStatus: "LEGACY_ACTIVE" | "TRIAL" | "ACTIVE" | "PAST_DUE" | "GRACE" | "SUSPENDED" | "CANCELLED";
   operationsAllowed: boolean;
-  billingWarning: "PAST_DUE" | "GRACE" | null;
+  billingWarning: "TRIAL_ENDING" | "TRIAL_GRACE" | "PAST_DUE" | "GRACE" | null;
+  subscriptionBlockReason:
+    | "TENANT_SUSPENDED"
+    | "TRIAL_EXPIRED"
+    | "BILLING_GRACE_EXPIRED"
+    | "SUBSCRIPTION_SUSPENDED"
+    | "SUBSCRIPTION_CANCELLED"
+    | null;
+  subscriptionDeadlineAt: string | null;
+  subscriptionDaysRemaining: number | null;
   saasSubscription: {
     id: string;
     planCode: string;
     planName: string;
+    automaticLifecycle: boolean;
     startsAt: string;
     trialEndsAt: string | null;
     currentPeriodEnd: string | null;
