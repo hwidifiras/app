@@ -45,6 +45,8 @@ export const TENANT_SCOPED_MODELS = new Set([
   "GymVisit",
   "MemberAccessCredential",
   "GymAccessAttempt",
+  "WorkspaceHandoffToken",
+  "TenantOnboarding",
   "AuditLog",
 ]);
 

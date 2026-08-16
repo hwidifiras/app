@@ -184,6 +184,39 @@ enum TenantModuleStatus {
   DISABLED
 }
 
+enum WorkspaceSignupStatus {
+  PENDING_EMAIL
+  VERIFIED
+  PROVISIONING
+  COMPLETED
+  EXPIRED
+  FAILED
+}
+
+enum WorkspaceEdition {
+  CLASS
+  GYM
+  HYBRID
+}
+
+enum TenantOnboardingStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum TenantOnboardingSource {
+  SELF_SERVE
+  MANUAL
+}
+
+enum AccessCredentialMedium {
+  QR_CODE
+  BARCODE
+  NFC_TAG
+  RFID_CARD
+  RFID_WRISTBAND
+}
+
 model Tenant {
   id                       String                    @id @default(cuid())
   slug                     String                    @unique
@@ -225,6 +258,9 @@ model Tenant {
   gymAccessAttempts        GymAccessAttempt[]
   subscriptionPauses       SubscriptionPause[]
   entitlementAdjustments   EntitlementAdjustment[]
+  workspaceSignup          WorkspaceSignup?
+  workspaceHandoffTokens   WorkspaceHandoffToken[]
+  onboarding               TenantOnboarding?
   createdAt                DateTime                  @default(now())
   updatedAt                DateTime                  @updatedAt
 }
@@ -249,6 +285,8 @@ model User {
   gymAccessAttempts       GymAccessAttempt[]       @relation("GymAccessAttemptActor")
   subscriptionPauseEvents SubscriptionPause[]      @relation("SubscriptionPauseActor")
   entitlementAdjustments  EntitlementAdjustment[]  @relation("EntitlementAdjustmentActor")
+  workspaceSignupsOwned   WorkspaceSignup[]        @relation("WorkspaceSignupAdmin")
+  workspaceHandoffTokens  WorkspaceHandoffToken[]
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
 
@@ -986,6 +1024,116 @@ model PlatformAuditLog {
   @@index([operatorIdentity, createdAt])
 }
 
+model WorkspaceSignupInvite {
+  id                   String            @id @default(cuid())
+  tokenHash            String            @unique
+  email                String?
+  edition              WorkspaceEdition?
+  activityTemplateKeys String[]          @default([])
+  expiresAt            DateTime
+  maxUses              Int               @default(1)
+  useCount             Int               @default(0)
+  revokedAt            DateTime?
+  operatorIdentity     String
+  signups              WorkspaceSignup[]
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  @@index([email, expiresAt])
+  @@index([expiresAt, revokedAt])
+}
+
+model WorkspaceSignup {
+  id                     String                    @id @default(cuid())
+  email                  String
+  ownerName              String
+  passwordHash           String
+  clubName               String?
+  clubPhone              String                    @default("")
+  clubAddress            String                    @default("")
+  requestedSlug          String?
+  edition                WorkspaceEdition?
+  activityTemplateKeys   String[]                  @default([])
+  templateCatalogVersion Int                       @default(1)
+  status                 WorkspaceSignupStatus     @default(PENDING_EMAIL)
+  termsVersion           String
+  privacyVersion         String
+  termsAcceptedAt        DateTime
+  emailVerifiedAt        DateTime?
+  provisioningStartedAt  DateTime?
+  completedAt            DateTime?
+  expiresAt              DateTime
+  failureCode            String?
+  requestFingerprint     String?
+  idempotencyKey         String                    @unique
+  inviteId               String?
+  invite                 WorkspaceSignupInvite?    @relation(fields: [inviteId], references: [id], onDelete: SetNull)
+  tenantId               String?                   @unique
+  tenant                 Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  adminUserId            String?
+  adminUser              User?                     @relation("WorkspaceSignupAdmin", fields: [adminUserId], references: [id], onDelete: SetNull)
+  verificationTokens     SignupVerificationToken[]
+  createdAt              DateTime                  @default(now())
+  updatedAt              DateTime                  @updatedAt
+
+  @@index([email, status])
+  @@index([requestedSlug, status])
+  @@index([expiresAt, status])
+  @@index([inviteId])
+}
+
+model SignupVerificationToken {
+  id            String          @id @default(cuid())
+  signupId      String
+  signup        WorkspaceSignup @relation(fields: [signupId], references: [id], onDelete: Cascade)
+  tokenHash     String          @unique
+  codeHash      String
+  attemptCount  Int             @default(0)
+  maxAttempts   Int             @default(6)
+  expiresAt     DateTime
+  usedAt        DateTime?
+  invalidatedAt DateTime?
+  createdAt     DateTime        @default(now())
+
+  @@index([signupId, createdAt])
+  @@index([expiresAt, usedAt])
+}
+
+model WorkspaceHandoffToken {
+  id        String    @id @default(cuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([tenantId, expiresAt])
+  @@index([userId, expiresAt])
+}
+
+model TenantOnboarding {
+  id                      String                 @id @default(cuid())
+  tenantId                String                 @unique
+  tenant                  Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  version                 Int                    @default(1)
+  source                  TenantOnboardingSource @default(MANUAL)
+  status                  TenantOnboardingStatus @default(IN_PROGRESS)
+  lastStepKey             String?
+  acknowledgedStepKeys    String[]               @default([])
+  skippedOptionalStepKeys String[]               @default([])
+  selectedTemplateKeys    String[]               @default([])
+  templateCatalogVersion  Int                    @default(1)
+  startedAt               DateTime               @default(now())
+  completedAt             DateTime?
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
+
+  @@index([status, updatedAt])
+}
+
 model GymVisit {
   id                        String                  @id @default(cuid())
   tenantId                  String
@@ -1015,23 +1163,29 @@ model GymVisit {
 }
 
 model MemberAccessCredential {
-  id           String             @id
-  tenantId     String
-  tenant       Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  memberId     String
-  member       Member             @relation(fields: [memberId], references: [id], onDelete: Restrict)
-  codeHint     String
-  issuedAt     DateTime           @default(now())
-  issuedById   String?
-  issuedBy     User?              @relation("GymCredentialIssuedBy", fields: [issuedById], references: [id], onDelete: SetNull)
-  revokedAt    DateTime?
-  revokedById  String?
-  revokedBy    User?              @relation("GymCredentialRevokedBy", fields: [revokedById], references: [id], onDelete: SetNull)
-  revokeReason String?
-  attempts     GymAccessAttempt[]
-  createdAt    DateTime           @default(now())
+  id                     String                 @id
+  tenantId               String
+  tenant                 Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberId               String
+  member                 Member                 @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  medium                 AccessCredentialMedium @default(QR_CODE)
+  label                  String?
+  externalIdentifierHash String?
+  externalIdentifierHint String?
+  codeHint               String
+  issuedAt               DateTime               @default(now())
+  issuedById             String?
+  issuedBy               User?                  @relation("GymCredentialIssuedBy", fields: [issuedById], references: [id], onDelete: SetNull)
+  revokedAt              DateTime?
+  revokedById            String?
+  revokedBy              User?                  @relation("GymCredentialRevokedBy", fields: [revokedById], references: [id], onDelete: SetNull)
+  revokeReason           String?
+  attempts               GymAccessAttempt[]
+  createdAt              DateTime               @default(now())
 
   @@index([tenantId, memberId, revokedAt])
+  @@index([tenantId, medium, revokedAt])
+  @@index([tenantId, externalIdentifierHash])
   @@index([tenantId, issuedAt])
 }
 
