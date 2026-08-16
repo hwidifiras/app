@@ -45,6 +45,13 @@ describe("workspace slug policy", () => {
     );
   });
 
+  it("keeps the configured development port for cross-host handoff", () => {
+    expect(workspaceUrlForSlug("dojo-tunis", {
+      SAAS_ROOT_DOMAIN: "localhost",
+      PLATFORM_APP_URL: "http://app.localhost:3000",
+    })).toBe("http://dojo-tunis.localhost:3000");
+  });
+
   it.each(["app", "start", "support", "internal", "pilot"])("reserves %s", (slug) => {
     expect(validateWorkspaceSlug(slug, env)).toMatchObject({ valid: false, reason: "RESERVED" });
   });

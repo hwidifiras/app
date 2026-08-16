@@ -78,6 +78,16 @@ export function workspaceHostForSlug(slug: string, env: Environment = process.en
 
 export function workspaceUrlForSlug(slug: string, env: Environment = process.env): string {
   const host = workspaceHostForSlug(slug, env);
+  const configuredPlatformUrl = env.PLATFORM_APP_URL?.trim();
+  if (configuredPlatformUrl) {
+    try {
+      const platformUrl = new URL(configuredPlatformUrl);
+      const port = platformUrl.port ? `:${platformUrl.port}` : "";
+      return `${platformUrl.protocol}//${host}${port}`;
+    } catch {
+      // The production validator rejects malformed URLs; keep a safe local fallback.
+    }
+  }
   const protocol = host.endsWith(".localhost") || host === "localhost" ? "http" : "https";
   return `${protocol}://${host}`;
 }

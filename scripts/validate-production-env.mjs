@@ -136,6 +136,16 @@ const signupTrialDays = Number.parseInt(value("SAAS_SIGNUP_TRIAL_DAYS") || "14",
 if (!Number.isInteger(signupTrialDays) || signupTrialDays < 1 || signupTrialDays > 90) {
   errors.push("SAAS_SIGNUP_TRIAL_DAYS must be an integer from 1 to 90.");
 }
+const signupTokenSecret = value("SIGNUP_TOKEN_SECRET");
+if (signupEnabled) {
+  if (!signupTokenSecret || isPlaceholder(signupTokenSecret)) {
+    errors.push("SIGNUP_TOKEN_SECRET is required and must not be a placeholder when SaaS owner signup is enabled.");
+  } else if (signupTokenSecret.length < 32) {
+    errors.push("SIGNUP_TOKEN_SECRET must contain at least 32 characters.");
+  } else if (signupTokenSecret === authSecret) {
+    errors.push("SIGNUP_TOKEN_SECRET must be different from AUTH_SECRET.");
+  }
+}
 
 const platformAppUrlValue = value("PLATFORM_APP_URL");
 if (signupEnabled && !platformAppUrlValue) {
@@ -243,6 +253,10 @@ if (antiBotProvider !== "NONE") {
   if (!antiBotSecret || isPlaceholder(antiBotSecret)) {
     errors.push("SIGNUP_ANTI_BOT_SECRET is required and must not be a placeholder for the selected bot provider.");
   }
+}
+const recaptchaMinimumScore = Number(value("SIGNUP_RECAPTCHA_MIN_SCORE") || "0.5");
+if (!Number.isFinite(recaptchaMinimumScore) || recaptchaMinimumScore < 0 || recaptchaMinimumScore > 1) {
+  errors.push("SIGNUP_RECAPTCHA_MIN_SCORE must be a number from 0 to 1.");
 }
 
 if (errors.length > 0) {
