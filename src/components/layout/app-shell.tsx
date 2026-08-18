@@ -94,7 +94,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname === "/accueil" ||
     pathname.startsWith("/accueil/") ||
     pathname === "/homepage" ||
-    pathname.startsWith("/homepage/");
+    pathname.startsWith("/homepage/") ||
+    pathname === "/demo";
   const isPublicReceiptRoute = pathname === "/receipts/verify";
   const isReceiptRoute = pathname.startsWith("/receipts/") && !isPublicReceiptRoute;
   const isSubscriptionStatusRoute = pathname === "/subscription-status" || pathname.startsWith("/subscription-status/");

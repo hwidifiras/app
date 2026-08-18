@@ -8,6 +8,7 @@ export function isPublicPath(pathname: string): boolean {
   if (pathname === "/reset-password") return true;
   if (pathname === "/accueil") return true;
   if (pathname === "/homepage") return true;
+  if (pathname === "/demo") return true;
   if (pathname === "/receipts/verify") return true;
   if (pathname.startsWith("/we-discipline")) return true;
   if (pathname.startsWith("/branding/")) return true;
@@ -21,4 +22,10 @@ export function isPublicPath(pathname: string): boolean {
   if (pathname === "/icon.png") return true;
   if (pathname === "/apple-icon.png") return true;
   return false;
+}
+
+const TENANT_INDEPENDENT_PUBLIC_PATHS = new Set(["/accueil", "/homepage", "/demo"]);
+
+export function isTenantIndependentPublicPath(pathname: string | null): boolean {
+  return pathname !== null && TENANT_INDEPENDENT_PUBLIC_PATHS.has(pathname);
 }

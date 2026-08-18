@@ -10,7 +10,7 @@ import { getAppName } from "@/lib/app-name";
 import { resolveClubBranding } from "@/lib/club-branding";
 import { getClubSettings } from "@/lib/club-settings";
 import { hasPermission } from "@/lib/permission-definitions";
-import { isPublicPath } from "@/lib/public-paths";
+import { isPublicPath, isTenantIndependentPublicPath } from "@/lib/public-paths";
 import { getAuthUser } from "@/lib/request-user";
 import { isAdminOnlyPath, requiredPermissionForPath } from "@/lib/route-permissions";
 import { enterTenantContext, getTenantContext } from "@/lib/tenant-context";
@@ -61,11 +61,13 @@ export default async function RootLayout({
 }>) {
   const requestHeaders = await headers();
   const pathname = requestHeaders.get("x-pathname");
-  const resolvedTenant = await resolveTenantFromHost(
-    requestHeaders.get("host") ?? requestHeaders.get("x-forwarded-host"),
-  );
+  const resolvedTenant = isTenantIndependentPublicPath(pathname)
+    ? null
+    : await resolveTenantFromHost(
+        requestHeaders.get("host") ?? requestHeaders.get("x-forwarded-host"),
+      );
 
-  if (resolvedTenant.ok) {
+  if (resolvedTenant?.ok) {
     enterTenantContext(resolvedTenant.context);
   }
 
