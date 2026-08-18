@@ -61,5 +61,7 @@ describe("public martial-arts marketing experience", () => {
     expect(carousel).toContain("AUTO_ADVANCE_DELAY");
     expect(carousel).toContain("Défilement automatique");
     expect(carousel).toContain("Après validation");
+    expect(homepage).toContain('<a href="/signup"');
+    expect(homepage).toContain('<a href="/login"');
   });
 });

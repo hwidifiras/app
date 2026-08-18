@@ -164,10 +164,10 @@ function HeroSection() {
           <p className="mt-6 max-w-2xl text-base leading-8 text-slate-200 sm:text-xl">Inscriptions, présences, paiements, reçus, groupes, planning et comptes coachs réunis dans un espace clair pour votre équipe.</p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <DemoLink />
-            <Link href="/signup" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-white/35 bg-white/10 px-5 text-sm font-bold text-white transition-colors hover:bg-white/15">
+            <a href="/signup" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-white/35 bg-white/10 px-5 text-sm font-bold text-white transition-colors hover:bg-white/15">
               Créer mon espace
               <ArrowRight className="size-4" aria-hidden="true" />
-            </Link>
+            </a>
           </div>
           <div className="mt-9 grid max-w-2xl gap-3 text-sm font-semibold text-slate-200 sm:grid-cols-3">
             {["Conçu pour le quotidien du club", "Montants et reçus en TND", "Accès équipe contrôlés"].map((item) => (
@@ -458,7 +458,7 @@ function Footer() {
         </div>
         <div>
           <p className="text-sm font-black text-white">Accès</p>
-          <div className="mt-4 grid gap-3 text-sm"><Link href="/signup" className="hover:text-white">Créer un espace</Link><Link href="/login" className="hover:text-white">Connexion</Link><a href="mailto:contact@we-discipline.com" className="hover:text-white">Contact</a></div>
+          <div className="mt-4 grid gap-3 text-sm"><a href="/signup" className="hover:text-white">Créer un espace</a><a href="/login" className="hover:text-white">Connexion</a><a href="mailto:contact@we-discipline.com" className="hover:text-white">Contact</a></div>
         </div>
       </div>
       <div className="mx-auto mt-10 max-w-7xl border-t border-white/10 px-5 pt-6 text-xs text-slate-500 lg:px-8">© {new Date().getFullYear()} We Discipline. Tous droits réservés.</div>

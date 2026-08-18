@@ -31,9 +31,9 @@ export function MarketingHeader() {
         </div>
 
         <div className="hidden items-center gap-3 lg:flex">
-          <Link href="/find-workspace" className="px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:text-blue-600">
+          <a href="/find-workspace" className="px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:text-blue-600">
             Connexion
-          </Link>
+          </a>
           <Link href="/demo" className="inline-flex h-11 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-blue-700">
             <MonitorPlay className="size-4" aria-hidden="true" />
             Voir la démo
@@ -59,9 +59,9 @@ export function MarketingHeader() {
                 {item.label}
               </a>
             ))}
-            <Link href="/find-workspace" className="rounded-lg px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+            <a href="/find-workspace" className="rounded-lg px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
               Connexion
-            </Link>
+            </a>
             <Link href="/demo" className="mt-2 inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-bold text-white" onClick={() => setOpen(false)}>
               <MonitorPlay className="size-4" aria-hidden="true" />
               Voir la démo
