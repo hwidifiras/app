@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
+  AppWindow,
   BellRing,
   CalendarDays,
   Check,
@@ -10,7 +11,9 @@ import {
   ClipboardCheck,
   CreditCard,
   LayoutDashboard,
+  Mail,
   MessageCircleWarning,
+  MonitorSmartphone,
   MonitorPlay,
   ReceiptText,
   UserCog,
@@ -210,6 +213,58 @@ function ProductProofSection() {
   );
 }
 
+function AvailabilitySection() {
+  const upcomingPlatforms = [
+    { name: "App Store", detail: "Application iPhone et iPad" },
+    { name: "Google Play", detail: "Application Android" },
+  ];
+
+  return (
+    <section id="disponibilite" className="border-y border-slate-200 bg-white py-16 sm:py-20">
+      <div className="mx-auto max-w-7xl px-5 lg:px-8">
+        <div className="grid items-end gap-8 lg:grid-cols-[1fr_0.9fr]">
+          <SectionHeading
+            eyebrow="Disponible dès maintenant"
+            title="Le club vous suit déjà sur ordinateur, tablette et mobile."
+            description="We Discipline fonctionne aujourd'hui dans le navigateur, sans installation. L'interface s'adapte au bureau de la réception comme au téléphone du coach."
+          />
+          <div className="flex lg:justify-end">
+            <DemoLink className="w-full sm:w-auto" />
+          </div>
+        </div>
+
+        <div className="mt-10 grid gap-4 lg:grid-cols-3">
+          <article className="rounded-lg border-2 border-blue-600 bg-blue-50 p-6">
+            <div className="flex items-start justify-between gap-4">
+              <span className="inline-flex size-11 items-center justify-center rounded-lg bg-blue-600 text-white">
+                <MonitorSmartphone className="size-5" aria-hidden="true" />
+              </span>
+              <span className="rounded-md bg-emerald-100 px-2.5 py-1.5 text-xs font-black text-emerald-800">Disponible</span>
+            </div>
+            <p className="mt-6 text-xs font-black uppercase tracking-[0.14em] text-blue-700">Application web</p>
+            <h3 className="mt-2 text-xl font-black text-slate-950">Prête à utiliser aujourd&apos;hui</h3>
+            <p className="mt-3 text-sm leading-6 text-slate-600">Accédez au même espace sécurisé depuis Chrome, Safari ou Edge, sur ordinateur, tablette et téléphone.</p>
+          </article>
+
+          {upcomingPlatforms.map((platform) => (
+            <article key={platform.name} className="rounded-lg border border-slate-200 bg-slate-50 p-6">
+              <div className="flex items-start justify-between gap-4">
+                <span className="inline-flex size-11 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600">
+                  <AppWindow className="size-5" aria-hidden="true" />
+                </span>
+                <span className="rounded-md bg-slate-200 px-2.5 py-1.5 text-xs font-black text-slate-700">Bientôt</span>
+              </div>
+              <p className="mt-6 text-xs font-black uppercase tracking-[0.14em] text-slate-500">{platform.name}</p>
+              <h3 className="mt-2 text-xl font-black text-slate-950">{platform.detail}</h3>
+              <p className="mt-3 text-sm leading-6 text-slate-600">En préparation. La version web mobile reste disponible entre-temps, sans attendre une publication en boutique.</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function WorkflowSection() {
   return (
     <section className="bg-white py-20 sm:py-24">
@@ -298,10 +353,26 @@ function AccessSection() {
     <section id="pointage" className="bg-[#F6F9FF] py-20 sm:py-24">
       <div className="mx-auto max-w-7xl px-5 lg:px-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <SectionHeading eyebrow="Accès et identification" title="Commencez simplement. Ajoutez le support adapté ensuite." description="Le pointage manuel fonctionne sans matériel. QR, cartes RFID et bracelets peuvent ensuite fluidifier l'accueil selon l'organisation et le matériel du club." />
-          <p className="max-w-md text-sm leading-6 text-slate-500">Les intégrations RFID sont validées au cas par cas avant activation afin d&apos;éviter de promettre une compatibilité matérielle non testée.</p>
+          <SectionHeading eyebrow="Accès et identification" title="Un seul pointage, plusieurs façons d'identifier un membre." description="Commencez immédiatement par la recherche du membre. Ajoutez ensuite une carte QR, RFID ou un bracelet lorsque ce choix apporte un vrai gain à l'accueil." />
+          <p className="max-w-md text-sm leading-6 text-slate-500">Le QR peut être déployé sans lecteur spécialisé. Les cartes et bracelets RFID sont activés uniquement après validation du matériel du club.</p>
         </div>
-        <div className="mt-10"><AccessMediaCarousel /></div>
+
+        <ol className="mt-10 grid gap-px overflow-hidden rounded-lg border border-slate-200 bg-slate-200 sm:grid-cols-3">
+          {[
+            ["1", "Recherche manuelle", "Disponible maintenant"],
+            ["2", "Carte QR", "Activation accompagnée"],
+            ["3", "RFID ou bracelet", "Après validation matérielle"],
+          ].map(([step, title, status]) => (
+            <li key={title} className="flex items-center gap-4 bg-white p-5">
+              <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-black text-blue-700">{step}</span>
+              <div>
+                <p className="text-sm font-black text-slate-950">{title}</p>
+                <p className="mt-1 text-xs font-semibold text-slate-500">{status}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+        <div className="mt-5"><AccessMediaCarousel /></div>
       </div>
     </section>
   );
@@ -326,8 +397,8 @@ function PlansSection() {
                   <li key={feature} className="flex items-start gap-3"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" aria-hidden="true" />{feature}</li>
                 ))}
               </ul>
-              <a href="mailto:contact@we-discipline.com?subject=Présentation%20We%20Discipline" className={plan.highlighted ? "mt-8 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-bold text-white hover:bg-blue-700" : "mt-8 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 text-sm font-bold text-slate-800 hover:border-blue-400 hover:text-blue-700"}>
-                Parler de cette formule<ArrowRight className="size-4" aria-hidden="true" />
+              <a href={`mailto:contact@we-discipline.com?subject=${encodeURIComponent(`Offre ${plan.name} - We Discipline`)}`} className={plan.highlighted ? "mt-8 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-bold text-white hover:bg-blue-700" : "mt-8 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 text-sm font-bold text-slate-800 hover:border-blue-400 hover:text-blue-700"}>
+                Recevoir l&apos;offre {plan.name}<ArrowRight className="size-4" aria-hidden="true" />
               </a>
             </article>
           ))}
@@ -366,7 +437,7 @@ function FinalCta() {
         </div>
         <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
           <Link href="/demo" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-white px-5 text-sm font-bold text-blue-700 hover:bg-blue-50"><MonitorPlay className="size-5" aria-hidden="true" />Ouvrir la démo</Link>
-          <a href="mailto:contact@we-discipline.com?subject=Demande%20de%20présentation" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-white/50 px-5 text-sm font-bold text-white hover:bg-white/10">Demander une présentation</a>
+          <a href="mailto:contact@we-discipline.com?subject=Demande%20de%20présentation" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-white/60 bg-blue-700 px-5 text-sm font-bold text-white hover:bg-blue-800"><Mail className="size-4" aria-hidden="true" />Demander une présentation</a>
         </div>
       </div>
     </section>
@@ -383,7 +454,7 @@ function Footer() {
         </div>
         <div>
           <p className="text-sm font-black text-white">Produit</p>
-          <div className="mt-4 grid gap-3 text-sm"><a href="#fonctionnalites" className="hover:text-white">Fonctionnalités</a><a href="#pointage" className="hover:text-white">Pointage et supports</a><a href="#coachs" className="hover:text-white">Comptes coachs</a><Link href="/demo" className="hover:text-white">Démo interactive</Link></div>
+          <div className="mt-4 grid gap-3 text-sm"><a href="#fonctionnalites" className="hover:text-white">Fonctionnalités</a><a href="#disponibilite" className="hover:text-white">Web et applications</a><a href="#pointage" className="hover:text-white">Pointage et supports</a><a href="#coachs" className="hover:text-white">Comptes coachs</a><Link href="/demo" className="hover:text-white">Démo interactive</Link></div>
         </div>
         <div>
           <p className="text-sm font-black text-white">Accès</p>
@@ -402,6 +473,7 @@ export function WeDisciplineHomepage({ fontClassName }: HomepageProps) {
       <main>
         <HeroSection />
         <ProductProofSection />
+        <AvailabilitySection />
         <WorkflowSection />
         <OwnerSection />
         <CoachSection />

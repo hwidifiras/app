@@ -117,8 +117,10 @@ body {
   overflow-x: hidden;
 }
 
-a {
-  color: inherit;
+@layer base {
+  a {
+    color: inherit;
+  }
 }
 
 :where(

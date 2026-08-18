@@ -8,7 +8,7 @@ import { useState } from "react";
 const navigation = [
   { label: "Fonctionnalités", href: "#fonctionnalites" },
   { label: "Pointage", href: "#pointage" },
-  { label: "Coachs", href: "#coachs" },
+  { label: "Plateformes", href: "#disponibilite" },
   { label: "Formules", href: "#formules" },
 ];
 

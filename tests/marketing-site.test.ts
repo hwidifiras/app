@@ -46,4 +46,20 @@ describe("public martial-arts marketing experience", () => {
       expect(existsSync(resolve(process.cwd(), asset)), asset).toBe(true);
     }
   });
+
+  it("keeps marketing CTAs legible and communicates platform availability honestly", () => {
+    const homepage = source("src/components/marketing/we-discipline-homepage.tsx");
+    const carousel = source("src/components/marketing/access-media-carousel.tsx");
+    const globalStyles = source("src/app/globals.css");
+
+    expect(globalStyles).toMatch(/@layer base\s*\{\s*a\s*\{\s*color: inherit;/u);
+    expect(homepage).toContain('id="disponibilite"');
+    expect(homepage).toContain("Application web");
+    expect(homepage).toContain("App Store");
+    expect(homepage).toContain("Google Play");
+    expect(homepage).toContain("Bientôt");
+    expect(carousel).toContain("AUTO_ADVANCE_DELAY");
+    expect(carousel).toContain("Défilement automatique");
+    expect(carousel).toContain("Après validation");
+  });
 });
