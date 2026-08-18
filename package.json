@@ -41,6 +41,8 @@
     "audit:ux:seed": "node scripts/seed-audit-ux-data.mjs apply",
     "audit:ux:status": "node scripts/seed-audit-ux-data.mjs status",
     "audit:ux:cleanup": "node scripts/seed-audit-ux-data.mjs cleanup",
+    "demo:seed": "node scripts/seed-public-demo.mjs apply --confirm-demo-reset",
+    "demo:status": "node scripts/seed-public-demo.mjs status",
     "prisma:generate": "prisma generate",
     "prisma:generate:dev": "node scripts/with-dev-env.mjs scripts/run-prisma-generate.mjs",
     "prisma:migrate": "prisma migrate dev",
