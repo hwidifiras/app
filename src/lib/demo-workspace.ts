@@ -1,3 +1,5 @@
+import { normalizeHost } from "@/lib/tenant-host";
+
 type Environment = Record<string, string | undefined>;
 
 const DEFAULT_DEMO_ACCOUNT_EMAIL = "demo@we-discipline.test";
@@ -66,4 +68,34 @@ export function isDemoMutationAllowed(pathname: string): boolean {
     pathname === "/api/auth/login" ||
     pathname === "/api/auth/logout"
   );
+}
+
+export function demoPublicRequestOrigin(input: {
+  requestUrl: string;
+  hostHeader?: string | null;
+  forwardedHostHeader?: string | null;
+  forwardedProtocolHeader?: string | null;
+  resolvedHost: string;
+}): string {
+  const requestUrl = new URL(input.requestUrl);
+  const forwardedHost = input.forwardedHostHeader?.split(",")[0]?.trim();
+  const hostHeader = input.hostHeader?.trim();
+  const publicHost = forwardedHost || hostHeader || requestUrl.host;
+
+  if (normalizeHost(publicHost) !== input.resolvedHost) return requestUrl.origin;
+
+  const forwardedProtocol = input.forwardedProtocolHeader
+    ?.split(",")[0]
+    ?.trim()
+    .toLowerCase();
+  const protocol =
+    forwardedProtocol === "http" || forwardedProtocol === "https"
+      ? forwardedProtocol
+      : requestUrl.protocol.replace(":", "");
+
+  try {
+    return new URL(`${protocol}://${publicHost}`).origin;
+  } catch {
+    return requestUrl.origin;
+  }
 }

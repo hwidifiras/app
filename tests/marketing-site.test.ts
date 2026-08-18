@@ -12,6 +12,7 @@ describe("public martial-arts marketing experience", () => {
   it("hands the public demo into the real app without exposing private routes", () => {
     const appShell = source("src/components/layout/app-shell.tsx");
     const demoPage = source("src/app/demo/page.tsx");
+    const demoAuthRoute = source("src/app/api/auth/demo/route.ts");
 
     expect(isPublicPath("/demo")).toBe(true);
     expect(isTenantIndependentPublicPath("/accueil")).toBe(true);
@@ -22,6 +23,7 @@ describe("public martial-arts marketing experience", () => {
     expect(appShell).toContain('pathname === "/demo"');
     expect(appShell).toContain("DemoWorkspaceBanner");
     expect(demoPage).toContain("demoWorkspaceEntryUrl");
+    expect(demoAuthRoute).toContain("demoPublicRequestOrigin");
     expect(existsSync(resolve(process.cwd(), "src/components/marketing/demo-workspace.tsx"))).toBe(false);
   });
 

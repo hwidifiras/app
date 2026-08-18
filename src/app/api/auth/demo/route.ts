@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { setAuthSessionCookie } from "@/lib/auth-session";
 import {
   demoAccountEmail,
+  demoPublicRequestOrigin,
   isDemoTenantSlug,
   safeDemoNextPath,
 } from "@/lib/demo-workspace";
@@ -62,7 +63,13 @@ export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const destination = new URL(
     safeDemoNextPath(requestUrl.searchParams.get("next")),
-    requestUrl.origin,
+    demoPublicRequestOrigin({
+      requestUrl: request.url,
+      hostHeader: request.headers.get("host"),
+      forwardedHostHeader: request.headers.get("x-forwarded-host"),
+      forwardedProtocolHeader: request.headers.get("x-forwarded-proto"),
+      resolvedHost: tenant.context.host ?? requestUrl.hostname,
+    }),
   );
   destination.searchParams.set("demo", "1");
 

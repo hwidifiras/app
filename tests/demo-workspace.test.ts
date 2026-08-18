@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   configuredDemoTenantSlugs,
   demoAccountEmail,
+  demoPublicRequestOrigin,
   demoWorkspaceEntryUrl,
   isDemoMutationAllowed,
   isDemoTenantSlug,
@@ -44,5 +45,23 @@ describe("public demo workspace safeguards", () => {
     expect(isDemoMutationAllowed("/api/auth/logout")).toBe(true);
     expect(isDemoMutationAllowed("/api/payments")).toBe(false);
     expect(isDemoMutationAllowed("/settings/club")).toBe(false);
+  });
+
+  it("uses the validated public reverse-proxy origin", () => {
+    expect(demoPublicRequestOrigin({
+      requestUrl: "http://localhost:3000/api/auth/demo?next=%2F",
+      hostHeader: "localhost:3000",
+      forwardedHostHeader: "martial-demo.example.test",
+      forwardedProtocolHeader: "https",
+      resolvedHost: "martial-demo.example.test",
+    })).toBe("https://martial-demo.example.test");
+
+    expect(demoPublicRequestOrigin({
+      requestUrl: "http://localhost:3000/api/auth/demo",
+      hostHeader: "client.example.test",
+      forwardedHostHeader: "attacker.example.test",
+      forwardedProtocolHeader: "https",
+      resolvedHost: "client.example.test",
+    })).toBe("http://localhost:3000");
   });
 });
