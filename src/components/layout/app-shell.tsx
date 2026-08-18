@@ -7,6 +7,7 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppShellDataProvider } from "@/components/layout/app-shell-data-provider";
 import { DesktopTopNav } from "@/components/layout/desktop-top-nav";
+import { DemoWorkspaceBanner } from "@/components/layout/demo-workspace-banner";
 import { ClubBrandMark } from "@/components/layout/club-brand-mark";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { SaasSubscriptionBanner } from "@/components/layout/saas-subscription-banner";
@@ -148,6 +149,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             className={`flex min-w-0 flex-col bg-[var(--background)] ${isReceiptRoute ? "print:block print:bg-white" : ""}`}
           >
             <DesktopTopNav />
+            <DemoWorkspaceBanner />
             <SaasSubscriptionBanner />
             <div id="main-content" tabIndex={-1} className={isReceiptRoute ? "print:block" : undefined}>
               {children}

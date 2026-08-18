@@ -9,8 +9,9 @@ function source(path: string): string {
 }
 
 describe("public martial-arts marketing experience", () => {
-  it("keeps the interactive demo public without exposing private app routes", () => {
+  it("hands the public demo into the real app without exposing private routes", () => {
     const appShell = source("src/components/layout/app-shell.tsx");
+    const demoPage = source("src/app/demo/page.tsx");
 
     expect(isPublicPath("/demo")).toBe(true);
     expect(isTenantIndependentPublicPath("/accueil")).toBe(true);
@@ -19,6 +20,9 @@ describe("public martial-arts marketing experience", () => {
     expect(isPublicPath("/members")).toBe(false);
     expect(isPublicPath("/payments/new")).toBe(false);
     expect(appShell).toContain('pathname === "/demo"');
+    expect(appShell).toContain("DemoWorkspaceBanner");
+    expect(demoPage).toContain("demoWorkspaceEntryUrl");
+    expect(existsSync(resolve(process.cwd(), "src/components/marketing/demo-workspace.tsx"))).toBe(false);
   });
 
   it("uses the three-offer structure without legacy belt or gym positioning", () => {

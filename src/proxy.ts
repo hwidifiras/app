@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { AUTH_COOKIE_NAME, verifyAuthToken } from "@/lib/auth";
+import {
+  isDemoMutationAllowed,
+  isDemoTenantSlug,
+} from "@/lib/demo-workspace";
 import { isPublicPath } from "@/lib/public-paths";
 import { tenantSlugFromHost } from "@/lib/tenant-host";
 
@@ -61,9 +65,32 @@ function loginRedirect(request: NextRequest, reason: "missing" | "invalid") {
   return NextResponse.redirect(url);
 }
 
+function demoReadOnlyResponse(request: NextRequest) {
+  const message = "Mode démonstration : les modifications sont désactivées.";
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    const response = NextResponse.json({ error: message, code: "DEMO_READ_ONLY" }, { status: 403 });
+    setApiNoStoreHeaders(response.headers);
+    return response;
+  }
+
+  return new NextResponse(message, {
+    status: 403,
+    headers: { "Cache-Control": "private, no-store, max-age=0" },
+  });
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const tenantSlug = tenantSlugFromHost(request.headers.get("host") ?? request.headers.get("x-forwarded-host"));
+  const safeMethod = request.method === "GET" || request.method === "HEAD" || request.method === "OPTIONS";
+
+  if (
+    isDemoTenantSlug(tenantSlug) &&
+    !safeMethod &&
+    !isDemoMutationAllowed(pathname)
+  ) {
+    return demoReadOnlyResponse(request);
+  }
 
   if (isPublicPath(pathname)) {
     const headers = sanitizedRequestHeaders(request);

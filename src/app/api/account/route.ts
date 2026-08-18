@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword } from "@/lib/password";
+import { isDemoTenantSlug } from "@/lib/demo-workspace";
 import { parsePermissions } from "@/lib/permission-definitions";
 import { setAuthSessionCookie } from "@/lib/auth-session";
 import { requireAuth } from "@/lib/request-user";
@@ -64,6 +65,7 @@ export async function GET(request: Request) {
         subscriptionDeadlineAt: product.subscriptionDeadlineAt,
         subscriptionDaysRemaining: product.subscriptionDaysRemaining,
         saasSubscription: product.saasSubscription,
+        isDemoWorkspace: isDemoTenantSlug(auth.tenantSlug),
       },
     });
   } catch (e) {

@@ -26,6 +26,7 @@ export type AccountData = {
   };
   saasStatus: "LEGACY_ACTIVE" | "TRIAL" | "ACTIVE" | "PAST_DUE" | "GRACE" | "SUSPENDED" | "CANCELLED";
   operationsAllowed: boolean;
+  isDemoWorkspace: boolean;
   billingWarning: "TRIAL_ENDING" | "TRIAL_GRACE" | "PAST_DUE" | "GRACE" | null;
   subscriptionBlockReason:
     | "TENANT_SUSPENDED"
