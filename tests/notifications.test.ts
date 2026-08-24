@@ -36,12 +36,17 @@ describe("buildNotifications", () => {
 
     expect(notifications).toHaveLength(2);
     expect(notifications[0]?.severity).toBe("critical");
-    expect(notifications.some((item) => item.href === "/payments/new?memberId=member-1")).toBe(true);
+    expect(
+      notifications.some(
+        (item) =>
+          item.href === "/payments/new?memberId=member-1&returnTo=%2F",
+      ),
+    ).toBe(true);
     expect(notifications.some((item) => item.key === "subscription-expiry:sub-1:three-days")).toBe(true);
   });
 
   it("respects permissions, thresholds and read state", () => {
-    const paymentKey = "payment-due:sub-1:2000";
+    const paymentKey = "payment-due:sub-1:partial";
     const notifications = buildNotifications(
       [subscription({ payments: [{ amount: 8_000 }], endDate: null })],
       {
@@ -120,5 +125,47 @@ describe("buildNotifications", () => {
         href: "/attendance/today?sessionId=session-1",
       }),
     ]);
+  });
+
+  it("keeps severity ahead of read state and keeps alert keys stable within a stage", () => {
+    const criticalKey = "payment-due:sub-critical:unpaid";
+    const ordered = buildNotifications(
+      [
+        subscription({
+          id: "sub-critical",
+          endDate: null,
+          payments: [],
+        }),
+        subscription({
+          id: "sub-info",
+          amount: 0,
+          endDate: new Date("2026-06-19T00:00:00.000Z"),
+        }),
+      ],
+      {
+        now,
+        includePayments: true,
+        includeExpirations: true,
+        debtThresholdCents: 0,
+        readKeys: new Set([criticalKey]),
+      },
+    );
+
+    expect(ordered[0]).toEqual(
+      expect.objectContaining({ key: criticalKey, severity: "critical", read: true }),
+    );
+    expect(ordered[1]?.severity).toBe("info");
+
+    const firstPartial = buildNotifications(
+      [subscription({ endDate: null, payments: [{ amount: 1_000 }] })],
+      { now, includePayments: true, includeExpirations: false, debtThresholdCents: 0 },
+    );
+    const secondPartial = buildNotifications(
+      [subscription({ endDate: null, payments: [{ amount: 2_000 }] })],
+      { now, includePayments: true, includeExpirations: false, debtThresholdCents: 0 },
+    );
+
+    expect(firstPartial[0]?.key).toBe("payment-due:sub-1:partial");
+    expect(secondPartial[0]?.key).toBe(firstPartial[0]?.key);
   });
 });

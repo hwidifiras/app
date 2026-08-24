@@ -145,7 +145,7 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
       <div className="flex items-start justify-between gap-3">
         <h2 className="text-lg font-semibold text-[var(--foreground)]">Informations</h2>
         {isEditing ? null : (
-          <button type="button" className="btn btn-ghost px-3 py-1 text-xs" onClick={() => setIsEditing(true)}>
+          <button type="button" className="btn btn-ghost min-h-11 px-3 text-xs" onClick={() => setIsEditing(true)}>
             Modifier
           </button>
         )}

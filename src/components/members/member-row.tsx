@@ -106,7 +106,7 @@ export function MemberRow({
         {new Date(member.createdAt).toLocaleDateString("fr-FR")}
       </td>
       <td className="card-actions-cell px-4 py-3 text-right" data-label="Actions">
-        <Link href={`/members/${member.id}`} prefetch={false} className="btn btn-ghost min-h-0 px-2 py-1 text-xs">
+        <Link href={`/members/${member.id}`} prefetch={false} className="btn btn-ghost min-h-11 px-3 text-xs">
           Ouvrir
         </Link>
       </td>

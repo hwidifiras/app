@@ -1,3 +1,5 @@
+import type { Ref } from "react";
+
 import { FieldControl } from "@/components/ui/field-control";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions } from "@/components/ui/form-layout";
@@ -11,6 +13,7 @@ type EnrollmentQuotePanelProps = {
   quotePaidCents: number;
   loading: boolean;
   completed: boolean;
+  headingRef?: Ref<HTMLHeadingElement>;
   onBack: () => void;
   onPaymentChange: (lineIndex: number, value: string) => void;
 };
@@ -21,6 +24,7 @@ export function EnrollmentQuotePanel({
   quotePaidCents,
   loading,
   completed,
+  headingRef,
   onBack,
   onPaymentChange,
 }: EnrollmentQuotePanelProps) {
@@ -28,7 +32,9 @@ export function EnrollmentQuotePanel({
     <section className="panel space-y-4 p-5">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--primary)]">3. Devis + paiement</p>
-        <h2 className="mt-1 text-lg font-semibold">Confirmer l&apos;inscription</h2>
+        <h2 ref={headingRef} tabIndex={-1} className="mt-1 text-lg font-semibold outline-none">
+          Confirmer l&apos;inscription
+        </h2>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
           Contrôlez le prix, l&apos;offre appliquée et l&apos;acompte encaissé avant validation.
         </p>
@@ -54,7 +60,7 @@ export function EnrollmentQuotePanel({
                   {formatMoney(line.finalAmountCents)}
                 </span>
               </div>
-              <div className="mt-3 grid gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 sm:grid-cols-4">
+              <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 sm:grid-cols-4">
                 <div>
                   <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Catalogue</p>
                   <p className="mt-1 font-bold">{formatMoney(line.listPriceCents)}</p>

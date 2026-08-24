@@ -4,6 +4,7 @@ import { CreditCard } from "lucide-react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { paymentProgressPercent } from "@/lib/member-avatar";
+import { paymentNewHref } from "@/lib/payment-navigation";
 import { formatMoney } from "@/lib/subscription-billing";
 
 type SubscriptionCard = {
@@ -24,14 +25,20 @@ function formatDate(date: Date | string) {
   return new Date(date).toLocaleDateString("fr-FR");
 }
 
-export function MemberSubscriptionCards({ subscriptions }: { subscriptions: SubscriptionCard[] }) {
+export function MemberSubscriptionCards({
+  subscriptions,
+  returnTo,
+}: {
+  subscriptions: SubscriptionCard[];
+  returnTo: string;
+}) {
   if (subscriptions.length === 0) {
     return (
       <EmptyState
         icon={<CreditCard className="size-8 opacity-45" />}
         title="Aucun abonnement"
         message="Ajoutez une formule pour suivre les séances, les dates et les paiements."
-        action={<Link href="/subscriptions/new" className="btn btn-primary">Renouveler</Link>}
+        action={<Link href="/subscriptions/new" className="btn btn-primary min-h-11">Renouveler</Link>}
         className="py-8"
       />
     );
@@ -96,9 +103,9 @@ export function MemberSubscriptionCards({ subscriptions }: { subscriptions: Subs
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               {!isPaid ? (
                 <Link
-                  href={`/payments/new?memberSubscriptionId=${sub.id}`}
+                  href={paymentNewHref({ memberSubscriptionId: sub.id, returnTo })}
                   prefetch={false}
-                  className="btn btn-primary btn-sm inline-flex w-full justify-center text-xs"
+                  className="btn btn-primary inline-flex min-h-11 w-full justify-center text-xs"
                 >
                   Encaisser
                 </Link>
@@ -107,7 +114,7 @@ export function MemberSubscriptionCards({ subscriptions }: { subscriptions: Subs
                 href={`/subscriptions/${sub.id}/edit`}
                 prefetch={false}
                 title="Corriger l'abonnement avec historique conservé"
-                className={`btn btn-ghost btn-sm inline-flex w-full justify-center text-xs ${
+                className={`btn btn-ghost inline-flex min-h-11 w-full justify-center text-xs ${
                   isPaid ? "sm:col-span-2" : ""
                 }`}
               >

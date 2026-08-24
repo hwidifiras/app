@@ -25,6 +25,7 @@ import {
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatRoomLabel } from "@/lib/group-room";
 import { getEnrollmentRecoveryCandidatesForMember } from "@/lib/enrollment-recovery";
+import { paymentNewHref } from "@/lib/payment-navigation";
 import { prisma } from "@/lib/prisma";
 import { userHasPermission } from "@/lib/permissions";
 import { getAuthUser } from "@/lib/request-user";
@@ -213,7 +214,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
     memberActions.push({
       kind: "COLLECT",
       label: "Encaisser",
-      href: `/payments/new?memberId=${member.id}`,
+      href: paymentNewHref({ memberId: member.id, returnTo: `/members/${member.id}` }),
     });
   }
   if (
@@ -282,7 +283,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
     <main className="app-shell py-4 md:py-8">
       <Link
         href="/members"
-        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--primary)] hover:underline"
+        className="mb-4 inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-[var(--primary)] hover:bg-[var(--surface-soft)] hover:underline"
       >
         <ArrowLeft className="size-3.5" /> Retour aux membres
       </Link>
@@ -335,7 +336,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                   <Link
                     href={`/members/${member.id}/add-to-group`}
                     prefetch={false}
-                    className="btn btn-primary btn-block-mobile btn-sm sm:w-auto"
+                    className="btn btn-primary btn-block-mobile min-h-11 sm:w-auto"
                   >
                     + Affecter
                   </Link>
@@ -349,7 +350,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                   message="Affectez ce membre à un cours pour le retrouver dans le pointage."
                   action={
                     member.status === "ACTIVE" ? (
-                      <Link href={`/members/${member.id}/add-to-group`} prefetch={false} className="btn btn-primary">
+                      <Link href={`/members/${member.id}/add-to-group`} prefetch={false} className="btn btn-primary min-h-11">
                         Affecter
                       </Link>
                     ) : undefined
@@ -386,7 +387,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                           <Link
                             href={`/sessions?groupId=${assignment.group.id}`}
                             prefetch={false}
-                            className="btn btn-ghost btn-sm w-full"
+                            className="btn btn-ghost min-h-11 w-full"
                           >
                             Voir planning
                           </Link>
@@ -411,7 +412,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                 </div>
                 <CreditCard className="size-5 text-[var(--muted-foreground)]" />
               </div>
-              <MemberSubscriptionCards subscriptions={subscriptionCards} />
+              <MemberSubscriptionCards subscriptions={subscriptionCards} returnTo={`/members/${member.id}`} />
             </section>
 
             {product.capabilities.classManagement ? (
@@ -465,7 +466,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                             <Link
                               href={`/attendance/sessions/${attendance.session.id}`}
                               prefetch={false}
-                              className="btn btn-ghost btn-sm w-full sm:w-auto"
+                              className="btn btn-ghost min-h-11 w-full sm:w-auto"
                             >
                               Ouvrir
                             </Link>
@@ -483,7 +484,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
 
             {product.capabilities.classManagement && inactiveGroups.length > 0 ? (
               <details className="panel min-w-0 p-4 sm:p-5">
-                <summary className="cursor-pointer text-sm font-semibold text-[var(--foreground)]">
+                <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-[var(--foreground)]">
                   Anciennes affectations ({inactiveGroups.length})
                 </summary>
                 <ul className="mt-3 grid gap-2 sm:grid-cols-2">

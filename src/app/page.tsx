@@ -44,6 +44,7 @@ import {
 } from "@/lib/dashboard-read-model";
 import { utcDateOnlyForTimeZone } from "@/lib/dates";
 import { isPaymentReminderEmailConfigured } from "@/lib/email";
+import { paymentNewHref } from "@/lib/payment-navigation";
 import { enrichDebtsWithReminderMeta } from "@/lib/payment-reminders";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/request-user";
@@ -329,7 +330,7 @@ function CommercialQuietStatePanel() {
             Inscrire
           </Link>
           <Link
-            href="/payments/new"
+            href={paymentNewHref({ returnTo: "/?view=pilotage" })}
             className="inline-flex min-h-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--foreground)] transition hover:border-[var(--primary)] hover:text-[var(--primary)]"
           >
             Encaisser
@@ -681,11 +682,11 @@ function DashboardViewSwitcher({ mode, canSwitch }: { mode: "RECEPTION" | "PILOT
   return (
     <nav
       aria-label="Vue dashboard"
-      className="flex w-full flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)]/90 px-3 py-2 shadow-[var(--shadow-panel)]"
+      className="flex w-full items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)]/90 px-3 py-2 shadow-[var(--shadow-panel)]"
     >
       <div className="min-w-0">
-        <p className="text-xs font-semibold text-[var(--foreground)]">Lecture du dashboard</p>
-        <p className="text-xs text-[var(--muted-foreground)]">Reception pour le quotidien, pilotage pour les indicateurs.</p>
+        <p className="text-xs font-semibold text-[var(--foreground)]">Vue d&apos;accueil</p>
+        <p className="hidden text-xs text-[var(--muted-foreground)] sm:block">Réception pour le quotidien, pilotage pour les indicateurs.</p>
       </div>
       <div className="inline-flex rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-1">
         {options.map((option) => {
@@ -697,7 +698,7 @@ function DashboardViewSwitcher({ mode, canSwitch }: { mode: "RECEPTION" | "PILOT
               prefetch={false}
               aria-current={selected ? "page" : undefined}
               className={cn(
-                "min-h-9 rounded-md px-3 py-2 text-xs font-semibold transition",
+                "inline-flex min-h-11 items-center rounded-md px-3 py-2 text-xs font-semibold transition",
                 selected ? "bg-[var(--primary)] text-white shadow-sm" : "text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]",
               )}
             >
@@ -1136,7 +1137,7 @@ export default async function Home({
         meta: debt.partialPaid
           ? "Paiement partiel"
           : `${debt.subscriptions} abonnement${debt.subscriptions > 1 ? "s" : ""}`,
-        href: `/payments/new?memberId=${debt.memberId}`,
+        href: paymentNewHref({ memberId: debt.memberId, returnTo: "/" }),
         actionLabel: "Encaisser",
         icon: Wallet,
         tone: "red" as const,
@@ -1288,17 +1289,17 @@ export default async function Home({
 
   return (
     <main className="app-shell relative overflow-hidden bg-[var(--canvas)] text-[var(--foreground)]">
-      <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-5">
-        <header className="dashboard-hero relative overflow-hidden rounded-lg px-4 py-4 sm:px-6 lg:min-h-[11.5rem] lg:px-7 lg:py-6">
-          <div className="relative z-10 flex min-h-full flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+      <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-3 sm:gap-4">
+        <header className="dashboard-hero relative overflow-hidden rounded-lg px-4 py-3.5 sm:px-5 sm:py-4 lg:px-6">
+          <div className="relative z-10 flex min-h-full flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0 max-w-2xl">
               <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--hero-muted)]">
                 Tableau de bord
               </p>
-              <h1 className="mt-2 text-2xl font-bold leading-tight tracking-normal sm:text-4xl">
+              <h1 className="mt-1 text-2xl font-bold leading-tight tracking-normal sm:text-3xl">
                 {product.profile === "GYM_ONLY" ? "Aujourd'hui à la salle" : "Aujourd'hui au club"}
               </h1>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--hero-muted)] sm:text-base sm:leading-7">
+              <p className="mt-1.5 hidden max-w-xl text-sm leading-6 text-[var(--hero-muted)] sm:block">
                 {product.profile === "GYM_ONLY"
                   ? "Les accès à contrôler, les encaissements à suivre et les pass qui demandent une action."
                   : product.profile === "HYBRID"
@@ -1306,18 +1307,18 @@ export default async function Home({
                     : "Les séances à pointer, les encaissements à suivre et les priorités qui demandent une action."}
               </p>
             </div>
-            <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[32rem]">
-              <div className="rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 backdrop-blur sm:px-4 sm:py-3">
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2 lg:min-w-[30rem]">
+              <div className="min-w-0 rounded-lg border border-white/20 bg-white/10 px-2.5 py-2 backdrop-blur sm:px-3">
                 <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[var(--hero-muted)]">
                   Date
                 </p>
-                <p className="mt-2 text-sm font-bold capitalize text-white">{formatLongDateFr(today)}</p>
+                <p className="mt-1 truncate text-xs font-bold capitalize text-white sm:text-sm">{formatLongDateFr(today)}</p>
               </div>
-              <div className="rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 backdrop-blur sm:px-4 sm:py-3">
+              <div className="min-w-0 rounded-lg border border-white/20 bg-white/10 px-2.5 py-2 backdrop-blur sm:px-3">
                 <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[var(--hero-muted)]">
                   {product.profile === "GYM_ONLY" ? "Entrées" : product.profile === "HYBRID" ? "Activité" : "Séances"}
                 </p>
-                <p className="mt-2 text-sm font-bold text-white">
+                <p className="mt-1 truncate text-xs font-bold text-white sm:text-sm">
                   {product.profile === "GYM_ONLY"
                     ? `${gymStats.visitsToday} aujourd'hui`
                     : product.profile === "HYBRID"
@@ -1325,11 +1326,11 @@ export default async function Home({
                       : `${sessionsToday} aujourd'hui`}
                 </p>
               </div>
-              <div className="rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 backdrop-blur sm:px-4 sm:py-3">
+              <div className="min-w-0 rounded-lg border border-white/20 bg-white/10 px-2.5 py-2 backdrop-blur sm:px-3">
                 <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[var(--hero-muted)]">
                   Membres
                 </p>
-                <p className="mt-2 text-sm font-bold text-white">{activeMembers} actifs</p>
+                <p className="mt-1 truncate text-xs font-bold text-white sm:text-sm">{activeMembers} actifs</p>
               </div>
             </div>
           </div>

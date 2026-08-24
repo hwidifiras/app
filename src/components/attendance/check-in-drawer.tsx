@@ -1,18 +1,31 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useId, useRef, useState, useSyncExternalStore } from "react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import Link from "next/link";
 import { CalendarClock, Check, CheckCircle2, LockOpen, RotateCcw, Users, X, XIcon } from "lucide-react";
 
 import { UndoButton } from "@/components/ui/undo-button";
+import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { useAccessibleDialog } from "@/hooks/use-accessible-dialog";
 import { formatMoney } from "@/lib/money";
 import type { SessionCardData } from "./session-card";
 
 const MARK_ALL_MAX = 8;
+const DESKTOP_QUERY = "(min-width: 1024px)";
+
+function subscribeToDesktopChange(callback: () => void) {
+  const media = window.matchMedia(DESKTOP_QUERY);
+  media.addEventListener("change", callback);
+  return () => media.removeEventListener("change", callback);
+}
+
+function getDesktopSnapshot() {
+  return window.matchMedia(DESKTOP_QUERY).matches;
+}
 
 export function CheckInDrawer({
+  open,
   session,
   activeSubscriptionMemberIds,
   partialPaymentMemberIds,
@@ -30,6 +43,7 @@ export function CheckInDrawer({
   onReopen,
   postponeHref,
 }: {
+  open: boolean;
   session: SessionCardData;
   activeSubscriptionMemberIds: string[];
   partialPaymentMemberIds: string[];
@@ -58,8 +72,9 @@ export function CheckInDrawer({
   const overrideTitleId = useId();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const overrideReasonRef = useRef<HTMLTextAreaElement>(null);
+  const isDesktop = useSyncExternalStore(subscribeToDesktopChange, getDesktopSnapshot, () => false);
   const sheetRef = useAccessibleDialog<HTMLDivElement>({
-    open: true,
+    open: open && !isDesktop,
     onClose,
     closeOnEscape: !modalMember,
     initialFocusRef: closeButtonRef,
@@ -92,13 +107,18 @@ export function CheckInDrawer({
     return session.attendances.find((a) => a.memberId === mid);
   }
 
-  const present = session.attendances.filter((a) => a.status === "PRESENT").length;
-  const absent = session.attendances.filter((a) => a.status === "ABSENT").length;
-  const override = session.attendances.filter((a) => a.status === "OVERRIDE").length;
+  const expectedMemberIds = new Set(session.group.members.map((member) => member.memberId));
+  const expectedAttendances = session.attendances.filter((attendance) =>
+    expectedMemberIds.has(attendance.memberId),
+  );
+  const present = expectedAttendances.filter((a) => a.status === "PRESENT").length;
+  const absent = expectedAttendances.filter((a) => a.status === "ABSENT").length;
+  const override = expectedAttendances.filter((a) => a.status === "OVERRIDE").length;
   const total = session.group.members.length;
   const checked = present + absent + override;
   const remaining = total - checked;
   const isFinalized = session.status === "COMPLETED";
+  const isUpcoming = session.dateCategory === "UPCOMING";
   const needsFinalization = session.operationalStatus === "NEEDS_FINALIZATION";
   const hasPaymentPolicyWarning = session.group.members.some(
     (gm) => !hasSub(gm.memberId) || hasPartialDebt(gm.memberId),
@@ -106,7 +126,7 @@ export function CheckInDrawer({
 
   const unmarkedWithSub = session.group.members.filter((gm) => {
     const att = getAtt(gm.memberId);
-    return hasSub(gm.memberId) && att?.status !== "PRESENT";
+    return hasSub(gm.memberId) && !att;
   });
 
   function statusLabel(status: string, overrideReason?: string | null) {
@@ -132,46 +152,49 @@ export function CheckInDrawer({
   }
 
   async function markAllPresent() {
-    if (markingAll || unmarkedWithSub.length === 0) return;
+    if (markingAll || isUpcoming || unmarkedWithSub.length === 0) return;
     setMarkingAll(true);
-    for (const gm of unmarkedWithSub) {
-      const att = getAtt(gm.memberId);
-      if (att?.status === "PRESENT") continue;
-      const ok = await Promise.resolve(onCheckIn(gm.memberId, "PRESENT"));
-      if (ok === false) break;
+    try {
+      for (const gm of unmarkedWithSub) {
+        const ok = await Promise.resolve(onCheckIn(gm.memberId, "PRESENT"));
+        if (ok === false) break;
+      }
+    } finally {
+      setMarkingAll(false);
     }
-    setMarkingAll(false);
   }
+
+  if (!open && !isDesktop) return null;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-[var(--overlay)] md:items-stretch md:justify-end"
-      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-end justify-center bg-[var(--overlay)] md:items-stretch md:justify-end lg:static lg:z-auto lg:block lg:h-full lg:bg-transparent"
+      onClick={isDesktop ? undefined : onClose}
       role="presentation"
     >
       <div
         ref={sheetRef}
-        className="drawer-sheet drawer-sheet-adaptive flex w-full max-w-3xl flex-col overflow-hidden rounded-t-lg bg-[var(--surface)] shadow-[var(--shadow-floating)] md:h-full md:max-h-none md:rounded-none"
-        role="dialog"
-        aria-modal="true"
+        id="attendance-roster-panel"
+        className="drawer-sheet drawer-sheet-adaptive flex w-full max-w-3xl flex-col overflow-hidden rounded-t-lg bg-[var(--surface)] shadow-[var(--shadow-floating)] md:h-full md:max-h-none md:rounded-none lg:max-w-none lg:border-0 lg:shadow-none"
+        role={isDesktop ? "region" : "dialog"}
+        aria-modal={isDesktop ? undefined : true}
         aria-labelledby="check-in-drawer-title"
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex shrink-0 flex-col items-center pt-2 md:hidden">
+        <div className="flex shrink-0 flex-col items-center pt-2 lg:hidden">
           <div className="h-1 w-10 rounded-full bg-[var(--border)]" aria-hidden />
         </div>
 
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-3 sm:px-5">
           <div className="min-w-0 flex-1">
-            <h2 id="check-in-drawer-title" className="truncate text-lg font-semibold text-[var(--foreground)]">
+            <p className="text-xl font-bold tracking-tight text-[var(--primary)] sm:text-2xl">
+              {session.startTime} – {session.endTime}
+            </p>
+            <h2 id="check-in-drawer-title" className="mt-0.5 truncate text-xl font-bold text-[var(--foreground)] sm:text-2xl">
               {session.group.name}
             </h2>
-            <p className="mt-0.5 text-sm text-[var(--muted-foreground)]">
-              {session.startTime} – {session.endTime}
-              <span className="text-[var(--border)]"> · </span>
-              {session.room}
-            </p>
+            <p className="mt-1 text-sm text-[var(--muted-foreground)]">{session.room}</p>
             {session.coach && (
               <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
                 Coach {session.coach.firstName} {session.coach.lastName}
@@ -200,15 +223,21 @@ export function CheckInDrawer({
                 <span className="inline-flex items-center rounded-full bg-[var(--warning)]/12 px-2.5 py-1 text-xs font-semibold text-[var(--warning)]">
                   Séance passée · finalisation requise
                 </span>
+              ) : isUpcoming ? (
+                <span className="inline-flex items-center rounded-full bg-[var(--primary)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--primary)]">
+                  Séance à venir · aperçu
+                </span>
               ) : null}
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
             <button
+              ref={closeButtonRef}
               type="button"
               onClick={onClose}
-            className="btn btn-ghost min-h-11 min-w-11 shrink-0 rounded-full p-2"
-            aria-label="Fermer"
+            className="btn btn-ghost min-h-11 min-w-11 shrink-0 rounded-full p-2 lg:!hidden"
+            aria-label="Retour aux séances"
+            title="Retour aux séances"
           >
             <XIcon className="size-5" />
           </button>
@@ -217,9 +246,8 @@ export function CheckInDrawer({
 
         <div className="shrink-0 border-b border-[var(--border)] bg-[var(--surface-soft)]/55 px-4 py-3 sm:px-5">
           <div className="grid gap-2">
-          {!isFinalized && total <= MARK_ALL_MAX && unmarkedWithSub.length > 0 ? (
+          {!isFinalized && !isUpcoming && total <= MARK_ALL_MAX && unmarkedWithSub.length > 0 ? (
             <button
-              ref={closeButtonRef}
               type="button"
               onClick={markAllPresent}
               disabled={markingAll || loadingId !== null}
@@ -229,7 +257,7 @@ export function CheckInDrawer({
               {markingAll ? "Pointage en cours…" : `Pointer les restants présents (${unmarkedWithSub.length})`}
             </button>
           ) : <div />}
-          {hasPaymentPolicyWarning ? (
+          {!isUpcoming && hasPaymentPolicyWarning ? (
             <div className="rounded-lg border border-[var(--warning)]/25 bg-[var(--warning)]/10 px-3 py-2 text-xs leading-relaxed text-[var(--foreground)]">
               <strong>Règle de paiement.</strong> Sans abonnement actif ou solde non réglé, le pointage normal peut être bloqué. Utilisez un passage exceptionnel uniquement avec un motif clair.
             </div>
@@ -237,11 +265,11 @@ export function CheckInDrawer({
           </div>
         </div>
 
-        {message && (
+        {message ? (
           <div className="shrink-0 px-4 py-2">
-            <p className="rounded-lg bg-[var(--warning)]/10 px-3 py-2 text-xs text-[var(--warning)]">{message}</p>
+            <FeedbackMessage message={message} />
           </div>
-        )}
+        ) : null}
 
         <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="divide-y divide-[var(--border)]">
@@ -308,11 +336,12 @@ export function CheckInDrawer({
                     <button
                       type="button"
                       onClick={() => handleClick(mid, "PRESENT")}
-                      disabled={isFinalized || loadingId === mid || markingAll}
-                      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 sm:min-w-[7rem] ${
+                      disabled={isFinalized || isUpcoming || loadingId === mid || markingAll}
+                      aria-pressed={att?.status === "PRESENT"}
+                      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 sm:min-w-[9rem] ${
                         att?.status === "PRESENT"
-                          ? "ring-2 ring-[var(--success)] ring-offset-2 ring-offset-[var(--surface)] bg-[var(--success)] text-white"
-                          : "bg-[var(--success)] text-white hover:bg-[var(--success)]/90"
+                          ? "border-[var(--success)] bg-[var(--success)] text-white ring-2 ring-[var(--success)] ring-offset-2 ring-offset-[var(--surface)]"
+                          : "border-[var(--success)] bg-[var(--surface)] text-[var(--success)] hover:bg-[var(--success)]/8"
                       }`}
                     >
                       <Check className="size-4 shrink-0" />
@@ -321,11 +350,12 @@ export function CheckInDrawer({
                     <button
                       type="button"
                       onClick={() => handleClick(mid, "ABSENT")}
-                      disabled={isFinalized || loadingId === mid || markingAll}
-                      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 sm:min-w-[7rem] ${
+                      disabled={isFinalized || isUpcoming || loadingId === mid || markingAll}
+                      aria-pressed={att?.status === "ABSENT"}
+                      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 sm:min-w-[9rem] ${
                         att?.status === "ABSENT"
-                          ? "ring-2 ring-[var(--danger)] ring-offset-2 ring-offset-[var(--surface)] bg-[var(--danger)] text-white"
-                          : "bg-[var(--danger)] text-white hover:bg-[var(--danger)]/90"
+                          ? "border-[var(--danger)] bg-[var(--danger)] text-white ring-2 ring-[var(--danger)] ring-offset-2 ring-offset-[var(--surface)]"
+                          : "border-[var(--danger)] bg-[var(--surface)] text-[var(--danger)] hover:bg-[var(--danger)]/8"
                       }`}
                     >
                       <X className="size-4 shrink-0" />
@@ -341,7 +371,12 @@ export function CheckInDrawer({
 
         <div className="shrink-0 border-t border-[var(--border)] bg-[var(--surface)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(16,36,63,0.08)] sm:px-5">
           <div className="grid gap-2 sm:grid-cols-2">
-            {isFinalized ? (
+            {isUpcoming ? (
+              <Link href={postponeHref} prefetch={false} className="btn btn-secondary min-h-11 w-full sm:col-span-2">
+                <CalendarClock className="size-4" />
+                Ouvrir dans le planning
+              </Link>
+            ) : isFinalized ? (
               <button
                 type="button"
                 onClick={onReopen}
@@ -371,7 +406,7 @@ export function CheckInDrawer({
             )}
             <UndoButton
               onClick={onUndo ?? (() => undefined)}
-              disabled={isFinalized || !canUndo || !onUndo || undoLoading || loadingId !== null}
+              disabled={isFinalized || isUpcoming || !canUndo || !onUndo || undoLoading || loadingId !== null}
               label={
                 undoLoading
                   ? "Annulation…"
@@ -382,12 +417,12 @@ export function CheckInDrawer({
               title="Annuler les pointages un par un (Ctrl+Z)"
               className="min-h-11 w-full justify-center"
             />
-            {!needsFinalization && !isFinalized && checked === 0 ? (
+            {!isUpcoming && !needsFinalization && !isFinalized && checked === 0 ? (
               <Link href={postponeHref} prefetch={false} className="btn btn-secondary min-h-11 w-full">
                 <CalendarClock className="size-4" />
                 Reporter la séance
               </Link>
-            ) : !needsFinalization && !isFinalized ? (
+            ) : !isUpcoming && !needsFinalization && !isFinalized ? (
               <button
                 type="button"
                 disabled
@@ -399,7 +434,7 @@ export function CheckInDrawer({
               </button>
             ) : null}
           </div>
-          {!needsFinalization && !isFinalized && checked > 0 ? (
+          {!isUpcoming && !needsFinalization && !isFinalized && checked > 0 ? (
             <p className="mt-2 text-center text-xs text-[var(--muted-foreground)]">
               Annulez les {checked} pointage{checked > 1 ? "s" : ""} un par un pour réactiver le report.
             </p>
@@ -450,12 +485,16 @@ export function CheckInDrawer({
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  onCheckIn(modalMember.memberId, "OVERRIDE", reason.trim());
-                  setModalMember(null);
-                  setReason("");
+                onClick={async () => {
+                  const accepted = await Promise.resolve(
+                    onCheckIn(modalMember.memberId, "OVERRIDE", reason.trim()),
+                  );
+                  if (accepted !== false) {
+                    setModalMember(null);
+                    setReason("");
+                  }
                 }}
-                disabled={!reason.trim()}
+                disabled={!reason.trim() || loadingId === modalMember.memberId}
                 className="btn btn-primary btn-block-mobile min-h-11"
               >
                 Valider passage

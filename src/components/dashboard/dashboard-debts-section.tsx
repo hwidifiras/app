@@ -10,6 +10,7 @@ import {
   type DashboardDebtReminderRow,
 } from "@/lib/payment-reminder-types";
 import { formatMoney } from "@/lib/subscription-billing";
+import { paymentNewHref } from "@/lib/payment-navigation";
 
 export function DashboardDebtsSection({
   debts,
@@ -195,7 +196,7 @@ export function DashboardDebtsSection({
                   <td className="px-4 py-3 text-right" data-label="Actions">
                     <div className="flex flex-wrap justify-end gap-1.5">
                       <Link
-                        href={`/payments/new?memberId=${item.memberId}`}
+                        href={paymentNewHref({ memberId: item.memberId, returnTo: "/" })}
                         prefetch={false}
                         className="btn btn-ghost btn-sm inline-flex items-center gap-1.5"
                       >

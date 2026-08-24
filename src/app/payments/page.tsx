@@ -9,6 +9,7 @@ import {
   type ReceiptDeliveryStatus,
 } from "@/lib/receipt-delivery-status";
 import { getAuthUser } from "@/lib/request-user";
+import { paymentNewHref } from "@/lib/payment-navigation";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -276,7 +277,7 @@ export default async function PaymentsPage() {
         title="Historique caisse"
         description={`${totalCount} versement(s) enregistrés, total ${formatMoney(totalPayments)}.`}
         actions={
-          <Link href="/payments/new" className="btn btn-primary btn-block-mobile">
+          <Link href={paymentNewHref({ returnTo: "/payments" })} className="btn btn-primary btn-block-mobile min-h-11">
             + Encaisser
           </Link>
         }

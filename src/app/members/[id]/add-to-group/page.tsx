@@ -88,7 +88,7 @@ export default async function AddMemberToGroupPage({
             Ce membre a un statut RÉSILIÉ et ne peut pas être ajouté à un groupe.
           </p>
           <div className="mt-4">
-            <Link href={`/members/${id}`} prefetch={false} className="btn btn-ghost">
+            <Link href={`/members/${id}`} prefetch={false} className="btn btn-ghost min-h-11">
               Retour à la fiche
             </Link>
           </div>

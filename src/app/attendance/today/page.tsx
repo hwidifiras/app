@@ -11,7 +11,6 @@ import {
   expectedMemberIdsAtSession,
 } from "@/lib/session-lifecycle";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { getAuthUser } from "@/lib/request-user";
 import { coachSessionWhere } from "@/modules/classes/coach-scope";
 
@@ -45,6 +44,8 @@ export default async function AttendanceTodayPage({
   const today = utcDateOnlyForTimeZone(new Date());
   const tomorrow = new Date(today);
   tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+  const upcomingUntil = new Date(tomorrow);
+  upcomingUntil.setUTCDate(upcomingUntil.getUTCDate() + 7);
   const overdueSince = new Date(today);
   overdueSince.setUTCDate(overdueSince.getUTCDate() - 30);
 
@@ -56,6 +57,7 @@ export default async function AttendanceTodayPage({
     room: string;
     status: string;
     operationalStatus: "UPCOMING" | "NEEDS_FINALIZATION" | "COMPLETED" | "CANCELLED";
+    dateCategory: "OVERDUE" | "TODAY" | "UPCOMING";
     expectedMemberCount: number;
     checkedMemberCount: number;
     unmarkedCount: number;
@@ -91,7 +93,7 @@ export default async function AttendanceTodayPage({
       where: {
         tenantId,
         ...coachSessionWhere(authUser),
-        sessionDate: { gte: overdueSince, lt: tomorrow },
+        sessionDate: { gte: overdueSince, lt: upcomingUntil },
         status: { in: ["PLANNED", "RESCHEDULED", "COMPLETED"] },
       },
       include: {
@@ -130,14 +132,24 @@ export default async function AttendanceTodayPage({
         attendanceMemberIds: session.attendances.map((attendance) => attendance.memberId),
       });
       const isToday = session.sessionDate >= today && session.sessionDate < tomorrow;
+      const isUpcoming = session.sessionDate >= tomorrow && session.sessionDate < upcomingUntil;
+      const dateCategory: "TODAY" | "UPCOMING" | "OVERDUE" = isToday
+        ? "TODAY"
+        : isUpcoming
+          ? "UPCOMING"
+          : "OVERDUE";
       const explicitlyRequested = requestedSessionId === session.id;
-      if (!isToday && lifecycle.operationalStatus !== "NEEDS_FINALIZATION" && !explicitlyRequested) {
+      if (isUpcoming && session.status === "COMPLETED" && !explicitlyRequested) {
+        return [];
+      }
+      if (!isToday && !isUpcoming && lifecycle.operationalStatus !== "NEEDS_FINALIZATION" && !explicitlyRequested) {
         return [];
       }
       const expectedIds = new Set(expectedMemberIds);
       return [{
         ...session,
         ...lifecycle,
+        dateCategory,
         sessionDate: session.sessionDate.toISOString(),
         postponedTo: session.postponedTo ? session.postponedTo.toISOString() : null,
         postponementDetails: session.postponementDetails ?? null,
@@ -152,10 +164,11 @@ export default async function AttendanceTodayPage({
       }];
     });
     sessions = visibleSessions.sort((left, right) => {
-      const leftPriority = left.operationalStatus === "NEEDS_FINALIZATION" ? 0 : 1;
-      const rightPriority = right.operationalStatus === "NEEDS_FINALIZATION" ? 0 : 1;
+      const categoryPriority = { TODAY: 0, UPCOMING: 1, OVERDUE: 2 } as const;
+      const leftPriority = categoryPriority[left.dateCategory];
+      const rightPriority = categoryPriority[right.dateCategory];
       if (leftPriority !== rightPriority) return leftPriority - rightPriority;
-      return right.sessionDate.localeCompare(left.sessionDate) || left.startTime.localeCompare(right.startTime);
+      return left.sessionDate.localeCompare(right.sessionDate) || left.startTime.localeCompare(right.startTime);
     });
 
     // Collect all member IDs from sessions to check subscriptions
@@ -277,28 +290,12 @@ export default async function AttendanceTodayPage({
   }
 
   return (
-    <main className="app-shell py-4 md:py-8">
-      <Link
-        href="/attendance"
-        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--primary)] hover:underline"
-      >
-        <ArrowLeft className="size-3.5" /> Retour à l&apos;historique
-      </Link>
-
-      <PageHeader
-        overline="Aujourd'hui"
-        title="Pointage"
-        description={
-          sessions.length === 0
-            ? "Aucune séance aujourd'hui et aucun pointage en retard."
-            : `${sessions.length} séance${sessions.length > 1 ? "s" : ""} disponible${sessions.length > 1 ? "s" : ""}. Les séances passées restent ouvertes jusqu'à finalisation.`
-        }
-      />
-
-      <section className="panel panel-soft p-4 md:p-6">
+    <main className="attendance-page app-shell py-0 md:py-0">
+      <section className="attendance-page-surface">
         <CheckInPanel
           data={{
             sessions,
+            todayIso: today.toISOString(),
             activeSubscriptionMemberIds,
             partialPaymentMemberIds,
             partialPaymentDebtsCents,

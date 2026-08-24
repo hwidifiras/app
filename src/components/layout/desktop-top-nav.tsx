@@ -40,14 +40,14 @@ export function DesktopTopNav() {
       data-app-top-nav
       className="sticky top-0 z-40 hidden border-b border-[var(--border)] bg-[var(--surface)]/96 backdrop-blur print:hidden lg:block"
     >
-      <div className="flex min-h-[3.5rem] items-center justify-between gap-4 px-5 py-2">
+      <div className="flex min-h-[var(--app-topbar-height)] items-center justify-between gap-4 px-6 py-2">
         <div className="min-w-0">
-          <p className="text-[0.62rem] font-bold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
+          <p className="text-[0.62rem] font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
             Espace réception
           </p>
-          <p className="truncate text-sm font-semibold text-[var(--foreground)]">{pageLabel}</p>
+          <p className="mt-0.5 truncate text-xl font-bold tracking-[-0.02em] text-[var(--foreground)]">{pageLabel}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <DisplayModeToggle />
           <SetupGuide variant="header" />
           <AppRefreshButton />

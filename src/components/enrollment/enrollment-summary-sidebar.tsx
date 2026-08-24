@@ -31,7 +31,7 @@ export function EnrollmentSummarySidebar({
   hasBalanceDue,
 }: EnrollmentSummarySidebarProps) {
   return (
-    <aside className="order-first rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)] lg:sticky lg:top-20 lg:order-none">
+    <aside className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--primary)]">Résumé</p>

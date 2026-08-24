@@ -26,6 +26,7 @@ import {
 import type { SubscriptionStatus } from "@prisma/client";
 import type { SubscriptionEffectiveState } from "@/modules/sales/subscription-lifecycle";
 import { Pagination, usePagination } from "@/components/ui/pagination";
+import { paymentNewHref } from "@/lib/payment-navigation";
 
 export type SubscriptionRow = {
   id: string;
@@ -352,7 +353,7 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
               <TableActionsCell>
                 {sub.effectiveState !== "CANCELLED" && sub.totalPaid < sub.amount ? (
                   <Link
-                    href={`/payments/new?memberSubscriptionId=${sub.id}`}
+                    href={paymentNewHref({ memberSubscriptionId: sub.id, returnTo: "/subscriptions" })}
                     prefetch={false}
                     className="btn btn-primary btn-block-mobile min-h-11 sm:w-auto"
                   >

@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useState } from "react";
-import { Clock } from "lucide-react";
+import { CalendarDays, ChevronDown, Clock, History } from "lucide-react";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { weekStartIsoForDate } from "@/lib/dates";
 import { useActionHistory } from "@/hooks/use-action-history";
@@ -11,6 +12,7 @@ import { CheckInDrawer } from "./check-in-drawer";
 
 type TodayData = {
   sessions: SessionCardData[];
+  todayIso: string;
   activeSubscriptionMemberIds: string[];
   partialPaymentMemberIds: string[];
   partialPaymentDebtsCents: Record<string, number>;
@@ -56,8 +58,19 @@ export function CheckInPanel({
   initialSessionId?: string;
 }) {
   const [sessions, setSessions] = useState(data.sessions);
-  const [selectedId, setSelectedId] = useState<string | null>(
-    data.sessions.some((session) => session.id === initialSessionId) ? initialSessionId ?? null : null,
+  const validInitialSessionId = data.sessions.some((session) => session.id === initialSessionId)
+    ? initialSessionId
+    : undefined;
+  const defaultSessionId =
+    validInitialSessionId ??
+    data.sessions.find((session) => session.dateCategory === "TODAY")?.id ??
+    data.sessions.find((session) => session.operationalStatus === "NEEDS_FINALIZATION")?.id ??
+    data.sessions.at(0)?.id ??
+    null;
+  const [selectedId, setSelectedId] = useState<string | null>(defaultSessionId);
+  const [mobileOpen, setMobileOpen] = useState(Boolean(validInitialSessionId));
+  const [overdueOpen, setOverdueOpen] = useState(
+    data.sessions.every((session) => session.dateCategory !== "TODAY"),
   );
   const [message, setMessage] = useState<string | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -72,6 +85,33 @@ export function CheckInPanel({
 
   const effectiveSession = selectedId ? sessions.find((s) => s.id === selectedId) : null;
   const sessionUndoCount = selectedId ? countInScope(selectedId) : 0;
+  const todaySessions = sessions.filter((session) => session.dateCategory === "TODAY");
+  const upcomingSessions = sessions.filter((session) => session.dateCategory === "UPCOMING");
+  const overdueSessions = sessions.filter(
+    (session) =>
+      session.dateCategory === "OVERDUE" && session.operationalStatus === "NEEDS_FINALIZATION",
+  );
+  const todayLabel = new Date(data.todayIso).toLocaleDateString("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  });
+
+  function selectSession(sessionId: string) {
+    setSelectedId(sessionId);
+    setMobileOpen(true);
+    const url = new URL(window.location.href);
+    url.searchParams.set("sessionId", sessionId);
+    window.history.replaceState(window.history.state, "", url);
+  }
+
+  function closeMobileRoster() {
+    setMobileOpen(false);
+    window.requestAnimationFrame(() => {
+      document.getElementById(`attendance-session-${selectedId}`)?.focus();
+    });
+  }
 
   const revertAttendance = useCallback((meta: AttendanceUndoMeta) => {
     setSessions((prev) =>
@@ -273,129 +313,229 @@ export function CheckInPanel({
 
     setLoadingId(latestAttendance.memberId);
     const requestPayload = { attendanceId: latestAttendance.id };
-    const response = await fetch("/api/attendances", {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        "Idempotency-Key": keyForAttendanceIntent(requestPayload),
-      },
-      body: JSON.stringify(requestPayload),
-    });
-    const result = (await response.json()) as { error?: string; warning?: string };
-    if (!response.ok) {
-      setMessage(result.error ?? "Impossible d'annuler le dernier pointage");
-      setLoadingId(null);
-      return;
-    }
-    completeAttendanceIntent(requestPayload);
+    try {
+      const response = await fetch("/api/attendances", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": keyForAttendanceIntent(requestPayload),
+        },
+        body: JSON.stringify(requestPayload),
+      });
+      const result = (await response.json()) as { error?: string; warning?: string };
+      if (!response.ok) {
+        setMessage(result.error ?? "Impossible d'annuler le dernier pointage");
+        return;
+      }
+      completeAttendanceIntent(requestPayload);
 
-    setSessions((current) =>
-      current.map((item) =>
-        item.id === selectedId
-          ? withPointingProgress({
-              ...item,
-              attendances: item.attendances.filter(
-                (attendance) => attendance.id !== latestAttendance.id,
-              ),
-            })
-          : item,
-      ),
-    );
-    setMessage(result.warning ?? "Dernier pointage annulé");
-    setLoadingId(null);
+      setSessions((current) =>
+        current.map((item) =>
+          item.id === selectedId
+            ? withPointingProgress({
+                ...item,
+                attendances: item.attendances.filter(
+                  (attendance) => attendance.id !== latestAttendance.id,
+                ),
+              })
+            : item,
+        ),
+      );
+      setMessage(result.warning ?? "Dernier pointage annulé");
+    } catch {
+      setMessage("Connexion interrompue. Le dernier pointage n'a pas été annulé.");
+    } finally {
+      setLoadingId(null);
+    }
   }
 
   async function updateFinalization(action: "finalize" | "reopen") {
     if (!selectedId || finalizeLoading) return;
     setFinalizeLoading(true);
     setMessage(null);
-    const response = await fetch(`/api/attendances/sessions/${selectedId}/finalize`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action,
-        reason:
-          action === "finalize"
-            ? "Pointage terminé depuis la réception"
-            : "Correction du pointage depuis la réception",
-      }),
-    });
-    const result = (await response.json()) as {
-      data?: { status: string };
-      error?: string;
-    };
-    setFinalizeLoading(false);
-    if (!response.ok) {
-      setMessage(result.error ?? "Impossible de modifier la finalisation.");
-      return;
-    }
+    try {
+      const response = await fetch(`/api/attendances/sessions/${selectedId}/finalize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action,
+          reason:
+            action === "finalize"
+              ? "Pointage terminé depuis la réception"
+              : "Correction du pointage depuis la réception",
+        }),
+      });
+      const result = (await response.json()) as {
+        data?: { status: string };
+        error?: string;
+      };
+      if (!response.ok) {
+        setMessage(result.error ?? "Impossible de modifier la finalisation.");
+        return;
+      }
 
-    setSessions((current) =>
-      current.map((session) =>
-        session.id === selectedId
-          ? {
-              ...session,
-              status:
-                result.data?.status === "RESCHEDULED"
-                  ? "RESCHEDULED"
-                  : action === "finalize"
-                    ? "COMPLETED"
-                    : "PLANNED",
-              operationalStatus: action === "finalize" ? "COMPLETED" : "NEEDS_FINALIZATION",
-              canFinalize: action === "reopen" && (session.unmarkedCount ?? 0) === 0,
-            }
-          : session,
-      ),
-    );
-    setMessage(action === "finalize" ? "Séance finalisée." : "Séance rouverte pour correction.");
+      setSessions((current) =>
+        current.map((session) =>
+          session.id === selectedId
+            ? {
+                ...session,
+                status:
+                  result.data?.status === "RESCHEDULED"
+                    ? "RESCHEDULED"
+                    : action === "finalize"
+                      ? "COMPLETED"
+                      : "PLANNED",
+                operationalStatus: action === "finalize" ? "COMPLETED" : "NEEDS_FINALIZATION",
+                canFinalize: action === "reopen" && (session.unmarkedCount ?? 0) === 0,
+              }
+            : session,
+        ),
+      );
+      setMessage(action === "finalize" ? "Séance finalisée." : "Séance rouverte pour correction.");
+    } catch {
+      setMessage("Connexion interrompue. La séance n'a pas été modifiée.");
+    } finally {
+      setFinalizeLoading(false);
+    }
   }
 
   if (sessions.length === 0) {
     return (
-      <div className="panel panel-soft p-8 text-center">
+      <div className="attendance-empty-state">
         <Clock className="mx-auto size-8 text-[var(--muted-foreground)] opacity-50" />
-        <p className="mt-3 text-sm text-[var(--muted-foreground)]">Aucune séance planifiée aujourd&apos;hui.</p>
+        <h1 className="mt-3 text-xl font-bold text-[var(--foreground)]">Pointage</h1>
+        <p className="mt-2 text-sm text-[var(--muted-foreground)]">Aucune séance à traiter pour le moment.</p>
+        <Link href="/sessions" className="btn btn-secondary mt-5">
+          <CalendarDays className="size-4" aria-hidden />
+          Voir le planning
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <FeedbackMessage message={message} />
+    <div className="attendance-workbench">
+      <aside className="attendance-session-rail" aria-label="Séances à pointer">
+        <div className="attendance-rail-header">
+          <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[var(--primary)]">
+            {todayLabel}
+          </p>
+          <div className="mt-1 flex items-center justify-between gap-3">
+            <h1 className="text-2xl font-bold tracking-tight text-[var(--foreground)]">Pointage</h1>
+            <Link href="/attendance" className="btn btn-ghost btn-sm" aria-label="Voir l'historique des présences">
+              <History className="size-4" aria-hidden />
+              <span className="hidden sm:inline lg:hidden xl:inline">Historique</span>
+            </Link>
+          </div>
+        </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {sessions.map((s) => (
-          <SessionCard
-            key={s.id}
-            session={s}
-            isSelected={selectedId === s.id}
-            onSelect={() => setSelectedId(s.id)}
-            postponeHref={`/sessions?week=${weekStartIsoForDate(new Date(s.sessionDate))}&groupId=${s.group.id}&sessionId=${s.id}`}
-            postponeDisabled={s.attendances.length > 0}
+        <div className="px-4 pt-3">
+          <FeedbackMessage message={message} />
+        </div>
+
+        <div className="attendance-session-list">
+          {todaySessions.length > 0 ? (
+            <section aria-labelledby="today-sessions-heading">
+              <div className="attendance-list-heading">
+                <h2 id="today-sessions-heading">Aujourd&apos;hui</h2>
+                <span>{todaySessions.length}</span>
+              </div>
+              <div className="space-y-2.5">
+                {todaySessions.map((session) => (
+                  <SessionCard
+                    key={session.id}
+                    session={session}
+                    isSelected={selectedId === session.id}
+                    onSelect={() => selectSession(session.id)}
+                  />
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {upcomingSessions.length > 0 ? (
+            <section aria-labelledby="upcoming-sessions-heading">
+              <div className="attendance-list-heading">
+                <h2 id="upcoming-sessions-heading">À venir</h2>
+                <span>{upcomingSessions.length}</span>
+              </div>
+              <div className="space-y-2.5">
+                {upcomingSessions.map((session) => (
+                  <SessionCard
+                    key={session.id}
+                    session={session}
+                    isSelected={selectedId === session.id}
+                    onSelect={() => selectSession(session.id)}
+                  />
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {overdueSessions.length > 0 ? (
+            <details
+              className="attendance-overdue"
+              open={overdueOpen}
+              onToggle={(event) => setOverdueOpen(event.currentTarget.open)}
+            >
+              <summary>
+                <span>Séances passées à finaliser</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="attendance-count-badge">{overdueSessions.length}</span>
+                  <ChevronDown className="attendance-overdue-chevron size-4" aria-hidden />
+                </span>
+              </summary>
+              <div className="mt-2.5 space-y-2.5">
+                {overdueSessions.map((session) => (
+                  <SessionCard
+                    key={session.id}
+                    session={session}
+                    isSelected={selectedId === session.id}
+                    onSelect={() => selectSession(session.id)}
+                  />
+                ))}
+              </div>
+            </details>
+          ) : null}
+        </div>
+      </aside>
+
+      <div className="attendance-roster-column">
+        {effectiveSession && selectedId ? (
+          <CheckInDrawer
+            open={mobileOpen}
+            session={effectiveSession}
+            activeSubscriptionMemberIds={data.activeSubscriptionMemberIds}
+            partialPaymentMemberIds={data.partialPaymentMemberIds}
+            partialPaymentDebtsCents={data.partialPaymentDebtsCents}
+            onCheckIn={(mid, status, reason, kind) => submitCheckIn(selectedId, mid, status, reason, kind)}
+            onClose={closeMobileRoster}
+            loadingId={loadingId}
+            message={message}
+            canUndo={effectiveSession.attendances.length > 0}
+            undoCount={effectiveSession.attendances.length}
+            undoLoading={undoLoading}
+            onUndo={undoLastForSession}
+            finalizeLoading={finalizeLoading}
+            onFinalize={() => updateFinalization("finalize")}
+            onReopen={() => updateFinalization("reopen")}
+            postponeHref={`/sessions?week=${weekStartIsoForDate(new Date(effectiveSession.sessionDate))}&groupId=${effectiveSession.group.id}&sessionId=${effectiveSession.id}`}
           />
-        ))}
+        ) : (
+          <div className="attendance-roster-placeholder">
+            <UsersRoundIcon />
+            <p>Sélectionnez une séance pour afficher sa feuille de pointage.</p>
+          </div>
+        )}
       </div>
-
-      {effectiveSession && selectedId && (
-        <CheckInDrawer
-          session={effectiveSession}
-          activeSubscriptionMemberIds={data.activeSubscriptionMemberIds}
-          partialPaymentMemberIds={data.partialPaymentMemberIds}
-          partialPaymentDebtsCents={data.partialPaymentDebtsCents}
-          onCheckIn={(mid, status, reason, kind) => submitCheckIn(selectedId, mid, status, reason, kind)}
-          onClose={() => setSelectedId(null)}
-          loadingId={loadingId}
-          message={message}
-          canUndo={effectiveSession.attendances.length > 0}
-          undoCount={effectiveSession.attendances.length}
-          undoLoading={undoLoading}
-          onUndo={undoLastForSession}
-          finalizeLoading={finalizeLoading}
-          onFinalize={() => updateFinalization("finalize")}
-          onReopen={() => updateFinalization("reopen")}
-          postponeHref={`/sessions?week=${weekStartIsoForDate(new Date(effectiveSession.sessionDate))}&groupId=${effectiveSession.group.id}&sessionId=${effectiveSession.id}`}
-        />
-      )}
     </div>
+  );
+}
+
+function UsersRoundIcon() {
+  return (
+    <span className="grid size-12 place-items-center rounded-full bg-[var(--primary)]/10 text-[var(--primary)]" aria-hidden>
+      <CalendarDays className="size-6" />
+    </span>
   );
 }

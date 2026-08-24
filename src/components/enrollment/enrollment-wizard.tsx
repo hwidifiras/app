@@ -1,12 +1,11 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions } from "@/components/ui/form-layout";
-import { ReceptionInfoCard } from "@/components/ui/reception-info-card";
 import { EnrollmentCompletionPanel } from "@/components/enrollment/enrollment-completion-panel";
 import { EnrollmentLineEditor } from "@/components/enrollment/enrollment-line-editor";
 import { EnrollmentQuotePanel } from "@/components/enrollment/enrollment-quote-panel";
@@ -73,6 +72,15 @@ export function EnrollmentWizard({
   const [voidReason, setVoidReason] = useState("");
   const [voiding, setVoiding] = useState(false);
   const enrollmentIntent = useIdempotencyIntent();
+  const activeStepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const previousStepRef = useRef(step);
+
+  useEffect(() => {
+    if (previousStepRef.current === step) return;
+    previousStepRef.current = step;
+    const frame = window.requestAnimationFrame(() => activeStepHeadingRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [step]);
 
   useEffect(() => {
     let cancelled = false;
@@ -425,7 +433,7 @@ export function EnrollmentWizard({
   const quoteBalanceCents = quote ? Math.max(0, quote.totalFinalCents - quotePaidCents) : 0;
 
   return (
-    <form onSubmit={applyEnrollment} className="space-y-6 pb-4 lg:pb-0">
+    <form onSubmit={applyEnrollment} className="enrollment-wizard space-y-6 pb-4 lg:pb-0">
       {message ? (
         <FeedbackMessage
           message={message}
@@ -438,11 +446,6 @@ export function EnrollmentWizard({
           }
         />
       ) : null}
-
-      <ReceptionInfoCard title="À retenir" variant="info">
-        <p>Le paiement règle la dette de la formule — il n&apos;ajoute pas de séances en plus.</p>
-        <p>Pour 2 mois, choisissez une formule 2 mois ou faites un renouvellement.</p>
-      </ReceptionInfoCard>
 
       {completion ? (
         <EnrollmentCompletionPanel
@@ -460,13 +463,15 @@ export function EnrollmentWizard({
 
       <EnrollmentStepper step={step} />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start">
         <div className="min-w-0 space-y-4">
           {step === 1 && (
             <section className="panel space-y-4 p-5">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--primary)]">1. Élève + cours</p>
-                <h2 className="mt-1 text-lg font-semibold">Choisir qui s&apos;inscrit</h2>
+                <h2 ref={activeStepHeadingRef} tabIndex={-1} className="mt-1 text-lg font-semibold outline-none">
+                  Choisir qui s&apos;inscrit
+                </h2>
                 <p className="mt-1 text-sm text-[var(--muted-foreground)]">
                   Ajoutez une ligne par élève, puis choisissez son groupe et sa formule.
                 </p>
@@ -521,7 +526,9 @@ export function EnrollmentWizard({
             <section className="panel space-y-4 p-5">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--primary)]">2. Offre</p>
-                <h2 className="mt-1 text-lg font-semibold">Appliquer une réduction</h2>
+                <h2 ref={activeStepHeadingRef} tabIndex={-1} className="mt-1 text-lg font-semibold outline-none">
+                  Appliquer une réduction
+                </h2>
                 <p className="mt-1 text-sm text-[var(--muted-foreground)]">
                   {selectedCount >= 2
                     ? "Plusieurs inscriptions dans ce devis: choisissez une offre famille si elle s'applique."
@@ -583,6 +590,7 @@ export function EnrollmentWizard({
               quotePaidCents={quotePaidCents}
               loading={loading}
               completed={completed}
+              headingRef={activeStepHeadingRef}
               onBack={() => {
                 setMessage(null);
                 setStep(2);
@@ -590,19 +598,31 @@ export function EnrollmentWizard({
               onPaymentChange={updateQuoteLinePayment}
             />
           ) : null}
+
+          <details className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 shadow-[var(--shadow-panel)]">
+            <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-[var(--foreground)]">
+              Règle de paiement
+            </summary>
+            <div className="space-y-1 border-t border-[var(--border)] py-3 text-sm leading-relaxed text-[var(--muted-foreground)]">
+              <p>Le paiement règle la dette de la formule — il n&apos;ajoute pas de séances en plus.</p>
+              <p>Pour 2 mois, choisissez une formule 2 mois ou faites un renouvellement.</p>
+            </div>
+          </details>
         </div>
 
-        <EnrollmentSummarySidebar
-          step={step}
-          lineSummaries={lineSummaries}
-          missingSummary={missingSummary}
-          offerName={selectedOffer?.name ?? "Aucune"}
-          quoteTotalLabel={quote ? formatMoney(quote.totalFinalCents) : "À calculer"}
-          quotePaidLabel={quote ? formatMoney(quotePaidCents) : "À calculer"}
-          quoteBalanceLabel={quote ? formatMoney(quoteBalanceCents) : "À calculer"}
-          hasQuote={Boolean(quote)}
-          hasBalanceDue={quoteBalanceCents > 0}
-        />
+        <div className="xl:sticky xl:top-[5.5rem]">
+          <EnrollmentSummarySidebar
+            step={step}
+            lineSummaries={lineSummaries}
+            missingSummary={missingSummary}
+            offerName={selectedOffer?.name ?? "Aucune"}
+            quoteTotalLabel={quote ? formatMoney(quote.totalFinalCents) : "À calculer"}
+            quotePaidLabel={quote ? formatMoney(quotePaidCents) : "À calculer"}
+            quoteBalanceLabel={quote ? formatMoney(quoteBalanceCents) : "À calculer"}
+            hasQuote={Boolean(quote)}
+            hasBalanceDue={quoteBalanceCents > 0}
+          />
+        </div>
       </div>
     </form>
   );

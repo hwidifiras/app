@@ -189,11 +189,11 @@ export function NavLink({
     <Link
       href={item.href}
       onClick={onClick}
-      title={collapsed ? item.label : undefined}
+      title={item.label}
       aria-label={collapsed ? item.label : undefined}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "relative flex items-center rounded-lg py-2 text-[0.82rem] font-medium transition-all",
+        "relative flex min-h-11 items-center rounded-lg py-2 text-[0.8rem] font-medium transition-all",
         collapsed ? "justify-center px-2" : "gap-2.5 px-3",
         active
           ? "bg-[var(--primary)]/10 text-[var(--primary)] shadow-[var(--shadow-panel)] ring-1 ring-[var(--primary)]/20"
@@ -244,36 +244,26 @@ export function AppSidebar({
   return (
     <aside
       data-app-sidebar
-      className="sidebar-scroll hidden border-b border-[var(--border)] bg-[var(--surface)]/96 backdrop-blur print:hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:overflow-y-auto lg:overscroll-y-contain lg:border-r lg:border-b-0"
+      className="app-sidebar-theme sidebar-scroll hidden border-b border-[var(--border)] bg-[var(--surface)] print:hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:overflow-y-auto lg:overscroll-y-contain lg:border-r lg:border-b-0"
     >
       <div
         className={cn(
           "border-b border-[var(--border)] py-3",
-          collapsed ? "flex flex-col items-center gap-2 px-2" : "flex items-center justify-between px-3 lg:px-4",
+          collapsed ? "flex flex-col items-center gap-2 px-2" : "flex items-center px-3 lg:px-4",
         )}
       >
         <Link
           href="/"
+          aria-label={`${appName} · Accueil`}
           className={cn("min-w-0 rounded-lg transition hover:bg-[var(--surface-soft)]", collapsed ? "flex-none" : "flex-1")}
         >
           <div className={`flex items-center ${collapsed ? "justify-center" : "gap-3 px-1"}`}>
             <ClubBrandMark size="md" compact={collapsed} />
           </div>
         </Link>
-        {onToggleCollapsed ? (
-          <button
-            type="button"
-            onClick={onToggleCollapsed}
-            className="hidden size-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)] lg:inline-flex"
-            title={collapsed ? "Développer le menu" : "Réduire le menu"}
-            aria-label={collapsed ? "Développer le menu" : "Réduire le menu"}
-          >
-            {collapsed ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
-          </button>
-        ) : null}
       </div>
 
-      <nav className="flex flex-1 gap-1 overflow-x-auto px-2 py-2 lg:flex-col lg:overflow-visible lg:px-2 lg:py-4">
+      <nav aria-label="Navigation principale" className="flex flex-1 gap-1 overflow-x-auto px-2 py-2 lg:flex-col lg:overflow-visible lg:px-2 lg:py-4">
         {navSections.map((section) => (
           <div key={section.title} className="mb-2">
             {!collapsed ? (
@@ -299,7 +289,7 @@ export function AppSidebar({
             aria-expanded={configOpen || inClubConfig}
             aria-label={collapsed ? settingsSection.title : undefined}
             className={cn(
-              "flex w-full items-center rounded-lg py-2 text-[0.82rem] font-medium transition-all lg:mb-1",
+              "flex min-h-11 w-full items-center rounded-lg py-2 text-[0.8rem] font-medium transition-all lg:mb-1",
               collapsed ? "justify-center px-2" : "justify-between px-3",
               inClubConfig || configOpen
                 ? "text-[var(--primary)]"
@@ -364,6 +354,21 @@ export function AppSidebar({
             <p className="mt-1 truncate text-sm font-semibold text-[var(--foreground)]">{appName}</p>
           </div>
         )}
+        {onToggleCollapsed ? (
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            className={cn(
+              "mt-3 hidden min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] text-sm font-semibold text-[var(--muted-foreground)] transition hover:text-[var(--foreground)] lg:inline-flex",
+              collapsed && "mt-2 px-0",
+            )}
+            title={collapsed ? "Développer le menu" : "Réduire le menu"}
+            aria-label={collapsed ? "Développer le menu" : "Réduire le menu"}
+          >
+            {collapsed ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
+            {!collapsed ? <span>Réduire</span> : null}
+          </button>
+        ) : null}
       </div>
     </aside>
   );

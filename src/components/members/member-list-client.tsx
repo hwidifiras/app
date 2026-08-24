@@ -13,6 +13,7 @@ import {
   MobileFiltersButton,
 } from "@/components/ui/list-controls";
 import { Pagination } from "@/components/ui/pagination";
+import { MemberCard } from "./member-card";
 import { MemberRow } from "./member-row";
 import {
   getMemberActiveFilterCount,
@@ -192,9 +193,9 @@ export function MemberListClient({ initialPage, groupsOptions, sportsOptions }: 
 
   return (
     <div aria-busy={directoryLoading}>
-      <div className="list-toolbar sticky top-[57px] z-20 -mx-2 mb-4 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[3.5rem]">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-          <div className="min-w-0 flex-1">
+      <div className="list-toolbar sticky top-[57px] z-20 -mx-2 mb-4 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[4.5rem]">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+          <div className="col-span-2 min-w-0 sm:col-span-1">
             <label className="mb-1 block text-xs font-medium text-muted-foreground">Recherche</label>
             <ListSearch
               value={searchTerm}
@@ -206,7 +207,7 @@ export function MemberListClient({ initialPage, groupsOptions, sportsOptions }: 
             />
           </div>
           <MobileFiltersButton onClick={() => setFiltersOpen(true)} count={activeFilterCount} />
-          <Link href="/members/new" className="btn btn-primary btn-block-mobile shrink-0 sm:w-auto">
+          <Link href="/members/new" className="btn btn-primary min-h-11 min-w-0 shrink-0 px-3 sm:w-auto">
             + Ajouter un membre
           </Link>
         </div>
@@ -261,7 +262,7 @@ export function MemberListClient({ initialPage, groupsOptions, sportsOptions }: 
                 <button
                   type="button"
                   onClick={resetFilters}
-                  className="btn btn-ghost min-h-0 shrink-0 px-3"
+                  className="btn btn-ghost min-h-11 min-w-11 shrink-0 px-3"
                   title="Réinitialiser les filtres"
                   aria-label="Réinitialiser les filtres"
                 >
@@ -278,7 +279,7 @@ export function MemberListClient({ initialPage, groupsOptions, sportsOptions }: 
       {viewMode === "LIST" ? (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="text-xs text-muted-foreground">
+            <div className="text-xs text-muted-foreground" role="status" aria-live="polite">
               {directoryLoading ? "Chargement…" : `${totalItems} membre(s) trouvé(s)`} · page {currentPageSafe}/{pageCount}
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -296,7 +297,26 @@ export function MemberListClient({ initialPage, groupsOptions, sportsOptions }: 
             </div>
           </div>
 
-          <div className="data-table overflow-x-auto">
+          {pageMembers.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-[var(--border)] px-4 py-10 text-center text-sm text-muted-foreground xl:hidden">
+              Aucun membre trouvé.
+            </div>
+          ) : (
+            <ul className="grid gap-3 sm:grid-cols-2 xl:hidden" aria-label="Membres">
+              {pageMembers.map((member) => (
+                <MemberCard
+                  key={member.id}
+                  member={member}
+                  groupsOptions={groupsOptions}
+                  selectable
+                  selected={selectedMemberIds.includes(member.id)}
+                  onToggleSelection={toggleMemberSelection}
+                />
+              ))}
+            </ul>
+          )}
+
+          <div className="data-table hidden overflow-x-auto xl:block">
             <table className="w-full text-sm">
               <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
@@ -317,7 +337,7 @@ export function MemberListClient({ initialPage, groupsOptions, sportsOptions }: 
                   <th scope="col" className="hidden px-4 py-3 text-left font-semibold sm:table-cell">Statut</th>
                   <th scope="col" className="hidden px-4 py-3 text-left font-semibold md:table-cell">Inscrit le</th>
                   <th scope="col" className="hidden px-4 py-3 text-right font-semibold md:table-cell">Actions</th>
-                  <th scope="col" className="px-4 py-3 text-center font-semibold md:hidden">
+                  <th scope="col" className="hidden px-4 py-3 text-center font-semibold">
                     <span className="sr-only">Détails</span>
                   </th>
                 </tr>
@@ -363,18 +383,27 @@ export function MemberListClient({ initialPage, groupsOptions, sportsOptions }: 
                 <h3 className="text-sm font-semibold text-foreground">{getGroupLabel(groupId, groupsOptions)}</h3>
                 <span className="text-xs text-muted-foreground">{rows.length} membre(s)</span>
               </div>
-              <div className="data-table mt-3 overflow-x-auto rounded-lg border border-border shadow-[var(--shadow-panel)]">
+              <ul className="mt-3 grid gap-3 sm:grid-cols-2 xl:hidden" aria-label={`Membres du groupe ${getGroupLabel(groupId, groupsOptions)}`}>
+                {rows.map((member) => (
+                  <MemberCard
+                    key={member.id}
+                    member={member}
+                    groupsOptions={groupsOptions}
+                  />
+                ))}
+              </ul>
+              <div className="data-table mt-3 hidden overflow-x-auto rounded-lg border border-border shadow-[var(--shadow-panel)] xl:block">
                 <table className="w-full text-sm">
                   <thead className="bg-[var(--surface-soft)] text-xs uppercase tracking-wider text-muted-foreground">
                     <tr>
-                      <th className="px-4 py-3 text-left font-semibold">Nom</th>
-                      <th className="px-4 py-3 text-left font-semibold">Téléphone</th>
-                      <th className="hidden px-4 py-3 text-left font-semibold sm:table-cell">Email</th>
-                      <th className="hidden px-4 py-3 text-left font-semibold lg:table-cell">Groupes</th>
-                      <th className="px-4 py-3 text-left font-semibold">Paiement</th>
-                      <th className="px-4 py-3 text-left font-semibold">Statut</th>
-                      <th className="hidden px-4 py-3 text-left font-semibold md:table-cell">Inscrit le</th>
-                      <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                      <th scope="col" className="px-4 py-3 text-left font-semibold">Nom</th>
+                      <th scope="col" className="px-4 py-3 text-left font-semibold">Téléphone</th>
+                      <th scope="col" className="hidden px-4 py-3 text-left font-semibold sm:table-cell">Email</th>
+                      <th scope="col" className="hidden px-4 py-3 text-left font-semibold lg:table-cell">Groupes</th>
+                      <th scope="col" className="px-4 py-3 text-left font-semibold">Paiement</th>
+                      <th scope="col" className="px-4 py-3 text-left font-semibold">Statut</th>
+                      <th scope="col" className="hidden px-4 py-3 text-left font-semibold md:table-cell">Inscrit le</th>
+                      <th scope="col" className="px-4 py-3 text-right font-semibold">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">

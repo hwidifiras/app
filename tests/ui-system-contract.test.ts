@@ -32,6 +32,7 @@ describe("UI system regression contract", () => {
       "src/components/sessions/session-edit-modal.tsx",
       "src/components/attendance/check-in-drawer.tsx",
       "src/components/members/member-danger-actions.tsx",
+      "src/components/notifications/notification-center.tsx",
     ];
 
     for (const file of dialogFiles) {
@@ -51,5 +52,39 @@ describe("UI system regression contract", () => {
     expect(login).not.toContain("/we-discipline/navbar-logo.png");
     expect(dashboard).not.toContain("/we-discipline/");
     expect(gymCheckIn).not.toMatch(/className="input(?:\s|")/);
+  });
+
+  it("keeps operational alert and payment escape controls explicit", () => {
+    const notifications = source("src/components/notifications/notification-center.tsx");
+    const paymentForm = source("src/components/payments/payment-add-form.tsx");
+    const paymentPage = source("src/app/payments/new/page.tsx");
+
+    expect(notifications).toContain("size-11");
+    expect(notifications).toContain("aria-controls");
+    expect(notifications).toContain("Marquer comme lues");
+    expect(paymentForm).not.toContain('router.push("/payments")');
+    expect(paymentForm).toContain("router.push(returnPath)");
+    expect(paymentPage).toContain("resolvePaymentReturnPath");
+  });
+
+  it("keeps member tablet cards and enrollment task order responsive", () => {
+    const memberList = source("src/components/members/member-list-client.tsx");
+    const memberCard = source("src/components/members/member-card.tsx");
+    const enrollmentWizard = source("src/components/enrollment/enrollment-wizard.tsx");
+    const enrollmentSummary = source("src/components/enrollment/enrollment-summary-sidebar.tsx");
+    const enrollmentLine = source("src/components/enrollment/enrollment-line-editor.tsx");
+
+    expect(memberList).toContain("sm:grid-cols-2 xl:hidden");
+    expect(memberList).toContain("hidden overflow-x-auto xl:block");
+    expect(memberList).toContain("lg:top-[4.5rem]");
+    expect(memberCard).toContain("min-h-11");
+
+    expect(enrollmentSummary).not.toContain("order-first");
+    expect(enrollmentWizard).toContain("xl:grid-cols-[minmax(0,1fr)_22rem]");
+    expect(enrollmentWizard).toContain("xl:top-[5.5rem]");
+    expect(enrollmentWizard.indexOf("<EnrollmentSummarySidebar")).toBeGreaterThan(
+      enrollmentWizard.indexOf("{step === 1"),
+    );
+    expect(enrollmentLine).toContain('name={`${line.key}-mode`}');
   });
 });

@@ -141,7 +141,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <MobileNav />
         <div
           data-app-shell-layout={isReceiptRoute ? "receipt" : undefined}
-          className={`grid min-h-screen ${collapsed ? "lg:grid-cols-[72px_1fr]" : "lg:grid-cols-[232px_1fr]"} ${isReceiptRoute ? "print:block print:min-h-0" : ""}`}
+          className={`grid min-h-screen ${collapsed ? "lg:grid-cols-[72px_1fr]" : "lg:grid-cols-[160px_1fr]"} ${isReceiptRoute ? "print:block print:min-h-0" : ""}`}
         >
           <AppSidebar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
           <div

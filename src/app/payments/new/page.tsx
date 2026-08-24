@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { PaymentAddForm } from "@/components/payments/payment-add-form";
 import { getClubSettings } from "@/lib/club-settings";
+import { paymentReturnLabel, resolvePaymentReturnPath } from "@/lib/payment-navigation";
 import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
@@ -12,9 +13,11 @@ export const revalidate = 0;
 export default async function NewPaymentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ memberSubscriptionId?: string; memberId?: string }>;
+  searchParams: Promise<{ memberSubscriptionId?: string; memberId?: string; returnTo?: string }>;
 }) {
-  const { memberSubscriptionId, memberId } = await searchParams;
+  const { memberSubscriptionId, memberId, returnTo } = await searchParams;
+  const returnPath = resolvePaymentReturnPath(returnTo);
+  const returnLabel = paymentReturnLabel(returnPath);
   const authUser = await getAuthUser();
 
   if (!authUser) {
@@ -90,7 +93,7 @@ export default async function NewPaymentPage({
             Les abonnements ne sont pas accessibles pour le moment. Réessayez dans quelques instants.
           </p>
           <div className="mt-4">
-            <Link href="/payments" className="btn btn-ghost">Retour aux paiements</Link>
+            <Link href={returnPath} className="btn btn-ghost">Retour vers {returnLabel}</Link>
           </div>
         </div>
       </main>
@@ -100,10 +103,10 @@ export default async function NewPaymentPage({
   return (
     <main className="app-shell py-4 md:py-8">
       <Link
-        href="/payments"
-        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--primary)] hover:underline"
+        href={returnPath}
+        className="mb-4 inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-[var(--primary)] hover:bg-[var(--primary)]/8 hover:underline"
       >
-        <ArrowLeft className="size-3.5" /> Retour à la liste
+        <ArrowLeft className="size-3.5" /> Retour vers {returnLabel}
       </Link>
 
       <PageHeader
@@ -115,6 +118,8 @@ export default async function NewPaymentPage({
       <PaymentAddForm
         subscriptions={payableSubscriptions}
         receiptPrintDefault={receiptPrintDefault}
+        returnPath={returnPath}
+        returnLabel={returnLabel}
         defaultSubscriptionId={
           payableSubscriptions.some((subscription) => subscription.id === defaultSubscriptionId)
             ? defaultSubscriptionId

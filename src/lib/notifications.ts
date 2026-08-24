@@ -1,5 +1,6 @@
 import { formatMoney } from "@/lib/subscription-billing";
 import { utcDateOnlyForTimeZone } from "@/lib/dates";
+import { paymentNewHref } from "@/lib/payment-navigation";
 
 export type NotificationSeverity = "critical" | "warning" | "info";
 export type NotificationKind =
@@ -74,7 +75,8 @@ export function buildNotifications(
   const notifications: AppNotification[] = [];
 
   for (const session of options.overdueSessions ?? []) {
-    const key = `session-finalization:${session.id}:${session.unmarkedCount}`;
+    const stage = session.unmarkedCount > 0 ? "incomplete" : "ready";
+    const key = `session-finalization:${session.id}:${stage}`;
     notifications.push({
       key,
       kind: "SESSION_FINALIZATION",
@@ -97,14 +99,14 @@ export function buildNotifications(
       const paid = subscription.payments.reduce((sum, payment) => sum + payment.amount, 0);
       const outstanding = Math.max(0, subscription.amount - paid);
       if (outstanding > 0 && (options.debtThresholdCents <= 0 || outstanding >= options.debtThresholdCents)) {
-        const key = `payment-due:${subscription.id}:${outstanding}`;
+        const key = `payment-due:${subscription.id}:${paid > 0 ? "partial" : "unpaid"}`;
         notifications.push({
           key,
           kind: "PAYMENT_DUE",
           severity: paid > 0 ? "warning" : "critical",
           title: paid > 0 ? "Paiement partiel à compléter" : "Paiement à encaisser",
           description: `${name} · reste ${formatMoney(outstanding)} sur ${subscription.plan.name}`,
-          href: `/payments/new?memberId=${subscription.member.id}`,
+          href: paymentNewHref({ memberId: subscription.member.id, returnTo: "/" }),
           occurredAt: now.toISOString(),
           read: readKeys.has(key),
         });
@@ -139,12 +141,22 @@ export function buildNotifications(
     warning: 1,
     info: 2,
   };
+  const kindOrder: Record<NotificationKind, number> = {
+    SESSION_FINALIZATION: 0,
+    PAYMENT_DUE: 1,
+    SUBSCRIPTION_EXPIRING: 2,
+  };
 
   return notifications.sort((a, b) => {
-    if (a.read !== b.read) return a.read ? 1 : -1;
     if (severityOrder[a.severity] !== severityOrder[b.severity]) {
       return severityOrder[a.severity] - severityOrder[b.severity];
     }
+    if (kindOrder[a.kind] !== kindOrder[b.kind]) {
+      return kindOrder[a.kind] - kindOrder[b.kind];
+    }
+    if (a.read !== b.read) return a.read ? 1 : -1;
+    const dateDifference = new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime();
+    if (dateDifference !== 0) return dateDifference;
     return a.description.localeCompare(b.description, "fr");
   });
 }

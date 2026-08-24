@@ -319,13 +319,13 @@ export function AddMemberToGroupForm({
       <FeedbackMessage message={message} />
 
       <FormActions sticky>
-        <button type="button" onClick={() => router.back()} className="btn btn-ghost btn-block-mobile">
+        <button type="button" onClick={() => router.back()} className="btn btn-ghost btn-block-mobile min-h-11">
           Annuler
         </button>
         <button
           type="submit"
           disabled={loading || !canSubmit}
-          className="btn btn-primary btn-block-mobile"
+          className="btn btn-primary btn-block-mobile min-h-11"
         >
           {loading ? "Affectation en cours..." : "Ajouter au groupe"}
         </button>

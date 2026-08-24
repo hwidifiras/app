@@ -2,13 +2,16 @@ const enrollmentStepLabels = ["Élèves", "Offre", "Devis"];
 
 export function EnrollmentStepper({ step }: { step: number }) {
   return (
-    <div className="enrollment-stepper grid grid-cols-3 gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-2 shadow-[var(--shadow-panel)]">
+    <ol
+      className="enrollment-stepper grid grid-cols-3 gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-2 shadow-[var(--shadow-panel)]"
+      aria-label="Progression de l'inscription"
+    >
       {enrollmentStepLabels.map((label, index) => {
         const itemStep = index + 1;
         const active = step === itemStep;
         const done = step > itemStep;
         return (
-          <div
+          <li
             key={label}
             aria-current={active ? "step" : undefined}
             className={`rounded-lg border px-2 py-2 text-center text-xs font-bold transition ${
@@ -21,9 +24,12 @@ export function EnrollmentStepper({ step }: { step: number }) {
           >
             <span className="block text-[0.62rem] opacity-80">{done ? "Terminée" : `Étape ${itemStep}`}</span>
             {label}
-          </div>
+            <span className="sr-only">
+              {active ? ", étape en cours" : done ? ", étape terminée" : ", étape à venir"}
+            </span>
+          </li>
         );
       })}
-    </div>
+    </ol>
   );
 }

@@ -95,7 +95,7 @@ export function MemberOffersSection({
             Offres actives classées selon le profil de {memberName}.
           </p>
         </div>
-        <Link href={context?.createOfferHref ?? `/offers?memberId=${memberId}`} className="btn btn-ghost btn-sm">
+        <Link href={context?.createOfferHref ?? `/offers?memberId=${memberId}`} className="btn btn-ghost min-h-11">
           Créer une offre
         </Link>
       </div>
@@ -116,7 +116,7 @@ export function MemberOffersSection({
           title="Aucune offre applicable"
           message="Créez une offre ou poursuivez l'inscription sans réduction."
           action={
-            <Link href={context?.createOfferHref ?? `/offers?memberId=${memberId}`} className="btn btn-ghost">
+            <Link href={context?.createOfferHref ?? `/offers?memberId=${memberId}`} className="btn btn-ghost min-h-11">
               Créer une offre
             </Link>
           }
@@ -150,14 +150,14 @@ export function MemberOffersSection({
                   ) : null}
                 </div>
                 <div className="grid shrink-0 grid-cols-2 gap-2">
-                  <Link href={offer.enrollmentHref} className="btn btn-primary btn-block-mobile text-sm sm:w-auto">
+                  <Link href={offer.enrollmentHref} className="btn btn-primary btn-block-mobile min-h-11 text-sm sm:w-auto">
                     Utiliser
                   </Link>
                   <button
                     type="button"
                     onClick={() => setPendingDeleteOffer(offer)}
                     disabled={deletingId !== null}
-                    className="btn btn-ghost btn-block-mobile btn-sm border-[var(--danger)]/25 text-[var(--danger)] sm:w-auto"
+                    className="btn btn-ghost btn-block-mobile min-h-11 border-[var(--danger)]/25 text-[var(--danger)] sm:w-auto"
                   >
                     <CircleOff className="size-3.5" />
                     {deletingId === offer.id ? "Désactivation…" : "Désactiver"}

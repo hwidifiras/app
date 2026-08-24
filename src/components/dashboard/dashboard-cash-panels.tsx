@@ -9,6 +9,7 @@ import {
 import type { CashMethodStat, CashTrendDay } from "@/components/dashboard/dashboard-model";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/subscription-billing";
+import { paymentNewHref } from "@/lib/payment-navigation";
 
 export function CashRegisterPanel({
   totalToday,
@@ -39,7 +40,7 @@ export function CashRegisterPanel({
         title="Caisse aujourd'hui"
         eyebrow="Encaissements"
         action={
-          <Link href="/payments/new" className="text-xs font-semibold text-[#2563EB] hover:underline">
+          <Link href={paymentNewHref({ returnTo: "/" })} className="inline-flex min-h-11 items-center text-xs font-semibold text-[#2563EB] hover:underline">
             Encaisser
           </Link>
         }

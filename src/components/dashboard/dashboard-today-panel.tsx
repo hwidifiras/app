@@ -95,7 +95,7 @@ function TodaySessionRow({ session }: { session: TodaySession }) {
         <Link
           href={`/attendance/today?sessionId=${session.id}`}
           prefetch={false}
-          className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg bg-[#2563EB] px-3 text-sm font-semibold !text-white transition hover:bg-[#1D4ED8]"
+          className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-[#2563EB] px-3 text-sm font-semibold !text-white transition hover:bg-[#1D4ED8]"
         >
           {sessionActionLabel(session)}
         </Link>
@@ -153,7 +153,7 @@ function PrioritySummary({ items }: { items: PriorityItem[] }) {
                 <Link
                   href={item.href}
                   prefetch={false}
-                  className="inline-flex min-h-8 shrink-0 items-center justify-center rounded-lg border border-[#D8E2F0] bg-white px-3 text-xs font-semibold text-[#0B1220] transition hover:border-[#2563EB] hover:text-[#2563EB] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                  className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg border border-[#D8E2F0] bg-white px-3 text-xs font-semibold text-[#0B1220] transition hover:border-[#2563EB] hover:text-[#2563EB] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                 >
                   {item.actionLabel}
                 </Link>
@@ -180,7 +180,7 @@ export function TodayWorkPanel({
         title="Séances du jour"
         eyebrow="Aujourd'hui"
         action={
-          <Link href="/attendance/today" className="text-xs font-semibold text-[#2563EB] hover:underline">
+          <Link href="/attendance/today" className="inline-flex min-h-11 items-center text-xs font-semibold text-[#2563EB] hover:underline">
             Ouvrir
           </Link>
         }

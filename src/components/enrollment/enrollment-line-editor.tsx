@@ -68,38 +68,42 @@ export function EnrollmentLineEditor({
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2 text-sm">
-        <label className={`rounded-lg border px-3 py-2 text-center font-semibold ${line.mode === "existing" ? "enrollment-mode-active" : "enrollment-mode-inactive"}`}>
+      <fieldset className="grid grid-cols-2 gap-2 text-sm">
+        <legend className="sr-only">Type de dossier membre</legend>
+        <label className={`flex min-h-11 cursor-pointer items-center justify-center rounded-lg border px-3 py-2 text-center font-semibold has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--focus-ring)] ${line.mode === "existing" ? "enrollment-mode-active" : "enrollment-mode-inactive"}`}>
           <input
             type="radio"
+            name={`${line.key}-mode`}
             className="sr-only"
             checked={line.mode === "existing"}
-            onChange={() => onChange({ ...line, mode: "existing" })}
+            onChange={() => onChange({ ...line, mode: "existing", groupId: "", planId: "" })}
           />
           Existant
         </label>
-        <label className={`rounded-lg border px-3 py-2 text-center font-semibold ${line.mode === "new" ? "enrollment-mode-active" : "enrollment-mode-inactive"}`}>
+        <label className={`flex min-h-11 cursor-pointer items-center justify-center rounded-lg border px-3 py-2 text-center font-semibold has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--focus-ring)] ${line.mode === "new" ? "enrollment-mode-active" : "enrollment-mode-inactive"}`}>
           <input
             type="radio"
+            name={`${line.key}-mode`}
             className="sr-only"
             checked={line.mode === "new"}
-            onChange={() => onChange({ ...line, mode: "new" })}
+            onChange={() => onChange({ ...line, mode: "new", groupId: "", planId: "" })}
           />
           Nouveau
         </label>
-      </div>
+      </fieldset>
       {line.mode === "existing" ? (
         <FormField label="Membre existant" htmlFor={`${line.key}-member`}>
           <select
             id={`${line.key}-member`}
             className="field"
             value={line.memberId}
-            onChange={(event) => onChange({ ...line, memberId: event.target.value })}
+            required
+            onChange={(event) => onChange({ ...line, memberId: event.target.value, groupId: "", planId: "" })}
           >
             <option value="">Sélectionner un membre</option>
             {members.map((member) => (
               <option key={member.id} value={member.id}>
-                {member.firstName} {member.lastName}
+                {member.firstName} {member.lastName} — {member.phone}
               </option>
             ))}
           </select>
@@ -131,15 +135,16 @@ export function EnrollmentLineEditor({
               onChange={(event) => onChange({ ...line, newPhone: event.target.value })}
             />
           </FormField>
-          <FormField label="Public" htmlFor={`${line.key}-type`} className="sm:col-span-3">
-            <div id={`${line.key}-type`} className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Public">
+          <fieldset className="sm:col-span-3">
+            <legend className="mb-1 text-xs font-semibold text-[var(--foreground)]">Public</legend>
+            <div className="grid gap-2 sm:grid-cols-2">
               {[
                 { value: "ADULT", label: "Adulte", hint: "Téléphone de l'élève requis" },
                 { value: "KID", label: "Enfant", hint: "Parent obligatoire" },
               ].map((option) => (
                 <label
                   key={option.value}
-                  className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2 text-sm transition ${
+                  className={`flex min-h-11 cursor-pointer items-start gap-2 rounded-lg border px-3 py-2 text-sm transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--focus-ring)] ${
                     line.memberType === option.value
                       ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
                       : "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-soft)]"
@@ -150,7 +155,12 @@ export function EnrollmentLineEditor({
                     name={`${line.key}-type`}
                     value={option.value}
                     checked={line.memberType === option.value}
-                    onChange={() => onChange({ ...line, memberType: option.value as LineState["memberType"] })}
+                    onChange={() => onChange({
+                      ...line,
+                      memberType: option.value as LineState["memberType"],
+                      groupId: "",
+                      planId: "",
+                    })}
                     required
                   />
                   <span>
@@ -160,16 +170,17 @@ export function EnrollmentLineEditor({
                 </label>
               ))}
             </div>
-          </FormField>
-          <FormField label="Genre" htmlFor={`${line.key}-gender`} className="sm:col-span-3">
-            <div id={`${line.key}-gender`} className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Genre">
+          </fieldset>
+          <fieldset className="sm:col-span-3">
+            <legend className="mb-1 text-xs font-semibold text-[var(--foreground)]">Genre</legend>
+            <div className="grid gap-2 sm:grid-cols-2">
               {[
                 { value: "MALE", label: "Garcon / homme" },
                 { value: "FEMALE", label: "Fille / femme" },
               ].map((option) => (
                 <label
                   key={option.value}
-                  className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                  className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--focus-ring)] ${
                     line.gender === option.value
                       ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]"
                       : "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-soft)]"
@@ -180,14 +191,19 @@ export function EnrollmentLineEditor({
                     name={`${line.key}-gender`}
                     value={option.value}
                     checked={line.gender === option.value}
-                    onChange={() => onChange({ ...line, gender: option.value as LineState["gender"] })}
+                    onChange={() => onChange({
+                      ...line,
+                      gender: option.value as LineState["gender"],
+                      groupId: "",
+                      planId: "",
+                    })}
                     required
                   />
                   {option.label}
                 </label>
               ))}
             </div>
-          </FormField>
+          </fieldset>
           {line.memberType === "KID" && (
             <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3 sm:col-span-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
@@ -236,6 +252,8 @@ export function EnrollmentLineEditor({
           id={`${line.key}-group`}
           className="field"
           value={line.groupId}
+          required
+          aria-describedby={`${line.key}-profile`}
           onChange={(event) => onChange({ ...line, groupId: event.target.value, planId: "" })}
         >
           <option value="">Sélectionner un groupe</option>
@@ -267,7 +285,7 @@ export function EnrollmentLineEditor({
           )}
         </select>
       </FormField>
-      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-xs">
+      <div id={`${line.key}-profile`} className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-xs">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <p className="font-semibold text-[var(--foreground)]">Profil élève: {profileLabel}</p>
           <p className="text-[var(--muted-foreground)]">
@@ -299,7 +317,7 @@ export function EnrollmentLineEditor({
               <button
                 key={group.id}
                 type="button"
-                className="rounded-lg border border-blue-200 bg-white px-3 py-2 font-semibold text-blue-800 hover:border-blue-400"
+                className="min-h-11 rounded-lg border border-blue-200 bg-white px-3 py-2 font-semibold text-blue-800 hover:border-blue-400"
                 onClick={() => onChange({ ...line, groupId: group.id, planId: "" })}
               >
                 {group.name} · {group.sportName}
@@ -315,6 +333,7 @@ export function EnrollmentLineEditor({
           value={line.planId}
           onChange={(event) => onChange({ ...line, planId: event.target.value })}
           disabled={!line.groupId}
+          required
         >
           <option value="">Sélectionner une formule</option>
           {plans.map((plan) => (

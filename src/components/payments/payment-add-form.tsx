@@ -37,10 +37,14 @@ export function PaymentAddForm({
   subscriptions: initialSubscriptions,
   defaultSubscriptionId,
   receiptPrintDefault = true,
+  returnPath = "/payments",
+  returnLabel = "Historique caisse",
 }: {
   subscriptions: PaymentSubscriptionRow[];
   defaultSubscriptionId?: string;
   receiptPrintDefault?: boolean;
+  returnPath?: string;
+  returnLabel?: string;
 }) {
   const router = useRouter();
   const [subscriptions, setSubscriptions] = useState(initialSubscriptions);
@@ -261,6 +265,11 @@ export function PaymentAddForm({
           <Link href="/payments" className="text-sm font-medium text-[var(--primary)] hover:underline">
             Voir l&apos;historique
           </Link>
+          {returnPath !== "/payments" ? (
+            <Link href={returnPath} className="text-sm font-medium text-[var(--primary)] hover:underline">
+              Retour vers {returnLabel}
+            </Link>
+          ) : null}
           {lastReceipt && receiptPrintDefault ? (
             <Link href={`/receipts/${lastReceipt.id}`} className="text-sm font-medium text-[var(--primary)] hover:underline">
               Imprimer le recu {lastReceipt.receiptNumber}
@@ -416,9 +425,9 @@ export function PaymentAddForm({
       )}
 
       {subscriptions.length > 0 ? <FormActions sticky>
-        <button type="button" onClick={() => router.push("/payments")} className="btn btn-ghost btn-block-mobile">
+        <button type="button" onClick={() => router.push(returnPath)} className="btn btn-ghost btn-block-mobile min-h-11">
           <ArrowLeft className="size-4" />
-          Retour
+          Retour vers {returnLabel}
         </button>
         {amountNum <= 0 ? (
           <p className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-center text-xs font-medium text-[var(--muted-foreground)] md:hidden">
@@ -428,7 +437,7 @@ export function PaymentAddForm({
         <button
           type="submit"
           disabled={loading || !canSubmit}
-          className={cn("btn btn-primary btn-block-mobile", amountNum <= 0 && "max-md:hidden")}
+          className={cn("btn btn-primary btn-block-mobile min-h-11", amountNum <= 0 && "max-md:hidden")}
         >
           {loading ? (
             <span className="inline-block size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />

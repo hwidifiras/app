@@ -17,6 +17,7 @@ import {
   MobileFiltersButton,
 } from "@/components/ui/list-controls";
 import { Pagination, usePagination } from "@/components/ui/pagination";
+import { paymentNewHref } from "@/lib/payment-navigation";
 
 type PaymentsTableProps = {
   groups: PaymentGroup[];
@@ -56,7 +57,7 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
   }
 
   function goToAddPayment(subscriptionId: string) {
-    router.push(`/payments/new?memberSubscriptionId=${subscriptionId}`);
+    router.push(paymentNewHref({ memberSubscriptionId: subscriptionId, returnTo: "/payments" }));
   }
 
   function goToEditPayment(paymentId: string) {
@@ -112,7 +113,7 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
           }
           action={
             groups.length === 0 ? (
-              <button type="button" onClick={() => router.push("/payments/new")} className="btn btn-primary">
+              <button type="button" onClick={() => router.push(paymentNewHref({ returnTo: "/payments" }))} className="btn btn-primary min-h-11">
                 Nouveau paiement
               </button>
             ) : (

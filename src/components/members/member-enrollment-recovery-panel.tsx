@@ -121,7 +121,7 @@ export function MemberEnrollmentRecoveryPanel({
                 />
                 <button
                   type="button"
-                  className="btn btn-ghost btn-block-mobile inline-flex items-center justify-center gap-1.5 border-[var(--danger)]/30 text-[var(--danger)]"
+                  className="btn btn-ghost btn-block-mobile inline-flex min-h-11 items-center justify-center gap-1.5 border-[var(--danger)]/30 text-[var(--danger)]"
                   disabled={loadingKey === candidate.recoveryKey || reason.trim().length < 3}
                   onClick={() => { void voidEnrollment(candidate); }}
                 >
