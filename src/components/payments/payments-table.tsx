@@ -21,9 +21,11 @@ import { paymentNewHref } from "@/lib/payment-navigation";
 
 type PaymentsTableProps = {
   groups: PaymentGroup[];
+  canCollectPayments: boolean;
+  canCorrectPayments: boolean;
 };
 
-export function PaymentsTable({ groups }: PaymentsTableProps) {
+export function PaymentsTable({ groups, canCollectPayments, canCorrectPayments }: PaymentsTableProps) {
   const router = useRouter();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -57,16 +59,18 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
   }
 
   function goToAddPayment(subscriptionId: string) {
+    if (!canCollectPayments) return;
     router.push(paymentNewHref({ memberSubscriptionId: subscriptionId, returnTo: "/payments" }));
   }
 
   function goToEditPayment(paymentId: string) {
+    if (!canCorrectPayments) return;
     router.push(`/payments/${paymentId}/edit`);
   }
 
   return (
     <>
-      <div className="list-toolbar sticky top-[57px] z-20 -mx-2 mb-4 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[3.5rem]">
+      <div className="list-toolbar sticky top-[57px] z-20 -mx-2 mb-4 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[var(--app-topbar-height)]">
         <div className="flex flex-col gap-2 md:flex-row md:items-end">
           <div className="min-w-0 flex-1">
             <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Recherche</label>
@@ -112,7 +116,7 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
               : "Modifiez la recherche ou réinitialisez les filtres."
           }
           action={
-            groups.length === 0 ? (
+            groups.length === 0 && canCollectPayments ? (
               <button type="button" onClick={() => router.push(paymentNewHref({ returnTo: "/payments" }))} className="btn btn-primary min-h-11">
                 Nouveau paiement
               </button>
@@ -196,7 +200,8 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
                       <li key={p.id}>
                         <button
                           type="button"
-                          className="flex w-full items-center justify-between gap-2 rounded-lg bg-[var(--surface)] px-2.5 py-2 text-left shadow-[var(--shadow-panel)] ring-1 ring-[var(--border)] active:bg-[var(--surface-soft)]"
+                          disabled={!canCorrectPayments}
+                          className="flex w-full items-center justify-between gap-2 rounded-lg bg-[var(--surface)] px-2.5 py-2 text-left shadow-[var(--shadow-panel)] ring-1 ring-[var(--border)] active:bg-[var(--surface-soft)] disabled:cursor-default"
                           onClick={() => goToEditPayment(p.id)}
                         >
                           <span className="min-w-0">
@@ -229,7 +234,7 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
                       </li>
                     ))}
                   </ul>
-                  {!billing.isComplete ? (
+                  {!billing.isComplete && canCollectPayments ? (
                     <button
                       type="button"
                       className="btn btn-primary btn-block-mobile mt-2.5 flex min-h-11 items-center justify-center gap-1"
@@ -337,7 +342,7 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
                             hasEmail={Boolean(latestReceiptPayment.memberEmail?.trim())}
                           />
                         ) : null}
-                        {!billing.isComplete ? (
+                        {!billing.isComplete && canCollectPayments ? (
                           <button
                             type="button"
                             onClick={(event) => {
@@ -359,8 +364,11 @@ export function PaymentsTable({ groups }: PaymentsTableProps) {
                     ? group.payments.map((p) => (
                         <tr
                           key={p.id}
-                          className="cursor-pointer bg-[var(--surface-soft)] transition-colors hover:bg-[var(--surface-soft)]"
-                          onClick={() => goToEditPayment(p.id)}
+                          className={cn(
+                            "bg-[var(--surface-soft)] transition-colors",
+                            canCorrectPayments && "cursor-pointer hover:bg-[var(--secondary)]/60",
+                          )}
+                          onClick={canCorrectPayments ? () => goToEditPayment(p.id) : undefined}
                         >
                           <td className="px-4 py-2" />
                           <td className="px-4 py-2 pl-8 text-xs text-[var(--muted-foreground)]" colSpan={2}>

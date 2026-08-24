@@ -20,7 +20,7 @@ export function StatusBadge({ variant, children, className }: StatusBadgeProps) 
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[0.7rem] font-semibold leading-tight tracking-wide",
+        "inline-flex min-h-5 items-center gap-1 rounded-full px-2.5 py-0.5 text-[0.7rem] font-semibold leading-tight",
         variantClasses[variant],
         className,
       )}

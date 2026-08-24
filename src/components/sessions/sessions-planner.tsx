@@ -37,6 +37,7 @@ import {
 } from "@/components/sessions/session-planner-filters";
 import { PlanningGroupedSections } from "@/components/sessions/session-planner-grouped-sections";
 import { SessionEditModal, type SessionEditFormState } from "@/components/sessions/session-edit-modal";
+import { SessionPlannerDetailSheet } from "@/components/sessions/session-planner-detail-sheet";
 import {
   getActivePlannerMobileDay,
   getClosedPlannerWeekDaysWithSessions,
@@ -80,6 +81,7 @@ type SessionsPlannerProps = {
     workingDays: ClubDay[];
   };
   canManage: boolean;
+  readOnly?: boolean;
 };
 
 export function SessionsPlanner({
@@ -91,12 +93,14 @@ export function SessionsPlanner({
   coachesOptions,
   planningPreferences,
   canManage,
+  readOnly = false,
 }: SessionsPlannerProps) {
+  const canMutate = canManage && !readOnly;
   const [sessions, setSessions] = useState<SessionDto[]>(initialSessions);
   const [weekStart, setWeekStart] = useState(initialWeekStart);
   const [groupId, setGroupId] = useState(initialGroupId);
   const [dayFilter, setDayFilter] = useState("ALL");
-  const [selectedMobileDay, setSelectedMobileDay] = useState(initialWeekStart);
+  const [selectedMobileDay, setSelectedMobileDay] = useState(() => formatUtcDateOnlyIso(new Date()));
   const [statusFilter, setStatusFilter] = useState<"ALL" | SessionStatusDto>("ALL");
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<PlanningViewMode>("week");
@@ -106,7 +110,8 @@ export function SessionsPlanner({
   const [generationPreview, setGenerationPreview] = useState<SessionGenerationPreview | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pendingDeleteSession, setPendingDeleteSession] = useState<SessionDto | null>(null);
-  const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(initialSessionId || null);
+  const [detailOpen, setDetailOpen] = useState(Boolean(initialSessionId));
 
   const [editingSession, setEditingSession] = useState<SessionDto | null>(null);
   const [editForm, setEditForm] = useState<SessionEditFormState>({
@@ -146,8 +151,9 @@ export function SessionsPlanner({
 
     deepLinkHandled.current = true;
     const timeoutId = window.setTimeout(() => {
-      setExpandedSessionId(session.id);
+      setSelectedSessionId(session.id);
       setSelectedMobileDay(sessionDateKey(session));
+      setDetailOpen(true);
     }, 0);
     return () => window.clearTimeout(timeoutId);
   }, [initialSessionId, sessions]);
@@ -183,24 +189,33 @@ export function SessionsPlanner({
   async function goToWeek(offsetWeeks: number) {
     const nextWeekStart = addWeeksToStartIso(weekStart, offsetWeeks);
     setWeekStart(nextWeekStart);
+    setSelectedSessionId(null);
+    setDetailOpen(false);
+    setSelectedMobileDay(nextWeekStart);
     await reloadSessions(nextWeekStart, groupId);
   }
 
   async function resetCurrentWeek() {
     const currentMonday = weekStartIsoForDate(new Date());
     setWeekStart(currentMonday);
+    setSelectedSessionId(null);
+    setDetailOpen(false);
+    setSelectedMobileDay(formatUtcDateOnlyIso(new Date()));
     await reloadSessions(currentMonday, groupId);
   }
 
   async function onGroupChange(nextGroupId: string) {
     setGroupId(nextGroupId);
     setGenerationPreview(null);
+    setSelectedSessionId(null);
+    setDetailOpen(false);
     await reloadSessions(weekStart, nextGroupId);
   }
 
   function openEdit(session: SessionDto) {
-    if (!canManage) return;
-    setExpandedSessionId(session.id);
+    if (!canMutate) return;
+    setSelectedSessionId(session.id);
+    setDetailOpen(false);
     setEditingSession(session);
     setEditForm({
       sessionDate: formatUtcDateOnlyIso(new Date(session.sessionDate)),
@@ -225,6 +240,7 @@ export function SessionsPlanner({
   }
 
   async function saveEdit() {
+    if (!canMutate) return;
     if (!editingSession) return;
     setEditLoading(true);
     setEditMessage(null);
@@ -387,6 +403,7 @@ export function SessionsPlanner({
   }
 
   async function deleteSession(sessionId: string) {
+    if (!canMutate) return;
     setLoading(true);
     const response = await fetch(`/api/sessions/${sessionId}`, {
       method: "DELETE",
@@ -417,13 +434,22 @@ export function SessionsPlanner({
       ),
     );
     setPendingDeleteSession(null);
-    setExpandedSessionId(null);
+    setSelectedSessionId(null);
+    setDetailOpen(false);
     setMessage("Séance annulée avec succès");
     setLoading(false);
   }
 
-  function toggleExpandedSession(session: SessionDto) {
-    setExpandedSessionId((current) => (current === session.id ? null : session.id));
+  function selectSession(session: SessionDto) {
+    setSelectedSessionId(session.id);
+    setSelectedMobileDay(sessionDateKey(session));
+    setDetailOpen(true);
+  }
+
+  function queueSessionCancellation(session: SessionDto) {
+    if (!canMutate) return;
+    setDetailOpen(false);
+    setPendingDeleteSession(session);
   }
 
   function buildGenerationBody(dryRun: boolean) {
@@ -435,6 +461,7 @@ export function SessionsPlanner({
   }
 
   async function previewSessionsGeneration() {
+    if (!canMutate) return;
     setGenerating(true);
     setMessage(null);
     setGenerationPreview(null);
@@ -450,7 +477,7 @@ export function SessionsPlanner({
     }>(response);
 
     if (!response.ok) {
-      setMessage(result.error ?? "Impossible de preparer la generation.");
+      setMessage(result.error ?? "Impossible de préparer la génération.");
       setGenerating(false);
       return;
     }
@@ -460,6 +487,7 @@ export function SessionsPlanner({
   }
 
   async function generateSessions() {
+    if (!canMutate) return;
     setGenerating(true);
     setMessage(null);
 
@@ -583,9 +611,23 @@ export function SessionsPlanner({
     });
   }, [conflictSessionIds, filteredSessions]);
 
-  const selectedSession = useMemo(() => {
-    return filteredSessions.find((session) => session.id === expandedSessionId) ?? recommendedSession;
-  }, [expandedSessionId, filteredSessions, recommendedSession]);
+  const explicitSelectedSession = useMemo(() => {
+    if (!selectedSessionId) return null;
+    return filteredSessions.find((session) => session.id === selectedSessionId) ?? null;
+  }, [filteredSessions, selectedSessionId]);
+
+  const selectedSession = selectedSessionId ? explicitSelectedSession : recommendedSession;
+
+  useEffect(() => {
+    if (!selectedSessionId || explicitSelectedSession) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setSelectedSessionId(null);
+      setDetailOpen(false);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [explicitSelectedSession, selectedSessionId]);
 
   const groupedPlanningSections = useMemo(() => {
     return getGroupedPlanningSections({
@@ -607,21 +649,20 @@ export function SessionsPlanner({
     <SessionTile
       key={item.id}
       item={item}
-      onEdit={openEdit}
-      onCancel={setPendingDeleteSession}
-      onToggle={toggleExpandedSession}
-      expanded={expandedSessionId === item.id}
-      conflictReasons={conflictDetailsBySessionId.get(item.id) ?? []}
+      onSelect={selectSession}
+      selected={selectedSession?.id === item.id}
       hasConflict={conflictSessionIds.has(item.id)}
-      canManage={canManage}
     />
   );
 
   function focusFirstConflict() {
     if (!firstConflictSession) return;
-    setExpandedSessionId(firstConflictSession.id);
+    setSelectedSessionId(firstConflictSession.id);
     setSelectedMobileDay(sessionDateKey(firstConflictSession));
     setViewMode("week");
+    window.requestAnimationFrame(() => {
+      document.getElementById(`planning-session-${firstConflictSession.id}`)?.focus();
+    });
   }
 
   async function resetFilters() {
@@ -633,7 +674,7 @@ export function SessionsPlanner({
   }
 
   const generationTargetLabel = generationPreview?.groupId
-    ? groupsOptions.find((group) => group.id === generationPreview.groupId)?.name ?? "Groupe selectionne"
+    ? groupsOptions.find((group) => group.id === generationPreview.groupId)?.name ?? "Groupe sélectionné"
     : "Tous les groupes actifs";
 
   return (
@@ -648,7 +689,8 @@ export function SessionsPlanner({
           onCurrentWeek={() => { void resetCurrentWeek(); }}
           onNextWeek={() => { void goToWeek(1); }}
           onPreviewGeneration={() => { void previewSessionsGeneration(); }}
-          canManage={canManage}
+          canManage={canMutate}
+          readOnly={readOnly}
         />
 
         {generationPreview ? (
@@ -684,7 +726,7 @@ export function SessionsPlanner({
 
         {loading ? <p className="mt-4 text-sm text-[var(--muted-foreground)]">Chargement du planning...</p> : null}
         <FeedbackMessage message={message} className="mt-4" />
-        {canManage && canUndo ? (
+        {canMutate && canUndo ? (
           <div className="mt-2">
             <UndoButton
               onClick={() => undoLast()}
@@ -695,7 +737,7 @@ export function SessionsPlanner({
           </div>
         ) : null}
 
-        <div className="mt-5 grid gap-4 2xl:grid-cols-[minmax(0,1fr)_22rem] 2xl:items-start">
+        <div className="mt-4 grid gap-4 min-[1440px]:grid-cols-[minmax(0,1fr)_21rem] min-[1440px]:items-start">
           <div className="min-w-0">
             {filteredSessions.length > 0 ? (
               viewMode === "week" ? (
@@ -733,24 +775,25 @@ export function SessionsPlanner({
               session={selectedSession}
               conflictReasons={selectedSession ? conflictDetailsBySessionId.get(selectedSession.id) ?? [] : []}
               onEdit={openEdit}
-              onCancel={setPendingDeleteSession}
-              canManage={canManage}
-              className="hidden 2xl:sticky 2xl:top-28 2xl:block"
+              onCancel={queueSessionCancellation}
+              canManage={canMutate}
+              readOnly={readOnly}
+              className="hidden min-[1440px]:sticky min-[1440px]:top-[calc(var(--app-topbar-height)+1rem)] min-[1440px]:block"
             />
           ) : null}
         </div>
-
-        {filteredSessions.length > 0 ? (
-          <SessionDetailPanel
-            session={selectedSession}
-            conflictReasons={selectedSession ? conflictDetailsBySessionId.get(selectedSession.id) ?? [] : []}
-            onEdit={openEdit}
-            onCancel={setPendingDeleteSession}
-            canManage={canManage}
-            className="mt-4 2xl:hidden"
-          />
-        ) : null}
       </section>
+
+      <SessionPlannerDetailSheet
+        open={detailOpen}
+        session={selectedSession}
+        conflictReasons={selectedSession ? conflictDetailsBySessionId.get(selectedSession.id) ?? [] : []}
+        onEdit={openEdit}
+        onCancel={queueSessionCancellation}
+        onClose={() => setDetailOpen(false)}
+        canManage={canMutate}
+        readOnly={readOnly}
+      />
 
       <PlanningMobileFilterSheet
         open={filtersOpen}
@@ -767,7 +810,7 @@ export function SessionsPlanner({
         onStatusFilterChange={setStatusFilter}
       />
 
-      {canManage && editingSession ? (
+      {canMutate && editingSession ? (
         <SessionEditModal
           session={editingSession}
           editForm={editForm}
@@ -784,7 +827,7 @@ export function SessionsPlanner({
         />
       ) : null}
 
-      {canManage ? <ConfirmDialog
+      {canMutate ? <ConfirmDialog
         open={pendingDeleteSession !== null}
         title="Annuler cette séance ?"
         description={

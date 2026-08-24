@@ -610,7 +610,7 @@ export function EnrollmentWizard({
           </details>
         </div>
 
-        <div className="xl:sticky xl:top-[5.5rem]">
+        <div className="xl:sticky xl:top-[var(--app-sticky-offset)]">
           <EnrollmentSummarySidebar
             step={step}
             lineSummaries={lineSummaries}

@@ -72,7 +72,7 @@ export function UserAccountMenu({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-1.5 py-1 text-left transition hover:bg-[var(--surface)] sm:min-h-11 sm:gap-2 sm:px-2 sm:py-1.5"
+        className="flex min-h-11 items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-1.5 py-1 text-left transition hover:bg-[var(--surface)] sm:gap-2 sm:px-2 sm:py-1.5"
       >
         <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)] text-[0.68rem] font-bold text-white sm:size-8 sm:text-xs">
           {account ? initials(account.name) : "…"}
@@ -171,7 +171,7 @@ function AccountMenuLink({
       href={href}
       role="menuitem"
       onClick={onClick}
-      className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-[var(--muted-foreground)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]"
+      className="flex min-h-11 items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-[var(--muted-foreground)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]"
     >
       <Icon className="size-4 shrink-0 opacity-60" />
       {children}

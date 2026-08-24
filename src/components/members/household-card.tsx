@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { UsersRound } from "lucide-react";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { DemoMutationButton } from "@/components/ui/demo-read-only";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { ListSearch } from "@/components/ui/list-controls";
@@ -164,9 +165,9 @@ export function HouseholdCard({ memberId }: { memberId: string }) {
           title="Aucun foyer associé"
           message="Reliez les membres d'une même famille pour faciliter les inscriptions et les offres famille."
           action={
-            <button type="button" className="btn btn-primary btn-block-mobile min-h-11 text-sm sm:w-auto" onClick={createHousehold}>
+            <DemoMutationButton type="button" className="btn btn-primary btn-block-mobile min-h-11 text-sm sm:w-auto" onClick={createHousehold}>
               Créer le foyer
-            </button>
+            </DemoMutationButton>
           }
           className="px-3 py-7"
         />
@@ -246,14 +247,14 @@ export function HouseholdCard({ memberId }: { memberId: string }) {
                 <option value="GUARDIAN">Tuteur</option>
                 <option value="OTHER">Autre</option>
               </select>
-              <button
+              <DemoMutationButton
                 type="button"
                 className="btn btn-secondary btn-block-mobile min-h-11 text-sm sm:w-auto"
                 disabled={!selectedMember}
                 onClick={addMember}
               >
                 Ajouter au foyer
-              </button>
+              </DemoMutationButton>
             </div>
           </div>
 

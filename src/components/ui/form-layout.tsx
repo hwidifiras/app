@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { DemoReadOnlyFormActions } from "@/components/ui/demo-read-only";
 
 export function FormSection({
   id,
@@ -17,11 +18,11 @@ export function FormSection({
     <section
       id={id}
       className={cn(
-        "form-section-anchor rounded-lg border border-border/80 bg-[var(--surface-raised)] p-3.5 shadow-[var(--shadow-panel)] md:p-4",
+        "form-section-anchor rounded-lg border border-border bg-[var(--surface-raised)] p-3.5 shadow-[var(--shadow-panel)] md:p-4",
         className,
       )}
     >
-      {title ? <h2 className="text-sm font-semibold text-foreground">{title}</h2> : null}
+      {title ? <h2 className="text-base font-semibold tracking-[-0.01em] text-foreground">{title}</h2> : null}
       {description ? <p className="mt-0.5 text-xs text-muted-foreground">{description}</p> : null}
       <div className={cn(title || description ? "mt-3" : undefined)}>{children}</div>
     </section>
@@ -40,7 +41,7 @@ export function FormSectionNav({
   return (
     <nav
       className={cn(
-        "form-section-nav rounded-lg border border-border/80 bg-[var(--surface)]/96 p-2 shadow-[var(--shadow-panel)]",
+        "form-section-nav rounded-lg border border-border bg-[var(--surface)]/96 p-2 shadow-[var(--shadow-panel)]",
         className,
       )}
       aria-label="Sections du formulaire"
@@ -119,7 +120,7 @@ export function FormActions({
         className,
       )}
     >
-      {children}
+      <DemoReadOnlyFormActions>{children}</DemoReadOnlyFormActions>
     </div>
   );
 }

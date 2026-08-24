@@ -15,6 +15,11 @@ import {
 } from "@/components/settings/data-import-member-section";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { FormActions, FormSectionNav } from "@/components/ui/form-layout";
+import {
+  DEMO_READ_ONLY_MESSAGE,
+  DemoMutationButton,
+  useDemoReadOnly,
+} from "@/components/ui/demo-read-only";
 import type { BulkImportResult } from "@/components/settings/data-import-bulk-ui";
 import { DataImportPreviewSummary } from "@/components/settings/data-import-preview-summary";
 import {
@@ -40,6 +45,7 @@ export function DataImportWizard({
   plans: PlanOption[];
 }) {
   const router = useRouter();
+  const demoReadOnly = useDemoReadOnly();
   const [status, setStatus] = useState<ImportStatus>({
     active: false,
     expiresAt: null,
@@ -142,6 +148,12 @@ export function DataImportWizard({
     setMessage(null);
   }
 
+  function blockDemoMutation() {
+    if (!demoReadOnly) return false;
+    setMessage(DEMO_READ_ONLY_MESSAGE);
+    return true;
+  }
+
   function updateMember<K extends keyof typeof member>(key: K, value: (typeof member)[K]) {
     setMember((current) => ({ ...current, [key]: value }));
     invalidatePreview();
@@ -184,6 +196,8 @@ export function DataImportWizard({
   }
 
   async function modeAction(action: "activate" | "deactivate") {
+    if (blockDemoMutation()) return;
+
     setBusy(true);
     setMessage(null);
     const response = await fetch("/api/data-import", {
@@ -206,6 +220,11 @@ export function DataImportWizard({
   }
 
   async function submit(action: "preview" | "apply") {
+    // Preview is also a POST request and the demo proxy rejects every unsafe
+    // data-import request. Guard it here so keyboard or programmatic submits
+    // stay truthful instead of surfacing an avoidable 403.
+    if (blockDemoMutation()) return;
+
     setBusy(true);
     setMessage(null);
     const response = await fetch("/api/data-import", {
@@ -235,6 +254,7 @@ export function DataImportWizard({
   }
 
   async function rollback(auditLogId: string) {
+    if (blockDemoMutation()) return;
     if (!window.confirm("Annuler entièrement cet import ?")) return;
     setBusy(true);
     const response = await fetch("/api/data-import", {
@@ -254,6 +274,8 @@ export function DataImportWizard({
   }
 
   async function submitBulk(action: "preview" | "apply") {
+    if (blockDemoMutation()) return;
+
     if (!bulkFile) {
       setMessage("Choisissez le fichier Excel d'import.");
       return;
@@ -381,9 +403,9 @@ export function DataImportWizard({
             <button type="submit" disabled={busy} className="btn btn-ghost btn-block-mobile">
               Vérifier toutes les contraintes
             </button>
-            <button type="button" disabled={busy || !preview} onClick={() => void submit("apply")} className="btn btn-primary btn-block-mobile">
+            <DemoMutationButton type="button" disabled={busy || !preview} onClick={() => void submit("apply")} className="btn btn-primary btn-block-mobile">
               <Upload className="size-4" /> Appliquer l&apos;import
-            </button>
+            </DemoMutationButton>
           </FormActions>
         </form>
         </>

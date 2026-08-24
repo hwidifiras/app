@@ -25,7 +25,7 @@ export function DataTableHead({ children, className }: { children: React.ReactNo
   return (
     <thead
       className={cn(
-        "bg-[var(--surface-soft)] text-xs uppercase tracking-[0.08em] text-muted-foreground",
+        "bg-[var(--secondary)]/55 text-xs uppercase tracking-[0.08em] text-muted-foreground",
         className,
       )}
     >

@@ -28,6 +28,12 @@ export function MobileNav() {
   const { account, navBadges } = useAppShellData();
   const role = account?.role ?? null;
   const configurationSections = getConfigurationSections(role, account);
+  const visibleNavSections = navSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => navItemIsVisible(item, account)),
+    }))
+    .filter((section) => section.items.length > 0);
   const inClubConfig = configurationSections.some((section) =>
     section.items.some((item) => isLinkActive(pathname, item.href)),
   );
@@ -86,7 +92,7 @@ export function MobileNav() {
 
   return (
     <div data-app-mobile-nav className="print:hidden lg:hidden">
-      <div className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)]/96 px-2.5 py-2 shadow-[var(--shadow-panel)] backdrop-blur lg:hidden">
+      <div className="fixed left-0 right-0 top-0 z-50 flex min-h-[3.75rem] items-center justify-between border-b border-[var(--border)] bg-[var(--surface)]/96 px-3 py-2 shadow-[var(--shadow-panel)] backdrop-blur lg:hidden">
         <Link
           href="/"
           className="flex min-w-0 max-w-[48%] items-center gap-2 rounded-lg px-1 py-1 transition hover:bg-[var(--surface-soft)] sm:max-w-[55%]"
@@ -95,12 +101,12 @@ export function MobileNav() {
         </Link>
         <div className="flex items-center gap-1.5 sm:gap-2">
           <SetupGuide variant="header" className="hidden min-[430px]:block" />
-          <AppRefreshButton />
+          <AppRefreshButton className="!size-11 hidden min-[380px]:flex" />
           <NotificationCenter />
           <UserAccountMenu onNavigate={close} />
           <button
             onClick={() => setOpen((v) => !v)}
-            className="flex size-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)] shadow-[var(--shadow-panel)] transition-colors hover:bg-[var(--surface)] sm:size-10"
+            className="flex size-11 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)] shadow-[var(--shadow-panel)] transition-colors hover:bg-[var(--surface)]"
             aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
           >
             {open ? <X className="size-5" /> : <Menu className="size-5" />}
@@ -114,29 +120,30 @@ export function MobileNav() {
         aria-hidden={!open}
         inert={!open ? true : undefined}
         className={cn(
-          "fixed bottom-0 left-0 top-[53px] z-40 w-[min(86vw,320px)] transform bg-[var(--surface)] shadow-[var(--shadow-floating)] transition-transform duration-300 ease-out lg:hidden sm:top-[57px]",
+          "app-sidebar-theme fixed bottom-0 left-0 top-[3.75rem] z-40 w-[min(86vw,320px)] transform border-r border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-floating)] transition-transform duration-300 ease-out lg:hidden",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <nav className="sidebar-scroll flex h-full flex-col gap-1 overflow-y-auto overscroll-y-contain px-3 pb-24 pt-4">
           <SetupGuide variant="bar" className="mb-2 rounded-lg border border-[var(--primary)]/20" />
 
-          {navSections.map((section) => (
+          {visibleNavSections.map((section) => (
             <div key={section.title}>
               <p className="px-3 pt-2 text-[0.6rem] font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)] opacity-60">
                 {section.title}
               </p>
-              {section.items.filter((item) => navItemIsVisible(item, account)).map((item) => (
+              {section.items.map((item) => (
                 <NavLink key={item.href} item={item} pathname={pathname} onClick={close} badge={navBadges[item.href]} />
               ))}
             </div>
           ))}
 
-          <div className="mt-2 border-t border-[var(--border)] pt-2">
+          {configurationSections.length > 0 ? (
+            <div className="mt-2 border-t border-[var(--border)] pt-2">
             <button
               onClick={() => setConfigOpen((v) => !v)}
               aria-expanded={showClubConfig}
-              className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-[0.82rem] font-medium text-[var(--muted-foreground)] transition-all hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]"
+              className="flex min-h-11 w-full items-center justify-between rounded-lg px-3 py-2 text-[0.82rem] font-medium text-[var(--muted-foreground)] transition-all hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]"
             >
               <span className="text-[0.6rem] font-bold uppercase tracking-[0.16em] opacity-60">
                 {settingsSection.title}
@@ -163,7 +170,8 @@ export function MobileNav() {
                 ))}
               </div>
             )}
-          </div>
+            </div>
+          ) : null}
         </nav>
       </div>
 
@@ -183,7 +191,7 @@ export function MobileNav() {
         </nav>
       </div>
 
-      <div className="h-[53px] sm:h-[57px] lg:hidden" />
+      <div className="h-[3.75rem] lg:hidden" />
     </div>
   );
 }

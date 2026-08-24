@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { AddMemberToGroupForm } from "@/components/members/add-member-to-group-form";
+import { hasPermission } from "@/lib/permission-definitions";
 import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +28,26 @@ export default async function AddMemberToGroupPage({
         />
         <section className="panel panel-soft p-5">
           <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
+
+  const canSellEnrollment =
+    authUser.role === "ADMIN" || hasPermission(authUser.permissions, "enrollment.sell");
+  if (!canSellEnrollment) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Gestion du membre"
+          title="Affecter à un groupe"
+          description="Votre profil peut consulter ce membre, mais pas modifier ses affectations."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Droit d&apos;inscription requis.</p>
+          <Link href={`/members/${id}`} prefetch={false} className="btn btn-ghost mt-4">
+            Retour à la fiche
+          </Link>
         </section>
       </main>
     );

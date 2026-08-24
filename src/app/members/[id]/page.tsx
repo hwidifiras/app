@@ -332,7 +332,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                     Actifs ({activeGroups.length})
                   </h2>
                 </div>
-                {member.status === "ACTIVE" ? (
+                {member.status === "ACTIVE" && canSellEnrollment ? (
                   <Link
                     href={`/members/${member.id}/add-to-group`}
                     prefetch={false}
@@ -349,7 +349,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                   title="Aucun cours actif"
                   message="Affectez ce membre à un cours pour le retrouver dans le pointage."
                   action={
-                    member.status === "ACTIVE" ? (
+                    member.status === "ACTIVE" && canSellEnrollment ? (
                       <Link href={`/members/${member.id}/add-to-group`} prefetch={false} className="btn btn-primary min-h-11">
                         Affecter
                       </Link>
@@ -526,6 +526,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
               hasGymVisits={Boolean(latestGymVisit)}
               hasClassModule={product.capabilities.classManagement}
               hasGymModule={product.capabilities.gymAccess}
+              canAssignClass={canSellEnrollment}
               enrollmentRecoveryCandidates={enrollmentRecoveryCandidates}
             />
             <div id="member-edit" className="scroll-mt-24">

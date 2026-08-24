@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronDown, Mail, Wallet } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { DemoMutationButton } from "@/components/ui/demo-read-only";
 import {
   PAYMENT_REMINDER_COOLDOWN_DAYS,
   type DashboardDebtReminderRow,
@@ -124,7 +125,7 @@ export function DashboardDebtsSection({
             : "Le service de rappel email est actuellement indisponible."}
         </p>
         {emailConfigured && remindableCount > 0 ? (
-          <button
+          <DemoMutationButton
             type="button"
             className="btn btn-ghost btn-sm inline-flex items-center gap-1.5"
             disabled={batchLoading}
@@ -134,7 +135,7 @@ export function DashboardDebtsSection({
           >
             <Mail className="size-3.5" />
             {batchLoading ? "Envoi…" : `Relancer ${remindableCount} par email`}
-          </button>
+          </DemoMutationButton>
         ) : null}
       </div>
 
@@ -203,7 +204,7 @@ export function DashboardDebtsSection({
                         <Wallet className="size-3.5" />
                         Encaisser
                       </Link>
-                      <button
+                      <DemoMutationButton
                         type="button"
                         className="btn btn-ghost btn-sm inline-flex items-center gap-1.5 disabled:opacity-50"
                         disabled={!canRemind || loadingMemberId === item.memberId || batchLoading}
@@ -214,7 +215,7 @@ export function DashboardDebtsSection({
                       >
                         <Mail className="size-3.5" />
                         {loadingMemberId === item.memberId ? "…" : "Rappel"}
-                      </button>
+                      </DemoMutationButton>
                     </div>
                   </td>
                   <td className="mobile-toggle-cell px-4 py-3 text-center md:hidden">

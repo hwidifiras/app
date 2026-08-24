@@ -1,106 +1,92 @@
-# Design QA — We Discipline hybrid shell and Pointage
+# Design QA — We Discipline Option 2 shared SaaS redesign
 
 Date: 2026-08-24
 
-## Comparison target
+## Decision and scope
 
-- Source visual truth — option 2 shell/sidebar/navbar: `C:\Users\Dell\.codex\generated_images\01a018d7-f34f-7ee1-ab5b-a82379b157e8\exec-c4217bf0-7327-4291-927e-cb8a0a744d82.png`
-- Source visual truth — option 3 Pointage cards/roster: `C:\Users\Dell\.codex\generated_images\01a018d7-f34f-7ee1-ab5b-a82379b157e8\exec-fbf44fc1-180c-4864-8f48-f398d3680788.png`
-- Implementation screenshot: `C:\Users\Dell\.codex\visualizations\2026\08\19\01a018d7-f34f-7ee1-ab5b-a82379b157e8\we-discipline-hybrid-qa\implementation-final-normalized-1487x1058.png`
-- Browser-rendered local preview: `http://127.0.0.1:4173/`
-- Scope mapping: option 2 is the visual authority for the dark command rail and light top bar; option 3 is the visual authority for the Pointage session rail, compact cards, session hierarchy, roster, and attendance controls.
+- Design 2 is the only visual authority. Design 1, Design 3, and the earlier hybrid direction are excluded.
+- The implementation is in the real shared SaaS components used by the current tenant, the demo tenant, administrator accounts, martial-arts/class tenants, gym and hybrid tenants, and future tenants.
+- No user-facing page was replaced by the QA harness and no route was removed. The final production build contains 54 user-facing pages across tenant operations, administration, gym, onboarding, public, and account flows.
+- Planning received the deepest workflow redesign. Pointage, dashboard, navigation, forms, tables, status surfaces, demo safeguards, and permission-aware actions inherit the same system.
 
-## Viewport and normalization
+## Visual source and final evidence
 
-| Artifact | Pixels | CSS viewport/state | Density and normalization |
-| --- | ---: | --- | --- |
-| Option 2 source | 1487 × 1058 | Desktop reference | Treated as 1× source truth. |
-| Option 3 source | 1487 × 1058 | Desktop reference | Treated as 1× source truth. |
-| Chrome desktop raw captures | 1521 × 667 each | Browser-reported `1536 × 674` CSS px, DPR `1.25`; comparison document `1487 × 1058` CSS px | Upper and lower captures at scroll positions 0 and 384 were stitched, cropped to the 1487-CSS-px app region, then resampled to 1487 × 1058 for an equal-pixel comparison. |
-| Final desktop implementation | 1487 × 1058 | Light theme, first session selected | Normalized to the two source images at 1 output pixel per comparison pixel. |
-| Mobile list / roster | 390 × 674 each | Structural responsive harness at 390 CSS px | Chrome-rendered real components; cropped from the selected 390-CSS-px app surface and normalized to 390 × 674. |
-| Tablet list / roster | 820 × 674 each | Structural responsive harness at 820 CSS px | Chrome-rendered real components; cropped from the selected 820-CSS-px app surface and normalized to 820 × 674. |
+- Design 2 source: `C:\Users\Dell\.codex\generated_images\01a018d7-f34f-7ee1-ab5b-a82379b157e8\exec-c4217bf0-7327-4291-927e-cb8a0a744d82.png`
+- Equal-size Design 2 + final Pointage comparison: `C:\Users\Dell\.codex\visualizations\2026\08\19\01a018d7-f34f-7ee1-ab5b-a82379b157e8\we-discipline-option2-final-qa\design2-pointage-comparison-final.png`
+- Final Planning desktop: `C:\Users\Dell\.codex\visualizations\2026\08\19\01a018d7-f34f-7ee1-ab5b-a82379b157e8\we-discipline-option2-final-qa\planning-production-final.png`
+- Final Pointage desktop: `C:\Users\Dell\.codex\visualizations\2026\08\19\01a018d7-f34f-7ee1-ab5b-a82379b157e8\we-discipline-option2-final-qa\pointage-1487x1058-final3.png`
+- Planning mobile list: `C:\Users\Dell\.codex\visualizations\2026\08\19\01a018d7-f34f-7ee1-ab5b-a82379b157e8\we-discipline-option2-final-qa\planning-mobile-390x844-cdp.png`
+- Planning mobile selected-session sheet: `C:\Users\Dell\.codex\visualizations\2026\08\19\01a018d7-f34f-7ee1-ab5b-a82379b157e8\we-discipline-option2-final-qa\planning-mobile-sheet-390x844.png`
+- Pointage mobile list: `C:\Users\Dell\.codex\visualizations\2026\08\19\01a018d7-f34f-7ee1-ab5b-a82379b157e8\we-discipline-option2-final-qa\pointage-mobile-390x844-cdp.png`
+- Pointage mobile selected-session sheet: `C:\Users\Dell\.codex\visualizations\2026\08\19\01a018d7-f34f-7ee1-ab5b-a82379b157e8\we-discipline-option2-final-qa\pointage-mobile-sheet-390x844.png`
+- Planning tablet: `C:\Users\Dell\.codex\visualizations\2026\08\19\01a018d7-f34f-7ee1-ab5b-a82379b157e8\we-discipline-option2-final-qa\planning-tablet-820x1180-cdp.png`
+- Pointage tablet selected-session sheet: `C:\Users\Dell\.codex\visualizations\2026\08\19\01a018d7-f34f-7ee1-ab5b-a82379b157e8\we-discipline-option2-final-qa\pointage-tablet-sheet-820x1180.png`
 
-The desktop capture uses Chrome's native viewport. Chrome's extension surface cannot be physically resized, so the 390/820 responsive evidence uses a local-only CSS and `matchMedia` harness around the real production components. It verifies structural breakpoint behavior without shipping a QA route or changing production behavior.
+## Viewports and states
 
-## State
+| Evidence | Exact CSS viewport | State |
+| --- | ---: | --- |
+| Design 2 source and desktop implementation | 1487 × 1058 | Light theme, expanded Option 2 rail, selected operational item and contextual inspector |
+| Mobile implementation | 390 × 844 | Base list plus selected-session bottom sheet |
+| Tablet implementation | 820 × 1180 | Dense base board plus selected-session right sheet |
 
-- Light theme, French reception workspace, realistic mock sessions and members.
-- Desktop: Pointage today, first session selected, partially completed roster.
-- Mobile: both session-list state and open roster-sheet state.
-- Tablet: both session-list state and open roster-sheet state.
-- Production font: the final harness serves the same variable Geist font assets generated by the Next.js build.
+The mobile and tablet captures use Chrome device metrics directly. Chrome reported `innerWidth` equal to the requested viewport and `documentElement.scrollWidth` equal to it at both 390 and 820 pixels, confirming no accidental page-level horizontal overflow.
 
-## Full-view comparison evidence
+## Final findings
 
-- Combined source 2 + source 3 + implementation: `C:\Users\Dell\.codex\visualizations\2026\08\19\01a018d7-f34f-7ee1-ab5b-a82379b157e8\we-discipline-hybrid-qa\comparison-full-source2-source3-implementation.png` (4461 × 1058).
-- Mobile list: `C:\Users\Dell\.codex\visualizations\2026\08\19\01a018d7-f34f-7ee1-ab5b-a82379b157e8\we-discipline-hybrid-qa\implementation-mobile-list-390x674.png`.
-- Mobile roster: `C:\Users\Dell\.codex\visualizations\2026\08\19\01a018d7-f34f-7ee1-ab5b-a82379b157e8\we-discipline-hybrid-qa\implementation-mobile-roster-390x674.png`.
-- Tablet roster: `C:\Users\Dell\.codex\visualizations\2026\08\19\01a018d7-f34f-7ee1-ab5b-a82379b157e8\we-discipline-hybrid-qa\implementation-tablet-roster-820x674.png`.
+No actionable P0, P1, or P2 visual, interaction, responsive, or accessibility mismatch remains.
 
-## Focused comparison evidence
-
-- Shell/sidebar/top-bar focus: `C:\Users\Dell\.codex\visualizations\2026\08\19\01a018d7-f34f-7ee1-ab5b-a82379b157e8\we-discipline-hybrid-qa\comparison-focused-shell.png` (1200 × 700).
-- Pointage rail/cards/roster focus: `C:\Users\Dell\.codex\visualizations\2026\08\19\01a018d7-f34f-7ee1-ab5b-a82379b157e8\we-discipline-hybrid-qa\comparison-focused-pointage.png` (2454 × 900).
-
-## Findings
-
-No actionable P0, P1, or P2 mismatch remains.
-
-- Typography: production Geist is loaded in the final evidence. Weight, scale, line height, wrapping, and the strong time/session hierarchy match the geometric sans intent of both references.
-- Spacing and layout rhythm: the slim dark rail, quiet top bar, 21–23rem Pointage rail, compact session cards, large roster pane, radii, borders, and vertical spacing preserve the selected references without clipping core actions.
-- Colors and tokens: scoped navy sidebar, active blue, white/light-gray work surfaces, blue selection, green present, red absent, and amber financial warning are consistent and keep semantic contrast.
-- Image and asset fidelity: the reference contains no photographic or illustrative source asset to reproduce. Production uses the existing club mark when configured and a single Lucide icon family; no placeholder imagery, emoji, CSS art, or handcrafted inline SVG substitutes were introduced.
-- Copy and content: app-specific French labels are coherent and task-oriented. Payment enforcement, bulk attendance, undo, postpone, and finalization copy are intentional product safeguards not shown in the visual reference.
-- Interactions and accessibility: semantic session buttons expose selected state; mobile/tablet roster opens as a sheet; closing it restores focus to the selected session; attendance buttons expose pressed/disabled state; future sessions are read-only; the overdue disclosure opens; visible controls meet the 44px target; keyboard focus styles are retained.
-- Responsiveness: desktop remains a dense two-pane operational tool; tablet and mobile remove the permanent sidebar/top bar, make the session list one-column, and move the roster into a full-width task surface with no horizontal table dependency.
-
-Accepted P3 difference:
-
-- The production sidebar keeps short text labels beside icons instead of the reference's mostly icon-centered rail. This is intentional because the real product has more destinations and reception staff need faster recognition. The 160px expanded / 72px collapsed states retain option 2's slim command-rail character.
-
-## Primary interactions tested in Chrome
-
-- Selecting a session updates the direct `sessionId` state and opens the roster on small-screen modes.
-- Closing the roster returns focus to the selected session card.
-- The overdue-session disclosure changes from closed to open.
-- Selecting a future session renders its roster, disables Present/Absent controls, and omits the bulk-present action.
-- Direct-link session selection, selected-card state, and responsive list/roster states render without console errors.
-
-Console errors checked: yes. Final desktop, mobile, tablet, overdue, and future-session checks returned no browser console errors.
+- Shell fidelity: slim navy rail, solid-blue active item, quiet light top bar, tenant identity, alerts, date/week context, and compact operational surfaces follow Design 2.
+- Shared-tenancy behavior: account and product context are server-bootstrapped, so the real tenant and demo do not flash an empty sidebar while account data loads. A failed background refresh preserves the last valid account unless the server explicitly returns an authorization failure.
+- Planning desktop: week controls, compact summary metrics, conflict alert, view controls, filters, deliberate horizontal day board, compact session cards, and contextual inspector fit together on the first operational screen.
+- Planning tablet/mobile: the permanent inspector becomes a right sheet or bottom sheet; filters collapse; the active day becomes the primary work surface; the first useful session appears in the initial mobile screen instead of far below the fold.
+- Planning selection safety: an explicit selected session never silently changes to a recommended session after filtering. The sheet closes and clears safely when the selected item disappears.
+- Pointage desktop: Maintenant, Ensuite, À régulariser, and Finalisées are compact queue sections. The selected roster remains available in the right inspector without stretching queue cards.
+- Pointage live behavior: queue classification starts from server time in the tenant time zone and refreshes at every minute boundary. A session moves from Maintenant to À régulariser at its exact end time, and tenant-midnight rollover reclassifies both days without discarding optimistic attendance edits.
+- Pointage tablet/mobile: the roster becomes a task-focused sheet with bulk attendance, payment warnings, individual Present/Absent actions, exceptions, undo, finalize/reopen, and postpone behavior preserved.
+- Demo safety: the demo workspace is visibly read-only and all shared or standalone mutation paths reviewed in this change are blocked, including subscription lifecycle actions, user and sport changes, group assignment, household changes, reminders, notification state, receipt email actions, attendance/session mutations, and every data-import mutation. Data-import preview POST controls are also disabled so the interface never advertises a request that the read-only proxy will reject.
+- Permission-aware UI: collection, correction, subscription, and group-assignment actions are only shown when the current account can perform them. Payment corrections remain administrator-only to match the server API.
+- Accessibility: view/day selectors use ordinary buttons with `aria-pressed`; session selection exposes pressed state; dialogs and sheets restore focus; visible controls keep keyboard focus styles and appropriate touch targets.
+- Assets: tenant branding and the existing Lucide icon family are retained. No emoji, placeholder imagery, CSS-drawn icons, or invented decorative assets were introduced.
 
 ## Comparison history
 
-### Iteration 1 — blocked
+### Audit baseline — blocked
 
-- P1: the mobile close control was visible in the desktop roster because the global button utility overrode the responsive hide rule.
-- P1: the standalone QA harness fell back to a serif font because the Next.js font variable was absent.
-- Fixes: strengthened the desktop hide rule (`lg:!hidden`) and supplied a safe sans fallback for the intermediate harness.
-- Post-fix evidence: `implementation-desktop-pass2.png`.
+- P1: the original Planning board began too far below its controls on desktop, and the first useful mobile session appeared around 1417px down the page.
+- P1: session cards were too tall for weekly scanning and a permanent detail panel consumed useful width at intermediate sizes.
+- P1: Pointage and demo controls could appear mutable even when the workspace was read-only.
+- P1: account hydration could briefly remove tenant navigation and identity.
 
-### Iteration 2 — blocked
+### Implementation review — blocked
 
-- P2: session cards were taller than option 3 and included an invented progress/footer treatment.
-- P2: the selected session's time/group hierarchy was too weak.
-- P2: unselected Present/Absent controls were visually louder than the outlined defaults in option 3.
-- P2: the session rail/sidebar proportions drifted from the selected references.
-- Fixes: removed card progress/footer, enlarged and reordered time/group, changed default attendance controls to outlines with filled selected states, widened the session rail, reduced the expanded sidebar to 160px, and moved the collapse control to the sidebar footer.
-- Post-fix evidence: `implementation-desktop-pass3-upper.png` and the first focused comparisons.
+- P1: filtering could remove an explicit Planning selection while the inspector silently fell back to another session.
+- P1: Pointage used a server-time snapshot that could become stale on a long-open page.
+- P1: Pointage could leave a just-ended session in a non-actionable queue until a reload, and tenant-midnight rollover needed an explicit live derivation.
+- P1: some correction and group-assignment links used broader route permissions than their underlying actions.
+- P1: the demo Excel preview looked available even though its unsafe POST request was correctly rejected by the read-only proxy.
+- P2: tab roles were incomplete because the controls did not implement the full tab keyboard model.
+- Fixes: safe selection clearing, tenant-time minute and day updates, exact end-boundary queue derivation, exact route/action gates, truthful demo import controls, and ordinary pressed-button semantics.
 
-### Iteration 3 — passed
+### Side-by-side visual review — blocked
 
-- Replaced the harness fallback with the exact Geist font assets emitted by the production Next.js build.
-- Re-captured desktop, mobile, and tablet states in Chrome and regenerated the full and focused combined comparisons.
-- No actionable P0, P1, or P2 difference remained in the full-view, shell-focused, Pointage-focused, responsive, interaction, or console passes.
+- P1: the desktop Pointage queue grid stretched one-row sections, producing excess blank space compared with Design 2.
+- Fix: queue tracks now align to their content while the rail itself retains independent vertical scrolling.
 
-## Implementation checklist
+### Final Chrome review — passed
 
-- [x] Option 2 sidebar and top-bar language applied to the real shell.
-- [x] Option 3 Pointage session cards and roster hierarchy applied.
-- [x] Product safeguards retained and clarified.
-- [x] Mobile/tablet single-task Pointage behavior verified.
-- [x] Accessibility states and focus restoration verified.
-- [x] Final equal-size combined comparisons reviewed.
-- [x] Chrome console checked.
+- Equal-size 1487 × 1058 source/implementation comparison reviewed.
+- Planning and Pointage reviewed at desktop, tablet, and true 390px mobile widths.
+- Base-list and selected-session sheet states reviewed.
+- No page-level horizontal overflow at 390 or 820 CSS pixels.
+- No actionable P0, P1, or P2 finding remains.
+
+## Verification
+
+- TypeScript: passed with `--noEmit --incremental false`.
+- ESLint: full repository passed.
+- Targeted regression suite: 65/65 tests passed across UI contracts, modules, demo safety, permissions, payment navigation, notifications, attendance queue boundaries, lifecycle, and SaaS access.
+- Production build: passed with 54 user-facing pages and 131 compiled app/API entries.
+- Database-dependent integration tests were not counted in this design pass because the local environment has no `DATABASE_URL`; their failure mode was environment validation before test execution, not a product assertion.
 
 final result: passed

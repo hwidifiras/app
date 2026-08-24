@@ -12,6 +12,7 @@ import { getClubSettings } from "@/lib/club-settings";
 import { getAuthUser } from "@/lib/request-user";
 import { hasPermission } from "@/lib/permission-definitions";
 import { coachGroupWhere, coachSessionWhere } from "@/modules/classes/coach-scope";
+import { isDemoTenantSlug } from "@/lib/demo-workspace";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -252,6 +253,7 @@ export default async function SessionsPage({
         coachesOptions={coachesOptions}
         planningPreferences={planningPreferences}
         canManage={canManage}
+        readOnly={isDemoTenantSlug(authUser.tenantSlug)}
         initialWeekStart={initialWeekStart}
         initialGroupId={groupIdParam ?? ""}
         initialSessionId={sessionIdParam ?? ""}

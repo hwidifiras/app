@@ -1,6 +1,7 @@
 import { UserPlus } from "lucide-react";
 
 import type { MemberDto } from "@/types/member";
+import { DemoMutationButton } from "@/components/ui/demo-read-only";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListSearch } from "@/components/ui/list-controls";
 
@@ -72,14 +73,14 @@ export function GroupMemberAvailablePanel({
         ) : null}
       </ul>
 
-      <button
+      <DemoMutationButton
         type="button"
         onClick={onAssign}
         disabled={assigning || !groupSelected || selectedMemberIds.length === 0}
         className="btn btn-primary mt-3 w-full"
       >
         {assigning ? "Affectation…" : `Ajouter au groupe (${selectedMemberIds.length})`}
-      </button>
+      </DemoMutationButton>
     </section>
   );
 }

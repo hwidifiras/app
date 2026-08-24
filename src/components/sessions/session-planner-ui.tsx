@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, ChevronDown, Clock3, MoreHorizontal } from "lucide-react";
+import { AlertTriangle, Clock3, Eye, X } from "lucide-react";
 
 import { formatDateFr, isTodaySession } from "@/components/sessions/session-planner-derived-model";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -78,157 +78,60 @@ export function PlanningLegend() {
 
 export function SessionTile({
   item,
-  onEdit,
-  onCancel,
-  onToggle,
-  expanded,
-  conflictReasons,
+  onSelect,
+  selected,
   hasConflict = false,
-  canManage,
 }: {
   item: SessionDto;
-  onEdit: (session: SessionDto) => void;
-  onCancel: (session: SessionDto) => void;
-  onToggle: (session: SessionDto) => void;
-  expanded: boolean;
-  conflictReasons: string[];
+  onSelect: (session: SessionDto) => void;
+  selected: boolean;
   hasConflict?: boolean;
-  canManage: boolean;
 }) {
   const displayedStatus = displayedSessionStatus(item);
-  const canCancel = canCancelSession(item);
-  const actionLabel = primaryActionLabel(item);
   const checkedCount = item.checkedMemberCount ?? item.attendanceCount ?? 0;
   const expectedCount = item.expectedMemberCount ?? 0;
-  const progress = expectedCount > 0 ? Math.min(100, Math.round((checkedCount / expectedCount) * 100)) : 0;
-  const actionIsAttendanceLink =
-    item.operationalStatus === "NEEDS_FINALIZATION" ||
-    item.status === "COMPLETED" ||
-    (isTodaySession(item) && item.status !== "CANCELLED");
 
   return (
     <li
-      className={`relative overflow-visible rounded-lg border bg-[var(--surface)] shadow-sm transition hover:shadow-[var(--shadow-panel)] ${
-        expanded
-          ? "border-[var(--primary)]/45 ring-1 ring-[var(--primary)]/15"
+      className={cn(
+        "relative min-w-0 overflow-hidden rounded-lg border bg-[var(--surface)] shadow-sm transition",
+        selected
+          ? "border-[var(--primary)]/55 bg-[var(--primary)]/[0.035] ring-2 ring-[var(--primary)]/15"
           : hasConflict
-            ? "border-[var(--danger)]/45 ring-1 ring-[var(--danger)]/10"
-            : "border-[var(--border)]"
-      }`}
+            ? "border-[var(--danger)]/45"
+            : "border-[var(--border)] hover:border-[var(--primary)]/30 hover:shadow-[var(--shadow-panel)]",
+      )}
     >
-      <div className={`absolute inset-y-0 left-0 w-1 ${sessionRailClass(item, hasConflict)}`} aria-hidden="true" />
-      <div className="flex h-full min-w-0 flex-col pl-1">
-        <button type="button" onClick={() => onToggle(item)} className="min-w-0 px-2.5 py-2.5 text-left">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <p className="inline-flex items-center gap-1 rounded-md bg-[var(--surface-soft)] px-1.5 py-1 text-[0.7rem] font-bold text-[var(--foreground)]">
-              <Clock3 className="size-3" />
-              {item.startTime} - {item.endTime}
-            </p>
-            <span className="flex shrink-0 items-center gap-1">
-              <StatusBadge variant={hasConflict && expanded ? "danger" : displayedStatus.variant} className="max-w-24 truncate">
-                {hasConflict && expanded ? "Conflit" : displayedStatus.label}
-              </StatusBadge>
-              <ChevronDown
-                className={`size-3.5 text-[var(--muted-foreground)] transition-transform ${expanded ? "rotate-180" : ""}`}
-              />
-            </span>
-          </div>
-          <p className="mt-2 truncate text-sm font-semibold text-[var(--foreground)]">{item.groupName}</p>
-          <p className="mt-1 truncate text-xs text-[var(--muted-foreground)]">
-            {item.coachName ?? "Sans coach"} · {formatRoomLabel(item.room)}
+      <div className={cn("absolute inset-y-0 left-0 w-1", sessionRailClass(item, hasConflict))} aria-hidden="true" />
+      <button
+        id={`planning-session-${item.id}`}
+        type="button"
+        onClick={() => onSelect(item)}
+        aria-pressed={selected}
+        className="min-h-[7rem] w-full min-w-0 px-3 py-2.5 pl-3.5 text-left"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-1.5">
+          <p className="inline-flex items-center gap-1 text-xs font-black tabular-nums text-[var(--foreground)]">
+            <Clock3 className="size-3.5 text-[var(--muted-foreground)]" aria-hidden="true" />
+            {item.startTime} – {item.endTime}
           </p>
-          <div className="mt-2 flex flex-wrap gap-1.5 text-[0.68rem] text-[var(--muted-foreground)]">
-            <span className="rounded-full bg-[var(--surface-soft)] px-2 py-0.5">
-              {checkedCount}/{expectedCount} pointés
+          <StatusBadge variant={hasConflict ? "danger" : displayedStatus.variant} className="max-w-[7.5rem] truncate">
+            {hasConflict ? "Conflit" : displayedStatus.label}
+          </StatusBadge>
+        </div>
+        <p className="mt-2 truncate text-sm font-bold text-[var(--foreground)]">{item.groupName}</p>
+        <p className="mt-1 truncate text-[0.72rem] text-[var(--muted-foreground)]">
+          {item.coachName ?? "Sans coach"} · {formatRoomLabel(item.room)}
+        </p>
+        <div className="mt-2 flex items-center justify-between gap-2 text-[0.68rem]">
+          <span className="font-semibold text-[var(--muted-foreground)]">{checkedCount}/{expectedCount} pointés</span>
+          {(item.unmarkedCount ?? 0) > 0 && item.operationalStatus === "NEEDS_FINALIZATION" ? (
+            <span className="font-bold text-[var(--warning)]">
+              {item.unmarkedCount} restant{(item.unmarkedCount ?? 0) > 1 ? "s" : ""}
             </span>
-            {expanded && item.unmarkedCount ? (
-              <span className="rounded-full bg-[var(--warning)]/10 px-2 py-0.5 text-[var(--warning)]">
-                {item.unmarkedCount} restant{item.unmarkedCount > 1 ? "s" : ""}
-              </span>
-            ) : null}
-          </div>
-          {hasConflict && expanded && conflictReasons[0] ? (
-            <p className="mt-1 truncate text-[0.68rem] font-medium text-[var(--danger)]">{conflictReasons[0]}</p>
-          ) : expanded && item.exceptionReason ? (
-            <p className="mt-1 text-xs text-[var(--danger)]">Motif: {item.exceptionReason}</p>
           ) : null}
-        </button>
-
-        {expanded ? (
-          <div className="border-t border-[var(--border)] px-2.5 pb-2.5 pt-2">
-            <div className="flex items-center justify-between gap-2 text-[0.68rem] text-[var(--muted-foreground)]">
-              <span>{checkedCount}/{expectedCount} pointés</span>
-              <span>{item.unmarkedCount ?? 0} restant{(item.unmarkedCount ?? 0) > 1 ? "s" : ""}</span>
-            </div>
-            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--surface-soft)]">
-              <div
-                className={`h-full rounded-full ${hasConflict ? "bg-[var(--danger)]" : "bg-[var(--primary)]"}`}
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-
-            {conflictReasons.length > 0 ? (
-              <div className="mt-2 rounded-md border border-[var(--danger)]/20 bg-[var(--danger)]/10 px-2 py-1.5">
-                <p className="text-[0.68rem] font-semibold text-[var(--danger)]">À résoudre</p>
-                <ul className="mt-1 space-y-0.5 text-[0.7rem] text-[var(--foreground)]">
-                  {conflictReasons.map((reason) => (
-                    <li key={reason}>{reason}</li>
-                  ))}
-                </ul>
-                <p className="mt-1.5 text-[0.68rem] text-[var(--muted-foreground)]">
-                  Modifiez l&apos;horaire, le coach, la salle ou les préférences du club.
-                </p>
-              </div>
-            ) : null}
-
-            <div className="mt-2 flex min-w-0 items-center gap-1.5">
-              {actionIsAttendanceLink ? (
-                <Link
-                  href={attendanceHref(item)}
-                  prefetch={false}
-                  className={`btn btn-sm min-w-0 flex-1 ${
-                    actionLabel === "Finaliser" || actionLabel === "Pointer" ? "btn-primary" : "btn-ghost"
-                  }`}
-                >
-                  {actionLabel === "Finaliser" ? <AlertTriangle className="size-3.5" /> : null}
-                  {actionLabel}
-                </Link>
-              ) : canManage ? (
-                <button type="button" onClick={() => onEdit(item)} className="btn btn-primary btn-sm min-w-0 flex-1">
-                  Modifier
-                </button>
-              ) : (
-                <span className="btn btn-ghost btn-sm min-w-0 flex-1 cursor-default">À venir</span>
-              )}
-              {canManage ? <details className="relative shrink-0">
-                <summary className="btn btn-ghost btn-sm min-w-9 cursor-pointer list-none px-2" aria-label="Actions secondaires">
-                  <MoreHorizontal className="size-4" />
-                </summary>
-                <div className="absolute right-0 z-20 mt-1 w-36 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-1 shadow-[var(--shadow-floating)]">
-                  <button type="button" onClick={() => onEdit(item)} className="w-full rounded-md px-2 py-1.5 text-left text-xs font-semibold text-[var(--foreground)] hover:bg-[var(--surface-soft)]">
-                    Modifier
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onCancel(item)}
-                    disabled={!canCancel}
-                    title={
-                      item.status === "CANCELLED"
-                        ? "Séance déjà annulée"
-                        : !canCancel
-                          ? "Annulez les pointages depuis le pointage du jour avant d'annuler la séance"
-                          : undefined
-                    }
-                    className="w-full rounded-md px-2 py-1.5 text-left text-xs font-semibold text-[var(--danger)] hover:bg-[var(--danger)]/10 disabled:cursor-not-allowed disabled:opacity-45"
-                  >
-                    Annuler
-                  </button>
-                </div>
-              </details> : null}
-            </div>
-          </div>
-        ) : null}
-      </div>
+        </div>
+      </button>
     </li>
   );
 }
@@ -238,15 +141,21 @@ export function SessionDetailPanel({
   conflictReasons,
   onEdit,
   onCancel,
+  onClose,
+  titleId,
   className,
   canManage,
+  readOnly = false,
 }: {
   session: SessionDto | null;
   conflictReasons: string[];
   onEdit: (session: SessionDto) => void;
   onCancel: (session: SessionDto) => void;
+  onClose?: () => void;
+  titleId?: string;
   className?: string;
   canManage: boolean;
+  readOnly?: boolean;
 }) {
   if (!session) return null;
 
@@ -254,7 +163,7 @@ export function SessionDetailPanel({
   const checkedCount = session.checkedMemberCount ?? session.attendanceCount ?? 0;
   const expectedCount = session.expectedMemberCount ?? 0;
   const progress = expectedCount > 0 ? Math.min(100, Math.round((checkedCount / expectedCount) * 100)) : 0;
-  const actionLabel = primaryActionLabel(session);
+  const actionLabel = readOnly ? "Consulter le pointage" : primaryActionLabel(session);
   const canCancel = canCancelSession(session);
   const actionIsAttendanceLink =
     session.operationalStatus === "NEEDS_FINALIZATION" ||
@@ -266,15 +175,29 @@ export function SessionDetailPanel({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[var(--primary)]">Séance sélectionnée</p>
-          <h2 className="mt-1 truncate text-lg font-bold text-[var(--foreground)]">{session.groupName}</h2>
+          <h2 id={titleId} className="mt-1 truncate text-lg font-bold text-[var(--foreground)]">{session.groupName}</h2>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-            {formatDateFr(session.sessionDate)} · {session.startTime} - {session.endTime}
+            {formatDateFr(session.sessionDate)} · {session.startTime} – {session.endTime}
           </p>
         </div>
-        <StatusBadge variant={conflictReasons.length ? "danger" : displayedStatus.variant}>
-          {conflictReasons.length ? "Conflit" : displayedStatus.label}
-        </StatusBadge>
+        <div className="flex shrink-0 items-start gap-1.5">
+          <StatusBadge variant={conflictReasons.length ? "danger" : displayedStatus.variant}>
+            {conflictReasons.length ? "Conflit" : displayedStatus.label}
+          </StatusBadge>
+          {onClose ? (
+            <button type="button" onClick={onClose} className="btn btn-ghost min-h-11 min-w-11 p-2" aria-label="Fermer les détails">
+              <X className="size-4" />
+            </button>
+          ) : null}
+        </div>
       </div>
+
+      {readOnly ? (
+        <div className="mt-3 flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-950">
+          <Eye className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <p><strong>Démo en lecture seule.</strong> Vous pouvez parcourir le pointage sans modifier les données.</p>
+        </div>
+      ) : null}
 
       <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
         <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
@@ -300,7 +223,7 @@ export function SessionDetailPanel({
         </div>
         {(session.unmarkedCount ?? 0) > 0 ? (
           <p className="mt-2 text-xs font-medium text-[var(--warning)]">
-            {session.unmarkedCount} eleve{session.unmarkedCount && session.unmarkedCount > 1 ? "s" : ""} restant{session.unmarkedCount && session.unmarkedCount > 1 ? "s" : ""}
+            {session.unmarkedCount} élève{session.unmarkedCount && session.unmarkedCount > 1 ? "s" : ""} restant{session.unmarkedCount && session.unmarkedCount > 1 ? "s" : ""}
           </p>
         ) : null}
       </div>
@@ -309,12 +232,10 @@ export function SessionDetailPanel({
         <div className="mt-3 rounded-lg border border-[var(--danger)]/25 bg-[var(--danger)]/10 p-3">
           <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--danger)]">À corriger</p>
           <ul className="mt-2 space-y-1 text-xs text-[var(--foreground)]">
-            {conflictReasons.map((reason) => (
-              <li key={reason}>{reason}</li>
-            ))}
+            {conflictReasons.map((reason) => <li key={reason}>{reason}</li>)}
           </ul>
           <p className="mt-2 text-xs text-[var(--muted-foreground)]">
-            Solution: changer l&apos;horaire, le coach, la salle ou ajuster les préférences du club.
+            Solution : changer l&apos;horaire, le coach, la salle ou ajuster les préférences du club.
           </p>
         </div>
       ) : null}
@@ -324,9 +245,12 @@ export function SessionDetailPanel({
           <Link
             href={attendanceHref(session)}
             prefetch={false}
-            className={cn("btn btn-sm w-full", actionLabel === "Finaliser" || actionLabel === "Pointer" ? "btn-primary" : "btn-ghost")}
+            className={cn(
+              "btn btn-sm w-full",
+              !readOnly && (actionLabel === "Finaliser" || actionLabel === "Pointer") ? "btn-primary" : "btn-ghost",
+            )}
           >
-            {actionLabel === "Finaliser" ? <AlertTriangle className="size-4" /> : null}
+            {!readOnly && actionLabel === "Finaliser" ? <AlertTriangle className="size-4" /> : null}
             {actionLabel}
           </Link>
         ) : null}

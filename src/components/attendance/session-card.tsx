@@ -1,8 +1,11 @@
 "use client";
 
-import { Clock, MapPin, UserRound } from "lucide-react";
+import { ArrowRight, CalendarClock, CheckCircle2, MapPin, PlayCircle, UserRound } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import type { AttendanceQueueKind } from "@/lib/attendance-queue";
+
+export type { AttendanceQueueKind } from "@/lib/attendance-queue";
 
 export type SessionCardData = {
   id: string;
@@ -49,79 +52,99 @@ function sessionDateLabel(value: string) {
 
 export function SessionCard({
   session,
+  kind,
   isSelected,
+  readOnly = false,
   onSelect,
 }: {
   session: SessionCardData;
+  kind: AttendanceQueueKind;
   isSelected: boolean;
+  readOnly?: boolean;
   onSelect: () => void;
 }) {
   const expected = session.expectedMemberCount ?? session.group.members.length;
   const checked = session.checkedMemberCount ?? session.attendances.length;
-  const needsFinalization = session.operationalStatus === "NEEDS_FINALIZATION";
-  const isCompleted = session.operationalStatus === "COMPLETED" || session.status === "COMPLETED";
+  const unmarked = Math.max(0, session.unmarkedCount ?? expected - checked);
+  const coachName = session.coach
+    ? `${session.coach.firstName} ${session.coach.lastName}`
+    : "Coach à définir";
+  const dateLabel = sessionDateLabel(session.sessionDate);
+  const statusLabel =
+    kind === "NOW"
+      ? "Séance en cours"
+      : kind === "REGULARIZE"
+        ? unmarked > 0
+          ? `${unmarked} à pointer`
+          : "Prête à finaliser"
+        : kind === "DONE"
+          ? "Séance finalisée"
+          : session.dateCategory === "TODAY"
+            ? "Plus tard aujourd’hui"
+            : dateLabel;
+  const actionLabel = readOnly
+    ? "Consulter"
+    : kind === "NOW"
+      ? "Ouvrir le pointage"
+      : kind === "NEXT"
+        ? "Préparer la séance"
+        : kind === "REGULARIZE"
+          ? "Régulariser"
+          : "Consulter";
+  const ActionIcon =
+    kind === "NOW"
+      ? PlayCircle
+      : kind === "NEXT"
+        ? CalendarClock
+        : kind === "DONE"
+          ? CheckCircle2
+          : ArrowRight;
 
   return (
-    <article>
+    <article className="attendance-session-item">
       <button
         id={`attendance-session-${session.id}`}
         type="button"
         onClick={onSelect}
         aria-pressed={isSelected}
         aria-controls="attendance-roster-panel"
+        aria-label={`${actionLabel} : ${session.group.name}, ${session.startTime} à ${session.endTime}`}
         className={cn(
-          "group relative min-h-[6.5rem] w-full rounded-lg border bg-[var(--surface)] px-4 py-3 text-left shadow-[var(--shadow-panel)] transition",
-          "hover:border-[var(--primary)]/55 hover:shadow-[var(--shadow-floating)]",
-          isSelected && "border-[var(--primary)] bg-[var(--primary)]/[0.045] ring-2 ring-[var(--primary)]/18",
-          !isSelected && needsFinalization && "border-[var(--warning)]/45",
-          !isSelected && isCompleted && "border-[var(--success)]/30",
+          "attendance-session-row",
+          `attendance-session-row-${kind.toLowerCase()}`,
+          isSelected && "is-selected",
         )}
       >
+        <span className="attendance-session-time">
+          <strong>{session.startTime}</strong>
+          <span aria-hidden>–</span>
+          <strong>{session.endTime}</strong>
+          {session.dateCategory !== "TODAY" ? <small>{dateLabel}</small> : null}
+        </span>
+
+        <span className="attendance-session-summary">
+          <strong>{session.group.name}</strong>
+          <span className="attendance-session-meta">
+            <span><MapPin aria-hidden />{session.room?.trim() || "Salle à définir"}</span>
+            <span><UserRound aria-hidden />{coachName}</span>
+          </span>
+        </span>
+
+        <span className="attendance-session-progress">
+          <strong className="tabular-nums">{checked}/{expected}</strong>
+          <span>pointés</span>
+          <small>{statusLabel}</small>
+        </span>
+
         <span
           className={cn(
-            "absolute inset-y-3 left-0 w-1 rounded-r-full bg-[var(--border)]",
-            isSelected && "bg-[var(--primary)]",
-            !isSelected && needsFinalization && "bg-[var(--warning)]",
-            !isSelected && isCompleted && "bg-[var(--success)]",
+            "attendance-session-action",
+            kind === "NOW" && !readOnly && "attendance-session-action-primary",
           )}
           aria-hidden
-        />
-        <span className="flex items-start justify-between gap-4">
-          <span className="min-w-0 flex-1">
-            {session.dateCategory !== "TODAY" ? (
-              <span
-                className={cn(
-                  "mb-1 block text-[0.68rem] font-bold uppercase tracking-[0.12em]",
-                  needsFinalization ? "text-[var(--warning)]" : "text-[var(--primary)]",
-                )}
-              >
-                {sessionDateLabel(session.sessionDate)}
-              </span>
-            ) : null}
-            <span className="flex items-center gap-1.5 text-base font-bold text-[var(--primary)]">
-              <Clock className="size-4" aria-hidden />
-              {session.startTime} – {session.endTime}
-            </span>
-            <span className="mt-1 block truncate text-sm font-semibold text-[var(--foreground)]">
-              {session.group.name}
-            </span>
-            <span className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--muted-foreground)]">
-              <span className="inline-flex items-center gap-1">
-                <MapPin className="size-3.5" aria-hidden />
-                {session.room?.trim() || "Salle à définir"}
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <UserRound className="size-3.5" aria-hidden />
-                {session.coach ? `${session.coach.firstName} ${session.coach.lastName}` : "Coach à définir"}
-              </span>
-            </span>
-          </span>
-          <span className="shrink-0 text-right">
-            <span className="block text-sm font-bold tabular-nums text-[var(--foreground)]">
-              {checked}/{expected}
-            </span>
-            <span className="block text-[0.68rem] text-[var(--muted-foreground)]">pointés</span>
-          </span>
+        >
+          <ActionIcon />
+          <span>{actionLabel}</span>
         </span>
       </button>
     </article>

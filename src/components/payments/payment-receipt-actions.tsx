@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Copy, Mail, MessageCircle, ReceiptText } from "lucide-react";
 
+import { DemoMutationButton } from "@/components/ui/demo-read-only";
 import {
   buildReceiptVerificationMessage,
   buildReceiptVerificationPath,
@@ -127,7 +128,7 @@ export function PaymentReceiptActions({
         deliveryStatus={deliveryStatus}
         hasEmail={Boolean(defaultEmail?.trim())}
       />
-      <button
+      <DemoMutationButton
         type="button"
         disabled={isSending || !canSend}
         onClick={sendReceiptEmail}
@@ -142,7 +143,7 @@ export function PaymentReceiptActions({
       >
         <Mail className="size-3" />
         {isSending ? "Envoi..." : "Email"}
-      </button>
+      </DemoMutationButton>
       <button
         type="button"
         onClick={copyVerificationLink}

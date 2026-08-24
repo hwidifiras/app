@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { useAppShellData } from "@/components/layout/app-shell-data-provider";
+import { DemoMutationButton, useDemoReadOnly } from "@/components/ui/demo-read-only";
 import type { AppNotification } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
 import { useAccessibleDialog } from "@/hooks/use-accessible-dialog";
@@ -41,11 +42,18 @@ const severityStyles = {
   },
 } as const;
 
-export function NotificationCenter({ className }: { className?: string }) {
+export function NotificationCenter({
+  className,
+  showLabel = false,
+}: {
+  className?: string;
+  showLabel?: boolean;
+}) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const titleId = useId();
   const panelId = `${titleId}-panel`;
+  const demoReadOnly = useDemoReadOnly();
   const {
     notifications,
     unreadCount,
@@ -79,10 +87,12 @@ export function NotificationCenter({ className }: { className?: string }) {
   }, [open]);
 
   async function markRead(key: string) {
+    if (demoReadOnly) return;
     await markNotificationRead(key);
   }
 
   async function markAllRead() {
+    if (demoReadOnly) return;
     await markAllNotificationsRead();
   }
 
@@ -96,20 +106,24 @@ export function NotificationCenter({ className }: { className?: string }) {
         aria-controls={panelId}
         aria-label={`${unreadCount} notification${unreadCount > 1 ? "s" : ""} non lue${unreadCount > 1 ? "s" : ""}`}
         className={cn(
-          "relative flex size-11 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)] shadow-[var(--shadow-panel)] transition hover:bg-[var(--surface)]",
+          "relative inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)] shadow-[var(--shadow-panel)] transition hover:bg-[var(--surface)]",
+          showLabel ? "gap-2 px-3" : "w-11",
           open && "border-[var(--primary)]/45 ring-2 ring-[var(--primary)]/15",
         )}
       >
-        {loading ? (
-          <LoaderCircle className="size-4 animate-spin text-[var(--muted-foreground)]" />
-        ) : (
-          <Bell className="size-4.5" />
-        )}
-        {unreadCount > 0 ? (
-          <span className="absolute -right-1.5 -top-1.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[0.55rem] font-bold leading-none text-white ring-2 ring-[var(--surface)] sm:min-h-5 sm:min-w-5 sm:text-[0.62rem]">
-            {unreadCount > 99 ? "99+" : unreadCount}
-          </span>
-        ) : null}
+        <span className="relative flex size-5 shrink-0 items-center justify-center">
+          {loading ? (
+            <LoaderCircle className="size-4 animate-spin text-[var(--muted-foreground)]" />
+          ) : (
+            <Bell className="size-4.5" />
+          )}
+          {unreadCount > 0 ? (
+            <span className="absolute -right-2.5 -top-2.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[0.55rem] font-bold leading-none text-white ring-2 ring-[var(--surface)] sm:min-h-5 sm:min-w-5 sm:text-[0.62rem]">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          ) : null}
+        </span>
+        {showLabel ? <span className="text-sm font-semibold">Alertes</span> : null}
       </button>
 
       {open ? (
@@ -132,14 +146,14 @@ export function NotificationCenter({ className }: { className?: string }) {
             </div>
             <div className="flex items-center gap-1">
               {unreadCount > 0 ? (
-                <button
+                <DemoMutationButton
                   type="button"
                   onClick={() => void markAllRead()}
                   className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-[var(--primary)] transition hover:bg-[var(--primary)]/10"
                 >
                   <CheckCheck className="size-4" />
                   Marquer comme lues
-                </button>
+                </DemoMutationButton>
               ) : null}
               <button
                 type="button"

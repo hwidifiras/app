@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AlertTriangle, Mail, Pencil, RotateCcw } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { DemoMutationButton } from "@/components/ui/demo-read-only";
 import { FormField } from "@/components/ui/form-layout";
 import {
   UserAccessFields,
@@ -274,14 +275,14 @@ export function UsersListClient({
                   </div>
                 ) : null}
                 <div className="list-card-actions mt-3">
-                  <button
+                  <DemoMutationButton
                     type="button"
                     className="btn btn-primary btn-block-mobile"
                     disabled={loadingId === u.id}
                     onClick={() => saveEdit(u)}
                   >
                     {loadingId === u.id ? "..." : "Enregistrer"}
-                  </button>
+                  </DemoMutationButton>
                   <button type="button" className="btn btn-ghost btn-block-mobile" onClick={() => setEditingId(null)}>
                     Annuler
                   </button>
@@ -314,7 +315,7 @@ export function UsersListClient({
                     <Pencil className="size-3.5" />
                     Modifier
                   </button>
-                  <button
+                  <DemoMutationButton
                     type="button"
                     className="btn btn-ghost btn-block-mobile"
                     disabled={loadingId === u.id || !u.isActive}
@@ -322,7 +323,7 @@ export function UsersListClient({
                   >
                     <Mail className="size-3.5" />
                     {loadingId === u.id ? "Envoi..." : "Lien mot de passe"}
-                  </button>
+                  </DemoMutationButton>
                 </div>
               </>
             )}

@@ -30,6 +30,23 @@ export default async function EditPaymentPage({ params }: { params: Promise<{ id
     );
   }
 
+  const canCorrectPayments = authUser.role === "ADMIN";
+  if (!canCorrectPayments) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Ventes"
+          title="Correction paiement"
+          description="Votre profil peut consulter la caisse, mais pas modifier ses écritures."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Une session administrateur est requise.</p>
+          <Link href="/payments" className="btn btn-ghost mt-4">Retour à la caisse</Link>
+        </section>
+      </main>
+    );
+  }
+
   let hasError = false;
   let payment: Awaited<ReturnType<typeof getPayment>> = null;
   let receiptDeliveryLogs: Awaited<ReturnType<typeof getReceiptDeliveryLogs>> = [];

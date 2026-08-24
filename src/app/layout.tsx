@@ -4,11 +4,13 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/layout/app-shell";
+import type { AccountData } from "@/components/layout/app-shell-data-provider";
 import { ClubBrandingProvider } from "@/components/layout/club-branding-provider";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { getAppName } from "@/lib/app-name";
 import { resolveClubBranding } from "@/lib/club-branding";
 import { getClubSettings } from "@/lib/club-settings";
+import { isDemoTenantSlug } from "@/lib/demo-workspace";
 import { hasPermission } from "@/lib/permission-definitions";
 import { isPublicPath, isTenantIndependentPublicPath } from "@/lib/public-paths";
 import { getAuthUser } from "@/lib/request-user";
@@ -49,7 +51,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f6f9ff" },
+    { media: "(prefers-color-scheme: light)", color: "#f5f8fd" },
     { media: "(prefers-color-scheme: dark)", color: "#0d1628" },
   ],
 };
@@ -71,6 +73,8 @@ export default async function RootLayout({
     enterTenantContext(resolvedTenant.context);
   }
 
+  let initialAccount: AccountData | null = null;
+
   if (pathname && !isPublicPath(pathname)) {
     const user = await getAuthUser();
     if (!user) {
@@ -78,6 +82,34 @@ export default async function RootLayout({
     }
 
     const product = await getTenantProductContext(user.tenantId);
+    initialAccount = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      coachId: user.coachId,
+      isActive: true,
+      permissions: user.permissions,
+      modules: product.modules,
+      productProfile: product.profile,
+      productCapabilities: product.capabilities,
+      saasStatus: product.saasStatus,
+      operationsAllowed: product.operationsAllowed,
+      isDemoWorkspace: isDemoTenantSlug(user.tenantSlug),
+      billingWarning: product.billingWarning,
+      subscriptionBlockReason: product.subscriptionBlockReason,
+      subscriptionDeadlineAt: product.subscriptionDeadlineAt?.toISOString() ?? null,
+      subscriptionDaysRemaining: product.subscriptionDaysRemaining,
+      saasSubscription: product.saasSubscription
+        ? {
+            ...product.saasSubscription,
+            startsAt: product.saasSubscription.startsAt.toISOString(),
+            trialEndsAt: product.saasSubscription.trialEndsAt?.toISOString() ?? null,
+            currentPeriodEnd: product.saasSubscription.currentPeriodEnd?.toISOString() ?? null,
+            graceEndsAt: product.saasSubscription.graceEndsAt?.toISOString() ?? null,
+          }
+        : null,
+    };
     if (!product.operationsAllowed && !isSaasRecoveryPath(pathname)) {
       redirect("/subscription-status");
     }
@@ -122,7 +154,7 @@ export default async function RootLayout({
       <body className="min-h-full bg-background text-foreground">
         <ThemeProvider>
           <ClubBrandingProvider branding={branding}>
-            <AppShell>{children}</AppShell>
+            <AppShell initialAccount={initialAccount}>{children}</AppShell>
           </ClubBrandingProvider>
         </ThemeProvider>
       </body>

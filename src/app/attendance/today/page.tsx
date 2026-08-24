@@ -4,7 +4,8 @@ import { CheckInPanel } from "@/components/attendance/check-in-panel";
 import { getClubSettings } from "@/lib/club-settings";
 import { canCheckInWithPayment } from "@/lib/membership-rules";
 import { computeWeeklyAllowanceRemainingForMember } from "@/lib/weekly-session-consumption";
-import { utcDateOnlyForTimeZone } from "@/lib/dates";
+import { getAppTimeZone, utcDateOnlyForTimeZone } from "@/lib/dates";
+import { isDemoTenantSlug } from "@/lib/demo-workspace";
 import { isDateWithinBusinessDayWindow } from "@/lib/assignment-policy";
 import {
   deriveSessionLifecycle,
@@ -41,7 +42,18 @@ export default async function AttendanceTodayPage({
   }
 
   const tenantId = authUser.tenantId;
-  const today = utcDateOnlyForTimeZone(new Date());
+  const now = new Date();
+  const appTimeZone = getAppTimeZone();
+  const today = utcDateOnlyForTimeZone(now, appTimeZone);
+  const currentTimeParts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: appTimeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const currentMinutes =
+    Number(currentTimeParts.find((part) => part.type === "hour")?.value ?? 0) * 60
+    + Number(currentTimeParts.find((part) => part.type === "minute")?.value ?? 0);
   const tomorrow = new Date(today);
   tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
   const upcomingUntil = new Date(tomorrow);
@@ -296,6 +308,9 @@ export default async function AttendanceTodayPage({
           data={{
             sessions,
             todayIso: today.toISOString(),
+            currentMinutes,
+            appTimeZone,
+            readOnly: isDemoTenantSlug(authUser.tenantSlug),
             activeSubscriptionMemberIds,
             partialPaymentMemberIds,
             partialPaymentDebtsCents,

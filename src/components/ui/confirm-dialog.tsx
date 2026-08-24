@@ -5,6 +5,11 @@ import { AlertTriangle, X } from "lucide-react";
 
 import { useAccessibleDialog } from "@/hooks/use-accessible-dialog";
 import { cn } from "@/lib/utils";
+import {
+  DEMO_READ_ONLY_MESSAGE,
+  DemoMutationButton,
+  useDemoReadOnly,
+} from "@/components/ui/demo-read-only";
 
 type ConfirmDialogProps = {
   open: boolean;
@@ -31,6 +36,7 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const titleId = useId();
   const descriptionId = useId();
+  const demoReadOnly = useDemoReadOnly();
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useAccessibleDialog<HTMLElement>({
     open,
@@ -89,8 +95,14 @@ export function ConfirmDialog({
           </button>
         </div>
 
+        {demoReadOnly ? (
+          <p className="mt-4 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium leading-5 text-blue-900" role="note">
+            {DEMO_READ_ONLY_MESSAGE}
+          </p>
+        ) : null}
+
         <div className="mt-5 grid gap-2 sm:flex sm:flex-row-reverse">
-          <button
+          <DemoMutationButton
             type="button"
             onClick={() => void onConfirm()}
             disabled={loading}
@@ -100,7 +112,7 @@ export function ConfirmDialog({
             )}
           >
             {loading ? "Traitement…" : confirmLabel}
-          </button>
+          </DemoMutationButton>
           <button
             ref={cancelButtonRef}
             type="button"

@@ -1,6 +1,7 @@
 import { UserMinus, UsersRound } from "lucide-react";
 
 import type { GroupMemberDto } from "@/types/group-member";
+import { DemoMutationButton } from "@/components/ui/demo-read-only";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListSearch } from "@/components/ui/list-controls";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -87,14 +88,14 @@ export function GroupMemberAssignedPanel({
                   </StatusBadge>
                 </div>
                 <div className="mt-2 flex gap-2">
-                  <button
+                  <DemoMutationButton
                     type="button"
                     onClick={() => onToggleStatus(item)}
                     disabled={actionLoadingId === item.id}
                     className="btn btn-ghost text-xs"
                   >
                     {item.status === "ACTIVE" ? "Désactiver" : "Réactiver"}
-                  </button>
+                  </DemoMutationButton>
                   <button
                     type="button"
                     onClick={() => onQueueRemoval(item)}

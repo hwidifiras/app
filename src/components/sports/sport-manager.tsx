@@ -8,6 +8,7 @@ import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormField } from "@/components/ui/form-layout";
 import { EmptyState } from "@/components/ui/empty-state";
+import { DemoMutationButton } from "@/components/ui/demo-read-only";
 import { ListSearch } from "@/components/ui/list-controls";
 import { NoticeDialog } from "@/components/ui/notice-dialog";
 import { Pagination, usePagination } from "@/components/ui/pagination";
@@ -338,9 +339,9 @@ export function SportManager({ initialSports }: SportManagerProps) {
                 className="field"
               />
             </FormField>
-            <button type="submit" disabled={loading} className="btn btn-primary btn-block-mobile lg:mb-0.5">
+            <DemoMutationButton type="submit" disabled={loading} className="btn btn-primary btn-block-mobile lg:mb-0.5">
               {loading ? "Enregistrement..." : "Créer"}
-            </button>
+            </DemoMutationButton>
             </form>
           </div>
         ) : null}

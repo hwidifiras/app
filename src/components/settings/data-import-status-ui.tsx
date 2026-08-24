@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { CheckCircle2, Download, LockKeyhole, RotateCcw } from "lucide-react";
 
+import { DemoMutationButton } from "@/components/ui/demo-read-only";
+
 export type RecentImport = {
   id: string;
   memberId: string;
@@ -60,14 +62,14 @@ export function DataImportModePanel({
               <Download className="size-4" /> Télécharger le modèle
             </a>
           ) : null}
-          <button
+          <DemoMutationButton
             type="button"
             disabled={busy}
             onClick={onToggleMode}
             className={`btn ${status.active ? "btn-ghost" : "btn-primary"} btn-block-mobile`}
           >
             {status.active ? "Fermer maintenant" : "Activer pour 4 heures"}
-          </button>
+          </DemoMutationButton>
         </div>
       </div>
     </section>
@@ -151,14 +153,14 @@ export function RecentImportsPanel({
                 </p>
               </div>
               {item.canRollback && status.active ? (
-                <button
+                <DemoMutationButton
                   type="button"
                   disabled={busy}
                   onClick={() => onRollback(item.id)}
                   className="btn btn-ghost text-[var(--danger)]"
                 >
                   <RotateCcw className="size-4" /> Annuler l&apos;import
-                </button>
+                </DemoMutationButton>
               ) : item.rollbackStatus === "LOCKED_BY_ACTIVITY" ? (
                 <Link href={`/members/${item.memberId}`} className="btn btn-ghost">
                   Ouvrir la fiche

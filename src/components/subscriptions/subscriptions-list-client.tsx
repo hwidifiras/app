@@ -125,7 +125,15 @@ const OPERATIONAL_MODES: Array<{ id: OperationalMode; label: string }> = [
   { id: "ALL", label: "Tous" },
 ];
 
-export function SubscriptionsListClient({ subscriptions }: { subscriptions: SubscriptionRow[] }) {
+export function SubscriptionsListClient({
+  subscriptions,
+  canCorrectSubscriptions,
+  canCollectPayments,
+}: {
+  subscriptions: SubscriptionRow[];
+  canCorrectSubscriptions: boolean;
+  canCollectPayments: boolean;
+}) {
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | SubscriptionEffectiveState>("ALL");
@@ -219,7 +227,7 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
         );
       })}
     </div>
-    <div className="list-toolbar sticky top-[57px] z-20 -mx-2 mb-4 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[3.5rem]">
+    <div className="list-toolbar sticky top-[57px] z-20 -mx-2 mb-4 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[var(--app-topbar-height)]">
       <div className="flex flex-col gap-2 md:flex-row md:items-end">
         <div className="min-w-0 flex-1">
           <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">Recherche</label>
@@ -351,7 +359,7 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
                 {sub.rightsLabel}
               </Td>
               <TableActionsCell>
-                {sub.effectiveState !== "CANCELLED" && sub.totalPaid < sub.amount ? (
+                {canCollectPayments && sub.effectiveState !== "CANCELLED" && sub.totalPaid < sub.amount ? (
                   <Link
                     href={paymentNewHref({ memberSubscriptionId: sub.id, returnTo: "/subscriptions" })}
                     prefetch={false}
@@ -360,14 +368,16 @@ export function SubscriptionsListClient({ subscriptions }: { subscriptions: Subs
                     Encaisser
                   </Link>
                 ) : null}
-                <Link
-                  href={`/subscriptions/${sub.id}/edit`}
-                  prefetch={false}
-                  className="btn btn-ghost btn-block-mobile min-h-11 sm:w-auto"
-                  title="Corriger l'abonnement avec historique conservé"
-                >
-                  Corriger
-                </Link>
+                {canCorrectSubscriptions ? (
+                  <Link
+                    href={`/subscriptions/${sub.id}/edit`}
+                    prefetch={false}
+                    className="btn btn-ghost btn-block-mobile min-h-11 sm:w-auto"
+                    title="Corriger l'abonnement avec historique conservé"
+                  >
+                    Corriger
+                  </Link>
+                ) : null}
               </TableActionsCell>
               <MobileRowToggle expanded={isExpanded} onToggle={() => toggle(sub.id)} />
             </DataTableRow>

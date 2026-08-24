@@ -9,6 +9,7 @@ import {
   staffPresetsForProfile,
 } from "@/lib/user-access-presets";
 import { deriveUserRoleIntent } from "@/lib/user-role-intent";
+import { requiredPermissionForPath } from "@/lib/route-permissions";
 
 describe("canonical permissions", () => {
   it("translates legacy permissions without dropping established access", () => {
@@ -56,5 +57,21 @@ describe("canonical permissions", () => {
     expect(deriveUserRoleIntent("STAFF", ["class.attendance"], "coach-1")).toBe("COACH");
     expect(deriveUserRoleIntent("STAFF", ["members.manage", "payments.collect"])).toBe("RECEPTION");
     expect(deriveUserRoleIntent("STAFF", ["settings.manage"])).toBe("MANAGER");
+  });
+});
+
+describe("page permission routing", () => {
+  it("uses correction permissions for edit pages before their broader list routes", () => {
+    // Payment corrections additionally remain administrator-only in the API;
+    // the route keeps finance visibility while the page enforces that role.
+    expect(requiredPermissionForPath("/payments/payment-1/edit")).toBe("reports.finance");
+    expect(requiredPermissionForPath("/subscriptions/subscription-1/edit")).toBe("subscriptions.correct");
+    expect(requiredPermissionForPath("/payments")).toBe("reports.finance");
+    expect(requiredPermissionForPath("/subscriptions")).toBe("enrollment.sell");
+  });
+
+  it("uses enrollment selling permission for member group assignments", () => {
+    expect(requiredPermissionForPath("/members/member-1/add-to-group")).toBe("enrollment.sell");
+    expect(requiredPermissionForPath("/members/member-1")).toBe("members.manage");
   });
 });

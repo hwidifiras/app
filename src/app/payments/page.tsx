@@ -10,6 +10,7 @@ import {
 } from "@/lib/receipt-delivery-status";
 import { getAuthUser } from "@/lib/request-user";
 import { paymentNewHref } from "@/lib/payment-navigation";
+import { hasPermission } from "@/lib/permission-definitions";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -269,6 +270,9 @@ export default async function PaymentsPage() {
 
   const totalPayments = paymentGroups.reduce((sum, g) => sum + g.totalPaid, 0);
   const totalCount = paymentGroups.reduce((sum, g) => sum + g.payments.length, 0);
+  const canCollectPayments = authUser.role === "ADMIN" || hasPermission(authUser.permissions, "payments.collect");
+  // Payment corrections remain an administrator-only financial control in the API.
+  const canCorrectPayments = authUser.role === "ADMIN";
 
   return (
     <main className="app-shell py-4 md:py-8">
@@ -276,15 +280,19 @@ export default async function PaymentsPage() {
         overline="Ventes"
         title="Historique caisse"
         description={`${totalCount} versement(s) enregistrés, total ${formatMoney(totalPayments)}.`}
-        actions={
+        actions={canCollectPayments ? (
           <Link href={paymentNewHref({ returnTo: "/payments" })} className="btn btn-primary btn-block-mobile min-h-11">
             + Encaisser
           </Link>
-        }
+        ) : undefined}
       />
 
       <section className="panel p-3 sm:p-5">
-        <PaymentsTable groups={paymentGroups} />
+        <PaymentsTable
+          groups={paymentGroups}
+          canCollectPayments={canCollectPayments}
+          canCorrectPayments={canCorrectPayments}
+        />
       </section>
     </main>
   );

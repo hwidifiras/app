@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { RotateCcw, ShieldAlert } from "lucide-react";
 
 import { FeedbackMessage } from "@/components/ui/feedback-message";
+import { DemoMutationButton } from "@/components/ui/demo-read-only";
 import { useIdempotencyIntent } from "@/hooks/use-idempotency-intent";
 import { formatMoney } from "@/lib/money";
 import type { EnrollmentRecoveryCandidate } from "@/lib/enrollment-recovery";
@@ -119,7 +120,7 @@ export function MemberEnrollmentRecoveryPanel({
                   }
                   placeholder="Ex. mauvais groupe, doublon, erreur montant"
                 />
-                <button
+                <DemoMutationButton
                   type="button"
                   className="btn btn-ghost btn-block-mobile inline-flex min-h-11 items-center justify-center gap-1.5 border-[var(--danger)]/30 text-[var(--danger)]"
                   disabled={loadingKey === candidate.recoveryKey || reason.trim().length < 3}
@@ -127,7 +128,7 @@ export function MemberEnrollmentRecoveryPanel({
                 >
                   <RotateCcw className="size-4" />
                   {loadingKey === candidate.recoveryKey ? "Annulation..." : "Annuler avec trace"}
-                </button>
+                </DemoMutationButton>
               </div>
             )}
           </div>

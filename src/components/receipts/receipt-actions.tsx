@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Copy, Mail, MessageCircle, Printer } from "lucide-react";
 import { useState } from "react";
 
+import { DemoMutationButton } from "@/components/ui/demo-read-only";
 import {
   buildReceiptVerificationMessage,
   buildReceiptVerificationPath,
@@ -96,7 +97,7 @@ export function ReceiptActions({
           <Printer className="size-4" />
           Imprimer
         </button>
-        <button
+        <DemoMutationButton
           type="button"
           onClick={sendEmail}
           disabled={isSending || !hasEmail}
@@ -105,7 +106,7 @@ export function ReceiptActions({
         >
           <Mail className="size-4" />
           {isSending ? "Envoi..." : "Envoyer email"}
-        </button>
+        </DemoMutationButton>
         <Link href={verifyHref} className="btn btn-ghost btn-block-mobile">
           Verification publique
         </Link>

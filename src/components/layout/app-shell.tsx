@@ -5,7 +5,10 @@ import { usePathname } from "next/navigation";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { AppSidebar } from "@/components/layout/app-sidebar";
-import { AppShellDataProvider } from "@/components/layout/app-shell-data-provider";
+import {
+  AppShellDataProvider,
+  type AccountData,
+} from "@/components/layout/app-shell-data-provider";
 import { DesktopTopNav } from "@/components/layout/desktop-top-nav";
 import { DemoWorkspaceBanner } from "@/components/layout/demo-workspace-banner";
 import { ClubBrandMark } from "@/components/layout/club-brand-mark";
@@ -60,7 +63,13 @@ function getDisplayModeSnapshot(): DisplayMode {
   return isDisplayMode(stored) ? stored : "wide";
 }
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+  initialAccount = null,
+}: {
+  children: React.ReactNode;
+  initialAccount?: AccountData | null;
+}) {
   const pathname = usePathname();
   const collapsed = useSyncExternalStore(subscribeLayoutPreferences, getCollapsedSnapshot, () => false);
   const displayMode = useSyncExternalStore(
@@ -134,7 +143,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarContext.Provider value={{ collapsed, toggleCollapsed, displayMode, setDisplayMode }}>
-      <AppShellDataProvider>
+      <AppShellDataProvider initialAccount={initialAccount}>
         <a href="#main-content" className="skip-link print:hidden">
           Aller au contenu
         </a>

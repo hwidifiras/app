@@ -12,6 +12,7 @@ type MemberRecoveryGuideProps = {
   hasGymVisits: boolean;
   hasClassModule: boolean;
   hasGymModule: boolean;
+  canAssignClass: boolean;
   enrollmentRecoveryCandidates: EnrollmentRecoveryCandidate[];
 };
 
@@ -30,6 +31,7 @@ export function MemberRecoveryGuide({
   hasGymVisits,
   hasClassModule,
   hasGymModule,
+  canAssignClass,
   enrollmentRecoveryCandidates,
 }: MemberRecoveryGuideProps) {
   const items: RecoveryItem[] = [
@@ -67,13 +69,15 @@ export function MemberRecoveryGuide({
             action: hasAttendances ? "Voir" : "Pointage",
             icon: CalendarCheck2,
           },
-          {
-            label: "Affectation",
-            description: "Ajouter ce membre au bon cours ou corriger son groupe actif.",
-            href: `/members/${memberId}/add-to-group`,
-            action: "Affecter",
-            icon: UsersRound,
-          },
+          ...(canAssignClass
+            ? [{
+                label: "Affectation",
+                description: "Ajouter ce membre au bon cours ou corriger son groupe actif.",
+                href: `/members/${memberId}/add-to-group`,
+                action: "Affecter",
+                icon: UsersRound,
+              }]
+            : []),
         ]
       : []),
     ...(hasGymModule

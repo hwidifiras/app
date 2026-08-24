@@ -675,38 +675,34 @@ function DashboardViewSwitcher({ mode, canSwitch }: { mode: "RECEPTION" | "PILOT
   if (!canSwitch) return null;
 
   const options = [
-    { mode: "RECEPTION" as const, label: "Reception", href: "/?view=reception" },
+    { mode: "RECEPTION" as const, label: "Réception", href: "/?view=reception" },
     { mode: "PILOTAGE" as const, label: "Pilotage", href: "/?view=pilotage" },
   ];
 
   return (
     <nav
       aria-label="Vue dashboard"
-      className="flex w-full items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)]/90 px-3 py-2 shadow-[var(--shadow-panel)]"
+      className="inline-flex shrink-0 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-1"
     >
-      <div className="min-w-0">
-        <p className="text-xs font-semibold text-[var(--foreground)]">Vue d&apos;accueil</p>
-        <p className="hidden text-xs text-[var(--muted-foreground)] sm:block">Réception pour le quotidien, pilotage pour les indicateurs.</p>
-      </div>
-      <div className="inline-flex rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-1">
-        {options.map((option) => {
-          const selected = mode === option.mode;
-          return (
-            <Link
-              key={option.mode}
-              href={option.href}
-              prefetch={false}
-              aria-current={selected ? "page" : undefined}
-              className={cn(
-                "inline-flex min-h-11 items-center rounded-md px-3 py-2 text-xs font-semibold transition",
-                selected ? "bg-[var(--primary)] text-white shadow-sm" : "text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]",
-              )}
-            >
-              {option.label}
-            </Link>
-          );
-        })}
-      </div>
+      {options.map((option) => {
+        const selected = mode === option.mode;
+        return (
+          <Link
+            key={option.mode}
+            href={option.href}
+            prefetch={false}
+            aria-current={selected ? "page" : undefined}
+            className={cn(
+              "inline-flex min-h-11 items-center rounded-md px-3 py-2 text-xs font-semibold transition",
+              selected
+                ? "bg-[var(--primary)] text-white shadow-sm"
+                : "text-[var(--muted-foreground)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]",
+            )}
+          >
+            {option.label}
+          </Link>
+        );
+      })}
     </nav>
   );
 }
@@ -1290,48 +1286,69 @@ export default async function Home({
   return (
     <main className="app-shell relative overflow-hidden bg-[var(--canvas)] text-[var(--foreground)]">
       <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-3 sm:gap-4">
-        <header className="dashboard-hero relative overflow-hidden rounded-lg px-4 py-3.5 sm:px-5 sm:py-4 lg:px-6">
-          <div className="relative z-10 flex min-h-full flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="min-w-0 max-w-2xl">
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--hero-muted)]">
-                Tableau de bord
-              </p>
-              <h1 className="mt-1 text-2xl font-bold leading-tight tracking-normal sm:text-3xl">
-                {product.profile === "GYM_ONLY" ? "Aujourd'hui à la salle" : "Aujourd'hui au club"}
-              </h1>
-              <p className="mt-1.5 hidden max-w-xl text-sm leading-6 text-[var(--hero-muted)] sm:block">
+        <header className="rounded-lg border border-[#DDE7F4] bg-white px-4 py-4 shadow-[0_16px_38px_rgba(15,23,42,0.045)] dark:border-slate-800 dark:bg-slate-950 sm:px-5 lg:px-6">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[var(--primary)]">
+                    {dashboardMode === "RECEPTION" ? "Réception" : "Pilotage"}
+                  </p>
+                  <h1 className="mt-1 text-2xl font-bold leading-tight tracking-[-0.025em] text-[#0B1220] dark:text-slate-50 sm:text-[2rem]">
+                    À traiter aujourd&apos;hui
+                  </h1>
+                </div>
+                {canSwitchDashboardView ? (
+                  <div className="xl:hidden">
+                    <DashboardViewSwitcher mode={dashboardMode} canSwitch />
+                  </div>
+                ) : null}
+              </div>
+              <p className="mt-1.5 max-w-2xl text-sm leading-6 text-[#64748B] dark:text-slate-400">
                 {product.profile === "GYM_ONLY"
-                  ? "Les accès à contrôler, les encaissements à suivre et les pass qui demandent une action."
+                  ? "Priorisez les accès, les encaissements et les pass à renouveler."
                   : product.profile === "HYBRID"
-                    ? "Les cours, les accès salle et les encaissements qui demandent une action."
-                    : "Les séances à pointer, les encaissements à suivre et les priorités qui demandent une action."}
+                    ? "Priorisez les cours, les accès salle et les encaissements."
+                    : "Priorisez les séances, les inscriptions et les encaissements."}
               </p>
             </div>
-            <div className="grid grid-cols-3 gap-1.5 sm:gap-2 lg:min-w-[30rem]">
-              <div className="min-w-0 rounded-lg border border-white/20 bg-white/10 px-2.5 py-2 backdrop-blur sm:px-3">
-                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[var(--hero-muted)]">
-                  Date
-                </p>
-                <p className="mt-1 truncate text-xs font-bold capitalize text-white sm:text-sm">{formatLongDateFr(today)}</p>
-              </div>
-              <div className="min-w-0 rounded-lg border border-white/20 bg-white/10 px-2.5 py-2 backdrop-blur sm:px-3">
-                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[var(--hero-muted)]">
-                  {product.profile === "GYM_ONLY" ? "Entrées" : product.profile === "HYBRID" ? "Activité" : "Séances"}
-                </p>
-                <p className="mt-1 truncate text-xs font-bold text-white sm:text-sm">
-                  {product.profile === "GYM_ONLY"
-                    ? `${gymStats.visitsToday} aujourd'hui`
-                    : product.profile === "HYBRID"
-                      ? `${sessionsToday} séances · ${gymStats.visitsToday} entrées`
-                      : `${sessionsToday} aujourd'hui`}
-                </p>
-              </div>
-              <div className="min-w-0 rounded-lg border border-white/20 bg-white/10 px-2.5 py-2 backdrop-blur sm:px-3">
-                <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[var(--hero-muted)]">
-                  Membres
-                </p>
-                <p className="mt-1 truncate text-xs font-bold text-white sm:text-sm">{activeMembers} actifs</p>
-              </div>
+
+            <div className="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-center">
+              <dl className="grid min-w-0 grid-cols-3 divide-x divide-[#DDE7F4] overflow-hidden rounded-lg border border-[#DDE7F4] bg-[#F8FAFC] dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900 xl:min-w-[32rem]">
+                <div className="min-w-0 px-3 py-2.5">
+                  <dt className="text-[0.62rem] font-bold uppercase tracking-[0.13em] text-[#64748B] dark:text-slate-400">
+                    Date
+                  </dt>
+                  <dd className="mt-1 truncate text-xs font-bold capitalize text-[#0B1220] dark:text-slate-100 sm:text-sm">
+                    {formatLongDateFr(today)}
+                  </dd>
+                </div>
+                <div className="min-w-0 px-3 py-2.5">
+                  <dt className="text-[0.62rem] font-bold uppercase tracking-[0.13em] text-[#64748B] dark:text-slate-400">
+                    {product.profile === "GYM_ONLY" ? "Entrées" : product.profile === "HYBRID" ? "Activité" : "Séances"}
+                  </dt>
+                  <dd className="mt-1 truncate text-xs font-bold text-[#0B1220] dark:text-slate-100 sm:text-sm">
+                    {product.profile === "GYM_ONLY"
+                      ? `${gymStats.visitsToday} aujourd'hui`
+                      : product.profile === "HYBRID"
+                        ? `${sessionsToday} séances · ${gymStats.visitsToday} entrées`
+                        : `${sessionsToday} aujourd'hui`}
+                  </dd>
+                </div>
+                <div className="min-w-0 px-3 py-2.5">
+                  <dt className="text-[0.62rem] font-bold uppercase tracking-[0.13em] text-[#64748B] dark:text-slate-400">
+                    Membres
+                  </dt>
+                  <dd className="mt-1 truncate text-xs font-bold text-[#0B1220] dark:text-slate-100 sm:text-sm">
+                    {activeMembers} actifs
+                  </dd>
+                </div>
+              </dl>
+              {canSwitchDashboardView ? (
+                <div className="hidden xl:block">
+                  <DashboardViewSwitcher mode={dashboardMode} canSwitch />
+                </div>
+              ) : null}
             </div>
           </div>
         </header>
@@ -1349,8 +1366,6 @@ export default async function Home({
             Ce module n&apos;est pas activé pour votre club. Vos autres espaces restent disponibles.
           </div>
         ) : null}
-
-        <DashboardViewSwitcher mode={dashboardMode} canSwitch={canSwitchDashboardView} />
 
         {visibleDashboardPanels === 0 ? (
           <EmptyDashboardConfigurationPanel isAdmin={authUser.role === "ADMIN"} />

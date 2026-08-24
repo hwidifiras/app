@@ -136,7 +136,7 @@ export function getGroupedPlanningSections({
         return {
           key: day.key,
           label: formatDateFr(`${day.key}T00:00:00`),
-          meta: `${dayStats?.total ?? 0} cours · ${dayStats?.expected ?? 0} eleves attendus`,
+          meta: `${dayStats?.total ?? 0} cours · ${dayStats?.expected ?? 0} élèves attendus`,
           sessions: daySessions,
         };
       })

@@ -12,6 +12,7 @@ import {
   resolveSubscriptionEffectiveState,
   totalPauseSeconds,
 } from "@/modules/sales/subscription-lifecycle";
+import { hasPermission } from "@/lib/permission-definitions";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -30,6 +31,24 @@ export default async function EditSubscriptionPage({ params }: { params: Promise
         />
         <section className="panel panel-soft p-5">
           <p className="text-sm text-[var(--muted-foreground)]">Accès refusé.</p>
+        </section>
+      </main>
+    );
+  }
+
+  const canCorrectSubscriptions =
+    authUser.role === "ADMIN" || hasPermission(authUser.permissions, "subscriptions.correct");
+  if (!canCorrectSubscriptions) {
+    return (
+      <main className="app-shell py-4 md:py-8">
+        <PageHeader
+          overline="Ventes"
+          title="Corriger l'abonnement"
+          description="Votre profil peut vendre et consulter les abonnements, mais pas corriger leur historique."
+        />
+        <section className="panel panel-soft p-5">
+          <p className="text-sm text-[var(--muted-foreground)]">Droit de correction requis.</p>
+          <Link href="/subscriptions" className="btn btn-ghost mt-4">Retour aux abonnements</Link>
         </section>
       </main>
     );

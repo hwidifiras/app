@@ -106,9 +106,15 @@ export function useAppShellData() {
   return context;
 }
 
-export function AppShellDataProvider({ children }: { children: React.ReactNode }) {
-  const [account, setAccount] = useState<AccountData | null>(null);
-  const [accountLoading, setAccountLoading] = useState(true);
+export function AppShellDataProvider({
+  children,
+  initialAccount = null,
+}: {
+  children: React.ReactNode;
+  initialAccount?: AccountData | null;
+}) {
+  const [account, setAccount] = useState<AccountData | null>(initialAccount);
+  const [accountLoading, setAccountLoading] = useState(initialAccount === null);
   const [notificationData, setNotificationData] = useState<NotificationData>(emptyNotifications);
   const [notificationsLoading, setNotificationsLoading] = useState(true);
   const [setupGuide, setSetupGuide] = useState<SetupGuideProgress | null>(null);
@@ -128,9 +134,13 @@ export function AppShellDataProvider({ children }: { children: React.ReactNode }
     try {
       const response = await fetch("/api/account", { cache: "no-store" });
       const json = (await response.json()) as ApiEnvelope<AccountData>;
-      setAccount(response.ok && json.data ? json.data : null);
+      if (response.ok && json.data) {
+        setAccount(json.data);
+      } else if (response.status === 401 || response.status === 403) {
+        setAccount(null);
+      }
     } catch {
-      setAccount(null);
+      // Preserve server-bootstrapped navigation during a transient refresh failure.
     } finally {
       setAccountLoading(false);
     }
@@ -234,9 +244,9 @@ export function AppShellDataProvider({ children }: { children: React.ReactNode }
   }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void refreshAccount(), 0);
+    const timer = window.setTimeout(() => void refreshAccount(), initialAccount ? 15_000 : 0);
     return () => window.clearTimeout(timer);
-  }, [refreshAccount]);
+  }, [initialAccount, refreshAccount]);
 
   useEffect(() => {
     const refreshWhenVisible = () => {

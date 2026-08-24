@@ -39,6 +39,7 @@ describe("product route registry", () => {
   it("gates class and gym routes independently", () => {
     expect(requiredProductModuleForPath("/attendance/today")).toBe("CLASS_MANAGEMENT");
     expect(requiredProductModuleForPath("/api/sessions/session-1")).toBe("CLASS_MANAGEMENT");
+    expect(requiredProductModuleForPath("/members/member-1/add-to-group")).toBe("CLASS_MANAGEMENT");
     expect(requiredProductModuleForPath("/gym/check-in")).toBe("GYM_ACCESS");
     expect(requiredProductModuleForPath("/api/gym/visits/visit-1")).toBe("GYM_ACCESS");
   });
@@ -56,5 +57,6 @@ describe("product route registry", () => {
     expect(productRouteForPath("/api/enrollment/context")?.module).toBeNull();
     expect(productRouteForPath("/api/enrollment/context")?.permission).toBe("enrollment.sell");
     expect(productRouteForPath("/sessions")?.permission).toBe("class.attendance");
+    expect(productRouteForPath("/settings/schedules")?.permission).toBe("settings.manage");
   });
 });

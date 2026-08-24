@@ -193,14 +193,14 @@ export function NavLink({
       aria-label={collapsed ? item.label : undefined}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "relative flex min-h-11 items-center rounded-lg py-2 text-[0.8rem] font-medium transition-all",
+        "relative flex min-h-11 items-center rounded-lg py-2 text-[0.8rem] font-semibold transition-all",
         collapsed ? "justify-center px-2" : "gap-2.5 px-3",
         active
-          ? "bg-[var(--primary)]/10 text-[var(--primary)] shadow-[var(--shadow-panel)] ring-1 ring-[var(--primary)]/20"
+          ? "bg-[var(--primary)] text-white shadow-[0_10px_24px_rgba(37,99,235,0.28)] ring-1 ring-white/15"
           : "text-[var(--muted-foreground)] hover:bg-[var(--surface-soft)] hover:text-[var(--foreground)]",
       )}
     >
-      <Icon className={cn("size-[1.1rem] shrink-0", active ? "text-[var(--primary)]" : "opacity-60")} />
+      <Icon className={cn("size-[1.1rem] shrink-0", active ? "text-white" : "opacity-70")} />
       {!collapsed ? <span className="min-w-0 flex-1 truncate">{item.label}</span> : null}
       {badge ? <NavBadge badge={badge} collapsed={collapsed} /> : null}
     </Link>
@@ -236,6 +236,12 @@ export function AppSidebar({
   const { appName } = useClubBranding();
   const role = account?.role ?? null;
   const configurationSections = getConfigurationSections(role, account);
+  const visibleNavSections = navSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => navItemIsVisible(item, account)),
+    }))
+    .filter((section) => section.items.length > 0);
 
   const inClubConfig = configurationSections.some((section) =>
     section.items.some((item) => isLinkActive(pathname, item.href)),
@@ -248,7 +254,7 @@ export function AppSidebar({
     >
       <div
         className={cn(
-          "border-b border-[var(--border)] py-3",
+          "min-h-[var(--app-topbar-height)] border-b border-[var(--border)] py-3",
           collapsed ? "flex flex-col items-center gap-2 px-2" : "flex items-center px-3 lg:px-4",
         )}
       >
@@ -263,15 +269,15 @@ export function AppSidebar({
         </Link>
       </div>
 
-      <nav aria-label="Navigation principale" className="flex flex-1 gap-1 overflow-x-auto px-2 py-2 lg:flex-col lg:overflow-visible lg:px-2 lg:py-4">
-        {navSections.map((section) => (
+      <nav aria-label="Navigation principale" className="flex flex-1 gap-1 overflow-x-auto px-2 py-2 lg:flex-col lg:overflow-visible lg:px-2 lg:py-3">
+        {visibleNavSections.map((section) => (
           <div key={section.title} className="mb-2">
             {!collapsed ? (
               <p className="mb-1 hidden px-3 pt-2 text-[0.6rem] font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)] lg:block">
                 {section.title}
               </p>
             ) : null}
-            {section.items.filter((item) => navItemIsVisible(item, account)).map((item) => (
+            {section.items.map((item) => (
               <NavLink
                 key={item.href}
                 item={item}
@@ -283,7 +289,8 @@ export function AppSidebar({
           </div>
         ))}
 
-        <div className="mb-1 mt-2 border-t border-[var(--border)] pt-2 lg:mt-5 lg:pt-4">
+        {configurationSections.length > 0 ? (
+          <div className="mb-1 mt-2 border-t border-[var(--border)] pt-2 lg:mt-4 lg:pt-3">
           <button
             onClick={() => setConfigOpen((v) => !v)}
             aria-expanded={configOpen || inClubConfig}
@@ -337,30 +344,18 @@ export function AppSidebar({
               ))}
             </div>
           )}
-        </div>
+          </div>
+        ) : null}
       </nav>
 
-      <div className={cn("mt-auto border-t border-[var(--border)] px-4 py-4", collapsed && "px-2 py-3")}>
-        {collapsed ? (
-          <div className="mx-auto flex size-9 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-soft)]">
-            <Dumbbell className="size-4 text-[var(--muted-foreground)]" aria-hidden="true" />
-            <span className="sr-only">{appName}</span>
-          </div>
-        ) : (
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2.5">
-            <p className="text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
-              Application de gestion
-            </p>
-            <p className="mt-1 truncate text-sm font-semibold text-[var(--foreground)]">{appName}</p>
-          </div>
-        )}
+      <div className={cn("mt-auto border-t border-[var(--border)] px-3 py-3", collapsed && "px-2")}>
         {onToggleCollapsed ? (
           <button
             type="button"
             onClick={onToggleCollapsed}
             className={cn(
-              "mt-3 hidden min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] text-sm font-semibold text-[var(--muted-foreground)] transition hover:text-[var(--foreground)] lg:inline-flex",
-              collapsed && "mt-2 px-0",
+              "hidden min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] text-sm font-semibold text-[var(--muted-foreground)] transition hover:bg-[var(--surface-raised)] hover:text-[var(--foreground)] lg:inline-flex",
+              collapsed && "px-0",
             )}
             title={collapsed ? "Développer le menu" : "Réduire le menu"}
             aria-label={collapsed ? "Développer le menu" : "Réduire le menu"}

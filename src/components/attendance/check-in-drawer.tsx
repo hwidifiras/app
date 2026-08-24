@@ -3,16 +3,16 @@
 import { useId, useRef, useState, useSyncExternalStore } from "react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import Link from "next/link";
-import { CalendarClock, Check, CheckCircle2, LockOpen, RotateCcw, Users, X, XIcon } from "lucide-react";
+import { CalendarClock, Check, CheckCircle2, Eye, LockOpen, MapPin, RotateCcw, UserRound, Users, X, XIcon } from "lucide-react";
 
 import { UndoButton } from "@/components/ui/undo-button";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { useAccessibleDialog } from "@/hooks/use-accessible-dialog";
 import { formatMoney } from "@/lib/money";
-import type { SessionCardData } from "./session-card";
+import type { AttendanceQueueKind, SessionCardData } from "./session-card";
 
 const MARK_ALL_MAX = 8;
-const DESKTOP_QUERY = "(min-width: 1024px)";
+const DESKTOP_QUERY = "(min-width: 1180px)";
 
 function subscribeToDesktopChange(callback: () => void) {
   const media = window.matchMedia(DESKTOP_QUERY);
@@ -27,6 +27,8 @@ function getDesktopSnapshot() {
 export function CheckInDrawer({
   open,
   session,
+  queueKind,
+  readOnly = false,
   activeSubscriptionMemberIds,
   partialPaymentMemberIds,
   partialPaymentDebtsCents,
@@ -45,6 +47,8 @@ export function CheckInDrawer({
 }: {
   open: boolean;
   session: SessionCardData;
+  queueKind: AttendanceQueueKind;
+  readOnly?: boolean;
   activeSubscriptionMemberIds: string[];
   partialPaymentMemberIds: string[];
   partialPaymentDebtsCents: Record<string, number>;
@@ -118,11 +122,39 @@ export function CheckInDrawer({
   const checked = present + absent + override;
   const remaining = total - checked;
   const isFinalized = session.status === "COMPLETED";
-  const isUpcoming = session.dateCategory === "UPCOMING";
+  const isUpcoming = queueKind === "NEXT";
   const needsFinalization = session.operationalStatus === "NEEDS_FINALIZATION";
   const hasPaymentPolicyWarning = session.group.members.some(
     (gm) => !hasSub(gm.memberId) || hasPartialDebt(gm.memberId),
   );
+  const sessionDateLabel = new Date(session.sessionDate).toLocaleDateString("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  });
+  const inspectorStatus = readOnly
+    ? "Consultation uniquement"
+    : queueKind === "NOW"
+      ? "Pointage ouvert"
+      : queueKind === "REGULARIZE"
+        ? "Finalisation requise"
+        : queueKind === "DONE"
+          ? "Séance finalisée"
+          : "Séance à préparer";
+  const inspectorStatusDetail = readOnly
+    ? "Cette démo montre les données sans autoriser de modification."
+    : queueKind === "NOW"
+      ? remaining > 0
+        ? `${remaining} membre${remaining > 1 ? "s" : ""} reste${remaining > 1 ? "nt" : ""} à pointer.`
+        : "Tous les membres ont été traités."
+      : queueKind === "REGULARIZE"
+        ? remaining > 0
+          ? `Complétez encore ${remaining} pointage${remaining > 1 ? "s" : ""}, puis finalisez la séance.`
+          : "Tous les membres sont traités. La séance peut être finalisée."
+        : queueKind === "DONE"
+          ? "Le pointage est verrouillé. Rouvrez la séance pour effectuer une correction."
+          : "Le pointage sera disponible lorsque la séance commencera.";
 
   const unmarkedWithSub = session.group.members.filter((gm) => {
     const att = getAtt(gm.memberId);
@@ -137,6 +169,7 @@ export function CheckInDrawer({
   }
 
   async function handleClick(mid: string, status: string) {
+    if (readOnly) return;
     if (!hasSub(mid) && status !== "OVERRIDE") {
       const m = session.group.members.find((gm) => gm.memberId === mid);
       if (m) {
@@ -152,7 +185,7 @@ export function CheckInDrawer({
   }
 
   async function markAllPresent() {
-    if (markingAll || isUpcoming || unmarkedWithSub.length === 0) return;
+    if (readOnly || markingAll || isUpcoming || unmarkedWithSub.length === 0) return;
     setMarkingAll(true);
     try {
       for (const gm of unmarkedWithSub) {
@@ -168,85 +201,74 @@ export function CheckInDrawer({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-[var(--overlay)] md:items-stretch md:justify-end lg:static lg:z-auto lg:block lg:h-full lg:bg-transparent"
+      className="attendance-inspector-layer"
       onClick={isDesktop ? undefined : onClose}
       role="presentation"
     >
       <div
         ref={sheetRef}
         id="attendance-roster-panel"
-        className="drawer-sheet drawer-sheet-adaptive flex w-full max-w-3xl flex-col overflow-hidden rounded-t-lg bg-[var(--surface)] shadow-[var(--shadow-floating)] md:h-full md:max-h-none md:rounded-none lg:max-w-none lg:border-0 lg:shadow-none"
+        className="attendance-inspector drawer-sheet drawer-sheet-adaptive"
         role={isDesktop ? "region" : "dialog"}
         aria-modal={isDesktop ? undefined : true}
         aria-labelledby="check-in-drawer-title"
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex shrink-0 flex-col items-center pt-2 lg:hidden">
+        <div className="attendance-inspector-handle">
           <div className="h-1 w-10 rounded-full bg-[var(--border)]" aria-hidden />
         </div>
 
-        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-3 sm:px-5">
-          <div className="min-w-0 flex-1">
-            <p className="text-xl font-bold tracking-tight text-[var(--primary)] sm:text-2xl">
-              {session.startTime} – {session.endTime}
-            </p>
-            <h2 id="check-in-drawer-title" className="mt-0.5 truncate text-xl font-bold text-[var(--foreground)] sm:text-2xl">
-              {session.group.name}
-            </h2>
-            <p className="mt-1 text-sm text-[var(--muted-foreground)]">{session.room}</p>
-            {session.coach && (
-              <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
-                Coach {session.coach.firstName} {session.coach.lastName}
+        <header className="attendance-inspector-header">
+          <div className="attendance-inspector-title-row">
+            <div className="min-w-0 flex-1">
+              <p className={`attendance-inspector-eyebrow attendance-inspector-eyebrow-${queueKind.toLowerCase()}`}>
+                {inspectorStatus}
               </p>
-            )}
-            <div className="mt-2.5 flex flex-wrap gap-2">
-              <span className="inline-flex items-center rounded-full bg-[var(--success)]/12 px-2.5 py-1 text-xs font-semibold text-[var(--success)]">
-                {present} présent{present !== 1 ? "s" : ""}
-              </span>
-              <span className="inline-flex items-center rounded-full bg-[var(--danger)]/12 px-2.5 py-1 text-xs font-semibold text-[var(--danger)]">
-                {absent} absent{absent !== 1 ? "s" : ""}
-              </span>
-              {override > 0 && (
-                <span className="inline-flex items-center rounded-full bg-[var(--warning)]/12 px-2.5 py-1 text-xs font-semibold text-[var(--warning)]">
-                  {override} except.
-                </span>
-              )}
-              <span className="inline-flex items-center rounded-full bg-[var(--surface-soft)] px-2.5 py-1 text-xs font-medium text-[var(--muted-foreground)]">
-                {remaining > 0 ? `${remaining} à pointer` : "Complet"} · {total} élève{total !== 1 ? "s" : ""}
-              </span>
-              {isFinalized ? (
-                <span className="inline-flex items-center rounded-full bg-[var(--success)]/12 px-2.5 py-1 text-xs font-semibold text-[var(--success)]">
-                  Séance finalisée
-                </span>
-              ) : needsFinalization ? (
-                <span className="inline-flex items-center rounded-full bg-[var(--warning)]/12 px-2.5 py-1 text-xs font-semibold text-[var(--warning)]">
-                  Séance passée · finalisation requise
-                </span>
-              ) : isUpcoming ? (
-                <span className="inline-flex items-center rounded-full bg-[var(--primary)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--primary)]">
-                  Séance à venir · aperçu
-                </span>
-              ) : null}
+              <p className="attendance-inspector-time">{session.startTime} – {session.endTime}</p>
+              <h2 id="check-in-drawer-title">{session.group.name}</h2>
+              <p className="attendance-inspector-date">{sessionDateLabel}</p>
             </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
             <button
               ref={closeButtonRef}
               type="button"
               onClick={onClose}
-            className="btn btn-ghost min-h-11 min-w-11 shrink-0 rounded-full p-2 lg:!hidden"
-            aria-label="Retour aux séances"
-            title="Retour aux séances"
-          >
-            <XIcon className="size-5" />
-          </button>
+              className="attendance-inspector-close btn btn-ghost min-h-11 min-w-11 shrink-0 p-2"
+              aria-label="Retour aux séances"
+              title="Retour aux séances"
+            >
+              <XIcon className="size-5" />
+            </button>
           </div>
-        </div>
 
-        <div className="shrink-0 border-b border-[var(--border)] bg-[var(--surface-soft)]/55 px-4 py-3 sm:px-5">
+          <div className={`attendance-inspector-status attendance-inspector-status-${queueKind.toLowerCase()}`}>
+            <strong>{inspectorStatus}</strong>
+            <span>{inspectorStatusDetail}</span>
+          </div>
+
+          <div className="attendance-inspector-facts">
+            <span><Users aria-hidden /><strong>{total}</strong> inscrit{total !== 1 ? "s" : ""}</span>
+            <span><MapPin aria-hidden />{session.room?.trim() || "Salle à définir"}</span>
+            <span><UserRound aria-hidden />{session.coach ? `${session.coach.firstName} ${session.coach.lastName}` : "Coach à définir"}</span>
+          </div>
+
+          <div className="attendance-inspector-progress" aria-label={`${checked} membres pointés sur ${total}`}>
+            <span><strong>{present}</strong> présents</span>
+            <span><strong>{absent}</strong> absents</span>
+            {override > 0 ? <span><strong>{override}</strong> exceptions</span> : null}
+            <span><strong>{remaining}</strong> restants</span>
+          </div>
+        </header>
+
+        <div className="attendance-inspector-tools">
           <div className="grid gap-2">
-          {!isFinalized && !isUpcoming && total <= MARK_ALL_MAX && unmarkedWithSub.length > 0 ? (
+          {readOnly ? (
+            <div className="attendance-readonly-notice">
+              <Eye aria-hidden />
+              <span><strong>Mode démo</strong>Les boutons de pointage et de finalisation sont désactivés.</span>
+            </div>
+          ) : null}
+          {!readOnly && !isFinalized && !isUpcoming && total <= MARK_ALL_MAX && unmarkedWithSub.length > 0 ? (
             <button
               type="button"
               onClick={markAllPresent}
@@ -257,7 +279,7 @@ export function CheckInDrawer({
               {markingAll ? "Pointage en cours…" : `Pointer les restants présents (${unmarkedWithSub.length})`}
             </button>
           ) : <div />}
-          {!isUpcoming && hasPaymentPolicyWarning ? (
+          {!readOnly && !isUpcoming && hasPaymentPolicyWarning ? (
             <div className="rounded-lg border border-[var(--warning)]/25 bg-[var(--warning)]/10 px-3 py-2 text-xs leading-relaxed text-[var(--foreground)]">
               <strong>Règle de paiement.</strong> Sans abonnement actif ou solde non réglé, le pointage normal peut être bloqué. Utilisez un passage exceptionnel uniquement avec un motif clair.
             </div>
@@ -271,23 +293,23 @@ export function CheckInDrawer({
           </div>
         ) : null}
 
-        <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          <div className="divide-y divide-[var(--border)]">
+        <div className="attendance-member-scroll sidebar-scroll">
+          <div className="attendance-member-list">
             {session.group.members.map((gm) => {
               const att = getAtt(gm.memberId);
               const mid = gm.memberId;
               const activeSub = hasSub(mid);
               const rowTone =
                 att?.status === "PRESENT"
-                  ? "bg-[var(--success)]/[0.06] border-l-4 border-l-[var(--success)]"
+                  ? "is-present"
                   : att?.status === "ABSENT"
-                    ? "bg-[var(--danger)]/[0.06] border-l-4 border-l-[var(--danger)]"
+                    ? "is-absent"
                     : att?.status === "OVERRIDE"
-                      ? "bg-[var(--warning)]/[0.06] border-l-4 border-l-[var(--warning)]"
-                      : "border-l-4 border-l-transparent";
+                      ? "is-override"
+                      : "";
 
               return (
-                <div key={gm.id} className={`px-4 py-3 transition-colors sm:px-5 ${rowTone}`}>
+                <div key={gm.id} className={`attendance-member-row ${rowTone}`}>
                   <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
                   <div className="flex min-w-0 flex-1 items-center gap-3">
                     <div
@@ -332,13 +354,13 @@ export function CheckInDrawer({
                     </div>
                   </div>
 
-                  <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:shrink-0">
+                  <div className="attendance-member-actions">
                     <button
                       type="button"
                       onClick={() => handleClick(mid, "PRESENT")}
-                      disabled={isFinalized || isUpcoming || loadingId === mid || markingAll}
+                      disabled={readOnly || isFinalized || isUpcoming || loadingId === mid || markingAll}
                       aria-pressed={att?.status === "PRESENT"}
-                      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 sm:min-w-[9rem] ${
+                      className={`attendance-mark-button ${
                         att?.status === "PRESENT"
                           ? "border-[var(--success)] bg-[var(--success)] text-white ring-2 ring-[var(--success)] ring-offset-2 ring-offset-[var(--surface)]"
                           : "border-[var(--success)] bg-[var(--surface)] text-[var(--success)] hover:bg-[var(--success)]/8"
@@ -350,9 +372,9 @@ export function CheckInDrawer({
                     <button
                       type="button"
                       onClick={() => handleClick(mid, "ABSENT")}
-                      disabled={isFinalized || isUpcoming || loadingId === mid || markingAll}
+                      disabled={readOnly || isFinalized || isUpcoming || loadingId === mid || markingAll}
                       aria-pressed={att?.status === "ABSENT"}
-                      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 sm:min-w-[9rem] ${
+                      className={`attendance-mark-button ${
                         att?.status === "ABSENT"
                           ? "border-[var(--danger)] bg-[var(--danger)] text-white ring-2 ring-[var(--danger)] ring-offset-2 ring-offset-[var(--surface)]"
                           : "border-[var(--danger)] bg-[var(--surface)] text-[var(--danger)] hover:bg-[var(--danger)]/8"
@@ -369,80 +391,87 @@ export function CheckInDrawer({
           </div>
         </div>
 
-        <div className="shrink-0 border-t border-[var(--border)] bg-[var(--surface)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(16,36,63,0.08)] sm:px-5">
-          <div className="grid gap-2 sm:grid-cols-2">
-            {isUpcoming ? (
-              <Link href={postponeHref} prefetch={false} className="btn btn-secondary min-h-11 w-full sm:col-span-2">
+        <div className="attendance-inspector-footer">
+          {readOnly ? (
+            <Link href={postponeHref} prefetch={false} className="btn btn-primary min-h-11 w-full">
+              <CalendarClock className="size-4" />
+              Ouvrir dans le planning
+            </Link>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {isUpcoming ? (
+                <Link href={postponeHref} prefetch={false} className="btn btn-primary min-h-11 w-full sm:col-span-2">
                 <CalendarClock className="size-4" />
                 Ouvrir dans le planning
               </Link>
-            ) : isFinalized ? (
-              <button
-                type="button"
-                onClick={onReopen}
-                disabled={!onReopen || finalizeLoading}
-                className="btn btn-secondary min-h-11 w-full"
-              >
-                <LockOpen className="size-4" />
-                {finalizeLoading ? "Réouverture…" : "Rouvrir pour corriger"}
-              </button>
-            ) : needsFinalization ? (
-              <button
-                type="button"
-                onClick={onFinalize}
-                disabled={!onFinalize || finalizeLoading || remaining > 0}
-                className="btn btn-primary min-h-11 w-full"
-                title={remaining > 0 ? `Il reste ${remaining} membre(s) à pointer` : undefined}
-              >
-                <CheckCircle2 className="size-4" />
-                {finalizeLoading
-                  ? "Finalisation…"
-                  : remaining > 0
-                    ? `Finaliser après ${remaining} pointage${remaining > 1 ? "s" : ""}`
-                    : "Finaliser la séance"}
-              </button>
-            ) : (
-              <div />
-            )}
-            <UndoButton
-              onClick={onUndo ?? (() => undefined)}
-              disabled={isFinalized || isUpcoming || !canUndo || !onUndo || undoLoading || loadingId !== null}
-              label={
-                undoLoading
-                  ? "Annulation…"
-                  : undoCount > 0
-                    ? `Annuler le dernier pointage (${undoCount})`
-                    : "Aucun pointage à annuler"
-              }
-              title="Annuler les pointages un par un (Ctrl+Z)"
-              className="min-h-11 w-full justify-center"
-            />
-            {!isUpcoming && !needsFinalization && !isFinalized && checked === 0 ? (
-              <Link href={postponeHref} prefetch={false} className="btn btn-secondary min-h-11 w-full">
-                <CalendarClock className="size-4" />
-                Reporter la séance
-              </Link>
-            ) : !isUpcoming && !needsFinalization && !isFinalized ? (
-              <button
-                type="button"
-                disabled
-                className="btn btn-secondary min-h-11 w-full"
-                title="Annulez tous les pointages avant de reporter la séance"
-              >
-                <RotateCcw className="size-4" />
-                Reporter après annulation
-              </button>
+              ) : isFinalized ? (
+                <button
+                  type="button"
+                  onClick={onReopen}
+                  disabled={!onReopen || finalizeLoading}
+                  className="btn btn-secondary min-h-11 w-full"
+                >
+                  <LockOpen className="size-4" />
+                  {finalizeLoading ? "Réouverture…" : "Rouvrir pour corriger"}
+                </button>
+              ) : needsFinalization ? (
+                <button
+                  type="button"
+                  onClick={onFinalize}
+                  disabled={!onFinalize || finalizeLoading || remaining > 0}
+                  className="btn btn-primary min-h-11 w-full"
+                  title={remaining > 0 ? `Il reste ${remaining} membre(s) à pointer` : undefined}
+                >
+                  <CheckCircle2 className="size-4" />
+                  {finalizeLoading
+                    ? "Finalisation…"
+                    : remaining > 0
+                      ? `Finaliser après ${remaining} pointage${remaining > 1 ? "s" : ""}`
+                      : "Finaliser la séance"}
+                </button>
+              ) : (
+                <div />
+              )}
+              <UndoButton
+                onClick={onUndo ?? (() => undefined)}
+                disabled={isFinalized || isUpcoming || !canUndo || !onUndo || undoLoading || loadingId !== null}
+                label={
+                  undoLoading
+                    ? "Annulation…"
+                    : undoCount > 0
+                      ? `Annuler le dernier pointage (${undoCount})`
+                      : "Aucun pointage à annuler"
+                }
+                title="Annuler les pointages un par un (Ctrl+Z)"
+                className="min-h-11 w-full justify-center"
+              />
+              {!isUpcoming && !needsFinalization && !isFinalized && checked === 0 ? (
+                <Link href={postponeHref} prefetch={false} className="btn btn-secondary min-h-11 w-full">
+                  <CalendarClock className="size-4" />
+                  Reporter la séance
+                </Link>
+              ) : !isUpcoming && !needsFinalization && !isFinalized ? (
+                <button
+                  type="button"
+                  disabled
+                  className="btn btn-secondary min-h-11 w-full"
+                  title="Annulez tous les pointages avant de reporter la séance"
+                >
+                  <RotateCcw className="size-4" />
+                  Reporter après annulation
+                </button>
+              ) : null}
+            </div>
+          )}
+          {!readOnly && !isUpcoming && !needsFinalization && !isFinalized && checked > 0 ? (
+              <p className="mt-2 text-center text-xs text-[var(--muted-foreground)]">
+                Annulez les {checked} pointage{checked > 1 ? "s" : ""} un par un pour réactiver le report.
+              </p>
             ) : null}
-          </div>
-          {!isUpcoming && !needsFinalization && !isFinalized && checked > 0 ? (
-            <p className="mt-2 text-center text-xs text-[var(--muted-foreground)]">
-              Annulez les {checked} pointage{checked > 1 ? "s" : ""} un par un pour réactiver le report.
-            </p>
-          ) : null}
         </div>
       </div>
 
-      {modalMember && (
+      {modalMember && !readOnly && (
         <div
           className="mobile-modal-overlay fixed inset-0 z-[60] flex justify-center bg-[var(--overlay)]"
           onClick={(event) => {

@@ -7,23 +7,23 @@ type PageHeaderProps = {
 
 export function PageHeader({ overline, title, description, actions }: PageHeaderProps) {
   return (
-    <div className="mb-3 flex flex-col gap-2.5 md:mb-5 md:flex-row md:items-end md:justify-between md:gap-4">
-      <div className="flex min-w-0 flex-col gap-1">
+    <header className="mb-4 grid min-w-0 gap-3 md:mb-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:gap-5">
+      <div className="min-w-0">
         {overline ? (
-          <p className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-[var(--primary)] md:text-[0.72rem]">
+          <p className="mb-1 text-[0.68rem] font-semibold uppercase tracking-[0.13em] text-[var(--primary)]">
             {overline}
           </p>
         ) : null}
-        <h1 className="text-[1.48rem] font-bold leading-tight text-[var(--foreground)] md:text-[2rem]">
+        <h1 className="text-[1.55rem] font-bold leading-[1.15] tracking-[-0.02em] text-[var(--foreground)] md:text-[1.85rem]">
           {title}
         </h1>
         {description ? (
-          <p className="mt-0.5 max-w-2xl text-sm leading-5 text-[var(--muted-foreground)] md:text-[0.92rem]">
+          <p className="mt-1 max-w-3xl text-sm leading-5 text-[var(--muted-foreground)]">
             {description}
           </p>
         ) : null}
       </div>
-      {actions ? <div className="page-actions shrink-0 md:justify-end">{actions}</div> : null}
-    </div>
+      {actions ? <div className="page-actions min-w-0 md:justify-end">{actions}</div> : null}
+    </header>
   );
 }

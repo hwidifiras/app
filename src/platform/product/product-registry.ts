@@ -57,17 +57,24 @@ export const PRODUCT_ROUTE_REGISTRY: readonly ProductRouteDefinition[] = [
       "/groups",
       "/coaches",
       "/sports",
-      "/settings/schedules",
       "/api/groups",
       "/api/coaches",
       "/api/sports",
-      "/api/schedule-templates",
     ],
     module: "CLASS_MANAGEMENT",
     permission: "class.manage",
     navigationSection: "club",
     mobilePlacement: { CLASS_ONLY: "drawer", HYBRID: "drawer" },
     setupStep: "sport",
+  },
+  {
+    id: "class-schedule-settings",
+    paths: ["/settings/schedules", "/api/schedule-templates"],
+    module: "CLASS_MANAGEMENT",
+    permission: "settings.manage",
+    navigationSection: "settings",
+    mobilePlacement: { CLASS_ONLY: "drawer", HYBRID: "drawer" },
+    setupStep: "group",
   },
   {
     id: "gym-check-in",
@@ -201,5 +208,8 @@ export function productRouteForPath(pathname: string): ProductRouteDefinition | 
 }
 
 export function requiredProductModuleForPath(pathname: string): ProductModule | null {
+  if (/^\/members\/[^/]+\/add-to-group(?:\/|$)/.test(pathname)) {
+    return "CLASS_MANAGEMENT";
+  }
   return productRouteForPath(pathname)?.module ?? null;
 }

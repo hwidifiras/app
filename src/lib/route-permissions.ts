@@ -44,6 +44,13 @@ export const ADMIN_ROUTE_PREFIXES = [
 ] as const;
 
 export function requiredPermissionForPath(pathname: string): PermissionKey | null {
+  if (/^\/subscriptions\/[^/]+\/edit(?:\/|$)/.test(pathname)) {
+    return "subscriptions.correct";
+  }
+  if (/^\/members\/[^/]+\/add-to-group(?:\/|$)/.test(pathname)) {
+    return "enrollment.sell";
+  }
+
   const productRoute = productRouteForPath(pathname);
   if (productRoute) return productRoute.permission;
 

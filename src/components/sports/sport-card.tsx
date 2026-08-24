@@ -1,6 +1,7 @@
 import { CheckCircle2, Dumbbell, MoreHorizontal, Settings2, X } from "lucide-react";
 
 import { FormField } from "@/components/ui/form-layout";
+import { DemoMutationButton } from "@/components/ui/demo-read-only";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { SportDto } from "@/types/sport";
 import { cn } from "@/lib/utils";
@@ -94,14 +95,14 @@ export function SportCard({
           </button>
           {menuOpen ? (
             <div className="absolute right-0 z-20 mt-1 w-44 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-1 shadow-[var(--shadow-floating)]">
-              <button
+              <DemoMutationButton
                 type="button"
                 onClick={onToggleActive}
                 disabled={actionBusy}
-                className="w-full rounded-md px-2.5 py-2 text-left text-xs font-semibold text-[var(--foreground)] hover:bg-[var(--surface-soft)] disabled:opacity-50"
+                className="inline-flex w-full items-center gap-1.5 rounded-md px-2.5 py-2 text-left text-xs font-semibold text-[var(--foreground)] hover:bg-[var(--surface-soft)] disabled:opacity-50"
               >
                 {sport.isActive ? "Désactiver" : "Réactiver"}
-              </button>
+              </DemoMutationButton>
               <button
                 type="button"
                 onClick={onQueueDelete}
@@ -186,10 +187,10 @@ export function SportCard({
             <button type="button" onClick={onCancelEdit} disabled={actionBusy} className="btn btn-ghost btn-block-mobile">
               Annuler
             </button>
-            <button type="submit" disabled={actionBusy} className="btn btn-primary btn-block-mobile">
+            <DemoMutationButton type="submit" disabled={actionBusy} className="btn btn-primary btn-block-mobile">
               <CheckCircle2 className="size-4" />
               {actionBusy ? "Enregistrement..." : "Enregistrer"}
-            </button>
+            </DemoMutationButton>
           </div>
         </form>
       ) : null}

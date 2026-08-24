@@ -193,7 +193,7 @@ export function MemberListClient({ initialPage, groupsOptions, sportsOptions }: 
 
   return (
     <div aria-busy={directoryLoading}>
-      <div className="list-toolbar sticky top-[57px] z-20 -mx-2 mb-4 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[4.5rem]">
+      <div className="list-toolbar sticky top-[57px] z-20 -mx-2 mb-4 border-b border-[var(--border)] bg-[var(--surface)]/96 px-2 pb-3 pt-1 backdrop-blur lg:top-[var(--app-topbar-height)]">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
           <div className="col-span-2 min-w-0 sm:col-span-1">
             <label className="mb-1 block text-xs font-medium text-muted-foreground">Recherche</label>

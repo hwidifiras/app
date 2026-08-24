@@ -6,6 +6,7 @@ import { SubscriptionsListClient } from "@/components/subscriptions/subscription
 import type { SubscriptionStatus } from "@prisma/client";
 import { getAuthUser } from "@/lib/request-user";
 import { resolveSubscriptionEffectiveState, type SubscriptionEffectiveState } from "@/modules/sales/subscription-lifecycle";
+import { hasPermission } from "@/lib/permission-definitions";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -133,7 +134,15 @@ export default async function SubscriptionsPage() {
       />
 
       <section className="panel p-4 sm:p-5">
-        <SubscriptionsListClient subscriptions={subscriptions} />
+        <SubscriptionsListClient
+          subscriptions={subscriptions}
+          canCorrectSubscriptions={
+            authUser.role === "ADMIN" || hasPermission(authUser.permissions, "subscriptions.correct")
+          }
+          canCollectPayments={
+            authUser.role === "ADMIN" || hasPermission(authUser.permissions, "payments.collect")
+          }
+        />
       </section>
     </main>
   );

@@ -1,6 +1,7 @@
 import { Upload } from "lucide-react";
 
 import { BulkImportPreviewTable, type BulkImportResult } from "@/components/settings/data-import-bulk-ui";
+import { DemoMutationButton } from "@/components/ui/demo-read-only";
 
 type DataImportBulkSectionProps = {
   templateUrl: string;
@@ -49,17 +50,17 @@ export function DataImportBulkSection({
             onChange={(event) => onFileChange(event.target.files?.[0] ?? null)}
           />
         </label>
-        <button type="button" disabled={bulkBusy || !bulkFile} onClick={onPreview} className="btn btn-ghost btn-block-mobile">
+        <DemoMutationButton type="button" disabled={bulkBusy || !bulkFile} onClick={onPreview} className="btn btn-ghost btn-block-mobile">
           Vérifier Excel
-        </button>
-        <button
+        </DemoMutationButton>
+        <DemoMutationButton
           type="button"
           disabled={bulkBusy || !bulkPreview || bulkPreview.errorRows > 0 || bulkPreview.okRows === 0}
           onClick={onApply}
           className="btn btn-primary btn-block-mobile"
         >
           <Upload className="size-4" /> Importer {bulkPreview?.okRows ? `(${bulkPreview.okRows})` : ""}
-        </button>
+        </DemoMutationButton>
       </div>
 
       {bulkPreview ? <BulkImportPreviewTable result={bulkPreview} /> : null}

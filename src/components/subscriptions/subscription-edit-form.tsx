@@ -4,6 +4,11 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Ban, Pause, Play, RefreshCw, SlidersHorizontal } from "lucide-react";
 
+import {
+  DEMO_READ_ONLY_MESSAGE,
+  DemoMutationButton,
+  useDemoReadOnly,
+} from "@/components/ui/demo-read-only";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
 import { ReceptionInfoCard } from "@/components/ui/reception-info-card";
 import { useIdempotencyIntent } from "@/hooks/use-idempotency-intent";
@@ -65,6 +70,7 @@ function dateInputValue(value: string) {
 export function SubscriptionEditForm({ subscription, plansOptions, groupsOptions }: SubscriptionEditFormProps) {
   const router = useRouter();
   const intent = useIdempotencyIntent();
+  const demoReadOnly = useDemoReadOnly();
   const finiteEntitlements = subscription.entitlements.filter((right) => right.remainingUnits !== null);
   const [reason, setReason] = useState("");
   const [selectedEntitlementId, setSelectedEntitlementId] = useState(finiteEntitlements[0]?.id ?? "");
@@ -87,6 +93,10 @@ export function SubscriptionEditForm({ subscription, plansOptions, groupsOptions
   const canResume = subscription.effectiveState === "FROZEN";
 
   async function runAction(action: string, url: string, payload: Record<string, unknown>, method = "POST") {
+    if (demoReadOnly) {
+      setMessage(DEMO_READ_ONLY_MESSAGE);
+      return false;
+    }
     if (reason.trim().length < 3) {
       setMessage("Indiquez un motif précis avant de confirmer.");
       return false;
@@ -171,8 +181,8 @@ export function SubscriptionEditForm({ subscription, plansOptions, groupsOptions
         <section className="border-t border-[var(--border)] pt-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div><h2 className="font-semibold">Pause de l&apos;abonnement</h2><p className="mt-1 text-xs text-[var(--muted-foreground)]">{subscription.usedPauseCount}/{subscription.freezeAllowanceCount} pause(s), {subscription.usedPauseDays}/{subscription.freezeMaxTotalDays} jours utilisés.</p></div>
-            {canPause ? <button type="button" className="btn btn-ghost" disabled={Boolean(loadingAction)} onClick={() => runAction("pause", `/api/member-subscriptions/${subscription.id}/pause`, {})}><Pause className="size-4" /> Mettre en pause</button> : null}
-            {canResume ? <button type="button" className="btn btn-primary" disabled={Boolean(loadingAction)} onClick={() => runAction("resume", `/api/member-subscriptions/${subscription.id}/resume`, {})}><Play className="size-4" /> Reprendre</button> : null}
+            {canPause ? <DemoMutationButton type="button" className="btn btn-ghost" disabled={Boolean(loadingAction)} onClick={() => runAction("pause", `/api/member-subscriptions/${subscription.id}/pause`, {})}><Pause className="size-4" /> Mettre en pause</DemoMutationButton> : null}
+            {canResume ? <DemoMutationButton type="button" className="btn btn-primary" disabled={Boolean(loadingAction)} onClick={() => runAction("resume", `/api/member-subscriptions/${subscription.id}/resume`, {})}><Play className="size-4" /> Reprendre</DemoMutationButton> : null}
           </div>
         </section>
       ) : null}
@@ -183,7 +193,7 @@ export function SubscriptionEditForm({ subscription, plansOptions, groupsOptions
           <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem_auto] sm:items-end">
             <label><span className="mb-1 block text-xs font-medium">Droit</span><select className="field" value={selectedEntitlementId} onChange={(event) => setSelectedEntitlementId(event.target.value)}>{finiteEntitlements.map((right) => <option key={right.id} value={right.id}>{right.label} · reste {right.remainingUnits}</option>)}</select></label>
             <label><span className="mb-1 block text-xs font-medium">Correction</span><input className="field" type="number" step="1" value={unitsDelta} onChange={(event) => setUnitsDelta(event.target.value)} /></label>
-            <button type="button" className="btn btn-ghost" disabled={Boolean(loadingAction)} onClick={adjustUnits}><SlidersHorizontal className="size-4" /> Appliquer</button>
+            <DemoMutationButton type="button" className="btn btn-ghost" disabled={Boolean(loadingAction)} onClick={adjustUnits}><SlidersHorizontal className="size-4" /> Appliquer</DemoMutationButton>
           </div>
         </section>
       ) : null}
@@ -201,14 +211,14 @@ export function SubscriptionEditForm({ subscription, plansOptions, groupsOptions
               return <label key={sportId}><span className="mb-1 block text-xs font-medium">Groupe · {right.sportName}</span><select className="field" value={groupBySport[sportId] ?? ""} onChange={(event) => setGroupBySport((current) => ({ ...current, [sportId]: event.target.value }))}><option value="">Conserver le groupe actif</option>{groupsOptions.filter((group) => group.sportId === sportId).map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}</select></label>;
             })}
           </div>
-          <button type="button" className="btn btn-primary mt-4" disabled={Boolean(loadingAction)} onClick={replaceSale}><RefreshCw className="size-4" /> Résilier et remplacer</button>
+          <DemoMutationButton type="button" className="btn btn-primary mt-4" disabled={Boolean(loadingAction)} onClick={replaceSale}><RefreshCw className="size-4" /> Résilier et remplacer</DemoMutationButton>
         </details>
       ) : null}
 
       {subscription.effectiveState !== "CANCELLED" ? (
         <section className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-5">
           <div><h2 className="font-semibold">Résilier sans remplacement</h2><p className="mt-1 text-xs text-[var(--muted-foreground)]">Les paiements et droits passés restent visibles.</p></div>
-          <button type="button" className="btn btn-danger" disabled={Boolean(loadingAction)} onClick={() => runAction("cancel", "/api/member-subscriptions", { subscriptionId: subscription.id }, "DELETE")}><Ban className="size-4" /> Résilier</button>
+          <DemoMutationButton type="button" className="btn btn-danger" disabled={Boolean(loadingAction)} onClick={() => runAction("cancel", "/api/member-subscriptions", { subscriptionId: subscription.id }, "DELETE")}><Ban className="size-4" /> Résilier</DemoMutationButton>
         </section>
       ) : null}
 

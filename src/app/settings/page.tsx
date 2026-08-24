@@ -102,7 +102,7 @@ export default async function SettingsHomePage() {
             settings.receiptEmailDefault ? "Email du reçu automatique" : "Email du reçu manuel",
           ]}
         />
-        {hasClasses && canManageClasses ? (
+        {hasClasses ? (
           <SettingsTile
             href="/settings/schedules"
             icon={CalendarClock}
@@ -134,7 +134,7 @@ export default async function SettingsHomePage() {
           description="Gardez les tarifs, quotas de séances, disciplines et remises lisibles pour la réception."
           meta={[`${activePlans} formule${activePlans > 1 ? "s" : ""}`, `${activeOffers} offre${activeOffers > 1 ? "s" : ""}`]}
         /> : null}
-        {hasClasses && canManageClasses ? (
+        {hasClasses ? (
           <SettingsTile
             href="/settings/data-import"
             icon={Database}
