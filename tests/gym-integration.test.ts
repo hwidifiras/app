@@ -10,7 +10,11 @@ import { setFallbackTenantContext } from "@/lib/tenant-context";
 const TENANT_ID = "tenant_test";
 const TENANT_SLUG = "we-discipline";
 
-async function createGymFixture(accessMode: "UNLIMITED" | "VISIT_QUOTA", grantedUnits: number | null) {
+async function createGymFixture(
+  accessMode: "UNLIMITED" | "VISIT_QUOTA",
+  grantedUnits: number | null,
+  startDate = new Date(),
+) {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const member = await prisma.member.create({
     data: {
@@ -39,12 +43,16 @@ async function createGymFixture(accessMode: "UNLIMITED" | "VISIT_QUOTA", granted
     },
   });
   const subscription = await prisma.$transaction((tx) =>
-    createSubscriptionFromPlan(tx, {
-      tenantId: TENANT_ID,
-      memberId: member.id,
-      plan,
-      startDate: new Date(),
-    }),
+    createSubscriptionFromPlan(
+      tx,
+      {
+        tenantId: TENANT_ID,
+        memberId: member.id,
+        plan,
+        startDate,
+      },
+      { now: startDate },
+    ),
   );
   const entitlement = await prisma.subscriptionEntitlement.findFirstOrThrow({
     where: { tenantId: TENANT_ID, memberSubscriptionId: subscription.id, type: "GYM_ACCESS" },
@@ -130,7 +138,7 @@ describe("gym access integration", () => {
   });
 
   it("enforces opening windows and returns batched search decisions", async () => {
-    const fixture = await createGymFixture("VISIT_QUOTA", 3);
+    const fixture = await createGymFixture("VISIT_QUOTA", 3, new Date("2026-08-17T00:00:00.000Z"));
     await prisma.payment.create({
       data: { tenantId: TENANT_ID, memberSubscriptionId: fixture.subscription.id, amount: 5000 },
     });

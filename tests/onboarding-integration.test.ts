@@ -7,35 +7,38 @@ import {
   mutateTenantOnboarding,
   TenantOnboardingError,
 } from "@/platform/onboarding/tenant-onboarding-service";
-import { TEST_TENANT_ID, TEST_TENANT_SLUG } from "./setup";
-
 describe("self-serve tenant onboarding", () => {
   it("configures a hybrid workspace without creating fake business data", async () => {
+    const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const tenantId = `tenant_onboarding_hybrid_${suffix}`;
+    const tenantSlug = `onboarding-hybrid-${suffix}`;
+
+    await prisma.tenant.create({
+      data: { id: tenantId, slug: tenantSlug, name: "Hybrid onboarding" },
+    });
+
     await withTenantContext(
-      { tenantId: TEST_TENANT_ID, tenantSlug: TEST_TENANT_SLUG, host: "test.local" },
+      { tenantId, tenantSlug, host: `${tenantSlug}.test` },
       async () => {
+        await prisma.clubSettings.create({ data: { tenantId, clubName: "Hybrid onboarding" } });
         const actor = await prisma.user.create({
           data: {
-            tenantId: TEST_TENANT_ID,
+            tenantId,
             email: "onboarding-owner@example.test",
             name: "Owner onboarding",
             passwordHash: "test",
             role: "ADMIN",
           },
         });
-        await prisma.tenantModule.upsert({
-          where: { tenantId_moduleKey: { tenantId: TEST_TENANT_ID, moduleKey: "GYM_ACCESS" } },
-          create: {
-            tenantId: TEST_TENANT_ID,
-            moduleKey: "GYM_ACCESS",
-            status: "ENABLED",
-            enabledAt: new Date(),
-          },
-          update: { status: "ENABLED", enabledAt: new Date(), disabledAt: null },
+        await prisma.tenantModule.createMany({
+          data: [
+            { tenantId, moduleKey: "CLASS_MANAGEMENT", status: "ENABLED", enabledAt: new Date() },
+            { tenantId, moduleKey: "GYM_ACCESS", status: "ENABLED", enabledAt: new Date() },
+          ],
         });
         await prisma.tenantOnboarding.create({
           data: {
-            tenantId: TEST_TENANT_ID,
+            tenantId,
             source: "SELF_SERVE",
             status: "IN_PROGRESS",
             lastStepKey: "club-profile",
@@ -43,33 +46,33 @@ describe("self-serve tenant onboarding", () => {
           },
         });
 
-        const initial = await getTenantOnboardingState(TEST_TENANT_ID);
+        const initial = await getTenantOnboardingState(tenantId);
         expect(initial.profile).toBe("HYBRID");
         expect(initial.modules).toEqual(["CLASS_MANAGEMENT", "GYM_ACCESS"]);
 
-        await expect(mutateTenantOnboarding(TEST_TENANT_ID, actor.id, { action: "COMPLETE" }))
+        await expect(mutateTenantOnboarding(tenantId, actor.id, { action: "COMPLETE" }))
           .rejects.toBeInstanceOf(TenantOnboardingError);
 
-        await mutateTenantOnboarding(TEST_TENANT_ID, actor.id, {
+        await mutateTenantOnboarding(tenantId, actor.id, {
           action: "PROFILE",
           clubName: "Club Hybride Tunis",
           clubPhone: "+216 20 000 000",
           clubAddress: "Tunis",
           workingDays: ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"],
         });
-        await mutateTenantOnboarding(TEST_TENANT_ID, actor.id, {
+        await mutateTenantOnboarding(tenantId, actor.id, {
           action: "ACTIVITIES",
           templateKeys: ["martial-arts-and-gym"],
           disciplineNames: ["Kick boxing", "Jiu-jitsu brésilien"],
         });
-        await mutateTenantOnboarding(TEST_TENANT_ID, actor.id, {
+        await mutateTenantOnboarding(tenantId, actor.id, {
           action: "POLICIES",
           allowCheckInWithPartialPayment: true,
           absentConsumesSession: false,
           gymAllowCheckInWithPartialPayment: true,
           gymAllowExceptionalAccess: true,
         });
-        const completed = await mutateTenantOnboarding(TEST_TENANT_ID, actor.id, { action: "COMPLETE" });
+        const completed = await mutateTenantOnboarding(tenantId, actor.id, { action: "COMPLETE" });
 
         expect(completed.status).toBe("COMPLETED");
         expect(completed.club.name).toBe("Club Hybride Tunis");
@@ -81,12 +84,12 @@ describe("self-serve tenant onboarding", () => {
         });
 
         const [sports, members, plans, payments, auditLogs] = await Promise.all([
-          prisma.sport.findMany({ where: { tenantId: TEST_TENANT_ID }, orderBy: { name: "asc" } }),
-          prisma.member.count({ where: { tenantId: TEST_TENANT_ID } }),
-          prisma.subscriptionPlan.count({ where: { tenantId: TEST_TENANT_ID } }),
-          prisma.payment.count({ where: { tenantId: TEST_TENANT_ID } }),
+          prisma.sport.findMany({ where: { tenantId }, orderBy: { name: "asc" } }),
+          prisma.member.count({ where: { tenantId } }),
+          prisma.subscriptionPlan.count({ where: { tenantId } }),
+          prisma.payment.count({ where: { tenantId } }),
           prisma.auditLog.findMany({
-            where: { tenantId: TEST_TENANT_ID, entityType: "TenantOnboarding" },
+            where: { tenantId, entityType: "TenantOnboarding" },
             orderBy: { createdAt: "asc" },
           }),
         ]);
