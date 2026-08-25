@@ -49,6 +49,7 @@ export default async function SettingsHomePage() {
   const hasGym = product.capabilities.gymAccess;
   const canManageClasses = authUser.role === "ADMIN" || hasPermission(authUser.permissions, "class.manage");
   const canManageGym = authUser.role === "ADMIN" || hasPermission(authUser.permissions, "gym.manage");
+  const canCheckInGym = authUser.role === "ADMIN" || hasPermission(authUser.permissions, "gym.checkin");
   const canManagePlans = authUser.role === "ADMIN" || hasPermission(authUser.permissions, "plans.manage");
   const planKinds = product.profile === "CLASS_ONLY"
     ? ["CLASS" as const]
@@ -114,9 +115,9 @@ export default async function SettingsHomePage() {
         ) : null}
         {hasGym && canManageGym ? (
           <SettingsTile
-            href="/gym/check-in"
-            secondaryHref="/gym/visits"
-            secondaryLabel="Historique"
+            href={canCheckInGym ? "/gym/check-in" : "/gym/visits"}
+            secondaryHref={canCheckInGym ? "/gym/visits" : undefined}
+            secondaryLabel={canCheckInGym ? "Historique" : undefined}
             icon={Dumbbell}
             overline="Salle"
             title="Accès et passages"

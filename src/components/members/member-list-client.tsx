@@ -32,9 +32,15 @@ type MemberListClientProps = {
   initialPage: MemberDirectoryPage;
   groupsOptions: GroupOption[];
   sportsOptions: SportOption[];
+  canSellEnrollment: boolean;
 };
 
-export function MemberListClient({ initialPage, groupsOptions, sportsOptions }: MemberListClientProps) {
+export function MemberListClient({
+  initialPage,
+  groupsOptions,
+  sportsOptions,
+  canSellEnrollment,
+}: MemberListClientProps) {
   const [members, setMembers] = useState<MemberWithGroups[]>(initialPage.data);
   const [totalItems, setTotalItems] = useState(initialPage.total);
   const [pageCount, setPageCount] = useState(initialPage.pageCount);
@@ -207,9 +213,11 @@ export function MemberListClient({ initialPage, groupsOptions, sportsOptions }: 
             />
           </div>
           <MobileFiltersButton onClick={() => setFiltersOpen(true)} count={activeFilterCount} />
-          <Link href="/members/new" className="btn btn-primary min-h-11 min-w-0 shrink-0 px-3 sm:w-auto">
-            + Ajouter un membre
-          </Link>
+          {canSellEnrollment ? (
+            <Link href="/members/new" className="btn btn-primary min-h-11 min-w-0 shrink-0 px-3 sm:w-auto">
+              + Ajouter un membre
+            </Link>
+          ) : null}
         </div>
 
         <div className="mt-3 hidden grid-cols-4 gap-2 md:grid">

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { MemberListClient } from "@/components/members/member-list-client";
 import { PageHeader } from "@/components/ui/page-header";
 import { getMemberDirectoryPage, type MemberDirectoryPage } from "@/lib/member-directory";
+import { hasPermission } from "@/lib/permission-definitions";
 import { getAuthUser } from "@/lib/request-user";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,9 @@ export default async function MembersPage() {
       </main>
     );
   }
+
+  const canSellEnrollment =
+    authUser.role === "ADMIN" || hasPermission(authUser.permissions, "enrollment.sell");
 
   let hasMemberDataError = false;
   let initialPage: MemberDirectoryPage = {
@@ -94,6 +98,7 @@ export default async function MembersPage() {
           initialPage={initialPage}
           groupsOptions={groupsOptions}
           sportsOptions={sportsOptions}
+          canSellEnrollment={canSellEnrollment}
         />
       </section>
     </main>

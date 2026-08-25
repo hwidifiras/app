@@ -36,6 +36,7 @@ type SubscriptionAddFormProps = {
   membersOptions: MemberOption[];
   plansOptions: PlanOption[];
   initialMemberId?: string;
+  initialMemberMode?: "EXISTING" | "NEW";
   initialPlanKind?: "GYM" | "MIXED";
   initialOfferId?: string;
   groupsOptions?: GroupOption[];
@@ -54,6 +55,7 @@ export function SubscriptionAddForm({
   membersOptions,
   plansOptions,
   initialMemberId = "",
+  initialMemberMode = "EXISTING",
   initialPlanKind,
   initialOfferId = "",
   groupsOptions = [],
@@ -65,7 +67,9 @@ export function SubscriptionAddForm({
   const initialPlan = plansOptions.find((plan) => plan.planKind === initialPlanKind);
   const initialStartDate = new Date().toISOString().split("T")[0];
   const [memberId, setMemberId] = useState(initialMemberId);
-  const [memberMode, setMemberMode] = useState<"EXISTING" | "NEW">("EXISTING");
+  const [memberMode, setMemberMode] = useState<"EXISTING" | "NEW">(
+    initialMemberId ? "EXISTING" : initialMemberMode,
+  );
   const [newMember, setNewMember] = useState<AccessNewMember>(EMPTY_ACCESS_MEMBER);
   const [planId, setPlanId] = useState(initialPlan?.id ?? "");
   const [offerId, setOfferId] = useState(

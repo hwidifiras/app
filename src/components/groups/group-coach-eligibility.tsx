@@ -41,8 +41,8 @@ export function GroupCoachEligibility({
   const selectedIsCompatible = isCoachQualifiedForSport(selectedCoach, selectedSportId);
 
   return (
-    <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+    <div className="@container/coach-eligibility mt-3 min-w-0 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3">
+      <div className="flex min-w-0 flex-col gap-3 @xl/coach-eligibility:flex-row @xl/coach-eligibility:items-start @xl/coach-eligibility:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
             Compatibilité coach
@@ -89,7 +89,7 @@ export function GroupCoachEligibility({
           )}
         </div>
 
-        <div className="grid min-w-48 grid-cols-2 gap-2 text-xs">
+        <div className="grid w-full min-w-0 grid-cols-2 gap-2 text-xs @xl/coach-eligibility:w-auto @xl/coach-eligibility:min-w-48">
           <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2">
             <p className="font-bold text-emerald-800">{compatibleCoaches.length}</p>
             <p className="text-emerald-700">compatible(s)</p>
@@ -112,7 +112,7 @@ export function GroupCoachEligibility({
                   type="button"
                   onClick={() => onSelectCoach(coach.id)}
                   className={cn(
-                    "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                    "inline-flex max-w-full flex-wrap items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition",
                     selectedCoach?.id === coach.id
                       ? "border-[var(--primary)] bg-blue-50 text-[var(--primary)]"
                       : "border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:border-blue-200 hover:bg-blue-50",

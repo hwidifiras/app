@@ -238,7 +238,7 @@ export function GroupEditForm({
               onGenderPolicyChange={applyGenderPolicy}
             />
           </div>
-          <div>
+          <div className="min-w-0">
             <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Coach du cours</label>
             <select value={coachId} onChange={(e) => setCoachId(e.target.value)} className="field text-sm" required>
               <option value="">Choisir</option>

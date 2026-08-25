@@ -12,7 +12,7 @@ import { formatMoney } from "@/lib/money";
 import type { AttendanceQueueKind, SessionCardData } from "./session-card";
 
 const MARK_ALL_MAX = 8;
-const DESKTOP_QUERY = "(min-width: 1180px)";
+const DESKTOP_QUERY = "(min-width: 1280px)";
 
 function subscribeToDesktopChange(callback: () => void) {
   const media = window.matchMedia(DESKTOP_QUERY);

@@ -7,6 +7,43 @@ function source(path: string) {
 }
 
 describe("permission-aware page actions", () => {
+  it("only offers member creation when the user can start an enrollment", () => {
+    const membersPage = source("src/app/members/page.tsx");
+    const memberList = source("src/components/members/member-list-client.tsx");
+
+    expect(membersPage).toContain(
+      'authUser.role === "ADMIN" || hasPermission(authUser.permissions, "enrollment.sell")',
+    );
+    expect(membersPage).toContain("canSellEnrollment={canSellEnrollment}");
+    expect(memberList).toContain("canSellEnrollment: boolean");
+    expect(memberList).toContain("{canSellEnrollment ? (");
+    expect(memberList).toContain('href="/members/new"');
+  });
+
+  it("keeps new gym and mixed members inside their selected enrollment flow", () => {
+    const enrollmentPage = source("src/app/enrollment/page.tsx");
+    const subscriptionForm = source("src/components/subscriptions/subscription-add-form.tsx");
+
+    expect(enrollmentPage).toContain(
+      'href={`/enrollment?type=${selectedType}&memberMode=new#renew-member`}',
+    );
+    expect(enrollmentPage).toContain(
+      'initialMemberMode={memberMode === "new" ? "NEW" : "EXISTING"}',
+    );
+    expect(subscriptionForm).toContain('initialMemberMode?: "EXISTING" | "NEW"');
+    expect(subscriptionForm).toContain('initialMemberId ? "EXISTING" : initialMemberMode');
+  });
+
+  it("routes gym managers to history unless they can also perform check-ins", () => {
+    const settingsPage = source("src/app/settings/page.tsx");
+
+    expect(settingsPage).toContain(
+      'authUser.role === "ADMIN" || hasPermission(authUser.permissions, "gym.checkin")',
+    );
+    expect(settingsPage).toContain('href={canCheckInGym ? "/gym/check-in" : "/gym/visits"}');
+    expect(settingsPage).toContain('secondaryHref={canCheckInGym ? "/gym/visits" : undefined}');
+  });
+
   it("hides every member group-assignment entry point without enrollment selling access", () => {
     const memberPage = source("src/app/members/[id]/page.tsx");
     const recoveryGuide = source("src/components/members/member-recovery-guide.tsx");

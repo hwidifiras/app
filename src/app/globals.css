@@ -64,6 +64,7 @@
   --focus-ring-soft: rgba(37, 99, 235, 0.18);
   --app-topbar-height: 4.5rem;
   --app-sticky-offset: calc(var(--app-topbar-height) + 0.75rem);
+  --app-mobile-nav-clearance: 5.25rem;
 }
 
 .app-sidebar-theme {
@@ -224,7 +225,7 @@ body {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 0.7rem 0.75rem 5.25rem;
+  padding: 0.7rem 0.75rem var(--app-mobile-nav-clearance);
   transition:
     max-width 0.22s ease,
     padding 0.22s ease;
@@ -245,7 +246,13 @@ body {
 
 @media (min-width: 768px) {
   .app-shell {
-    padding: 1rem 1rem 1.5rem;
+    padding: 1rem 1rem var(--app-mobile-nav-clearance);
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-shell {
+    padding-bottom: 1.5rem;
   }
 }
 
@@ -2194,7 +2201,7 @@ input.field[type="search"]::-webkit-search-results-decoration {
   }
 }
 
-@media (min-width: 768px) and (max-width: 1179px) {
+@media (min-width: 768px) and (max-width: 1279px) {
   .attendance-inspector-layer {
     align-items: stretch;
     justify-content: flex-end;
@@ -2211,7 +2218,7 @@ input.field[type="search"]::-webkit-search-results-decoration {
   }
 }
 
-@media (min-width: 1180px) {
+@media (min-width: 1280px) {
   .attendance-page,
   .attendance-page-surface,
   .attendance-workbench {
@@ -2317,7 +2324,7 @@ input.field[type="search"]::-webkit-search-results-decoration {
   }
 }
 
-@media (min-width: 1180px) {
+@media (min-width: 1280px) {
   .drawer-sheet-adaptive {
     height: 100%;
     max-height: none;

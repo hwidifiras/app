@@ -16,9 +16,9 @@ export const revalidate = 0;
 export default async function EnrollmentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ memberId?: string; offerId?: string; step?: string; type?: string }>;
+  searchParams: Promise<{ memberId?: string; memberMode?: string; offerId?: string; step?: string; type?: string }>;
 }) {
-  const { memberId, offerId, step, type } = await searchParams;
+  const { memberId, memberMode, offerId, step, type } = await searchParams;
   const user = await getAuthUser();
   const settings = await getClubSettings();
   const product = user ? await getTenantProductContext(user.tenantId) : null;
@@ -26,7 +26,6 @@ export default async function EnrollmentPage({
   const classModuleEnabled = product?.capabilities.classManagement ?? false;
   const selectedType = product ? resolveEnrollmentType(product, type) : "class";
   const initialStep = step === "2" || step === "3" ? Number(step) : 1;
-  const canManageMembers = user?.role === "ADMIN" || hasPermission(user?.permissions, "members.manage");
   const canManagePlans = user?.role === "ADMIN" || hasPermission(user?.permissions, "plans.manage");
 
   const accessContext = user && product && selectedType !== "class"
@@ -51,7 +50,7 @@ export default async function EnrollmentPage({
         overline="Ventes"
         title="Inscrire"
         description={selectedType === "class" ? "Créer le dossier, choisir le cours, appliquer une offre et préparer l'encaissement." : selectedType === "gym" ? "Ouvrir un pass salle avec un seul prix et un seul solde." : "Vendre les cours et l'accès salle dans un abonnement unique."}
-        actions={selectedType !== "class" && canManageMembers ? <Link href="/members/new" className="btn btn-ghost"><UserPlus className="size-4" /> Nouveau membre</Link> : undefined}
+        actions={selectedType !== "class" ? <Link href={`/enrollment?type=${selectedType}&memberMode=new#renew-member`} className="btn btn-ghost"><UserPlus className="size-4" /> Nouveau membre</Link> : undefined}
       />
 
       {gymModuleEnabled && classModuleEnabled ? (
@@ -72,6 +71,7 @@ export default async function EnrollmentPage({
             groupsOptions={accessContext.groups.map((group) => ({ id: group.id, name: group.name, sportId: group.sportId, sportName: group.sport.name }))}
             offersOptions={accessOffers}
             initialMemberId={memberId ?? ""}
+            initialMemberMode={memberMode === "new" ? "NEW" : "EXISTING"}
             initialPlanKind={selectedType === "gym" ? "GYM" : "MIXED"}
             initialOfferId={offerId ?? ""}
             receiptPrintDefault={settings.receiptPrintDefault}

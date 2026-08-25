@@ -20,10 +20,18 @@ describe("UI system regression contract", () => {
       "--focus-ring:",
       "--app-topbar-height:",
       "--app-sticky-offset:",
+      "--app-mobile-nav-clearance:",
     ]) {
       expect(css).toContain(token);
     }
     expect(css).toContain("@media (prefers-reduced-motion: reduce)");
+
+    const formLayout = source("src/components/ui/form-layout.tsx");
+    expect(css).toMatch(/@media \(min-width: 768px\)[\s\S]*?\.app-shell\s*\{[\s\S]*?var\(--app-mobile-nav-clearance\)/);
+    expect(css).toMatch(/@media \(min-width: 1024px\)[\s\S]*?\.app-shell\s*\{[\s\S]*?padding-bottom:\s*1\.5rem/);
+    expect(formLayout).toContain("bottom-[calc(var(--app-mobile-nav-clearance)+env(safe-area-inset-bottom,0px))]");
+    expect(formLayout).toContain("lg:bottom-0");
+    expect(formLayout).not.toContain("md:bottom-0");
 
     const topbarStickyFiles = [
       "src/components/attendance/attendance-history-list.tsx",
@@ -129,6 +137,31 @@ describe("UI system regression contract", () => {
     }
   });
 
+  it("keeps the responsive navigation and camera scanner keyboard accessible", () => {
+    const mobileNav = source("src/components/layout/mobile-nav.tsx");
+    const cameraScanner = source("src/components/gym/gym-camera-scanner.tsx");
+
+    for (const contents of [mobileNav, cameraScanner]) {
+      expect(contents).toContain("useAccessibleDialog");
+      expect(contents).toContain("aria-expanded={open}");
+      expect(contents).toContain("aria-controls={");
+      expect(contents).toContain('aria-haspopup="dialog"');
+      expect(contents).toContain('role="dialog"');
+      expect(contents).toContain("aria-modal=");
+      expect(contents).toContain("tabIndex={-1}");
+    }
+
+    expect(mobileNav).toContain("ref={drawerRef}");
+    expect(mobileNav).toContain("aria-hidden={!open}");
+    expect(mobileNav).toContain("inert={!open ? true : undefined}");
+    expect(mobileNav).not.toContain('window.addEventListener("keydown", onKey)');
+    expect(mobileNav).not.toContain('document.body.style.overflow = "hidden"');
+
+    expect(cameraScanner).toContain("initialFocusRef: closeButtonRef");
+    expect(cameraScanner).toContain("ref={dialogRef}");
+    expect(cameraScanner).toContain("ref={closeButtonRef}");
+  });
+
   it("keeps Planning compact, readable, responsive, and read-only aware", () => {
     const page = source("src/app/sessions/page.tsx");
     const planner = source("src/components/sessions/sessions-planner.tsx");
@@ -222,15 +255,15 @@ describe("UI system regression contract", () => {
     expect(sessionCard).toContain('id={`attendance-session-${session.id}`}');
     expect(sessionCard).toContain('kind === "NOW" && !readOnly && "attendance-session-action-primary"');
 
-    expect(inspector).toContain('const DESKTOP_QUERY = "(min-width: 1180px)"');
+    expect(inspector).toContain('const DESKTOP_QUERY = "(min-width: 1280px)"');
     expect(inspector).toContain("useAccessibleDialog");
     expect(inspector).toContain('role={isDesktop ? "region" : "dialog"}');
     expect(inspector).toContain("disabled={readOnly || isFinalized || isUpcoming");
     expect(inspector).toContain("Mode démo");
 
     expect(css).toContain(".attendance-session-action-primary");
-    expect(css).toMatch(/@media \(min-width: 1180px\)[\s\S]*?\.attendance-workbench[\s\S]*?grid-template-columns:/);
-    expect(css).toMatch(/@media \(min-width: 1180px\)[\s\S]*?\.attendance-inspector-layer[\s\S]*?position: static/);
+    expect(css).toMatch(/@media \(min-width: 1280px\)[\s\S]*?\.attendance-workbench[\s\S]*?grid-template-columns:/);
+    expect(css).toMatch(/@media \(min-width: 1280px\)[\s\S]*?\.attendance-inspector-layer[\s\S]*?position: static/);
   });
 
   it("keeps tenant presentation, operational alerts, and payment escape controls explicit", () => {
@@ -274,5 +307,27 @@ describe("UI system regression contract", () => {
       enrollmentWizard.indexOf("{step === 1"),
     );
     expect(enrollmentLine).toContain('name={`${line.key}-mode`}');
+  });
+
+  it("keeps group schedule cards and coach eligibility readable in narrow layout cells", () => {
+    const scheduleForm = source("src/components/groups/group-schedule-new-period-form.tsx");
+    const coachEligibility = source("src/components/groups/group-coach-eligibility.tsx");
+    const groupForms = [
+      "src/components/groups/group-add-form.tsx",
+      "src/components/groups/group-edit-form.tsx",
+    ];
+
+    expect(scheduleForm).toContain("sm:grid-cols-2 xl:grid-cols-4");
+    expect(scheduleForm).toContain("grid-cols-[auto_minmax(0,1fr)]");
+    expect(scheduleForm).toContain("field col-span-2 min-w-0 text-sm");
+    expect(scheduleForm).not.toContain("field w-[100px]");
+
+    expect(coachEligibility).toContain("@container/coach-eligibility");
+    expect(coachEligibility).toContain("@xl/coach-eligibility:flex-row");
+    expect(coachEligibility).not.toContain("lg:flex-row");
+
+    for (const file of groupForms) {
+      expect(source(file), file).toMatch(/className="min-w-0"[\s\S]*?>Coach du cours<\/label>/);
+    }
   });
 });

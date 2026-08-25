@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Banknote, ChevronDown, Clock, Dumbbell, Home, Menu, PlusCircle, Search, X } from "lucide-react";
@@ -19,11 +19,14 @@ import { ClubBrandMark } from "@/components/layout/club-brand-mark";
 import { UserAccountMenu } from "@/components/layout/user-account-menu";
 import { NotificationCenter } from "@/components/notifications/notification-center";
 import { SetupGuide } from "@/components/onboarding/setup-guide";
+import { useAccessibleDialog } from "@/hooks/use-accessible-dialog";
 import { cn } from "@/lib/utils";
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
+  const drawerId = useId();
+  const drawerTitleId = useId();
   const pathname = usePathname();
   const { account, navBadges } = useAppShellData();
   const role = account?.role ?? null;
@@ -64,31 +67,15 @@ export function MobileNav() {
   const quickLinks = profileQuickLinks.filter((item) => navItemIsVisible(item, account));
 
   const close = useCallback(() => setOpen(false), []);
+  const drawerRef = useAccessibleDialog<HTMLDivElement>({
+    open,
+    onClose: close,
+  });
 
   useEffect(() => {
     const id = window.setTimeout(() => setOpen(false), 0);
     return () => window.clearTimeout(id);
   }, [pathname]);
-
-  useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
-
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [open]);
 
   return (
     <div data-app-mobile-nav className="print:hidden lg:hidden">
@@ -105,9 +92,13 @@ export function MobileNav() {
           <NotificationCenter />
           <UserAccountMenu onNavigate={close} />
           <button
+            type="button"
             onClick={() => setOpen((v) => !v)}
             className="flex size-11 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] text-[var(--foreground)] shadow-[var(--shadow-panel)] transition-colors hover:bg-[var(--surface)]"
             aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
+            aria-expanded={open}
+            aria-controls={drawerId}
+            aria-haspopup="dialog"
           >
             {open ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>
@@ -117,13 +108,20 @@ export function MobileNav() {
       {open && <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm lg:hidden" onClick={close} />}
 
       <div
+        ref={drawerRef}
+        id={drawerId}
+        role="dialog"
+        aria-modal={open ? true : undefined}
+        aria-labelledby={drawerTitleId}
         aria-hidden={!open}
         inert={!open ? true : undefined}
+        tabIndex={-1}
         className={cn(
           "app-sidebar-theme fixed bottom-0 left-0 top-[3.75rem] z-40 w-[min(86vw,320px)] transform border-r border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-floating)] transition-transform duration-300 ease-out lg:hidden",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
+        <h2 id={drawerTitleId} className="sr-only">Navigation principale</h2>
         <nav className="sidebar-scroll flex h-full flex-col gap-1 overflow-y-auto overscroll-y-contain px-3 pb-24 pt-4">
           <SetupGuide variant="bar" className="mb-2 rounded-lg border border-[var(--primary)]/20" />
 

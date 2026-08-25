@@ -110,11 +110,11 @@ export function GroupScheduleNewPeriodForm({
               </button>
             ) : null}
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {daySelections.map((selection) => (
               <label
                 key={selection.day}
-                className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
+                className={`grid min-w-0 cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2 rounded-lg border p-3 transition-colors ${
                   selection.checked
                     ? "border-[var(--primary)] bg-[var(--primary)]/5"
                     : "border-[var(--border)] hover:bg-[var(--surface-soft)]"
@@ -126,7 +126,7 @@ export function GroupScheduleNewPeriodForm({
                   onChange={() => onToggleDay(selection.day)}
                   className="h-4 w-4 accent-[var(--primary)]"
                 />
-                <span className="flex-1 text-sm font-medium text-[var(--foreground)]">
+                <span className="min-w-0 text-sm font-medium text-[var(--foreground)]">
                   {dayLabels[selection.day]}
                 </span>
                 {selection.checked ? (
@@ -135,7 +135,7 @@ export function GroupScheduleNewPeriodForm({
                     value={selection.startTime}
                     onChange={(event) => onUpdateDayTime(selection.day, event.target.value)}
                     onClick={(event) => event.stopPropagation()}
-                    className="field w-[100px] text-sm"
+                    className="field col-span-2 min-w-0 text-sm"
                     required={selection.checked}
                   />
                 ) : null}
