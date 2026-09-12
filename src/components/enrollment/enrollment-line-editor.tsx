@@ -129,7 +129,7 @@ export function EnrollmentLineEditor({
           <FormField
             label={line.memberType === "KID" ? "Téléphone de l'enfant" : "Téléphone"}
             htmlFor={`${line.key}-phone`}
-            hint={line.memberType === "KID" ? "Optionnel" : undefined}
+            hint={line.memberType === "KID" ? "Optionnel — indiquez le numéro du parent plus bas" : undefined}
           >
             <input
               id={`${line.key}-phone`}

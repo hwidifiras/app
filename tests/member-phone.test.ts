@@ -26,6 +26,18 @@ describe("resolveMemberPhone", () => {
     ).toBeNull();
   });
 
+  it("stores a shared parent number only as the parent contact", () => {
+    expect(
+      resolveMemberPhone({
+        memberType: "KID",
+        phone: "98 123 456",
+        parentPhone: "+216 98 123 456",
+        firstName: "Frere 1",
+        lastName: "Ghribi",
+      }),
+    ).toBeNull();
+  });
+
   it("requires a direct phone for adults", () => {
     expect(() =>
       resolveMemberPhone({
