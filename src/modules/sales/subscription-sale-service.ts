@@ -35,6 +35,9 @@ export async function sellSubscription(
     paymentDate?: Date;
     paymentMethod?: string | null;
     paymentNotes?: string | null;
+    insuranceFeeCents?: number;
+    insuranceYear?: number | null;
+    insuranceCoverageDate?: Date | null;
     carryOverRemainingSessions?: boolean;
     replacesSubscriptionId?: string | null;
   },
@@ -56,6 +59,9 @@ export async function sellSubscription(
       discountCents: input.discountCents,
       offerApplicationId: input.offerApplicationId,
       offerName: input.offerName,
+      insuranceFeeCents: input.insuranceFeeCents,
+      insuranceYear: input.insuranceYear,
+      insuranceCoverageDate: input.insuranceCoverageDate,
       replacesSubscriptionId: input.replacesSubscriptionId,
     },
     { carryOverRemainingSessions: input.carryOverRemainingSessions === true },
@@ -94,6 +100,7 @@ export async function sellSubscription(
         discountCents: subscription.discountCents,
         insuranceFeeCents: subscription.insuranceFeeCents,
         insuranceYear: subscription.insuranceYear,
+        insuranceCoverageDate: subscription.insuranceCoverageDate?.toISOString() ?? null,
         remainingSessions: subscription.remainingSessions,
         paymentCents,
         startDate: subscription.startDate.toISOString(),

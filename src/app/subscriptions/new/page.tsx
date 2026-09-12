@@ -49,10 +49,10 @@ export default async function NewSubscriptionPage({
           lastName: true,
           phone: true,
           subscriptions: {
-            where: { insuranceFeeCents: { gt: 0 } },
-            orderBy: { startDate: "desc" },
+            where: { insuranceCoverageDate: { not: null } },
+            orderBy: { insuranceCoverageDate: "desc" },
             take: 1,
-            select: { startDate: true },
+            select: { insuranceCoverageDate: true },
           },
         },
       }),
@@ -74,7 +74,7 @@ export default async function NewSubscriptionPage({
       firstName: member.firstName,
       lastName: member.lastName,
       phone: member.phone ?? "",
-      lastInsuranceStartDate: member.subscriptions[0]?.startDate.toISOString() ?? null,
+      lastInsuranceStartDate: member.subscriptions[0]?.insuranceCoverageDate?.toISOString() ?? null,
     }));
     plansOptions = plans;
     groupsOptions = groups.map((group) => ({ id: group.id, name: group.name, sportId: group.sportId, sportName: group.sport.name }));

@@ -9,6 +9,13 @@ export const createMemberSubscriptionSchema = z.object({
   newMember: createMemberSchema.optional(),
   planId: z.string().trim().min(1, "Plan requis"),
   offerId: z.string().trim().min(1).optional(),
+  customPriceCents: z.number().int().min(0).optional(),
+  customOfferName: z.string().trim().max(120).optional(),
+  insuranceMode: z.enum(["AUTO", "DUE_NOW", "PAID_PREVIOUSLY"]).optional(),
+  insurancePaidDate: z.string().datetime("Date de l'assurance invalide").refine(
+    (value) => new Date(value) <= new Date(),
+    "La date de l'assurance ne peut pas être dans le futur",
+  ).optional(),
   startDate: z.string().datetime("Date de début invalide"),
   carryOverRemainingSessions: z.boolean().optional(),
   paymentCents: z.number().int().min(0).optional(),
@@ -25,6 +32,12 @@ export const createMemberSubscriptionSchema = z.object({
 }).superRefine((value, ctx) => {
   if (Boolean(value.memberId) === Boolean(value.newMember)) {
     ctx.addIssue({ code: "custom", path: ["memberId"], message: "Choisissez un membre existant ou creez-en un nouveau" });
+  }
+  if (value.offerId && value.customPriceCents !== undefined) {
+    ctx.addIssue({ code: "custom", path: ["customPriceCents"], message: "Choisissez une offre ou un prix personnalisé" });
+  }
+  if (value.insuranceMode === "PAID_PREVIOUSLY" && !value.insurancePaidDate) {
+    ctx.addIssue({ code: "custom", path: ["insurancePaidDate"], message: "Date du paiement de l'assurance requise" });
   }
 });
 

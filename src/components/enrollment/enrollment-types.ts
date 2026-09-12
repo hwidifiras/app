@@ -54,6 +54,7 @@ export type QuoteData = {
     discountCents: number;
     insuranceFeeCents: number;
     insuranceYear: number | null;
+    insuranceCoverageDate: string | null;
     finalAmountCents: number;
     startDate: string;
     reusesExistingSubscription: boolean;
@@ -87,6 +88,8 @@ export type LineState = {
   paymentDate: string;
   paymentCents: string;
   paymentMethod: string;
+  insuranceMode: "AUTO" | "DUE_NOW" | "PAID_PREVIOUSLY";
+  insurancePaidDate: string;
 };
 
 export function lineMemberProfile(
@@ -148,5 +151,7 @@ export function newEnrollmentLine(memberId = ""): LineState {
     paymentDate: today,
     paymentCents: "",
     paymentMethod: "CASH",
+    insuranceMode: "AUTO",
+    insurancePaidDate: today,
   };
 }

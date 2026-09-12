@@ -217,7 +217,7 @@ export async function POST(request: Request) {
     throw error;
   }
 
-  const { memberId: requestedMemberId, newMember, planId, offerId, startDate, carryOverRemainingSessions, paymentCents, paymentDate, paymentMethod, groupIds = [] } =
+  const { memberId: requestedMemberId, newMember, planId, offerId, customPriceCents, customOfferName, insuranceMode, insurancePaidDate, startDate, carryOverRemainingSessions, paymentCents, paymentDate, paymentMethod, groupIds = [] } =
     parsed.data;
   const start = new Date(startDate);
 
@@ -242,6 +242,9 @@ export async function POST(request: Request) {
     });
     if (!plan) {
       return NextResponse.json({ error: "Plan introuvable" }, { status: 404 });
+    }
+    if (customPriceCents !== undefined && customPriceCents > plan.price) {
+      return NextResponse.json({ error: "Le prix personnalisé ne peut pas dépasser le prix catalogue" }, { status: 400 });
     }
     const product = await getTenantProductContext(actor.tenantId);
     const planKindEnabled = plan.planKind === "CLASS"
@@ -314,6 +317,12 @@ export async function POST(request: Request) {
     }
 
     const payCents = paymentCents ?? 0;
+    const configuredInsuranceFeeCents = insuranceMode === "DUE_NOW"
+      ? (await getClubSettings({ tenantId: actor.tenantId })).annualInsuranceFeeCents
+      : undefined;
+    const previousInsuranceDate = insuranceMode === "PAID_PREVIOUSLY" && insurancePaidDate
+      ? new Date(insurancePaidDate)
+      : null;
 
     const result = await runIdempotentSerializableTransaction(idempotencyParams, async (tx) => {
       const undoSnapshot = emptyEnrollmentUndoSnapshot();
@@ -354,7 +363,15 @@ export async function POST(request: Request) {
         ? await tx.offer.findFirst({ where: { id: offerId, tenantId: actor.tenantId } })
         : null;
       if (offerId && !transactionOffer) throw new Error("OFFER_NOT_APPLICABLE");
-      const transactionQuote = quoteSinglePlanOffer(plan, transactionOffer);
+      const transactionQuote = customPriceCents === undefined
+        ? quoteSinglePlanOffer(plan, transactionOffer)
+        : {
+            offerId: null,
+            offerName: customOfferName?.trim() || "Prix personnalisé",
+            listPriceCents: plan.price,
+            discountCents: plan.price - customPriceCents,
+            finalAmountCents: customPriceCents,
+          };
       const offerApplication = transactionOffer
         ? await tx.offerApplication.create({
             data: {
@@ -427,6 +444,9 @@ export async function POST(request: Request) {
         discountCents: transactionQuote.discountCents,
         offerApplicationId: offerApplication?.id ?? null,
         offerName: transactionQuote.offerName,
+        insuranceFeeCents: previousInsuranceDate ? 0 : configuredInsuranceFeeCents,
+        insuranceYear: previousInsuranceDate ? previousInsuranceDate.getUTCFullYear() : undefined,
+        insuranceCoverageDate: previousInsuranceDate,
         paymentCents: payCents,
         paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
         paymentMethod: paymentMethod?.trim() || "CASH",

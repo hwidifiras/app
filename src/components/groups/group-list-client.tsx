@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { CircleOff, Clock, Pencil, RotateCcw, UsersRound } from "lucide-react";
 import { formatRoomLabel } from "@/lib/group-room";
+import { groupGenderPolicyLabel, groupTypeLabel } from "@/lib/demographics";
 import { GroupDto } from "@/types/group";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FeedbackMessage } from "@/components/ui/feedback-message";
@@ -169,6 +170,7 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
           <tr>
             <Th>Nom</Th>
             <Th>Sport</Th>
+            <Th className="hidden md:table-cell">Public</Th>
             <Th className="hidden sm:table-cell">Coach par défaut</Th>
             <Th className="hidden md:table-cell">Horaire</Th>
             <Th>Statut</Th>
@@ -186,9 +188,19 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
                   <p className="text-xs text-muted-foreground">
                     {formatRoomLabel(group.room, "Salle par séance")} • Cap. {group.capacity}
                   </p>
+                  <p className="text-xs font-medium text-[var(--primary)] md:hidden">
+                    {groupTypeLabel(group.groupType)} • {groupGenderPolicyLabel(group.genderPolicy)}
+                  </p>
                 </Td>
                 <Td label="Sport" mobileDetail>
                   {group.sportName}
+                </Td>
+                <Td label="Public" mobileDetail className="hidden md:table-cell">
+                  <span className="font-medium">{groupTypeLabel(group.groupType)}</span>
+                  <span className="block text-xs text-[var(--muted-foreground)]">{groupGenderPolicyLabel(group.genderPolicy)}</span>
+                  <Link href={`/groups/${group.id}/edit#group-info`} className="mt-1 inline-block text-xs font-semibold text-[var(--primary)] hover:underline">
+                    Modifier le public
+                  </Link>
                 </Td>
                 <Td label="Coach par défaut" mobileDetail className="hidden sm:table-cell">
                   {group.coachName}
@@ -216,8 +228,8 @@ export function GroupListClient({ initialGroups }: { initialGroups: GroupDto[] }
                       href={`/groups/${group.id}/edit`}
                       prefetch={false}
                       className="btn btn-ghost btn-sm inline-flex size-9 items-center justify-center p-0"
-                      title="Modifier"
-                      aria-label="Modifier"
+                      title="Modifier le groupe, le public et l'âge"
+                      aria-label="Modifier le groupe, le public et l'âge"
                     >
                       <Pencil className="size-4" />
                     </Link>

@@ -691,6 +691,7 @@ model MemberSubscription {
   discountCents          Int                       @default(0)
   insuranceFeeCents      Int                       @default(0)
   insuranceYear          Int?
+  insuranceCoverageDate  DateTime?
   offerApplicationId     String?
   offerApplication       OfferApplication?         @relation(fields: [offerApplicationId], references: [id], onDelete: SetNull)
   offerName              String?
@@ -722,6 +723,7 @@ model MemberSubscription {
   @@index([tenantId, status, createdAt])
   @@index([tenantId, status, memberId, createdAt])
   @@index([tenantId, memberId, activationDeadline])
+  @@index([tenantId, memberId, insuranceCoverageDate])
   @@unique([tenantId, memberId, insuranceYear])
 }
 

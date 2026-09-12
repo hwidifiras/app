@@ -91,6 +91,9 @@ export async function POST(request: Request) {
         parsed.data.lines,
         parsed.data.offerId,
         parsed.data.startDate,
+        parsed.data.customTotalCents === undefined
+          ? undefined
+          : { totalCents: parsed.data.customTotalCents, name: parsed.data.customOfferName },
       );
 
       if (quote.blocked) {
@@ -229,6 +232,11 @@ export async function POST(request: Request) {
                 listPriceCents: quoteLine.listPriceCents,
                 discountCents: quoteLine.discountCents,
                 offerName: quote.offerName,
+                insuranceFeeCents: quoteLine.insuranceFeeCents,
+                insuranceYear: quoteLine.insuranceYear,
+                insuranceCoverageDate: quoteLine.insuranceCoverageDate
+                  ? new Date(quoteLine.insuranceCoverageDate)
+                  : null,
                 paymentCents: payCents,
                 paymentDate: linePaymentDate,
                 paymentMethod: line.paymentMethod?.trim() || "CASH",
@@ -389,6 +397,7 @@ export async function POST(request: Request) {
                   discountCents: l.discountCents,
                   insuranceFeeCents: l.insuranceFeeCents,
                   insuranceYear: l.insuranceYear,
+                  insuranceCoverageDate: l.insuranceCoverageDate,
                   startDate: l.startDate,
                   paymentDate: parsed.data.lines[l.lineIndex]?.paymentDate ?? null,
                 })),

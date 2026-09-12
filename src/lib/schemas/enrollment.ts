@@ -65,6 +65,15 @@ export const enrollmentLineSchema = z.object({
   paymentCents: z.number().int().min(0).optional(),
   paymentMethod: z.string().trim().optional(),
   paymentNotes: z.string().trim().optional(),
+  insuranceMode: z.enum(["AUTO", "DUE_NOW", "PAID_PREVIOUSLY"]).optional(),
+  insurancePaidDate: z.string().datetime({ message: "Date de l'assurance invalide" }).refine(
+    (value) => new Date(value) <= new Date(),
+    "La date de l'assurance ne peut pas être dans le futur",
+  ).optional(),
+}).superRefine((line, ctx) => {
+  if (line.insuranceMode === "PAID_PREVIOUSLY" && !line.insurancePaidDate) {
+    ctx.addIssue({ code: "custom", path: ["insurancePaidDate"], message: "Date du paiement de l'assurance requise" });
+  }
 });
 
 export const enrollmentQuoteSchema = z.object({
@@ -72,6 +81,12 @@ export const enrollmentQuoteSchema = z.object({
   offerId: z.string().trim().optional(),
   startDate: z.string().optional(),
   renewExisting: z.boolean().optional(),
+  customTotalCents: z.number().int().min(0).optional(),
+  customOfferName: z.string().trim().max(120).optional(),
+}).superRefine((quote, ctx) => {
+  if (quote.offerId && quote.customTotalCents !== undefined) {
+    ctx.addIssue({ code: "custom", path: ["customTotalCents"], message: "Choisissez une offre ou un prix personnalisé" });
+  }
 });
 
 export const enrollmentApplySchema = enrollmentQuoteSchema;

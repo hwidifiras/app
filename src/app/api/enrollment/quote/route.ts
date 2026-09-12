@@ -38,6 +38,9 @@ export async function POST(request: Request) {
           parsed.data.lines,
           parsed.data.offerId,
           parsed.data.startDate,
+          parsed.data.customTotalCents === undefined
+            ? undefined
+            : { totalCents: parsed.data.customTotalCents, name: parsed.data.customOfferName },
         );
         return NextResponse.json({ data: quote });
       } catch (error) {
@@ -47,6 +50,9 @@ export async function POST(request: Request) {
             { error: "Le plan ne correspond pas à la discipline du cours" },
             { status: 409 },
           );
+        }
+        if (msg === "CUSTOM_TOTAL_INVALID") {
+          return NextResponse.json({ error: "Le prix personnalisé doit être compris entre 0 et le prix catalogue" }, { status: 400 });
         }
         if (msg.includes("MEMBER_TYPE_MISMATCH")) {
           return NextResponse.json(

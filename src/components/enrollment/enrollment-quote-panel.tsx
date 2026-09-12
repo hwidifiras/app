@@ -93,6 +93,13 @@ export function EnrollmentQuotePanel({
                   <p className="font-semibold">Assurance annuelle {line.insuranceYear}</p>
                   <p>{formatMoney(line.insuranceFeeCents)} ajoutés à la première inscription, puis après douze mois complets.</p>
                 </ReceptionInfoCard>
+              ) : line.insuranceCoverageDate ? (
+                <ReceptionInfoCard variant="success" className="mt-2">
+                  <p className="font-semibold">Assurance déjà payée</p>
+                  <p>
+                    Couverture enregistrée au {new Date(line.insuranceCoverageDate).toLocaleDateString("fr-FR")} ; aucun montant ajouté aujourd&apos;hui.
+                  </p>
+                </ReceptionInfoCard>
               ) : null}
               {line.discountCents > 0 && quote.offerName ? (
                 <ReceptionInfoCard variant="success" className="mt-2">
@@ -127,6 +134,13 @@ export function EnrollmentQuotePanel({
                   />
                 </FieldControl>
               </label>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm mt-2"
+                onClick={() => onPaymentChange(line.lineIndex, "0")}
+              >
+                Aucun paiement aujourd&apos;hui — laisser en dette
+              </button>
             </li>
           );
         })}

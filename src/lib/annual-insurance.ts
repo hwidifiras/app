@@ -54,15 +54,15 @@ export async function resolveAnnualInsuranceCharge(
     where: {
       tenantId: input.tenantId,
       memberId: input.memberId,
-      insuranceFeeCents: { gt: 0 },
+      insuranceCoverageDate: { not: null },
     },
-    orderBy: { startDate: "desc" },
-    select: { startDate: true },
+    orderBy: { insuranceCoverageDate: "desc" },
+    select: { insuranceCoverageDate: true },
   });
 
   return calculateAnnualInsuranceCharge({
     configuredFeeCents: feeCents,
-    lastInsuranceStartDate: existing?.startDate ?? null,
+    lastInsuranceStartDate: existing?.insuranceCoverageDate ?? null,
     startDate: input.startDate,
   });
 }

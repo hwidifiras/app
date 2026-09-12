@@ -62,6 +62,8 @@ export function EnrollmentWizard({
   const [step, setStep] = useState(initialStep >= 2 && initialStep <= 3 ? initialStep : 1);
   const [lines, setLines] = useState<LineState[]>([newEnrollmentLine(initialMemberId)]);
   const [offerId, setOfferId] = useState(initialOfferId);
+  const [customTotal, setCustomTotal] = useState("");
+  const [customOfferName, setCustomOfferName] = useState("Prix personnalisé");
   const [members, setMembers] = useState<MemberOption[]>([]);
   const [groups, setGroups] = useState<GroupOption[]>([]);
   const [plans, setPlans] = useState<PlanOption[]>([]);
@@ -156,6 +158,10 @@ export function EnrollmentWizard({
               paymentDate: new Date(`${line.paymentDate}T00:00:00.000Z`).toISOString(),
               paymentCents: paymentCents > 0 ? paymentCents : undefined,
               paymentMethod: line.paymentMethod,
+              insuranceMode: line.insuranceMode,
+              insurancePaidDate: line.insuranceMode === "PAID_PREVIOUSLY"
+                ? new Date(`${line.insurancePaidDate}T00:00:00.000Z`).toISOString()
+                : undefined,
             };
           }
           if (line.mode === "new") {
@@ -179,14 +185,22 @@ export function EnrollmentWizard({
               paymentDate: new Date(`${line.paymentDate}T00:00:00.000Z`).toISOString(),
               paymentCents: paymentCents > 0 ? paymentCents : undefined,
               paymentMethod: line.paymentMethod,
+              insuranceMode: line.insuranceMode,
+              insurancePaidDate: line.insuranceMode === "PAID_PREVIOUSLY"
+                ? new Date(`${line.insurancePaidDate}T00:00:00.000Z`).toISOString()
+                : undefined,
             };
           }
           return null;
         })
         .filter(Boolean),
       offerId: offerId || undefined,
+      customTotalCents: customTotal.trim()
+        ? Math.max(0, Math.round(parseFloat(customTotal.replace(",", ".")) * 100))
+        : undefined,
+      customOfferName: customTotal.trim() ? customOfferName.trim() || "Prix personnalisé" : undefined,
     };
-  }, [lines, offerId]);
+  }, [lines, offerId, customTotal, customOfferName]);
 
   async function fetchQuote() {
     const firstIssue = lines
@@ -563,6 +577,7 @@ export function EnrollmentWizard({
                 onChange={(e) => {
                   resetTransientState();
                   setOfferId(e.target.value);
+                  if (e.target.value) setCustomTotal("");
                 }}
               >
                 <option value="">Aucune offre</option>
@@ -572,6 +587,34 @@ export function EnrollmentWizard({
                   </option>
                 ))}
               </select>
+              <div className="grid gap-3 rounded-lg border border-[var(--primary)]/25 bg-[var(--primary)]/5 p-3 sm:grid-cols-2">
+                <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
+                  Prix total exceptionnel (TND)
+                  <input
+                    className="field"
+                    inputMode="decimal"
+                    placeholder="Ex. 110"
+                    value={customTotal}
+                    onChange={(event) => {
+                      resetTransientState();
+                      setCustomTotal(event.target.value);
+                      if (event.target.value.trim()) setOfferId("");
+                    }}
+                  />
+                </label>
+                <label className="grid gap-1 text-xs font-medium text-[var(--muted-foreground)]">
+                  Libellé de la remise
+                  <input
+                    className="field"
+                    value={customOfferName}
+                    onChange={(event) => setCustomOfferName(event.target.value)}
+                    disabled={!customTotal.trim()}
+                  />
+                </label>
+                <p className="text-xs text-[var(--muted-foreground)] sm:col-span-2">
+                  Répartit automatiquement ce total entre les élèves. L&apos;assurance due s&apos;ajoute séparément.
+                </p>
+              </div>
               {selectedOffer && (
                 <div className="rounded-lg border border-[var(--border)] bg-[var(--muted)]/30 p-3 text-sm shadow-[var(--shadow-panel)]">
                   <p className="font-medium text-[var(--foreground)]">{selectedOffer.name}</p>

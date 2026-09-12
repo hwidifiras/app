@@ -263,6 +263,39 @@ export function EnrollmentLineEditor({
           )}
         </div>
       )}
+      <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3 sm:col-span-3">
+        <FormField label="Assurance annuelle" htmlFor={`${line.key}-insurance-mode`}>
+          <select
+            id={`${line.key}-insurance-mode`}
+            className="field"
+            value={line.insuranceMode}
+            onChange={(event) => onChange({
+              ...line,
+              insuranceMode: event.target.value as LineState["insuranceMode"],
+            })}
+          >
+            <option value="AUTO">Calcul automatique</option>
+            <option value="DUE_NOW">À facturer avec cette inscription</option>
+            <option value="PAID_PREVIOUSLY">Déjà payée auparavant</option>
+          </select>
+        </FormField>
+        {line.insuranceMode === "PAID_PREVIOUSLY" ? (
+          <FormField className="mt-3" label="Date du paiement antérieur" htmlFor={`${line.key}-insurance-date`}>
+            <input
+              id={`${line.key}-insurance-date`}
+              type="date"
+              className="field"
+              value={line.insurancePaidDate}
+              max={new Date().toISOString().slice(0, 10)}
+              onChange={(event) => onChange({ ...line, insurancePaidDate: event.target.value })}
+              required
+            />
+          </FormField>
+        ) : null}
+        <p className="mt-2 text-xs text-amber-900">
+          Si elle est facturée, un paiement initial à 0 TND la laisse dans le reste à encaisser.
+        </p>
+      </div>
       <FormField label="Groupe" htmlFor={`${line.key}-group`}>
         <select
           id={`${line.key}-group`}

@@ -74,6 +74,10 @@ export function SubscriptionAddForm({
   const [offerId, setOfferId] = useState(
     offersOptions.some((offer) => offer.id === initialOfferId) ? initialOfferId : "",
   );
+  const [customPrice, setCustomPrice] = useState("");
+  const [customOfferName, setCustomOfferName] = useState("Prix personnalisé");
+  const [insuranceMode, setInsuranceMode] = useState<"AUTO" | "DUE_NOW" | "PAID_PREVIOUSLY">("AUTO");
+  const [insurancePaidDate, setInsurancePaidDate] = useState(initialStartDate);
   const [startDate, setStartDate] = useState(initialStartDate);
   const [endDate, setEndDate] = useState(() => {
     if (!initialPlan || initialPlan.activationPolicy === "FIRST_USE") return "";
@@ -97,21 +101,39 @@ export function SubscriptionAddForm({
 
   const selectedPlan = plansOptions.find((p) => p.id === planId);
   const selectedOffer = offersOptions.find((offer) => offer.id === offerId) ?? null;
-  const saleQuote = selectedPlan ? quoteSinglePlanOffer(selectedPlan, selectedOffer) : null;
+  const catalogueQuote = selectedPlan ? quoteSinglePlanOffer(selectedPlan, selectedOffer) : null;
+  const customPriceCents = customPrice.trim()
+    ? Math.max(0, Math.round(parseFloat(customPrice.replace(",", ".")) * 100))
+    : null;
+  const saleQuote = selectedPlan && customPriceCents !== null
+    ? {
+        offerId: null,
+        offerName: customOfferName.trim() || "Prix personnalisé",
+        listPriceCents: selectedPlan.price,
+        discountCents: Math.max(0, selectedPlan.price - customPriceCents),
+        finalAmountCents: customPriceCents,
+      }
+    : catalogueQuote;
   const selectedMember = membersOptions.find((member) => member.id === memberId);
   const selectedInsuranceYear = startDate ? new Date(`${startDate}T00:00:00.000Z`).getUTCFullYear() : new Date().getUTCFullYear();
-  const insuranceFeeCents = calculateAnnualInsuranceCharge({
+  const automaticInsuranceFeeCents = calculateAnnualInsuranceCharge({
     configuredFeeCents: annualInsuranceFeeCents,
     lastInsuranceStartDate: memberMode === "NEW" || !selectedMember?.lastInsuranceStartDate
       ? null
       : new Date(selectedMember.lastInsuranceStartDate),
     startDate: startDate ? new Date(`${startDate}T00:00:00.000Z`) : new Date(),
   }).feeCents;
+  const insuranceFeeCents = insuranceMode === "PAID_PREVIOUSLY"
+    ? 0
+    : insuranceMode === "DUE_NOW"
+      ? annualInsuranceFeeCents
+      : automaticInsuranceFeeCents;
   const finalDueCents = (saleQuote?.finalAmountCents ?? 0) + insuranceFeeCents;
   const paymentInput = paymentCents ?? (saleQuote ? (finalDueCents / 100).toFixed(2) : "");
   const paymentNum = Math.round(parseFloat(paymentInput.replace(",", ".")) * 100) || 0;
   const canCarryOver = selectedPlan?.planKind === "CLASS" && preview?.status === "ACTIVE" && preview.remainingSessions > 0 && new Date(startDate) <= new Date();
   const paymentTooHigh = saleQuote ? paymentNum > finalDueCents : false;
+  const customPriceTooHigh = selectedPlan && customPriceCents !== null ? customPriceCents > selectedPlan.price : false;
   const renewalBalance = saleQuote ? Math.max(0, finalDueCents - paymentNum) : 0;
 
   useEffect(() => {
@@ -231,6 +253,10 @@ export function SubscriptionAddForm({
       setMessage("Le paiement ne peut pas dépasser le montant de la formule.");
       return;
     }
+    if (customPriceTooHigh) {
+      setMessage("Le prix personnalisé ne peut pas dépasser le prix catalogue.");
+      return;
+    }
 
     setLoading(true);
     setMessage(null);
@@ -245,6 +271,12 @@ export function SubscriptionAddForm({
         } : undefined,
       planId,
       offerId: offerId || undefined,
+      customPriceCents: customPriceCents ?? undefined,
+      customOfferName: customPriceCents !== null ? customOfferName.trim() || "Prix personnalisé" : undefined,
+      insuranceMode,
+      insurancePaidDate: insuranceMode === "PAID_PREVIOUSLY"
+        ? new Date(`${insurancePaidDate}T00:00:00.000Z`).toISOString()
+        : undefined,
       startDate: new Date(startDate).toISOString(),
       carryOverRemainingSessions: carryOverRemainingSessions || undefined,
       paymentCents: paymentNum > 0 ? paymentNum : undefined,
@@ -333,6 +365,7 @@ export function SubscriptionAddForm({
 
   function handleOfferChange(nextOfferId: string) {
     setOfferId(nextOfferId);
+    if (nextOfferId) setCustomPrice("");
     setPaymentCents(null);
   }
 
@@ -382,19 +415,36 @@ export function SubscriptionAddForm({
             </FormField> : <AccessMemberFields value={newMember} onChange={setNewMember} />}
 
             {annualInsuranceFeeCents > 0 ? (
-              <div className={`mt-4 rounded-lg border px-3 py-3 text-sm ${insuranceFeeCents > 0 ? "border-amber-200 bg-amber-50 text-amber-950" : "border-emerald-200 bg-emerald-50 text-emerald-900"}`}>
+              <div className="mt-4 space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+                <FormField label="Traitement de l'assurance">
+                  <select className="field" value={insuranceMode} onChange={(event) => { setInsuranceMode(event.target.value as typeof insuranceMode); setPaymentCents(null); }}>
+                    <option value="AUTO">Calcul automatique</option>
+                    <option value="DUE_NOW">Facturer {formatMoney(annualInsuranceFeeCents)} maintenant</option>
+                    <option value="PAID_PREVIOUSLY">Déjà payée à une date antérieure</option>
+                  </select>
+                </FormField>
+                {insuranceMode === "PAID_PREVIOUSLY" ? (
+                  <FormField label="Date du paiement antérieur">
+                    <input type="date" className="field" value={insurancePaidDate} max={initialStartDate} onChange={(event) => setInsurancePaidDate(event.target.value)} required />
+                  </FormField>
+                ) : null}
                 <p className="font-semibold">
-                  {insuranceFeeCents > 0
+                  {insuranceMode === "PAID_PREVIOUSLY"
+                    ? "Assurance déjà payée : 0 TND ajouté aujourd'hui"
+                    : insuranceFeeCents > 0
                     ? `Assurance annuelle à ajouter : ${formatMoney(insuranceFeeCents)}`
                     : "Assurance annuelle déjà couverte"}
                 </p>
                 <p className="mt-1 text-xs">
-                  {insuranceFeeCents > 0
+                  {insuranceMode === "PAID_PREVIOUSLY"
+                    ? "La date saisie démarre la période de couverture de douze mois."
+                    : insuranceFeeCents > 0
                     ? "Facturée avec ce premier abonnement, puis à nouveau après douze mois complets."
                     : selectedMember?.lastInsuranceStartDate
                       ? `Valable jusqu'au ${annualInsuranceValidUntil(new Date(selectedMember.lastInsuranceStartDate)).toLocaleDateString("fr-FR")}.`
                       : "Aucun frais d'assurance supplémentaire sur cette période."}
                 </p>
+                {insuranceFeeCents > 0 ? <p className="text-xs font-medium">Saisissez 0 TND au paiement initial pour conserver ce montant en dette.</p> : null}
               </div>
             ) : null}
 
@@ -456,6 +506,28 @@ export function SubscriptionAddForm({
                 ) : null}
               </div>
             ) : null}
+
+            <div className="mt-4 grid gap-3 rounded-lg border border-[var(--primary)]/25 bg-[var(--primary)]/5 p-3 sm:grid-cols-2">
+              <FormField label="Prix exceptionnel (TND)" hint="Optionnel, pour cette inscription uniquement">
+                <FieldControl suffix={MONEY_INPUT_SUFFIX}>
+                  <input
+                    className={`field pr-10 ${customPriceTooHigh ? "border-[var(--danger)]" : ""}`}
+                    inputMode="decimal"
+                    placeholder={selectedPlan ? (selectedPlan.price / 100).toFixed(2) : "0,00"}
+                    value={customPrice}
+                    onChange={(event) => {
+                      setCustomPrice(event.target.value);
+                      if (event.target.value.trim()) setOfferId("");
+                      setPaymentCents(null);
+                    }}
+                  />
+                </FieldControl>
+              </FormField>
+              <FormField label="Motif / nom de la remise">
+                <input className="field" value={customOfferName} onChange={(event) => setCustomOfferName(event.target.value)} disabled={!customPrice.trim()} />
+              </FormField>
+              {customPriceTooHigh ? <p className="text-xs text-[var(--danger)] sm:col-span-2">Le prix exceptionnel doit rester inférieur ou égal au catalogue.</p> : null}
+            </div>
 
             {selectedPlan?.planKind === "MIXED" ? (
               <div className="mt-4 space-y-3 border-t border-[var(--border)] pt-4">
@@ -526,6 +598,7 @@ export function SubscriptionAddForm({
                 {selectedPlan && (
                   <p className="mt-1 text-xs text-[var(--muted-foreground)]">Maximum {formatMoney(finalDueCents)}</p>
                 )}
+                <button type="button" className="btn btn-ghost btn-sm mt-2" onClick={() => setPaymentCents("0")}>Laisser tout en dette</button>
               </FormField>
               <FormField label="Méthode">
                 <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="field">
@@ -590,6 +663,12 @@ export function SubscriptionAddForm({
                   <dd className="text-right font-semibold">+ {formatMoney(insuranceFeeCents)}</dd>
                 </div>
               ) : null}
+              {saleQuote && insuranceMode === "PAID_PREVIOUSLY" ? (
+                <div className="flex items-start justify-between gap-3 py-2.5 text-[var(--success)]">
+                  <dt>Assurance déjà payée</dt>
+                  <dd className="text-right font-semibold">{new Date(`${insurancePaidDate}T00:00:00`).toLocaleDateString("fr-FR")}</dd>
+                </div>
+              ) : null}
               <div className="flex items-start justify-between gap-3 py-2.5">
                 <dt className="font-semibold text-[var(--foreground)]">Prix final</dt>
                 <dd className="text-right font-bold text-[var(--foreground)]">{saleQuote ? formatMoney(finalDueCents) : "—"}</dd>
@@ -624,7 +703,7 @@ export function SubscriptionAddForm({
         <button type="button" onClick={() => router.push("/subscriptions")} className="btn btn-ghost btn-block-mobile">
           Annuler
         </button>
-        <button type="submit" disabled={loading || paymentTooHigh} className="btn btn-primary btn-block-mobile">
+        <button type="submit" disabled={loading || paymentTooHigh || Boolean(customPriceTooHigh)} className="btn btn-primary btn-block-mobile">
           {loading ? "Enregistrement..." : memberMode === "NEW" ? "Confirmer l'inscription" : "Renouveler"}
         </button>
       </FormActions>

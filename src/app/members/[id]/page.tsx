@@ -272,6 +272,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
     amount: subscription.amount,
     insuranceFeeCents: subscription.insuranceFeeCents,
     insuranceYear: subscription.insuranceYear,
+    insuranceCoverageDate: subscription.insuranceCoverageDate,
     paidCents: subscription.payments.reduce((sum, payment) => sum + payment.amount, 0),
     remainingSessions: subscription.remainingSessions,
     totalSessions: subscription.plan.totalSessions,

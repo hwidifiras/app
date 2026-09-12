@@ -32,6 +32,7 @@ export type SubscriptionFromPlanInput = {
   replacesSubscriptionId?: string | null;
   insuranceFeeCents?: number;
   insuranceYear?: number | null;
+  insuranceCoverageDate?: Date | null;
 };
 
 export function buildSubscriptionData(input: SubscriptionFromPlanInput & { renewsSubscriptionId?: string | null }) {
@@ -49,6 +50,7 @@ export function buildSubscriptionData(input: SubscriptionFromPlanInput & { renew
     discountCents: input.discountCents ?? 0,
     insuranceFeeCents: input.insuranceFeeCents ?? 0,
     insuranceYear: input.insuranceYear ?? null,
+    insuranceCoverageDate: input.insuranceCoverageDate ?? null,
     offerApplicationId: input.offerApplicationId ?? null,
     offerName: input.offerName ?? null,
     remainingSessions: input.plan.planKind === "CLASS" ? input.plan.totalSessions + carryOver : 0,
@@ -199,11 +201,16 @@ export async function createSubscriptionFromPlan(
     !queued && options?.carryOverRemainingSessions && predecessor && predecessor.remainingSessions > 0
       ? predecessor.remainingSessions
       : 0;
-  const insurance = await resolveAnnualInsuranceCharge(tx, {
-    tenantId,
-    memberId: input.memberId,
-    startDate: input.startDate,
-  });
+  const insurance = input.insuranceFeeCents === undefined
+    ? await resolveAnnualInsuranceCharge(tx, {
+        tenantId,
+        memberId: input.memberId,
+        startDate: input.startDate,
+      })
+    : {
+        feeCents: input.insuranceFeeCents,
+        insuranceYear: input.insuranceYear ?? null,
+      };
   const planAmountCents = input.amountCents ?? input.plan.price;
   const subscription = await tx.memberSubscription.create({
     data: buildSubscriptionData({
@@ -211,6 +218,7 @@ export async function createSubscriptionFromPlan(
       amountCents: planAmountCents + insurance.feeCents,
       insuranceFeeCents: insurance.feeCents,
       insuranceYear: insurance.insuranceYear,
+      insuranceCoverageDate: input.insuranceCoverageDate ?? (insurance.feeCents > 0 ? input.startDate : null),
       carryOverSessions: carryOver,
       renewsSubscriptionId: predecessor?.id ?? null,
     }),
