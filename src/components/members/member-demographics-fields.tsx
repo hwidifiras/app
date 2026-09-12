@@ -81,6 +81,7 @@ export function MemberDemographicsFields({
           <input
             type="date"
             value={birthDate}
+            max={new Date().toISOString().slice(0, 10)}
             onChange={(event) => onBirthDateChange(event.target.value)}
             className="field"
             required={birthDateRequired}

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { SubscriptionAddForm } from "@/components/subscriptions/subscription-add-form";
 import { getAuthUser } from "@/lib/request-user";
+import { getClubSettings } from "@/lib/club-settings";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -32,16 +33,26 @@ export default async function NewSubscriptionPage({
   }
 
   let hasError = false;
-  let membersOptions: Array<{ id: string; firstName: string; lastName: string; phone: string }> = [];
+  let membersOptions: Array<{ id: string; firstName: string; lastName: string; phone: string; insuredYears: number[] }> = [];
   let plansOptions: Array<{ id: string; name: string; planKind: "CLASS" | "GYM" | "MIXED"; price: number; totalSessions: number; validityDays: number; activationPolicy: "FIXED_DATE" | "FIRST_USE"; activationWindowDays: number; freezeAllowanceCount: number; freezeMaxTotalDays: number; entitlements: Array<{ type: "CLASS_SESSIONS" | "GYM_ACCESS"; grantedUnits: number | null; gymAccessMode: "UNLIMITED" | "VISIT_QUOTA" | null; sport: { id: string; name: string } | null }> }> = [];
   let groupsOptions: Array<{ id: string; name: string; sportId: string; sportName: string }> = [];
+  let annualInsuranceFeeCents = 0;
 
   try {
-    const [members, plans, groups] = await Promise.all([
+    const [members, plans, groups, settings] = await Promise.all([
       prisma.member.findMany({
         where: { tenantId: authUser.tenantId, status: "ACTIVE" },
         orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
-        select: { id: true, firstName: true, lastName: true, phone: true },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+          subscriptions: {
+            where: { insuranceYear: { not: null } },
+            select: { insuranceYear: true },
+          },
+        },
       }),
       prisma.subscriptionPlan.findMany({
         where: { tenantId: authUser.tenantId, isActive: true },
@@ -53,11 +64,21 @@ export default async function NewSubscriptionPage({
         orderBy: { name: "asc" },
         select: { id: true, name: true, sportId: true, sport: { select: { name: true } } },
       }),
+      getClubSettings({ tenantId: authUser.tenantId }),
     ]);
 
-    membersOptions = members;
+    membersOptions = members.map((member) => ({
+      id: member.id,
+      firstName: member.firstName,
+      lastName: member.lastName,
+      phone: member.phone,
+      insuredYears: member.subscriptions
+        .map((subscription) => subscription.insuranceYear)
+        .filter((year): year is number => year !== null),
+    }));
     plansOptions = plans;
     groupsOptions = groups.map((group) => ({ id: group.id, name: group.name, sportId: group.sportId, sportName: group.sport.name }));
+    annualInsuranceFeeCents = settings.annualInsuranceFeeCents;
   } catch {
     hasError = true;
   }
@@ -101,6 +122,7 @@ export default async function NewSubscriptionPage({
         initialMemberId={membersOptions.some((member) => member.id === requestedMemberId) ? requestedMemberId : ""}
         initialPlanKind={requestedKind === "GYM" || requestedKind === "MIXED" ? requestedKind : undefined}
         groupsOptions={groupsOptions}
+        annualInsuranceFeeCents={annualInsuranceFeeCents}
       />
     </main>
   );

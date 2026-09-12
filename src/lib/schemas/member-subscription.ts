@@ -12,6 +12,10 @@ export const createMemberSubscriptionSchema = z.object({
   startDate: z.string().datetime("Date de début invalide"),
   carryOverRemainingSessions: z.boolean().optional(),
   paymentCents: z.number().int().min(0).optional(),
+  paymentDate: z.string().datetime("Date réelle du paiement invalide").refine(
+    (value) => new Date(value) <= new Date(),
+    "La date du paiement ne peut pas être dans le futur",
+  ).optional(),
   paymentMethod: z.string().trim().max(40).optional(),
   groupIds: z
     .array(z.string().trim().min(1))

@@ -52,7 +52,10 @@ export type QuoteData = {
     sportName: string;
     listPriceCents: number;
     discountCents: number;
+    insuranceFeeCents: number;
+    insuranceYear: number | null;
     finalAmountCents: number;
+    startDate: string;
     reusesExistingSubscription: boolean;
     warnings: string[];
     blocked: boolean;
@@ -60,6 +63,7 @@ export type QuoteData = {
   offerName: string | null;
   totalFinalCents: number;
   totalDiscountCents: number;
+  totalInsuranceCents: number;
   blocked: boolean;
   warnings: string[];
 };
@@ -71,6 +75,7 @@ export type LineState = {
   newFirstName: string;
   newLastName: string;
   newPhone: string;
+  newBirthDate: string;
   memberType: MemberType;
   gender: Gender;
   parentName: string;
@@ -78,6 +83,8 @@ export type LineState = {
   parentAddress: string;
   groupId: string;
   planId: string;
+  startDate: string;
+  paymentDate: string;
   paymentCents: string;
   paymentMethod: string;
 };
@@ -121,6 +128,7 @@ export function isGroupCompatibleWithLine(line: LineState, members: MemberOption
 }
 
 export function newEnrollmentLine(memberId = ""): LineState {
+  const today = new Date().toISOString().slice(0, 10);
   return {
     key: crypto.randomUUID(),
     mode: "existing",
@@ -128,6 +136,7 @@ export function newEnrollmentLine(memberId = ""): LineState {
     newFirstName: "",
     newLastName: "",
     newPhone: "",
+    newBirthDate: "",
     memberType: "NOT_SPECIFIED",
     gender: "NOT_SPECIFIED",
     parentName: "",
@@ -135,6 +144,8 @@ export function newEnrollmentLine(memberId = ""): LineState {
     parentAddress: "",
     groupId: "",
     planId: "",
+    startDate: today,
+    paymentDate: today,
     paymentCents: "",
     paymentMethod: "CASH",
   };

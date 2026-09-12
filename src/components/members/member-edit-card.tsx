@@ -63,7 +63,7 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [firstName, setFirstName] = useState(member.firstName);
   const [lastName, setLastName] = useState(member.lastName);
-  const [phone, setPhone] = useState(member.phone);
+  const [phone, setPhone] = useState(member.memberType === "KID" && member.phone.includes("#") ? "" : member.phone);
   const [email, setEmail] = useState(member.email ?? "");
   const [memberType, setMemberType] = useState(member.memberType);
   const [gender, setGender] = useState(member.gender);
@@ -86,7 +86,7 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
   function resetForm() {
     setFirstName(member.firstName);
     setLastName(member.lastName);
-    setPhone(member.phone);
+    setPhone(member.memberType === "KID" && member.phone.includes("#") ? "" : member.phone);
     setEmail(member.email ?? "");
     setMemberType(member.memberType);
     setGender(member.gender);
@@ -166,8 +166,10 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs font-semibold text-[var(--foreground)]">Téléphone *</label>
-                <input value={phone} onChange={(e) => setPhone(e.target.value)} className="field" required />
+                <label className="mb-1 block text-xs font-semibold text-[var(--foreground)]">
+                  {memberType === "KID" ? "Téléphone de l'enfant (optionnel)" : "Téléphone *"}
+                </label>
+                <input value={phone} onChange={(e) => setPhone(e.target.value)} className="field" required={memberType !== "KID"} />
               </div>
               <div>
                 <label className="mb-1 block text-xs font-semibold text-[var(--foreground)]">Email</label>
@@ -181,6 +183,7 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
               onMemberTypeChange={setMemberType}
               onGenderChange={setGender}
               onBirthDateChange={setBirthDate}
+              birthDateRequired
             />
             <div>
               <label className="mb-1 block text-xs font-semibold text-[var(--foreground)]">Adresse</label>
@@ -241,7 +244,9 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
           </div>
           <div className="flex min-w-0 justify-between gap-3">
             <dt className="text-[var(--muted-foreground)]">Téléphone</dt>
-            <dd className="min-w-0 break-words text-right font-medium">{member.phone}</dd>
+            <dd className="min-w-0 break-words text-right font-medium">
+              {member.memberType === "KID" && member.phone.includes("#") ? "-" : member.phone}
+            </dd>
           </div>
           <div className="flex min-w-0 justify-between gap-3">
             <dt className="text-[var(--muted-foreground)]">Type</dt>

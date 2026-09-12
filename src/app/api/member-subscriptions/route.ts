@@ -217,7 +217,7 @@ export async function POST(request: Request) {
     throw error;
   }
 
-  const { memberId: requestedMemberId, newMember, planId, offerId, startDate, carryOverRemainingSessions, paymentCents, paymentMethod, groupIds = [] } =
+  const { memberId: requestedMemberId, newMember, planId, offerId, startDate, carryOverRemainingSessions, paymentCents, paymentDate, paymentMethod, groupIds = [] } =
     parsed.data;
   const start = new Date(startDate);
 
@@ -258,9 +258,8 @@ export async function POST(request: Request) {
     if (offerId && !selectedOffer) {
       return NextResponse.json({ error: "Offre introuvable" }, { status: 404 });
     }
-    let saleQuote;
     try {
-      saleQuote = quoteSinglePlanOffer(plan, selectedOffer);
+      quoteSinglePlanOffer(plan, selectedOffer);
     } catch (error) {
       const message = error instanceof Error ? subscriptionCreationErrors[error.message] : null;
       return NextResponse.json({ error: message ?? "Offre invalide" }, { status: 409 });
@@ -315,9 +314,6 @@ export async function POST(request: Request) {
     }
 
     const payCents = paymentCents ?? 0;
-    if (payCents > saleQuote.finalAmountCents) {
-      return NextResponse.json({ error: "Dépassement du montant dû pour cette formule" }, { status: 409 });
-    }
 
     const result = await runIdempotentSerializableTransaction(idempotencyParams, async (tx) => {
       const undoSnapshot = emptyEnrollmentUndoSnapshot();
@@ -359,7 +355,6 @@ export async function POST(request: Request) {
         : null;
       if (offerId && !transactionOffer) throw new Error("OFFER_NOT_APPLICABLE");
       const transactionQuote = quoteSinglePlanOffer(plan, transactionOffer);
-      if (payCents > transactionQuote.finalAmountCents) throw new Error("OVERPAY");
       const offerApplication = transactionOffer
         ? await tx.offerApplication.create({
             data: {
@@ -433,6 +428,7 @@ export async function POST(request: Request) {
         offerApplicationId: offerApplication?.id ?? null,
         offerName: transactionQuote.offerName,
         paymentCents: payCents,
+        paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
         paymentMethod: paymentMethod?.trim() || "CASH",
         carryOverRemainingSessions: carryOverRemainingSessions === true,
       });

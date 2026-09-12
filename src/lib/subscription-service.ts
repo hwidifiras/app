@@ -1,5 +1,6 @@
 import type { Prisma, SubscriptionPlan } from "@prisma/client";
 
+import { resolveAnnualInsuranceCharge } from "@/lib/annual-insurance";
 import { computeEndDate } from "@/lib/membership-rules";
 import { createSubscriptionEntitlementSnapshots } from "@/lib/subscription-entitlements";
 
@@ -29,6 +30,8 @@ export type SubscriptionFromPlanInput = {
   offerName?: string | null;
   carryOverSessions?: number;
   replacesSubscriptionId?: string | null;
+  insuranceFeeCents?: number;
+  insuranceYear?: number | null;
 };
 
 export function buildSubscriptionData(input: SubscriptionFromPlanInput & { renewsSubscriptionId?: string | null }) {
@@ -44,6 +47,8 @@ export function buildSubscriptionData(input: SubscriptionFromPlanInput & { renew
     amount: input.amountCents ?? input.plan.price,
     listPriceCents: input.listPriceCents ?? input.plan.price,
     discountCents: input.discountCents ?? 0,
+    insuranceFeeCents: input.insuranceFeeCents ?? 0,
+    insuranceYear: input.insuranceYear ?? null,
     offerApplicationId: input.offerApplicationId ?? null,
     offerName: input.offerName ?? null,
     remainingSessions: input.plan.planKind === "CLASS" ? input.plan.totalSessions + carryOver : 0,
@@ -194,9 +199,18 @@ export async function createSubscriptionFromPlan(
     !queued && options?.carryOverRemainingSessions && predecessor && predecessor.remainingSessions > 0
       ? predecessor.remainingSessions
       : 0;
+  const insurance = await resolveAnnualInsuranceCharge(tx, {
+    tenantId,
+    memberId: input.memberId,
+    startDate: input.startDate,
+  });
+  const planAmountCents = input.amountCents ?? input.plan.price;
   const subscription = await tx.memberSubscription.create({
     data: buildSubscriptionData({
       ...input,
+      amountCents: planAmountCents + insurance.feeCents,
+      insuranceFeeCents: insurance.feeCents,
+      insuranceYear: insurance.insuranceYear,
       carryOverSessions: carryOver,
       renewsSubscriptionId: predecessor?.id ?? null,
     }),

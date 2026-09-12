@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { resolveAnnualInsuranceCharge } from "@/lib/annual-insurance";
 import { createSubscriptionEntitlementSnapshots } from "@/lib/subscription-entitlements";
 import { createMemberSchema, updateMemberSchema } from "@/lib/schemas/member";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
@@ -238,7 +239,6 @@ export async function POST(request: Request) {
       if (!compatibility.ok) throw new Error(compatibility.code);
       if (plan.sportId && plan.sportId !== group.sportId) throw new Error("PLAN_SPORT_MISMATCH");
       if (group._count.members >= group.capacity) throw new Error("GROUP_CAPACITY_REACHED");
-      if (paymentCents > plan.price) throw new Error("PAYMENT_EXCEEDS_DUE");
 
       const memberPhone = resolveMemberPhone({
         memberType: parsed.data.memberType,
@@ -283,6 +283,13 @@ export async function POST(request: Request) {
       const now = new Date();
       const endDate = new Date(now);
       endDate.setDate(endDate.getDate() + plan.validityDays);
+      const insurance = await resolveAnnualInsuranceCharge(tx, {
+        tenantId: actor.tenantId,
+        memberId: created.id,
+        startDate: now,
+      });
+      const subscriptionAmount = plan.price + insurance.feeCents;
+      if (paymentCents > subscriptionAmount) throw new Error("PAYMENT_EXCEEDS_DUE");
 
       const subscription = await tx.memberSubscription.create({
         data: {
@@ -292,7 +299,10 @@ export async function POST(request: Request) {
           sportId: plan.sportId,
           startDate: now,
           endDate,
-          amount: plan.price,
+          amount: subscriptionAmount,
+          listPriceCents: plan.price,
+          insuranceFeeCents: insurance.feeCents,
+          insuranceYear: insurance.insuranceYear,
           remainingSessions: plan.totalSessions,
           status: "ACTIVE",
         },
@@ -344,7 +354,9 @@ export async function POST(request: Request) {
             memberId: created.id,
             planId: planIdValue,
             groupId: groupIdValue,
-            amount: plan.price,
+            amount: subscriptionAmount,
+            insuranceFeeCents: insurance.feeCents,
+            insuranceYear: insurance.insuranceYear,
             startDate: now.toISOString(),
             source: "member-inscription",
           }),

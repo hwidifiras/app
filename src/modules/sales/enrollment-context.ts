@@ -59,6 +59,10 @@ export async function loadEnrollmentContext({
         phone: true,
         memberType: true,
         gender: true,
+        subscriptions: {
+          where: { insuranceYear: { not: null } },
+          select: { insuranceYear: true },
+        },
       },
     }),
     includeGroups
@@ -127,7 +131,12 @@ export async function loadEnrollmentContext({
   return {
     type,
     profile: product.profile,
-    members,
+    members: members.map(({ subscriptions, ...member }) => ({
+      ...member,
+      insuredYears: subscriptions.flatMap((subscription) =>
+        subscription.insuranceYear === null ? [] : [subscription.insuranceYear],
+      ),
+    })),
     groups,
     plans,
     offers: offers.map((offer) => ({

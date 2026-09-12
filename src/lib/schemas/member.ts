@@ -15,7 +15,10 @@ export const createMemberSchema = z
       .or(z.literal("")),
     memberType: z.enum(["ADULT", "KID", "NOT_SPECIFIED"]),
     gender: genderEnum.default("NOT_SPECIFIED"),
-    birthDate: z.string().datetime({ message: "Date de naissance invalide" }),
+    birthDate: z.string().datetime({ message: "Date de naissance invalide" }).refine(
+      (value) => new Date(value) <= new Date(),
+      "La date de naissance ne peut pas être dans le futur",
+    ),
     address: z.string().trim().max(200).optional(),
     parentName: z.string().trim().max(120).optional(),
     parentPhone: z.string().trim().max(20).optional(),
@@ -73,7 +76,6 @@ export const updateMemberSchema = z
     phone: z
       .string()
       .trim()
-      .min(6, "Téléphone invalide")
       .max(20, "Téléphone invalide")
       .optional(),
     email: z
@@ -81,7 +83,10 @@ export const updateMemberSchema = z
       .optional(),
     memberType: z.enum(["ADULT", "KID", "NOT_SPECIFIED"]).optional(),
     gender: genderEnum.optional(),
-    birthDate: z.string().datetime({ message: "Date de naissance invalide" }).optional(),
+    birthDate: z.string().datetime({ message: "Date de naissance invalide" }).refine(
+      (value) => new Date(value) <= new Date(),
+      "La date de naissance ne peut pas être dans le futur",
+    ).optional(),
     address: z.string().trim().max(200).optional(),
     parentName: z.string().trim().max(120).optional(),
     parentPhone: z.string().trim().max(20).optional(),

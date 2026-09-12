@@ -37,6 +37,7 @@ export type ClubSettingsFormData = {
   workingDays: ClubDay[];
   maxStaffDiscountPercent: number;
   debtAlertThresholdCents: number;
+  annualInsuranceFeeCents: number;
   dashboardDefaultMode: DashboardDefaultMode;
   dashboardShowTodaySessions: boolean;
   dashboardShowCashToday: boolean;
@@ -110,6 +111,9 @@ export function ClubSettingsForm({
     String(initial.maxStaffDiscountPercent),
   );
   const [debtThresholdAmount, setDebtThresholdAmount] = useState(centsToMoneyInput(initial.debtAlertThresholdCents));
+  const [annualInsuranceAmount, setAnnualInsuranceAmount] = useState(
+    centsToMoneyInput(initial.annualInsuranceFeeCents),
+  );
   const [dashboardDefaultMode, setDashboardDefaultMode] = useState(
     normalizeDashboardDefaultMode(initial.dashboardDefaultMode),
   );
@@ -148,6 +152,12 @@ export function ClubSettingsForm({
     const debtAlertThresholdCents = moneyInputToCents(debtThresholdAmount);
     if (Number.isNaN(debtAlertThresholdCents)) {
       setMessage("Le seuil de dette doit être un montant positif, par exemple 15 TND");
+      return;
+    }
+
+    const annualInsuranceFeeCents = moneyInputToCents(annualInsuranceAmount);
+    if (Number.isNaN(annualInsuranceFeeCents)) {
+      setMessage("Le prix de l'assurance annuelle doit être un montant positif");
       return;
     }
 
@@ -193,6 +203,7 @@ export function ClubSettingsForm({
         workingDays,
         maxStaffDiscountPercent: discount,
         debtAlertThresholdCents,
+        annualInsuranceFeeCents,
         dashboardDefaultMode,
         dashboardShowTodaySessions,
         dashboardShowCashToday,
@@ -251,6 +262,7 @@ export function ClubSettingsForm({
     setWorkingDays(json.data.workingDays?.length ? json.data.workingDays : [...DEFAULT_WORKING_DAYS]);
     setMaxStaffDiscountPercent(String(json.data.maxStaffDiscountPercent));
     setDebtThresholdAmount(centsToMoneyInput(json.data.debtAlertThresholdCents));
+    setAnnualInsuranceAmount(centsToMoneyInput(json.data.annualInsuranceFeeCents));
     setDashboardDefaultMode(normalizeDashboardDefaultMode(json.data.dashboardDefaultMode));
     setDashboardShowTodaySessions(json.data.dashboardShowTodaySessions !== false);
     setDashboardShowCashToday(json.data.dashboardShowCashToday !== false);
@@ -345,6 +357,7 @@ export function ClubSettingsForm({
           ...(gymModuleEnabled ? [{ href: "#club-gym", label: "Salle" }] : []),
           ...(classModuleEnabled ? [{ href: "#club-planning", label: "Planning" }] : []),
           { href: "#club-alerts", label: "Alertes" },
+          { href: "#club-billing", label: "Facturation" },
           { href: "#club-dashboard", label: "Dashboard" },
           { href: "#club-receipts", label: "Reçus" },
         ]}
@@ -424,6 +437,31 @@ export function ClubSettingsForm({
         onDebtThresholdAmountChange={setDebtThresholdAmount}
         onMaxStaffDiscountPercentChange={setMaxStaffDiscountPercent}
       />
+
+      <FormSection
+        id="club-billing"
+        title="Facturation des élèves"
+        description="Définissez les frais ajoutés automatiquement lors d'une inscription."
+      >
+        <div className="max-w-md">
+          <label htmlFor="annual-insurance-fee" className="mb-1 block text-xs font-semibold text-[var(--foreground)]">
+            Assurance annuelle (TND)
+          </label>
+          <input
+            id="annual-insurance-fee"
+            type="text"
+            inputMode="decimal"
+            className="field"
+            value={annualInsuranceAmount}
+            onChange={(event) => setAnnualInsuranceAmount(event.target.value)}
+            placeholder="Ex: 30,00"
+          />
+          <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+            Ajoutée une seule fois par élève et par année civile, sur son premier nouvel abonnement de l&apos;année.
+            Saisissez 0 pour désactiver cette facturation.
+          </p>
+        </div>
+      </FormSection>
 
       <ClubDashboardSection
         classModuleEnabled={classModuleEnabled}

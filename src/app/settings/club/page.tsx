@@ -108,6 +108,7 @@ export default async function SettingsClubPage() {
             workingDays: settings.workingDays,
             maxStaffDiscountPercent: settings.maxStaffDiscountPercent,
             debtAlertThresholdCents: settings.debtAlertThresholdCents,
+            annualInsuranceFeeCents: settings.annualInsuranceFeeCents,
             dashboardDefaultMode: settings.dashboardDefaultMode,
             dashboardShowTodaySessions: settings.dashboardShowTodaySessions,
             dashboardShowCashToday: settings.dashboardShowCashToday,

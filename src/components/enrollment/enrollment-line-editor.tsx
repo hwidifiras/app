@@ -126,13 +126,29 @@ export function EnrollmentLineEditor({
               onChange={(event) => onChange({ ...line, newLastName: event.target.value })}
             />
           </FormField>
-          <FormField label="Téléphone" htmlFor={`${line.key}-phone`}>
+          <FormField
+            label={line.memberType === "KID" ? "Téléphone de l'enfant" : "Téléphone"}
+            htmlFor={`${line.key}-phone`}
+            hint={line.memberType === "KID" ? "Optionnel" : undefined}
+          >
             <input
               id={`${line.key}-phone`}
               className="field"
               inputMode="tel"
               value={line.newPhone}
               onChange={(event) => onChange({ ...line, newPhone: event.target.value })}
+              required={line.memberType !== "KID"}
+            />
+          </FormField>
+          <FormField label="Date de naissance" htmlFor={`${line.key}-birth-date`}>
+            <input
+              id={`${line.key}-birth-date`}
+              type="date"
+              className="field"
+              value={line.newBirthDate}
+              max={new Date().toISOString().slice(0, 10)}
+              onChange={(event) => onChange({ ...line, newBirthDate: event.target.value })}
+              required
             />
           </FormField>
           <fieldset className="sm:col-span-3">
@@ -343,6 +359,37 @@ export function EnrollmentLineEditor({
           ))}
         </select>
       </FormField>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <FormField
+          label="Date réelle de début"
+          htmlFor={`${line.key}-start-date`}
+          hint="Le jour où l'élève a réellement commencé"
+        >
+          <input
+            id={`${line.key}-start-date`}
+            type="date"
+            className="field"
+            value={line.startDate}
+            onChange={(event) => onChange({ ...line, startDate: event.target.value })}
+            required
+          />
+        </FormField>
+        <FormField
+          label="Date réelle du paiement"
+          htmlFor={`${line.key}-payment-date`}
+          hint="Peut être antérieure à la saisie dans le logiciel"
+        >
+          <input
+            id={`${line.key}-payment-date`}
+            type="date"
+            className="field"
+            value={line.paymentDate}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={(event) => onChange({ ...line, paymentDate: event.target.value })}
+            required
+          />
+        </FormField>
+      </div>
       {canRemove && (
         <button type="button" className="btn btn-ghost btn-block-mobile min-h-11 text-red-600 sm:w-auto" onClick={onRemove}>
           Retirer cette ligne

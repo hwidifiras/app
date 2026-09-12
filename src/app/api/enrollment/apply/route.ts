@@ -100,10 +100,6 @@ export async function POST(request: Request) {
         );
       }
 
-      const startDate = parsed.data.startDate
-        ? new Date(parsed.data.startDate)
-        : new Date();
-
       try {
         const result = await runIdempotentSerializableTransaction(idempotencyParams, async (tx) => {
           const subscriptionIds: string[] = [];
@@ -118,6 +114,12 @@ export async function POST(request: Request) {
             if (!quoteLine || quoteLine.blocked) {
               throw new Error(`LINE_BLOCKED_${i}`);
             }
+            const lineStartDate = line.startDate
+              ? new Date(line.startDate)
+              : parsed.data.startDate
+                ? new Date(parsed.data.startDate)
+                : new Date();
+            const linePaymentDate = line.paymentDate ? new Date(line.paymentDate) : new Date();
 
             let memberId = line.memberId;
 
@@ -201,6 +203,8 @@ export async function POST(request: Request) {
               const conflict = await checkScheduleConflictForMember(
                 memberId,
                 line.groupId,
+                lineStartDate,
+                new Date(quoteLine.endDate),
               );
               if (!conflict.ok) throw new Error(`LINE_SCHEDULE_${i}`);
             }
@@ -219,17 +223,21 @@ export async function POST(request: Request) {
                 actorId: actor.id,
                 memberId,
                 plan,
-                startDate,
+                startDate: lineStartDate,
                 source: "enrollment",
-                amountCents: quoteLine.finalAmountCents,
+                amountCents: quoteLine.finalAmountCents - quoteLine.insuranceFeeCents,
                 listPriceCents: quoteLine.listPriceCents,
                 discountCents: quoteLine.discountCents,
                 offerName: quote.offerName,
                 paymentCents: payCents,
+                paymentDate: linePaymentDate,
                 paymentMethod: line.paymentMethod?.trim() || "CASH",
                 paymentNotes: line.paymentNotes,
               });
               const sub = sale.subscription;
+              if (sub.insuranceFeeCents !== quoteLine.insuranceFeeCents) {
+                throw new Error(`LINE_INSURANCE_CHANGED_${i}`);
+              }
               if (
                 expiredActive.length > 0 &&
                 sub.activationPolicy === "FIXED_DATE" &&
@@ -268,6 +276,7 @@ export async function POST(request: Request) {
                     amount: payCents,
                     actorId: actor.id,
                     source: "enrollment-existing-subscription",
+                    paymentDate: linePaymentDate,
                     paymentMethod: line.paymentMethod?.trim() || "CASH",
                     notes: line.paymentNotes,
                   });
@@ -297,9 +306,9 @@ export async function POST(request: Request) {
                 data: {
                   status: "ACTIVE",
                   startDate:
-                    existingAssign.status === "ACTIVE" && existingAssign.startDate <= startDate
+                    existingAssign.status === "ACTIVE" && existingAssign.startDate <= lineStartDate
                       ? existingAssign.startDate
-                      : startDate,
+                      : lineStartDate,
                   endDate: null,
                 },
               });
@@ -309,7 +318,7 @@ export async function POST(request: Request) {
                   tenantId: actor.tenantId,
                   groupId: line.groupId,
                   memberId,
-                  startDate,
+                  startDate: lineStartDate,
                   status: "ACTIVE",
                 },
               });
@@ -378,6 +387,10 @@ export async function POST(request: Request) {
                   listPriceCents: l.listPriceCents,
                   finalAmountCents: l.finalAmountCents,
                   discountCents: l.discountCents,
+                  insuranceFeeCents: l.insuranceFeeCents,
+                  insuranceYear: l.insuranceYear,
+                  startDate: l.startDate,
+                  paymentDate: parsed.data.lines[l.lineIndex]?.paymentDate ?? null,
                 })),
               }),
             },

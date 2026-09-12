@@ -32,6 +32,7 @@ export async function sellSubscription(
     offerApplicationId?: string | null;
     offerName?: string | null;
     paymentCents?: number;
+    paymentDate?: Date;
     paymentMethod?: string | null;
     paymentNotes?: string | null;
     carryOverRemainingSessions?: boolean;
@@ -42,7 +43,6 @@ export async function sellSubscription(
   const paymentCents = input.paymentCents ?? 0;
   if (!Number.isInteger(amount) || amount < 0) throw new Error("SUBSCRIPTION_AMOUNT_INVALID");
   if (!Number.isInteger(paymentCents) || paymentCents < 0) throw new Error("PAYMENT_AMOUNT_INVALID");
-  if (paymentCents > amount) throw new Error("OVERPAY");
 
   const subscription = await createSubscriptionFromPlan(
     tx,
@@ -60,6 +60,7 @@ export async function sellSubscription(
     },
     { carryOverRemainingSessions: input.carryOverRemainingSessions === true },
   );
+  if (paymentCents > subscription.amount) throw new Error("OVERPAY");
 
   const paymentResult = paymentCents > 0
     ? await recordSubscriptionPayment(tx, {
@@ -68,6 +69,7 @@ export async function sellSubscription(
         amount: paymentCents,
         actorId: input.actorId,
         source: input.source,
+        paymentDate: input.paymentDate,
         paymentMethod: input.paymentMethod,
         notes: input.paymentNotes,
       })
@@ -90,6 +92,8 @@ export async function sellSubscription(
         amount: subscription.amount,
         listPriceCents: subscription.listPriceCents,
         discountCents: subscription.discountCents,
+        insuranceFeeCents: subscription.insuranceFeeCents,
+        insuranceYear: subscription.insuranceYear,
         remainingSessions: subscription.remainingSessions,
         paymentCents,
         startDate: subscription.startDate.toISOString(),

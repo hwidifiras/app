@@ -31,9 +31,9 @@ export function AccessMemberFields({ value, onChange }: { value: AccessNewMember
       <FormGrid>
         <FormField label="Prenom *"><input className="field" value={value.firstName} onChange={(event) => set("firstName", event.target.value)} required /></FormField>
         <FormField label="Nom *"><input className="field" value={value.lastName} onChange={(event) => set("lastName", event.target.value)} required /></FormField>
-        <FormField label="Telephone *"><input className="field" value={value.phone} onChange={(event) => set("phone", event.target.value)} required={value.memberType === "ADULT"} /></FormField>
+        <FormField label={value.memberType === "KID" ? "Téléphone de l'enfant (optionnel)" : "Téléphone *"}><input className="field" value={value.phone} onChange={(event) => set("phone", event.target.value)} required={value.memberType === "ADULT"} /></FormField>
         <FormField label="Email"><input className="field" type="email" value={value.email} onChange={(event) => set("email", event.target.value)} /></FormField>
-        <FormField label="Date de naissance *"><input className="field" type="date" value={value.birthDate} onChange={(event) => set("birthDate", event.target.value)} required /></FormField>
+        <FormField label="Date de naissance *"><input className="field" type="date" value={value.birthDate} max={new Date().toISOString().slice(0, 10)} onChange={(event) => set("birthDate", event.target.value)} required /></FormField>
       </FormGrid>
       <div className="grid gap-3 sm:grid-cols-2">
         <fieldset><legend className="mb-2 text-xs font-medium">Public *</legend><div className="grid grid-cols-2 gap-2">{(["ADULT", "KID"] as const).map((option) => <label key={option} className={`flex min-h-10 items-center justify-center rounded-lg border px-3 text-sm font-semibold ${value.memberType === option ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]" : "border-[var(--border)]"}`}><input className="sr-only" type="radio" checked={value.memberType === option} onChange={() => set("memberType", option)} />{option === "ADULT" ? "Adulte" : "Enfant"}</label>)}</div></fieldset>

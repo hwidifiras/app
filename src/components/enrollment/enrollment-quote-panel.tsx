@@ -60,7 +60,7 @@ export function EnrollmentQuotePanel({
                   {formatMoney(line.finalAmountCents)}
                 </span>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 sm:grid-cols-4">
+              <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] p-3 sm:grid-cols-5">
                 <div>
                   <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Catalogue</p>
                   <p className="mt-1 font-bold">{formatMoney(line.listPriceCents)}</p>
@@ -69,6 +69,12 @@ export function EnrollmentQuotePanel({
                   <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Remise</p>
                   <p className={`mt-1 font-bold ${line.discountCents > 0 ? "text-[var(--success)]" : "text-[var(--muted-foreground)]"}`}>
                     {line.discountCents > 0 ? `-${formatMoney(line.discountCents)}` : "Aucune"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Assurance</p>
+                  <p className={`mt-1 font-bold ${line.insuranceFeeCents > 0 ? "text-[var(--foreground)]" : "text-[var(--muted-foreground)]"}`}>
+                    {line.insuranceFeeCents > 0 ? formatMoney(line.insuranceFeeCents) : "Non facturée"}
                   </p>
                 </div>
                 <div>
@@ -82,6 +88,12 @@ export function EnrollmentQuotePanel({
                   </p>
                 </div>
               </div>
+              {line.insuranceFeeCents > 0 ? (
+                <ReceptionInfoCard variant="warning" className="mt-2">
+                  <p className="font-semibold">Assurance annuelle {line.insuranceYear}</p>
+                  <p>{formatMoney(line.insuranceFeeCents)} ajoutés une seule fois sur le premier abonnement de l&apos;année.</p>
+                </ReceptionInfoCard>
+              ) : null}
               {line.discountCents > 0 && quote.offerName ? (
                 <ReceptionInfoCard variant="success" className="mt-2">
                   <p className="font-semibold">Offre « {quote.offerName} »</p>

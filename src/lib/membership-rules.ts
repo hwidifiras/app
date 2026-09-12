@@ -1,6 +1,7 @@
 import type { Offer, OfferKind, Prisma, SubscriptionPlan } from "@prisma/client";
 
 import { getAppTimeZone } from "@/lib/dates";
+import { annualInsuranceYearFor, getAnnualInsuranceFeeCents } from "@/lib/annual-insurance";
 import { getClubSettings } from "@/lib/club-settings";
 import {
   checkGroupMemberCompatibility,
@@ -358,7 +359,10 @@ export type QuoteLineResult = {
   sportName: string;
   listPriceCents: number;
   discountCents: number;
+  insuranceFeeCents: number;
+  insuranceYear: number | null;
   finalAmountCents: number;
+  startDate: string;
   endDate: string;
   totalSessions: number;
   warnings: string[];
@@ -372,6 +376,7 @@ export type QuoteResult = {
   offerName: string | null;
   totalListCents: number;
   totalDiscountCents: number;
+  totalInsuranceCents: number;
   totalFinalCents: number;
   blocked: boolean;
   warnings: string[];
@@ -394,11 +399,15 @@ type ResolvedLine = {
 
 async function resolveEnrollmentLines(lines: EnrollmentLineInput[], startDateInput?: string) {
   const tenantId = getRequiredTenantId();
-  const startDate = startDateInput ? new Date(startDateInput) : new Date();
   const resolved: ResolvedLine[] = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    const startDate = line.startDate
+      ? new Date(line.startDate)
+      : startDateInput
+        ? new Date(startDateInput)
+        : new Date();
     const memberId = line.memberId;
     let memberName = "";
     let memberType: MemberTypeValue = line.newMember?.memberType ?? "NOT_SPECIFIED";
@@ -586,6 +595,17 @@ export async function buildEnrollmentQuote(
   const resolved = await resolveEnrollmentLines(lines, startDateInput);
 
   const memberIds = [...new Set(resolved.map((r) => r.memberId).filter(Boolean))];
+  const insuranceFeeCents = await getAnnualInsuranceFeeCents(prisma, tenantId);
+  const insuranceYears = [...new Set(resolved.map((line) => annualInsuranceYearFor(line.startDate)))];
+  const insuredSubscriptions = memberIds.length > 0 && insuranceFeeCents > 0
+    ? await prisma.memberSubscription.findMany({
+        where: { tenantId, memberId: { in: memberIds }, insuranceYear: { in: insuranceYears } },
+        select: { memberId: true, insuranceYear: true },
+      })
+    : [];
+  const insuredMemberYears = new Set(
+    insuredSubscriptions.map((subscription) => `${subscription.memberId}:${subscription.insuranceYear}`),
+  );
   const householdLinks = await prisma.householdMember.findMany({
     where: { tenantId, memberId: { in: memberIds } },
     select: { memberId: true, householdId: true },
@@ -671,8 +691,15 @@ export async function buildEnrollmentQuote(
     }
 
     const discount = discounts[i] ?? 0;
-    const finalAmount = Math.max(0, r.listPrice - discount);
     const reuses = !!r.existingSubId && discount === 0;
+    const lineInsuranceYear = annualInsuranceYearFor(r.startDate);
+    const memberInsuranceKey = r.memberId ? `${r.memberId}:${lineInsuranceYear}` : null;
+    const shouldChargeInsurance = !reuses
+      && insuranceFeeCents > 0
+      && (!memberInsuranceKey || !insuredMemberYears.has(memberInsuranceKey));
+    const lineInsuranceFee = shouldChargeInsurance ? insuranceFeeCents : 0;
+    if (shouldChargeInsurance && memberInsuranceKey) insuredMemberYears.add(memberInsuranceKey);
+    const finalAmount = Math.max(0, r.listPrice - discount) + lineInsuranceFee;
 
     quoteLines.push({
       lineIndex: i,
@@ -686,7 +713,10 @@ export async function buildEnrollmentQuote(
       sportName: r.plan.sport.name,
       listPriceCents: r.listPrice,
       discountCents: discount,
+      insuranceFeeCents: lineInsuranceFee,
+      insuranceYear: lineInsuranceFee > 0 ? lineInsuranceYear : null,
       finalAmountCents: finalAmount,
+      startDate: r.startDate.toISOString(),
       endDate: r.endDate.toISOString(),
       totalSessions: r.plan.totalSessions,
       warnings: lineWarnings,
@@ -704,6 +734,7 @@ export async function buildEnrollmentQuote(
     offerName,
     totalListCents: quoteLines.reduce((s, l) => s + l.listPriceCents, 0),
     totalDiscountCents: quoteLines.reduce((s, l) => s + l.discountCents, 0),
+    totalInsuranceCents: quoteLines.reduce((s, l) => s + l.insuranceFeeCents, 0),
     totalFinalCents: quoteLines.reduce((s, l) => s + l.finalAmountCents, 0),
     blocked,
     warnings: allWarnings,

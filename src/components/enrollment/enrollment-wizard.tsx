@@ -150,6 +150,8 @@ export function EnrollmentWizard({
               memberId: line.memberId,
               groupId: line.groupId,
               planId: line.planId,
+              startDate: new Date(`${line.startDate}T00:00:00.000Z`).toISOString(),
+              paymentDate: new Date(`${line.paymentDate}T00:00:00.000Z`).toISOString(),
               paymentCents: paymentCents > 0 ? paymentCents : undefined,
               paymentMethod: line.paymentMethod,
             };
@@ -160,6 +162,9 @@ export function EnrollmentWizard({
                 firstName: line.newFirstName,
                 lastName: line.newLastName,
                 phone: line.newPhone,
+                birthDate: line.newBirthDate
+                  ? new Date(`${line.newBirthDate}T00:00:00.000Z`).toISOString()
+                  : "",
                 memberType: line.memberType,
                 gender: line.gender,
                 parentName: line.memberType === "KID" ? line.parentName : "",
@@ -168,6 +173,8 @@ export function EnrollmentWizard({
               },
               groupId: line.groupId,
               planId: line.planId,
+              startDate: new Date(`${line.startDate}T00:00:00.000Z`).toISOString(),
+              paymentDate: new Date(`${line.paymentDate}T00:00:00.000Z`).toISOString(),
               paymentCents: paymentCents > 0 ? paymentCents : undefined,
               paymentMethod: line.paymentMethod,
             };
@@ -366,11 +373,14 @@ export function EnrollmentWizard({
     (l) =>
       l.groupId &&
       l.planId &&
+      l.startDate &&
+      l.paymentDate &&
       ((l.mode === "existing" && l.memberId) ||
         (l.mode === "new" &&
           l.newFirstName &&
           l.newLastName &&
-          l.newPhone &&
+          l.newBirthDate &&
+          (l.memberType === "KID" || l.newPhone) &&
           l.memberType !== "NOT_SPECIFIED" &&
           l.gender !== "NOT_SPECIFIED" &&
           (l.memberType !== "KID" || (l.parentName && l.parentPhone)))),
@@ -386,13 +396,17 @@ export function EnrollmentWizard({
 
         if (line.mode === "existing" && !line.memberId) missing.push("membre");
         if (line.mode === "new") {
-          if (!line.newFirstName || !line.newLastName || !line.newPhone) missing.push("identité");
+          if (!line.newFirstName || !line.newLastName) missing.push("identité");
+          if (!line.newBirthDate) missing.push("date de naissance");
+          if (line.memberType !== "KID" && !line.newPhone) missing.push("téléphone élève");
           if (line.memberType === "NOT_SPECIFIED") missing.push("adulte/enfant");
           if (line.gender === "NOT_SPECIFIED") missing.push("genre");
           if (line.memberType === "KID" && (!line.parentName || !line.parentPhone)) missing.push("parent");
         }
         if (!line.groupId) missing.push("groupe");
         if (!line.planId) missing.push("formule");
+        if (!line.startDate) missing.push("date réelle de début");
+        if (!line.paymentDate) missing.push("date réelle du paiement");
         if (lineIssues[index]) missing.push("compatibilité");
 
         return {

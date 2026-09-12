@@ -21,6 +21,7 @@ export type ClubSettingsData = {
   workingDays: ClubDay[];
   maxStaffDiscountPercent: number;
   debtAlertThresholdCents: number;
+  annualInsuranceFeeCents: number;
   dashboardDefaultMode: DashboardDefaultMode;
   dashboardShowTodaySessions: boolean;
   dashboardShowCashToday: boolean;
@@ -61,6 +62,7 @@ const DEFAULTS = {
   workingDays: [...DEFAULT_WORKING_DAYS],
   maxStaffDiscountPercent: 30,
   debtAlertThresholdCents: 0,
+  annualInsuranceFeeCents: 0,
   dashboardDefaultMode: "AUTO" as DashboardDefaultMode,
   dashboardShowTodaySessions: true,
   dashboardShowCashToday: true,
@@ -123,6 +125,10 @@ function normalizeClubSettings(row: Record<string, unknown>): ClubSettingsData {
       typeof row.debtAlertThresholdCents === "number"
         ? row.debtAlertThresholdCents
         : DEFAULTS.debtAlertThresholdCents,
+    annualInsuranceFeeCents:
+      typeof row.annualInsuranceFeeCents === "number"
+        ? row.annualInsuranceFeeCents
+        : DEFAULTS.annualInsuranceFeeCents,
     dashboardDefaultMode: normalizeDashboardDefaultMode(row.dashboardDefaultMode),
     dashboardShowTodaySessions:
       typeof row.dashboardShowTodaySessions === "boolean"

@@ -44,6 +44,7 @@ export const updateClubSettingsSchema = z.object({
   workingDays: z.array(z.enum(CLUB_DAY_VALUES)).min(1).optional(),
   maxStaffDiscountPercent: z.number().int().min(0).max(100).optional(),
   debtAlertThresholdCents: z.number().int().min(0).max(100_000_000).optional(),
+  annualInsuranceFeeCents: z.number().int().min(0).max(100_000_000).optional(),
   dashboardDefaultMode: z.enum(DASHBOARD_DEFAULT_MODES).optional(),
   dashboardShowTodaySessions: z.boolean().optional(),
   dashboardShowCashToday: z.boolean().optional(),

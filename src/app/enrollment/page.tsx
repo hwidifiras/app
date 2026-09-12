@@ -75,6 +75,7 @@ export default async function EnrollmentPage({
             initialPlanKind={selectedType === "gym" ? "GYM" : "MIXED"}
             initialOfferId={offerId ?? ""}
             receiptPrintDefault={settings.receiptPrintDefault}
+            annualInsuranceFeeCents={settings.annualInsuranceFeeCents}
           />
         ) : (
           <section className="panel panel-soft p-6 text-center"><h2 className="font-semibold">Aucune formule disponible</h2><p className="mt-1 text-sm text-[var(--muted-foreground)]">Demandez à un responsable de créer une formule {selectedType === "gym" ? "Accès salle" : "Pack mixte"}.</p>{canManagePlans ? <Link href="/subscription-plans/new" className="btn btn-primary mt-4">Créer une formule</Link> : null}</section>

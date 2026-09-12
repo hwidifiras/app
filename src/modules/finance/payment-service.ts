@@ -55,6 +55,7 @@ export async function recordSubscriptionPayment(
         subscriptionId: subscription.id,
         totalBefore,
         totalAfter,
+        paymentDate: payment.paymentDate.toISOString(),
       }),
     },
   });

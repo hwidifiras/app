@@ -7,6 +7,7 @@ import { expireStaleSubscriptions } from "@/lib/membership-rules";
 import { checkGroupMemberCompatibility } from "@/lib/demographics";
 import { memberProfileCompletionError } from "@/lib/member-profile-policy";
 import { isTechnicalAdmin } from "@/lib/technical-admin";
+import { resolveMemberPhone } from "@/lib/member-phone";
 
 export const runtime = "nodejs";
 
@@ -655,7 +656,6 @@ export async function PATCH(
 
   if (payload.firstName !== undefined) updateData.firstName = payload.firstName.trim();
   if (payload.lastName !== undefined) updateData.lastName = payload.lastName.trim();
-  if (payload.phone !== undefined) updateData.phone = payload.phone.trim();
   if (payload.memberType !== undefined) updateData.memberType = payload.memberType;
   if (payload.gender !== undefined) updateData.gender = payload.gender;
   if (payload.birthDate !== undefined) updateData.birthDate = new Date(payload.birthDate);
@@ -676,6 +676,9 @@ export async function PATCH(
       const existing = await tx.member.findFirst({
         where: { id, tenantId: actor.tenantId },
         select: {
+          firstName: true,
+          lastName: true,
+          phone: true,
           memberType: true,
           gender: true,
           parentName: true,
@@ -697,6 +700,29 @@ export async function PATCH(
 
       if (!existing) throw new Error("MEMBER_NOT_FOUND");
 
+      const targetMemberType = payload.memberType ?? existing.memberType;
+      const targetFirstName = payload.firstName ?? existing.firstName;
+      const targetLastName = payload.lastName ?? existing.lastName;
+      const targetParentPhone = payload.parentPhone === undefined ? existing.parentPhone : payload.parentPhone;
+      if (
+        payload.phone !== undefined ||
+        payload.memberType !== undefined ||
+        payload.parentPhone !== undefined ||
+        payload.firstName !== undefined ||
+        payload.lastName !== undefined
+      ) {
+        const directPhone = payload.phone === undefined
+          ? existing.phone.includes("#") ? "" : existing.phone
+          : payload.phone;
+        updateData.phone = resolveMemberPhone({
+          memberType: targetMemberType,
+          phone: directPhone,
+          parentPhone: targetParentPhone,
+          firstName: targetFirstName,
+          lastName: targetLastName,
+        });
+      }
+
       const profileTouched =
         payload.memberType !== undefined ||
         payload.gender !== undefined ||
@@ -704,10 +730,8 @@ export async function PATCH(
         payload.parentPhone !== undefined;
 
       if (profileTouched) {
-        const targetMemberType = payload.memberType ?? existing.memberType;
         const targetGender = payload.gender ?? existing.gender;
         const targetParentName = payload.parentName === undefined ? existing.parentName : payload.parentName;
-        const targetParentPhone = payload.parentPhone === undefined ? existing.parentPhone : payload.parentPhone;
         const profileError = memberProfileCompletionError({
           memberType: targetMemberType,
           gender: targetGender,
@@ -778,6 +802,14 @@ export async function PATCH(
   } catch (error) {
     if (error instanceof Error && error.message === "MEMBER_NOT_FOUND") {
       return NextResponse.json({ error: "Membre introuvable" }, { status: 404 });
+    }
+
+    if (error instanceof Error && error.message === "PHONE_REQUIRED") {
+      return NextResponse.json({ error: "Téléphone du membre requis" }, { status: 400 });
+    }
+
+    if (error instanceof Error && error.message === "PARENT_PHONE_REQUIRED") {
+      return NextResponse.json({ error: "Téléphone du parent requis pour un enfant" }, { status: 400 });
     }
 
     if (error instanceof Error && error.message.startsWith("MEMBER_POLICY_MISMATCH:")) {

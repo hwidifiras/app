@@ -16,7 +16,7 @@ import {
   type SinglePlanOffer,
 } from "@/modules/sales/single-plan-offer";
 
-type MemberOption = { id: string; firstName: string; lastName: string; phone: string };
+type MemberOption = { id: string; firstName: string; lastName: string; phone: string; insuredYears: number[] };
 type PlanOption = { id: string; name: string; planKind: "CLASS" | "GYM" | "MIXED"; price: number; totalSessions: number; validityDays: number; activationPolicy: "FIXED_DATE" | "FIRST_USE"; activationWindowDays: number; freezeAllowanceCount: number; freezeMaxTotalDays: number; entitlements: Array<{ type: "CLASS_SESSIONS" | "GYM_ACCESS"; grantedUnits: number | null; gymAccessMode: "UNLIMITED" | "VISIT_QUOTA" | null; sport: { id: string; name: string } | null }> };
 type GroupOption = { id: string; name: string; sportId: string; sportName: string };
 type OfferOption = SinglePlanOffer;
@@ -41,6 +41,7 @@ type SubscriptionAddFormProps = {
   groupsOptions?: GroupOption[];
   offersOptions?: OfferOption[];
   receiptPrintDefault?: boolean;
+  annualInsuranceFeeCents?: number;
 };
 
 type EnrollmentCompletion = {
@@ -59,6 +60,7 @@ export function SubscriptionAddForm({
   groupsOptions = [],
   offersOptions = [],
   receiptPrintDefault = true,
+  annualInsuranceFeeCents = 0,
 }: SubscriptionAddFormProps) {
   const router = useRouter();
   const subscriptionIntent = useIdempotencyIntent();
@@ -78,11 +80,8 @@ export function SubscriptionAddForm({
     end.setDate(end.getDate() + initialPlan.validityDays);
     return end.toISOString().split("T")[0];
   });
-  const [paymentCents, setPaymentCents] = useState(() => {
-    if (!initialPlan) return "";
-    const initialOffer = offersOptions.find((offer) => offer.id === initialOfferId);
-    return (quoteSinglePlanOffer(initialPlan, initialOffer).finalAmountCents / 100).toFixed(2);
-  });
+  const [paymentCents, setPaymentCents] = useState<string | null>(null);
+  const [paymentDate, setPaymentDate] = useState(initialStartDate);
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [carryOverRemainingSessions, setCarryOverRemainingSessions] = useState(false);
   const [groupBySport, setGroupBySport] = useState<Record<string, string>>({});
@@ -99,10 +98,17 @@ export function SubscriptionAddForm({
   const selectedOffer = offersOptions.find((offer) => offer.id === offerId) ?? null;
   const saleQuote = selectedPlan ? quoteSinglePlanOffer(selectedPlan, selectedOffer) : null;
   const selectedMember = membersOptions.find((member) => member.id === memberId);
-  const paymentNum = Math.round(parseFloat(paymentCents.replace(",", ".")) * 100) || 0;
+  const selectedInsuranceYear = startDate ? new Date(`${startDate}T00:00:00.000Z`).getUTCFullYear() : new Date().getUTCFullYear();
+  const insuranceFeeCents = annualInsuranceFeeCents > 0
+    && (memberMode === "NEW" || !selectedMember?.insuredYears.includes(selectedInsuranceYear))
+    ? annualInsuranceFeeCents
+    : 0;
+  const finalDueCents = (saleQuote?.finalAmountCents ?? 0) + insuranceFeeCents;
+  const paymentInput = paymentCents ?? (saleQuote ? (finalDueCents / 100).toFixed(2) : "");
+  const paymentNum = Math.round(parseFloat(paymentInput.replace(",", ".")) * 100) || 0;
   const canCarryOver = selectedPlan?.planKind === "CLASS" && preview?.status === "ACTIVE" && preview.remainingSessions > 0 && new Date(startDate) <= new Date();
-  const paymentTooHigh = saleQuote ? paymentNum > saleQuote.finalAmountCents : false;
-  const renewalBalance = saleQuote ? Math.max(0, saleQuote.finalAmountCents - paymentNum) : 0;
+  const paymentTooHigh = saleQuote ? paymentNum > finalDueCents : false;
+  const renewalBalance = saleQuote ? Math.max(0, finalDueCents - paymentNum) : 0;
 
   useEffect(() => {
     if (!memberId) return;
@@ -180,6 +186,7 @@ export function SubscriptionAddForm({
 
   function handleMemberChange(nextMemberId: string) {
     setMemberId(nextMemberId);
+    setPaymentCents(null);
     setPreview(null);
     setPreviewError(null);
     setPreviewLoading(Boolean(nextMemberId));
@@ -188,11 +195,10 @@ export function SubscriptionAddForm({
 
   function handlePlanChange(nextPlanId: string) {
     setPlanId(nextPlanId);
+    setPaymentCents(null);
     setGroupBySport({});
     const plan = plansOptions.find((p) => p.id === nextPlanId);
     if (plan) {
-      const quote = quoteSinglePlanOffer(plan, selectedOffer);
-      setPaymentCents((quote.finalAmountCents / 100).toFixed(2));
       if (plan.activationPolicy === "FIRST_USE") {
         setEndDate("");
       } else if (startDate && plan.validityDays) {
@@ -205,6 +211,7 @@ export function SubscriptionAddForm({
 
   function handleStartDateChange(date: string) {
     setStartDate(date);
+    setPaymentCents(null);
     if (selectedPlan?.activationPolicy === "FIRST_USE") {
       setEndDate("");
     } else if (selectedPlan?.validityDays && date) {
@@ -237,6 +244,7 @@ export function SubscriptionAddForm({
       startDate: new Date(startDate).toISOString(),
       carryOverRemainingSessions: carryOverRemainingSessions || undefined,
       paymentCents: paymentNum > 0 ? paymentNum : undefined,
+      paymentDate: paymentNum > 0 ? new Date(`${paymentDate}T00:00:00.000Z`).toISOString() : undefined,
       paymentMethod,
       groupIds: Object.values(groupBySport).filter(Boolean),
     };
@@ -321,10 +329,7 @@ export function SubscriptionAddForm({
 
   function handleOfferChange(nextOfferId: string) {
     setOfferId(nextOfferId);
-    if (!selectedPlan) return;
-    const offer = offersOptions.find((item) => item.id === nextOfferId) ?? null;
-    const quote = quoteSinglePlanOffer(selectedPlan, offer);
-    setPaymentCents((quote.finalAmountCents / 100).toFixed(2));
+    setPaymentCents(null);
   }
 
   if (completion) {
@@ -484,21 +489,21 @@ export function SubscriptionAddForm({
             )}
           </FormSection>
 
-          <FormSection id="renew-payment" title="3. Paiement initial" description="Optionnel, mais il ne peut pas dépasser le prix de la formule.">
+          <FormSection id="renew-payment" title="3. Paiement initial" description="Optionnel, dans la limite du total formule et assurance annuelle.">
             <FormGrid>
               <FormField label="Paiement initial (TND)">
                 <FieldControl suffix={MONEY_INPUT_SUFFIX}>
                   <input
                     type="text"
                     inputMode="decimal"
-                    value={paymentCents}
+                    value={paymentInput}
                     onChange={(e) => setPaymentCents(e.target.value)}
                     className={`field pr-10 ${paymentTooHigh ? "border-[var(--danger)] ring-1 ring-[var(--danger)]" : ""}`}
                     placeholder="0,00"
                   />
                 </FieldControl>
                 {selectedPlan && (
-                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">Maximum {formatMoney(saleQuote?.finalAmountCents ?? selectedPlan.price)}</p>
+                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">Maximum {formatMoney(finalDueCents)}</p>
                 )}
               </FormField>
               <FormField label="Méthode">
@@ -508,6 +513,16 @@ export function SubscriptionAddForm({
                   <option value="TRANSFER">Virement</option>
                   <option value="CHECK">Chèque</option>
                 </select>
+              </FormField>
+              <FormField label="Date réelle du paiement" hint="Peut être antérieure à la saisie dans le logiciel">
+                <input
+                  type="date"
+                  className="field"
+                  value={paymentDate}
+                  max={new Date().toISOString().slice(0, 10)}
+                  onChange={(event) => setPaymentDate(event.target.value)}
+                  required={paymentNum > 0}
+                />
               </FormField>
             </FormGrid>
           </FormSection>
@@ -548,9 +563,15 @@ export function SubscriptionAddForm({
                   <dd className="text-right font-semibold">− {formatMoney(saleQuote.discountCents)}</dd>
                 </div>
               ) : null}
+              {saleQuote && insuranceFeeCents > 0 ? (
+                <div className="flex items-start justify-between gap-3 py-2.5">
+                  <dt className="text-[var(--muted-foreground)]">Assurance annuelle {selectedInsuranceYear}</dt>
+                  <dd className="text-right font-semibold">+ {formatMoney(insuranceFeeCents)}</dd>
+                </div>
+              ) : null}
               <div className="flex items-start justify-between gap-3 py-2.5">
                 <dt className="font-semibold text-[var(--foreground)]">Prix final</dt>
-                <dd className="text-right font-bold text-[var(--foreground)]">{saleQuote ? formatMoney(saleQuote.finalAmountCents) : "—"}</dd>
+                <dd className="text-right font-bold text-[var(--foreground)]">{saleQuote ? formatMoney(finalDueCents) : "—"}</dd>
               </div>
               <div className="flex items-start justify-between gap-3 py-2.5">
                 <dt className="text-[var(--muted-foreground)]">Paiement initial</dt>
@@ -558,6 +579,12 @@ export function SubscriptionAddForm({
                   {paymentNum > 0 ? formatMoney(paymentNum) : "Aucun"}
                 </dd>
               </div>
+              {paymentNum > 0 ? (
+                <div className="flex items-start justify-between gap-3 py-2.5">
+                  <dt className="text-[var(--muted-foreground)]">Payé réellement le</dt>
+                  <dd className="text-right font-medium">{new Date(`${paymentDate}T00:00:00`).toLocaleDateString("fr-FR")}</dd>
+                </div>
+              ) : null}
               <div className="flex items-start justify-between gap-3 py-2.5">
                 <dt className="text-[var(--muted-foreground)]">Reste à encaisser</dt>
                 <dd className="text-right font-bold text-[var(--danger)]">

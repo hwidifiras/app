@@ -7,7 +7,10 @@ const newMemberBaseSchema = z.object({
   email: z.string().trim().email().optional().or(z.literal("")),
   memberType: z.enum(["ADULT", "KID", "NOT_SPECIFIED"]).default("NOT_SPECIFIED"),
   gender: z.enum(["MALE", "FEMALE", "NOT_SPECIFIED"]).default("NOT_SPECIFIED"),
-  birthDate: z.string().optional(),
+  birthDate: z.string().datetime({ message: "Date de naissance requise" }).refine(
+    (value) => new Date(value) <= new Date(),
+    "La date de naissance ne peut pas être dans le futur",
+  ),
   address: z.string().optional(),
   parentName: z.string().optional(),
   parentPhone: z.string().optional(),
@@ -54,6 +57,11 @@ export const enrollmentLineSchema = z.object({
     .optional(),
   groupId: z.string().trim().min(1),
   planId: z.string().trim().min(1),
+  startDate: z.string().datetime({ message: "Date réelle de début invalide" }).optional(),
+  paymentDate: z.string().datetime({ message: "Date réelle du paiement invalide" }).refine(
+    (value) => new Date(value) <= new Date(),
+    "La date du paiement ne peut pas être dans le futur",
+  ).optional(),
   paymentCents: z.number().int().min(0).optional(),
   paymentMethod: z.string().trim().optional(),
   paymentNotes: z.string().trim().optional(),
