@@ -15,6 +15,8 @@ type SubscriptionCard = {
   startDate: Date;
   endDate: Date | null;
   amount: number;
+  insuranceFeeCents: number;
+  insuranceYear: number | null;
   paidCents: number;
   remainingSessions: number;
   totalSessions: number;
@@ -80,6 +82,13 @@ export function MemberSubscriptionCards({
               {formatDate(sub.startDate)}
               {sub.endDate ? ` → ${formatDate(sub.endDate)}` : ""}
             </p>
+
+            {sub.insuranceFeeCents > 0 ? (
+              <div className="mt-3 flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+                <span>Assurance annuelle{sub.insuranceYear ? ` ${sub.insuranceYear}` : ""}</span>
+                <span className="font-semibold">{formatMoney(sub.insuranceFeeCents)}</span>
+              </div>
+            ) : null}
 
             <div className="mt-3">
               <div className="mb-1 flex items-center justify-between text-xs">
