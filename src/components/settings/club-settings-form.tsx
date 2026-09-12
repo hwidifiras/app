@@ -457,7 +457,7 @@ export function ClubSettingsForm({
             placeholder="Ex: 30,00"
           />
           <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-            Ajoutée une seule fois par élève et par année civile, sur son premier nouvel abonnement de l&apos;année.
+            Ajoutée à la première inscription de l&apos;élève, puis au premier renouvellement après douze mois complets.
             Saisissez 0 pour désactiver cette facturation.
           </p>
         </div>

@@ -33,7 +33,7 @@ export default async function EnrollmentPage({
     ? await loadEnrollmentContext({ tenantId: user.tenantId, type: selectedType, product })
     : null;
   const accessOffers = (accessContext?.offers ?? [])
-    .filter((offer) => (offer.kind === "PERCENT_OFF" || offer.kind === "FIXED_OFF") && !offer.sportId)
+    .filter((offer) => offer.kind === "PERCENT_OFF" && !offer.sportId)
     .map((offer) => ({
       id: offer.id,
       name: offer.name,
@@ -63,7 +63,7 @@ export default async function EnrollmentPage({
       ) : null}
 
       {selectedType === "class" ? (
-        <EnrollmentWizard initialMemberId={memberId ?? ""} initialOfferId={offerId ?? ""} initialStep={initialStep} receiptPrintDefault={settings.receiptPrintDefault} />
+        <EnrollmentWizard initialMemberId={memberId ?? ""} initialOfferId={offerId ?? ""} initialStep={initialStep} receiptPrintDefault={settings.receiptPrintDefault} annualInsuranceFeeCents={settings.annualInsuranceFeeCents} />
       ) : accessContext ? (
         accessContext.plans.length > 0 ? (
           <SubscriptionAddForm

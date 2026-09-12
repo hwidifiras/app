@@ -50,11 +50,13 @@ export function EnrollmentWizard({
   initialOfferId = "",
   initialStep = 1,
   receiptPrintDefault = true,
+  annualInsuranceFeeCents = 0,
 }: {
   initialMemberId?: string;
   initialOfferId?: string;
   initialStep?: number;
   receiptPrintDefault?: boolean;
+  annualInsuranceFeeCents?: number;
 }) {
   const router = useRouter();
   const [step, setStep] = useState(initialStep >= 2 && initialStep <= 3 ? initialStep : 1);
@@ -448,6 +450,12 @@ export function EnrollmentWizard({
 
   return (
     <form onSubmit={applyEnrollment} className="enrollment-wizard space-y-6 pb-4 lg:pb-0">
+      {annualInsuranceFeeCents > 0 ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <p className="font-semibold">Assurance annuelle : {formatMoney(annualInsuranceFeeCents)}</p>
+          <p className="mt-1 text-xs">Elle apparaît dans le devis lorsqu&apos;elle est due : première inscription, puis renouvellement après douze mois complets.</p>
+        </div>
+      ) : null}
       {message ? (
         <FeedbackMessage
           message={message}

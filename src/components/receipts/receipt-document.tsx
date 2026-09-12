@@ -117,6 +117,14 @@ export function ReceiptDocument({
             <span className="font-bold text-emerald-700">− {formatMoney(snapshot.subscription.discountCents ?? 0)}</span>
           </div>
         ) : null}
+        {(snapshot.subscription.insuranceFeeCents ?? 0) > 0 ? (
+          <div className="grid grid-cols-2 border-b border-[var(--border)] p-3 text-sm sm:grid-cols-4">
+            <span className="font-semibold text-[var(--muted-foreground)]">Formule après offre</span>
+            <span className="font-bold text-[#0B1220]">{formatMoney(snapshot.subscription.amountCents - (snapshot.subscription.insuranceFeeCents ?? 0))}</span>
+            <span className="font-semibold text-[var(--muted-foreground)]">Assurance annuelle {snapshot.subscription.insuranceYear ?? ""}</span>
+            <span className="font-bold text-[#0B1220]">+ {formatMoney(snapshot.subscription.insuranceFeeCents ?? 0)}</span>
+          </div>
+        ) : null}
         <div className="grid grid-cols-2 border-b border-[var(--border)] p-3 text-sm sm:grid-cols-4">
           <span className="font-semibold text-[var(--muted-foreground)]">Paiement</span>
           <span className="font-bold text-[#0B1220]">{formatMoney(snapshot.payment.amountCents)}</span>
@@ -124,7 +132,7 @@ export function ReceiptDocument({
           <span className="font-bold text-[#0B1220]">{methodLabel(snapshot.payment.paymentMethod)}</span>
         </div>
         <div className="grid grid-cols-2 border-b border-[var(--border)] p-3 text-sm sm:grid-cols-4">
-          <span className="font-semibold text-[var(--muted-foreground)]">Total formule</span>
+          <span className="font-semibold text-[var(--muted-foreground)]">Total à payer</span>
           <span className="font-bold text-[#0B1220]">{formatMoney(snapshot.subscription.amountCents)}</span>
           <span className="font-semibold text-[var(--muted-foreground)]">Total paye</span>
           <span className="font-bold text-[#0B1220]">{formatMoney(snapshot.totals.paidAfterCents)}</span>

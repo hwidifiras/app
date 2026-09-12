@@ -11,12 +11,13 @@ import { AccessMemberFields, EMPTY_ACCESS_MEMBER, type AccessNewMember } from "@
 import { useIdempotencyIntent } from "@/hooks/use-idempotency-intent";
 import type { EnrollmentUndoSnapshot } from "@/lib/enrollment-undo";
 import { formatMoney, MONEY_INPUT_SUFFIX } from "@/lib/money";
+import { annualInsuranceValidUntil, calculateAnnualInsuranceCharge } from "@/lib/annual-insurance";
 import {
   quoteSinglePlanOffer,
   type SinglePlanOffer,
 } from "@/modules/sales/single-plan-offer";
 
-type MemberOption = { id: string; firstName: string; lastName: string; phone: string; insuredYears: number[] };
+type MemberOption = { id: string; firstName: string; lastName: string; phone: string; lastInsuranceStartDate: string | null };
 type PlanOption = { id: string; name: string; planKind: "CLASS" | "GYM" | "MIXED"; price: number; totalSessions: number; validityDays: number; activationPolicy: "FIXED_DATE" | "FIRST_USE"; activationWindowDays: number; freezeAllowanceCount: number; freezeMaxTotalDays: number; entitlements: Array<{ type: "CLASS_SESSIONS" | "GYM_ACCESS"; grantedUnits: number | null; gymAccessMode: "UNLIMITED" | "VISIT_QUOTA" | null; sport: { id: string; name: string } | null }> };
 type GroupOption = { id: string; name: string; sportId: string; sportName: string };
 type OfferOption = SinglePlanOffer;
@@ -99,10 +100,13 @@ export function SubscriptionAddForm({
   const saleQuote = selectedPlan ? quoteSinglePlanOffer(selectedPlan, selectedOffer) : null;
   const selectedMember = membersOptions.find((member) => member.id === memberId);
   const selectedInsuranceYear = startDate ? new Date(`${startDate}T00:00:00.000Z`).getUTCFullYear() : new Date().getUTCFullYear();
-  const insuranceFeeCents = annualInsuranceFeeCents > 0
-    && (memberMode === "NEW" || !selectedMember?.insuredYears.includes(selectedInsuranceYear))
-    ? annualInsuranceFeeCents
-    : 0;
+  const insuranceFeeCents = calculateAnnualInsuranceCharge({
+    configuredFeeCents: annualInsuranceFeeCents,
+    lastInsuranceStartDate: memberMode === "NEW" || !selectedMember?.lastInsuranceStartDate
+      ? null
+      : new Date(selectedMember.lastInsuranceStartDate),
+    startDate: startDate ? new Date(`${startDate}T00:00:00.000Z`) : new Date(),
+  }).feeCents;
   const finalDueCents = (saleQuote?.finalAmountCents ?? 0) + insuranceFeeCents;
   const paymentInput = paymentCents ?? (saleQuote ? (finalDueCents / 100).toFixed(2) : "");
   const paymentNum = Math.round(parseFloat(paymentInput.replace(",", ".")) * 100) || 0;
@@ -376,6 +380,23 @@ export function SubscriptionAddForm({
                 ))}
               </select>
             </FormField> : <AccessMemberFields value={newMember} onChange={setNewMember} />}
+
+            {annualInsuranceFeeCents > 0 ? (
+              <div className={`mt-4 rounded-lg border px-3 py-3 text-sm ${insuranceFeeCents > 0 ? "border-amber-200 bg-amber-50 text-amber-950" : "border-emerald-200 bg-emerald-50 text-emerald-900"}`}>
+                <p className="font-semibold">
+                  {insuranceFeeCents > 0
+                    ? `Assurance annuelle à ajouter : ${formatMoney(insuranceFeeCents)}`
+                    : "Assurance annuelle déjà couverte"}
+                </p>
+                <p className="mt-1 text-xs">
+                  {insuranceFeeCents > 0
+                    ? "Facturée avec ce premier abonnement, puis à nouveau après douze mois complets."
+                    : selectedMember?.lastInsuranceStartDate
+                      ? `Valable jusqu'au ${annualInsuranceValidUntil(new Date(selectedMember.lastInsuranceStartDate)).toLocaleDateString("fr-FR")}.`
+                      : "Aucun frais d'assurance supplémentaire sur cette période."}
+                </p>
+              </div>
+            ) : null}
 
             {memberMode === "EXISTING" ? <div className="mt-4 border-t border-[var(--border)] pt-3">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">

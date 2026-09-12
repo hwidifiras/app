@@ -33,7 +33,7 @@ export default async function NewSubscriptionPage({
   }
 
   let hasError = false;
-  let membersOptions: Array<{ id: string; firstName: string; lastName: string; phone: string; insuredYears: number[] }> = [];
+  let membersOptions: Array<{ id: string; firstName: string; lastName: string; phone: string; lastInsuranceStartDate: string | null }> = [];
   let plansOptions: Array<{ id: string; name: string; planKind: "CLASS" | "GYM" | "MIXED"; price: number; totalSessions: number; validityDays: number; activationPolicy: "FIXED_DATE" | "FIRST_USE"; activationWindowDays: number; freezeAllowanceCount: number; freezeMaxTotalDays: number; entitlements: Array<{ type: "CLASS_SESSIONS" | "GYM_ACCESS"; grantedUnits: number | null; gymAccessMode: "UNLIMITED" | "VISIT_QUOTA" | null; sport: { id: string; name: string } | null }> }> = [];
   let groupsOptions: Array<{ id: string; name: string; sportId: string; sportName: string }> = [];
   let annualInsuranceFeeCents = 0;
@@ -49,8 +49,10 @@ export default async function NewSubscriptionPage({
           lastName: true,
           phone: true,
           subscriptions: {
-            where: { insuranceYear: { not: null } },
-            select: { insuranceYear: true },
+            where: { insuranceFeeCents: { gt: 0 } },
+            orderBy: { startDate: "desc" },
+            take: 1,
+            select: { startDate: true },
           },
         },
       }),
@@ -72,9 +74,7 @@ export default async function NewSubscriptionPage({
       firstName: member.firstName,
       lastName: member.lastName,
       phone: member.phone ?? "",
-      insuredYears: member.subscriptions
-        .map((subscription) => subscription.insuranceYear)
-        .filter((year): year is number => year !== null),
+      lastInsuranceStartDate: member.subscriptions[0]?.startDate.toISOString() ?? null,
     }));
     plansOptions = plans;
     groupsOptions = groups.map((group) => ({ id: group.id, name: group.name, sportId: group.sportId, sportName: group.sport.name }));

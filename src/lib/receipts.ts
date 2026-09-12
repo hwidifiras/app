@@ -49,6 +49,8 @@ export type ReceiptSnapshot = {
     amountCents: number;
     listPriceCents?: number;
     discountCents?: number;
+    insuranceFeeCents?: number;
+    insuranceYear?: number | null;
     offerName?: string | null;
     startDate: string;
     endDate: string | null;
@@ -223,6 +225,8 @@ export async function issueReceiptForPayment(
       amountCents: payment.memberSubscription.amount,
       listPriceCents: payment.memberSubscription.listPriceCents ?? payment.memberSubscription.amount,
       discountCents: payment.memberSubscription.discountCents,
+      insuranceFeeCents: payment.memberSubscription.insuranceFeeCents,
+      insuranceYear: payment.memberSubscription.insuranceYear,
       offerName: payment.memberSubscription.offerName,
       startDate: payment.memberSubscription.startDate.toISOString(),
       endDate: payment.memberSubscription.endDate?.toISOString() ?? null,

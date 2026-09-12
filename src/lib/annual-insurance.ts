@@ -11,13 +11,22 @@ export function annualInsuranceYearFor(startDate: Date): number {
   return startDate.getUTCFullYear();
 }
 
+export function annualInsuranceValidUntil(lastInsuranceStartDate: Date): Date {
+  const validUntil = new Date(lastInsuranceStartDate);
+  validUntil.setUTCFullYear(validUntil.getUTCFullYear() + 1);
+  return validUntil;
+}
+
 export function calculateAnnualInsuranceCharge(input: {
   configuredFeeCents: number;
-  alreadyInsured: boolean;
+  lastInsuranceStartDate?: Date | null;
   startDate: Date;
 }): AnnualInsuranceCharge {
   const feeCents = Math.max(0, input.configuredFeeCents);
-  if (feeCents === 0 || input.alreadyInsured) {
+  const coveredUntil = input.lastInsuranceStartDate
+    ? annualInsuranceValidUntil(input.lastInsuranceStartDate)
+    : null;
+  if (feeCents === 0 || (coveredUntil && input.startDate < coveredUntil)) {
     return { feeCents: 0, insuranceYear: null };
   }
   return { feeCents, insuranceYear: annualInsuranceYearFor(input.startDate) };
@@ -41,19 +50,19 @@ export async function resolveAnnualInsuranceCharge(
   const feeCents = await getAnnualInsuranceFeeCents(db, input.tenantId);
   if (feeCents === 0) return { feeCents: 0, insuranceYear: null };
 
-  const insuranceYear = annualInsuranceYearFor(input.startDate);
   const existing = await db.memberSubscription.findFirst({
     where: {
       tenantId: input.tenantId,
       memberId: input.memberId,
-      insuranceYear,
+      insuranceFeeCents: { gt: 0 },
     },
-    select: { id: true },
+    orderBy: { startDate: "desc" },
+    select: { startDate: true },
   });
 
   return calculateAnnualInsuranceCharge({
     configuredFeeCents: feeCents,
-    alreadyInsured: Boolean(existing),
+    lastInsuranceStartDate: existing?.startDate ?? null,
     startDate: input.startDate,
   });
 }

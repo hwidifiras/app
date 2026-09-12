@@ -91,7 +91,7 @@ export function EnrollmentQuotePanel({
               {line.insuranceFeeCents > 0 ? (
                 <ReceptionInfoCard variant="warning" className="mt-2">
                   <p className="font-semibold">Assurance annuelle {line.insuranceYear}</p>
-                  <p>{formatMoney(line.insuranceFeeCents)} ajoutés une seule fois sur le premier abonnement de l&apos;année.</p>
+                  <p>{formatMoney(line.insuranceFeeCents)} ajoutés à la première inscription, puis après douze mois complets.</p>
                 </ReceptionInfoCard>
               ) : null}
               {line.discountCents > 0 && quote.offerName ? (

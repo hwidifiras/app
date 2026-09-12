@@ -1,7 +1,7 @@
 import type { Offer, OfferKind, Prisma, SubscriptionPlan } from "@prisma/client";
 
 import { getAppTimeZone } from "@/lib/dates";
-import { annualInsuranceYearFor, getAnnualInsuranceFeeCents } from "@/lib/annual-insurance";
+import { annualInsuranceYearFor, calculateAnnualInsuranceCharge, getAnnualInsuranceFeeCents } from "@/lib/annual-insurance";
 import { getClubSettings } from "@/lib/club-settings";
 import {
   checkGroupMemberCompatibility,
@@ -596,16 +596,19 @@ export async function buildEnrollmentQuote(
 
   const memberIds = [...new Set(resolved.map((r) => r.memberId).filter(Boolean))];
   const insuranceFeeCents = await getAnnualInsuranceFeeCents(prisma, tenantId);
-  const insuranceYears = [...new Set(resolved.map((line) => annualInsuranceYearFor(line.startDate)))];
   const insuredSubscriptions = memberIds.length > 0 && insuranceFeeCents > 0
     ? await prisma.memberSubscription.findMany({
-        where: { tenantId, memberId: { in: memberIds }, insuranceYear: { in: insuranceYears } },
-        select: { memberId: true, insuranceYear: true },
+        where: { tenantId, memberId: { in: memberIds }, insuranceFeeCents: { gt: 0 } },
+        orderBy: { startDate: "desc" },
+        select: { memberId: true, startDate: true },
       })
     : [];
-  const insuredMemberYears = new Set(
-    insuredSubscriptions.map((subscription) => `${subscription.memberId}:${subscription.insuranceYear}`),
-  );
+  const lastInsuranceStartByMember = new Map<string, Date>();
+  for (const subscription of insuredSubscriptions) {
+    if (!lastInsuranceStartByMember.has(subscription.memberId)) {
+      lastInsuranceStartByMember.set(subscription.memberId, subscription.startDate);
+    }
+  }
   const householdLinks = await prisma.householdMember.findMany({
     where: { tenantId, memberId: { in: memberIds } },
     select: { memberId: true, householdId: true },
@@ -693,12 +696,12 @@ export async function buildEnrollmentQuote(
     const discount = discounts[i] ?? 0;
     const reuses = !!r.existingSubId && discount === 0;
     const lineInsuranceYear = annualInsuranceYearFor(r.startDate);
-    const memberInsuranceKey = r.memberId ? `${r.memberId}:${lineInsuranceYear}` : null;
-    const shouldChargeInsurance = !reuses
-      && insuranceFeeCents > 0
-      && (!memberInsuranceKey || !insuredMemberYears.has(memberInsuranceKey));
-    const lineInsuranceFee = shouldChargeInsurance ? insuranceFeeCents : 0;
-    if (shouldChargeInsurance && memberInsuranceKey) insuredMemberYears.add(memberInsuranceKey);
+    const lineInsuranceFee = reuses ? 0 : calculateAnnualInsuranceCharge({
+      configuredFeeCents: insuranceFeeCents,
+      lastInsuranceStartDate: r.memberId ? lastInsuranceStartByMember.get(r.memberId) : null,
+      startDate: r.startDate,
+    }).feeCents;
+    if (lineInsuranceFee > 0 && r.memberId) lastInsuranceStartByMember.set(r.memberId, r.startDate);
     const finalAmount = Math.max(0, r.listPrice - discount) + lineInsuranceFee;
 
     quoteLines.push({

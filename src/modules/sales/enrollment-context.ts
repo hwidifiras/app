@@ -60,8 +60,10 @@ export async function loadEnrollmentContext({
         memberType: true,
         gender: true,
         subscriptions: {
-          where: { insuranceYear: { not: null } },
-          select: { insuranceYear: true },
+          where: { insuranceFeeCents: { gt: 0 } },
+          orderBy: { startDate: "desc" },
+          take: 1,
+          select: { startDate: true },
         },
       },
     }),
@@ -134,9 +136,7 @@ export async function loadEnrollmentContext({
     members: members.map(({ subscriptions, ...member }) => ({
       ...member,
       phone: member.phone ?? "",
-      insuredYears: subscriptions.flatMap((subscription) =>
-        subscription.insuranceYear === null ? [] : [subscription.insuranceYear],
-      ),
+      lastInsuranceStartDate: subscriptions[0]?.startDate.toISOString() ?? null,
     })),
     groups,
     plans,
