@@ -189,7 +189,7 @@ export async function listRecoveryCandidatesForSession(sessionId: string) {
       memberId: row.memberId,
       firstName: row.member.firstName,
       lastName: row.member.lastName,
-      phone: row.member.phone,
+      phone: row.member.phone ?? "",
       absentGroupName: row.session.group.name,
       absentDate: row.session.sessionDate,
     });

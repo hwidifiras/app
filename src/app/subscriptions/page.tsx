@@ -71,7 +71,7 @@ export default async function SubscriptionsPage() {
     subscriptions = rows.map((s) => ({
       id: s.id,
       memberName: `${s.member.firstName} ${s.member.lastName}`,
-      memberPhone: s.member.phone,
+      memberPhone: s.member.phone ?? "",
       planName: s.plan.name,
       amount: s.amount,
       listPriceCents: s.listPriceCents,

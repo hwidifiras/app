@@ -32,7 +32,7 @@ function toGroupMemberDto(item: {
   createdAt: Date;
   updatedAt: Date;
   group: { name: string };
-  member: { firstName: string; lastName: string; phone: string };
+  member: { firstName: string; lastName: string; phone: string | null };
 }) {
   return {
     id: item.id,
@@ -40,7 +40,7 @@ function toGroupMemberDto(item: {
     groupName: item.group.name,
     memberId: item.memberId,
     memberName: `${item.member.firstName} ${item.member.lastName}`,
-    memberPhone: item.member.phone,
+    memberPhone: item.member.phone ?? "",
     startDate: item.startDate.toISOString(),
     endDate: item.endDate?.toISOString() ?? null,
     status: item.status,

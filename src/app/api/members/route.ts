@@ -71,13 +71,13 @@ export async function GET(request: Request) {
     members = members
       .filter((m) => {
         const full = `${m.firstName} ${m.lastName}`.toLowerCase();
-        const phone = m.phone.replace(/\s/g, "");
+        const phone = (m.phone ?? "").replace(/\s/g, "");
         return (
           full.includes(q) ||
           m.firstName.toLowerCase().includes(q) ||
           m.lastName.toLowerCase().includes(q) ||
           phone.includes(phoneNorm) ||
-          m.phone.includes(query)
+          (m.phone ?? "").includes(query)
         );
       })
       .slice(0, searchLimit);

@@ -2,7 +2,7 @@ export type MemberAuditSource = {
   id: string;
   firstName: string;
   lastName: string;
-  phone: string;
+  phone: string | null;
   email: string | null;
   memberType: string;
   gender: string;

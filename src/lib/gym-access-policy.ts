@@ -28,7 +28,7 @@ export type GymAccessDecision = {
   override: boolean;
   code: GymAccessFailureCode | null;
   message: string;
-  member: { id: string; firstName: string; lastName: string; phone: string } | null;
+  member: { id: string; firstName: string; lastName: string; phone: string | null } | null;
   entitlement: {
     id: string;
     memberSubscriptionId: string;
@@ -74,7 +74,7 @@ const gymEntitlementSelect = {
 } satisfies Prisma.SubscriptionEntitlementSelect;
 
 type GymEntitlementRow = Prisma.SubscriptionEntitlementGetPayload<{ select: typeof gymEntitlementSelect }>;
-type GymMemberRow = { id: string; firstName: string; lastName: string; phone: string; status: string };
+type GymMemberRow = { id: string; firstName: string; lastName: string; phone: string | null; status: string };
 type GymVisitRow = { memberId: string; checkedAt: Date; corrections: Array<{ id: string }> };
 
 function deniedDecision(

@@ -71,7 +71,7 @@ export default async function NewSubscriptionPage({
       id: member.id,
       firstName: member.firstName,
       lastName: member.lastName,
-      phone: member.phone,
+      phone: member.phone ?? "",
       insuredYears: member.subscriptions
         .map((subscription) => subscription.insuranceYear)
         .filter((year): year is number => year !== null),

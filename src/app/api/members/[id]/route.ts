@@ -711,9 +711,7 @@ export async function PATCH(
         payload.firstName !== undefined ||
         payload.lastName !== undefined
       ) {
-        const directPhone = payload.phone === undefined
-          ? existing.phone.includes("#") ? "" : existing.phone
-          : payload.phone;
+        const directPhone = payload.phone === undefined ? existing.phone : payload.phone;
         updateData.phone = resolveMemberPhone({
           memberType: targetMemberType,
           phone: directPhone,

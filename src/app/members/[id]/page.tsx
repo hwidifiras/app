@@ -247,7 +247,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
     memberActions.push({
       kind: "GYM_CHECK_IN",
       label: "Accès salle",
-      href: `/gym/check-in?query=${encodeURIComponent(member.phone)}`,
+      href: `/gym/check-in?query=${encodeURIComponent(member.phone ?? "")}`,
     });
   }
   if (member.status === "ACTIVE") {
@@ -294,7 +294,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
             id: member.id,
             firstName: member.firstName,
             lastName: member.lastName,
-            phone: member.phone,
+            phone: member.phone ?? "",
             email: member.email,
             memberType: member.memberType,
             gender: member.gender,

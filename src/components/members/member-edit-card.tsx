@@ -12,7 +12,7 @@ type MemberEditCardProps = {
     id: string;
     firstName: string;
     lastName: string;
-    phone: string;
+    phone: string | null;
     email: string | null;
     memberType: "ADULT" | "KID" | "NOT_SPECIFIED";
     gender: "MALE" | "FEMALE" | "NOT_SPECIFIED";
@@ -63,7 +63,7 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [firstName, setFirstName] = useState(member.firstName);
   const [lastName, setLastName] = useState(member.lastName);
-  const [phone, setPhone] = useState(member.memberType === "KID" && member.phone.includes("#") ? "" : member.phone);
+  const [phone, setPhone] = useState(member.phone ?? "");
   const [email, setEmail] = useState(member.email ?? "");
   const [memberType, setMemberType] = useState(member.memberType);
   const [gender, setGender] = useState(member.gender);
@@ -86,7 +86,7 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
   function resetForm() {
     setFirstName(member.firstName);
     setLastName(member.lastName);
-    setPhone(member.memberType === "KID" && member.phone.includes("#") ? "" : member.phone);
+    setPhone(member.phone ?? "");
     setEmail(member.email ?? "");
     setMemberType(member.memberType);
     setGender(member.gender);
@@ -245,7 +245,7 @@ export function MemberEditCard({ member }: MemberEditCardProps) {
           <div className="flex min-w-0 justify-between gap-3">
             <dt className="text-[var(--muted-foreground)]">Téléphone</dt>
             <dd className="min-w-0 break-words text-right font-medium">
-              {member.memberType === "KID" && member.phone.includes("#") ? "-" : member.phone}
+              {member.phone || "-"}
             </dd>
           </div>
           <div className="flex min-w-0 justify-between gap-3">

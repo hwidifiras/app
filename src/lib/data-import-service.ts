@@ -17,7 +17,7 @@ import {
 } from "@/lib/weekly-session-consumption";
 
 export type DataImportInspection = {
-  memberPhone: string;
+  memberPhone: string | null;
   memberName: string;
   groupName: string;
   planName: string;
@@ -29,7 +29,7 @@ export type DataImportInspection = {
 
 type ImportContext = {
   inspection: DataImportInspection;
-  memberPhone: string;
+  memberPhone: string | null;
   group: {
     id: string;
     name: string;
@@ -62,7 +62,9 @@ export async function inspectDataImport(payload: DataImportPayload): Promise<Imp
   });
 
   const [duplicateMember, group, plan, sessions, settings] = await Promise.all([
-    prisma.member.findUnique({ where: { tenantId_phone: { tenantId, phone: memberPhone } }, select: { id: true } }),
+    memberPhone
+      ? prisma.member.findUnique({ where: { tenantId_phone: { tenantId, phone: memberPhone } }, select: { id: true } })
+      : Promise.resolve(null),
     prisma.group.findFirst({
       where: { id: payload.groupId, tenantId },
       select: {

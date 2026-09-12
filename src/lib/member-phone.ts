@@ -7,7 +7,7 @@ type MemberPhoneInput = {
 };
 
 /** Resolves a unique member phone for DB storage when child phone is omitted. */
-export function resolveMemberPhone(input: MemberPhoneInput): string {
+export function resolveMemberPhone(input: MemberPhoneInput): string | null {
   const direct = input.phone?.trim() ?? "";
   if (direct.length >= 6) return direct;
 
@@ -16,11 +16,7 @@ export function resolveMemberPhone(input: MemberPhoneInput): string {
     if (parent.length < 6) {
       throw new Error("PARENT_PHONE_REQUIRED");
     }
-    const slug = `${input.firstName}-${input.lastName}`
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
-    return `${parent}#${slug || "enfant"}`;
+    return null;
   }
 
   throw new Error("PHONE_REQUIRED");

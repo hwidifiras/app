@@ -14,7 +14,7 @@ function householdAuditSnapshot(household: {
   label: string | null;
   members: Array<{
     relationship: string;
-    member: { id: string; firstName: string; lastName: string; phone: string };
+    member: { id: string; firstName: string; lastName: string; phone: string | null };
   }>;
 }) {
   return {
@@ -23,7 +23,7 @@ function householdAuditSnapshot(household: {
     members: household.members.map((item) => ({
       memberId: item.member.id,
       memberName: `${item.member.firstName} ${item.member.lastName}`.trim(),
-      memberPhone: item.member.phone,
+      memberPhone: item.member.phone ?? "",
       relationship: item.relationship,
     })),
   };

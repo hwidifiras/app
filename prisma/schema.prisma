@@ -407,7 +407,7 @@ model Member {
   tenant            Tenant?                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   firstName         String
   lastName          String
-  phone             String
+  phone             String?
   email             String?
   memberType        MemberType               @default(NOT_SPECIFIED)
   gender            Gender                   @default(NOT_SPECIFIED)

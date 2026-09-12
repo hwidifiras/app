@@ -203,7 +203,7 @@ function toDirectoryRow(
     id: member.id,
     firstName: member.firstName,
     lastName: member.lastName,
-    phone: member.phone,
+    phone: member.phone ?? "",
     email: member.email,
     status: member.status,
     paymentStatus,

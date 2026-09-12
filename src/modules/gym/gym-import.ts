@@ -115,7 +115,9 @@ export async function previewGymImport(input: { tenantId: string; buffer: Buffer
   ]);
   const plansByName = new Map<string, typeof plans>();
   for (const plan of plans) plansByName.set(normalized(plan.name), [...(plansByName.get(normalized(plan.name)) ?? []), plan]);
-  const membersByPhone = new Map(existingMembers.map((member) => [member.phone.trim(), member]));
+  const membersByPhone = new Map(
+    existingMembers.flatMap((member) => member.phone ? [[member.phone.trim(), member] as const] : []),
+  );
   const seenPhones = new Set<string>();
   const resultRows = [];
 

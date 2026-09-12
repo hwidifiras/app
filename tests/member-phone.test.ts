@@ -15,7 +15,7 @@ describe("resolveMemberPhone", () => {
     ).toBe("0611223344");
   });
 
-  it("derives a unique phone from parent contact when child phone is omitted", () => {
+  it("stores no child phone when it is omitted and the parent contact is present", () => {
     expect(
       resolveMemberPhone({
         memberType: "KID",
@@ -23,7 +23,7 @@ describe("resolveMemberPhone", () => {
         firstName: "Lea",
         lastName: "Dupont",
       }),
-    ).toBe("0699887766#lea-dupont");
+    ).toBeNull();
   });
 
   it("requires a direct phone for adults", () => {

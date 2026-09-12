@@ -60,7 +60,7 @@ export default async function NewGroupPage() {
       id: m.id,
       firstName: m.firstName,
       lastName: m.lastName,
-      phone: m.phone,
+      phone: m.phone ?? "",
       email: m.email,
       memberType: m.memberType,
       gender: m.gender,

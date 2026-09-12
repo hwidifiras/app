@@ -5,7 +5,7 @@ export type SubscriptionFinanceRow = {
   status: string;
   startDate: Date;
   endDate: Date | null;
-  member: { firstName: string; lastName: string; phone: string };
+  member: { firstName: string; lastName: string; phone: string | null };
   payments: { amount: number }[];
 };
 
@@ -55,7 +55,7 @@ export function computeMemberDebts(
     const entry = debtMap.get(sub.memberId) ?? {
       memberId: sub.memberId,
       memberName: `${sub.member.firstName} ${sub.member.lastName}`,
-      phone: sub.member.phone,
+      phone: sub.member.phone ?? "",
       totalDebt: 0,
       subscriptions: 0,
       partialPaid: false,

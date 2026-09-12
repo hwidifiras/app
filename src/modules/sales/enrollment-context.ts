@@ -133,6 +133,7 @@ export async function loadEnrollmentContext({
     profile: product.profile,
     members: members.map(({ subscriptions, ...member }) => ({
       ...member,
+      phone: member.phone ?? "",
       insuredYears: subscriptions.flatMap((subscription) =>
         subscription.insuranceYear === null ? [] : [subscription.insuranceYear],
       ),

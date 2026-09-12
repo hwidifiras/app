@@ -71,7 +71,7 @@ export default async function GymVisitsPage({
     overrideReason: visit.overrideReason,
     correctionReason: visit.correctionReason,
     memberName: `${visit.member.firstName} ${visit.member.lastName}`,
-    memberPhone: visit.member.phone,
+    memberPhone: visit.member.phone ?? "",
     planName: visit.memberSubscription.plan.name,
     checkedByName: visit.checkedBy?.name ?? "Compte désactivé",
     reversed: visit.corrections.length > 0,

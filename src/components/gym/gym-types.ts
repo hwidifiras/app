@@ -3,7 +3,7 @@ export type GymAccessDecisionDto = {
   override: boolean;
   code: string | null;
   message: string;
-  member: { id: string; firstName: string; lastName: string; phone: string } | null;
+  member: { id: string; firstName: string; lastName: string; phone: string | null } | null;
   entitlement: {
     id: string;
     planName: string;
