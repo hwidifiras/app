@@ -24,6 +24,7 @@ export type AccountData = {
     classReports: boolean;
     gymReports: boolean;
   };
+  registrationOnly: boolean;
   saasStatus: "LEGACY_ACTIVE" | "TRIAL" | "ACTIVE" | "PAST_DUE" | "GRACE" | "SUSPENDED" | "CANCELLED";
   operationsAllowed: boolean;
   isDemoWorkspace: boolean;
@@ -147,6 +148,11 @@ export function AppShellDataProvider({
   }, []);
 
   const refreshNotifications = useCallback(async () => {
+    if (account?.registrationOnly) {
+      setNotificationData(emptyNotifications);
+      setNotificationsLoading(false);
+      return;
+    }
     const now = Date.now();
     if (notificationsLoadedRef.current && now - lastNotificationsFetchRef.current < 5_000) {
       return;
@@ -183,10 +189,10 @@ export function AppShellDataProvider({
         notificationsInFlightRef.current = null;
       }
     }
-  }, []);
+  }, [account?.registrationOnly]);
 
   const refreshSetupGuide = useCallback(async () => {
-    if (account?.role !== "ADMIN") {
+    if (account?.role !== "ADMIN" || account?.registrationOnly) {
       setSetupGuide(null);
       setSetupGuideLoading(false);
       return;
@@ -202,9 +208,14 @@ export function AppShellDataProvider({
     } finally {
       setSetupGuideLoading(false);
     }
-  }, [account?.role]);
+  }, [account?.registrationOnly, account?.role]);
 
   const refreshNavBadges = useCallback(async () => {
+    if (account?.registrationOnly) {
+      setNavBadgeData(emptyNavigationBadges);
+      setNavBadgesLoading(false);
+      return;
+    }
     const now = Date.now();
     if (navBadgesLoadedRef.current && now - lastNavBadgesFetchRef.current < 15_000) {
       return;
@@ -241,7 +252,7 @@ export function AppShellDataProvider({
         navBadgesInFlightRef.current = null;
       }
     }
-  }, []);
+  }, [account?.registrationOnly]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void refreshAccount(), initialAccount ? 15_000 : 0);

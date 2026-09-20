@@ -110,9 +110,9 @@ export function DesktopTopNav() {
         </div>
 
         <div className="flex min-w-0 items-center justify-end gap-2.5">
-          <SetupGuide variant="header" className="hidden 2xl:block" />
+          {!account?.registrationOnly ? <SetupGuide variant="header" className="hidden 2xl:block" /> : null}
           <AppRefreshButton className="!size-11" />
-          <NotificationCenter showLabel />
+          {!account?.registrationOnly ? <NotificationCenter showLabel /> : null}
           <UserAccountMenu />
         </div>
       </div>

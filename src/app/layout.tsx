@@ -13,6 +13,7 @@ import { getClubSettings } from "@/lib/club-settings";
 import { isDemoTenantSlug } from "@/lib/demo-workspace";
 import { hasPermission } from "@/lib/permission-definitions";
 import { isPublicPath, isTenantIndependentPublicPath } from "@/lib/public-paths";
+import { registrationOnlyPageIsAllowed } from "@/lib/registration-only-workspace";
 import { getAuthUser } from "@/lib/request-user";
 import { isAdminOnlyPath, requiredPermissionForPath } from "@/lib/route-permissions";
 import { enterTenantContext, getTenantContext } from "@/lib/tenant-context";
@@ -74,6 +75,7 @@ export default async function RootLayout({
   }
 
   let initialAccount: AccountData | null = null;
+  let settings = getTenantContext() ? await getClubSettings() : null;
 
   if (pathname && !isPublicPath(pathname)) {
     const user = await getAuthUser();
@@ -82,6 +84,7 @@ export default async function RootLayout({
     }
 
     const product = await getTenantProductContext(user.tenantId);
+    settings ??= await getClubSettings();
     initialAccount = {
       id: user.id,
       email: user.email,
@@ -93,6 +96,7 @@ export default async function RootLayout({
       modules: product.modules,
       productProfile: product.profile,
       productCapabilities: product.capabilities,
+      registrationOnly: settings.registrationOnly,
       saasStatus: product.saasStatus,
       operationsAllowed: product.operationsAllowed,
       isDemoWorkspace: isDemoTenantSlug(user.tenantSlug),
@@ -112,6 +116,10 @@ export default async function RootLayout({
     };
     if (!product.operationsAllowed && !isSaasRecoveryPath(pathname)) {
       redirect("/subscription-status");
+    }
+
+    if (settings.registrationOnly && !registrationOnlyPageIsAllowed(pathname)) {
+      redirect("/enrollment");
     }
 
     if (
@@ -139,7 +147,6 @@ export default async function RootLayout({
     }
   }
 
-  const settings = getTenantContext() ? await getClubSettings() : null;
   const branding = resolveClubBranding(settings ?? {});
 
   return (

@@ -27,6 +27,7 @@
     "admin:create:dev": "node scripts/with-dev-env.mjs scripts/create-admin.mjs",
     "tenant:create": "node scripts/create-tenant.mjs",
     "tenant:module": "node scripts/set-tenant-module.mjs",
+    "tenant:registration-only": "node scripts/set-registration-only-workspace.mjs",
     "saas:control": "node scripts/manage-saas-subscription.mjs",
     "signup:invite": "node scripts/manage-signup-invites.mjs",
     "signup:prune": "node scripts/prune-signup-records.mjs",

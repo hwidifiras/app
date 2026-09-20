@@ -378,6 +378,7 @@ model ClubSettings {
   maxStaffDiscountPercent               Int         @default(30)
   debtAlertThresholdCents               Int         @default(0)
   annualInsuranceFeeCents               Int         @default(0)
+  registrationOnly                     Boolean     @default(false)
   dashboardDefaultMode                  String      @default("AUTO")
   dashboardShowTodaySessions            Boolean     @default(true)
   dashboardShowCashToday                Boolean     @default(true)

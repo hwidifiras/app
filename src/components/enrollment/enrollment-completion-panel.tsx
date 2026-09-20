@@ -36,8 +36,8 @@ export function EnrollmentCompletionPanel({
             Verification avant de quitter
           </h2>
           <p className="mt-1 text-sm leading-relaxed text-[var(--muted-foreground)]">
-            Si une erreur humaine vient d&apos;etre faite, vous pouvez annuler cette inscription tant qu&apos;aucun pointage
-            n&apos;a ete cree sur les abonnements ou les eleves concernes. L&apos;annulation reste tracee dans le journal.
+            Vérifiez la fiche de l&apos;élève avant de continuer. En cas d&apos;erreur, cette inscription peut être annulée
+            immédiatement avec le motif ci-dessous.
           </p>
         </div>
         <Link

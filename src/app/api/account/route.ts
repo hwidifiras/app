@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { isDemoTenantSlug } from "@/lib/demo-workspace";
+import { getClubSettings } from "@/lib/club-settings";
 import { parsePermissions } from "@/lib/permission-definitions";
 import { setAuthSessionCookie } from "@/lib/auth-session";
 import { requireAuth } from "@/lib/request-user";
@@ -30,7 +31,7 @@ const updateAccountSchema = z
 export async function GET(request: Request) {
   try {
     const auth = await requireAuth(request);
-    const [user, product] = await Promise.all([
+    const [user, product, settings] = await Promise.all([
       prisma.user.findFirst({
         where: { id: auth.id, tenantId: auth.tenantId },
         select: {
@@ -45,6 +46,7 @@ export async function GET(request: Request) {
         },
       }),
       getTenantProductContext(auth.tenantId),
+      getClubSettings(),
     ]);
 
     if (!user) {
@@ -58,6 +60,7 @@ export async function GET(request: Request) {
         modules: product.modules,
         productProfile: product.profile,
         productCapabilities: product.capabilities,
+        registrationOnly: settings.registrationOnly,
         saasStatus: product.saasStatus,
         operationsAllowed: product.operationsAllowed,
         billingWarning: product.billingWarning,

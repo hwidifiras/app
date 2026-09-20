@@ -38,7 +38,12 @@ export function MobileNav() {
     section.items.some((item) => isLinkActive(pathname, item.href)),
   );
   const showClubConfig = configOpen || inClubConfig;
-  const profileQuickLinks = account?.productProfile === "GYM_ONLY"
+  const profileQuickLinks = account?.registrationOnly
+    ? [
+        { href: "/enrollment", label: "Inscrire", icon: PlusCircle, featured: true, permission: "enrollment.sell" as const },
+        { href: "/members", label: "Élèves", icon: Search, permission: "members.manage" as const },
+      ]
+    : account?.productProfile === "GYM_ONLY"
     ? [
         { href: "/", label: "Accueil", icon: Home },
         { href: "/gym/check-in", label: "Accès", icon: Dumbbell, moduleKey: "GYM_ACCESS" as const, permission: "gym.checkin" as const },
@@ -94,15 +99,15 @@ export function MobileNav() {
     <div data-app-mobile-nav className="print:hidden lg:hidden">
       <div className="fixed left-0 right-0 top-0 z-50 flex min-h-[3.75rem] items-center justify-between border-b border-[var(--border)] bg-[var(--surface)]/96 px-3 py-2 shadow-[var(--shadow-panel)] backdrop-blur lg:hidden">
         <Link
-          href="/"
+          href={account?.registrationOnly ? "/enrollment" : "/"}
           className="flex min-w-0 max-w-[48%] items-center gap-2 rounded-lg px-1 py-1 transition hover:bg-[var(--surface-soft)] sm:max-w-[55%]"
         >
           <ClubBrandMark size="sm" />
         </Link>
         <div className="flex items-center gap-1.5 sm:gap-2">
-          <SetupGuide variant="header" className="hidden min-[430px]:block" />
+          {!account?.registrationOnly ? <SetupGuide variant="header" className="hidden min-[430px]:block" /> : null}
           <AppRefreshButton className="!size-11 hidden min-[380px]:flex" />
-          <NotificationCenter />
+          {!account?.registrationOnly ? <NotificationCenter /> : null}
           <UserAccountMenu onNavigate={close} />
           <button
             onClick={() => setOpen((v) => !v)}
@@ -125,7 +130,7 @@ export function MobileNav() {
         )}
       >
         <nav className="sidebar-scroll flex h-full flex-col gap-1 overflow-y-auto overscroll-y-contain px-3 pb-24 pt-4">
-          <SetupGuide variant="bar" className="mb-2 rounded-lg border border-[var(--primary)]/20" />
+          {!account?.registrationOnly ? <SetupGuide variant="bar" className="mb-2 rounded-lg border border-[var(--primary)]/20" /> : null}
 
           {visibleNavSections.map((section) => (
             <div key={section.title}>

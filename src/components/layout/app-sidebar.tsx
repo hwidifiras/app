@@ -31,6 +31,7 @@ import { useAppShellData, type NavigationBadge } from "@/components/layout/app-s
 import { ClubBrandMark } from "@/components/layout/club-brand-mark";
 import { useClubBranding } from "@/components/layout/club-branding-provider";
 import { hasPermission, type PermissionKey } from "@/lib/permission-definitions";
+import { registrationOnlyNavItemIsAllowed } from "@/lib/registration-only-workspace";
 import { cn } from "@/lib/utils";
 import type { ProductModule } from "@/platform/product/product-context";
 
@@ -144,10 +145,11 @@ export function isLinkActive(pathname: string, href: string) {
 
 export function navItemIsVisible(
   item: NavItem,
-  account: { role: string; permissions: string[]; modules: string[]; operationsAllowed?: boolean } | null,
+  account: { role: string; permissions: string[]; modules: string[]; operationsAllowed?: boolean; registrationOnly?: boolean } | null,
 ) {
   if (!account) return false;
   if (account.operationsAllowed === false && item.href !== "/settings/account") return false;
+  if (account.registrationOnly && !registrationOnlyNavItemIsAllowed(item.href)) return false;
   if (item.adminOnly && account.role !== "ADMIN") return false;
   if (item.moduleKey && !account.modules.includes(item.moduleKey)) return false;
   if (item.permission && account.role !== "ADMIN" && !hasPermission(account.permissions, item.permission)) return false;
@@ -156,14 +158,16 @@ export function navItemIsVisible(
 
 export function getConfigurationSections(
   role: string | null,
-  account?: { role: string; permissions: string[]; modules: string[]; operationsAllowed?: boolean } | null,
+  account?: { role: string; permissions: string[]; modules: string[]; operationsAllowed?: boolean; registrationOnly?: boolean } | null,
 ) {
-  const sections = [
-    settingsSection,
-    ...(role === "ADMIN" ? [adminSection] : []),
-    ...(role === "ADMIN" ? [] : [accountSettingsSection]),
-  ];
   if (!account) return [];
+  const sections = account.registrationOnly
+    ? [accountSettingsSection]
+    : [
+        settingsSection,
+        ...(role === "ADMIN" ? [adminSection] : []),
+        ...(role === "ADMIN" ? [] : [accountSettingsSection]),
+      ];
   return sections
     .map((section) => ({ ...section, items: section.items.filter((item) => navItemIsVisible(item, account)) }))
     .filter((section) => section.items.length > 0);
@@ -259,7 +263,7 @@ export function AppSidebar({
         )}
       >
         <Link
-          href="/"
+          href={account?.registrationOnly ? "/enrollment" : "/"}
           aria-label={`${appName} · Accueil`}
           className={cn("min-w-0 rounded-lg transition hover:bg-[var(--surface-soft)]", collapsed ? "flex-none" : "flex-1")}
         >

@@ -48,17 +48,25 @@ export default async function EnrollmentPage({
   return (
     <main className="app-shell py-4 md:py-8">
       <PageHeader
-        overline="Ventes"
-        title="Inscrire"
-        description={selectedType === "class" ? "Créer le dossier, choisir le cours, appliquer une offre et préparer l'encaissement." : selectedType === "gym" ? "Ouvrir un pass salle avec un seul prix et un seul solde." : "Vendre les cours et l'accès salle dans un abonnement unique."}
+        overline={settings.registrationOnly ? "Élèves" : "Ventes"}
+        title={settings.registrationOnly ? "Inscrire un élève" : "Inscrire"}
+        description={settings.registrationOnly
+          ? selectedType === "gym"
+            ? "Enregistrer un élève pour la salle de sport."
+            : "Enregistrer un élève pour le club d'arts martiaux."
+          : selectedType === "class"
+            ? "Créer le dossier, choisir le cours, appliquer une offre et préparer l'encaissement."
+            : selectedType === "gym"
+              ? "Ouvrir un pass salle avec un seul prix et un seul solde."
+              : "Vendre les cours et l'accès salle dans un abonnement unique."}
         actions={selectedType !== "class" && canManageMembers ? <Link href="/members/new" className="btn btn-ghost"><UserPlus className="size-4" /> Nouveau membre</Link> : undefined}
       />
 
       {gymModuleEnabled && classModuleEnabled ? (
-        <nav className="mb-5 grid gap-2 sm:grid-cols-3" aria-label="Type d'inscription">
-          <Link href="/enrollment?type=class" className={`flex min-h-12 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-semibold ${selectedType === "class" ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)]"}`}><BookOpen className="size-4" /> Cours</Link>
+        <nav className={`mb-5 grid gap-2 ${settings.registrationOnly ? "sm:grid-cols-2" : "sm:grid-cols-3"}`} aria-label="Type d'inscription">
+          <Link href="/enrollment?type=class" className={`flex min-h-12 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-semibold ${selectedType === "class" ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)]"}`}><BookOpen className="size-4" /> {settings.registrationOnly ? "Arts martiaux" : "Cours"}</Link>
           <Link href="/enrollment?type=gym" className={`flex min-h-12 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-semibold ${selectedType === "gym" ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)]"}`}><Dumbbell className="size-4" /> Salle</Link>
-          <Link href="/enrollment?type=mixed" className={`flex min-h-12 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-semibold ${selectedType === "mixed" ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)]"}`}><Layers3 className="size-4" /> Pack mixte</Link>
+          {!settings.registrationOnly ? <Link href="/enrollment?type=mixed" className={`flex min-h-12 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-semibold ${selectedType === "mixed" ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)]"}`}><Layers3 className="size-4" /> Pack mixte</Link> : null}
         </nav>
       ) : null}
 
@@ -78,7 +86,7 @@ export default async function EnrollmentPage({
             annualInsuranceFeeCents={settings.annualInsuranceFeeCents}
           />
         ) : (
-          <section className="panel panel-soft p-6 text-center"><h2 className="font-semibold">Aucune formule disponible</h2><p className="mt-1 text-sm text-[var(--muted-foreground)]">Demandez à un responsable de créer une formule {selectedType === "gym" ? "Accès salle" : "Pack mixte"}.</p>{canManagePlans ? <Link href="/subscription-plans/new" className="btn btn-primary mt-4">Créer une formule</Link> : null}</section>
+          <section className="panel panel-soft p-6 text-center"><h2 className="font-semibold">Aucune formule disponible</h2><p className="mt-1 text-sm text-[var(--muted-foreground)]">Demandez à un responsable de créer une formule {selectedType === "gym" ? "Accès salle" : "Pack mixte"}.</p>{canManagePlans && !settings.registrationOnly ? <Link href="/subscription-plans/new" className="btn btn-primary mt-4">Créer une formule</Link> : null}</section>
         )
       ) : null}
     </main>
