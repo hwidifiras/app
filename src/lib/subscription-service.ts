@@ -1,6 +1,6 @@
 import type { Prisma, SubscriptionPlan } from "@prisma/client";
 
-import { resolveAnnualInsuranceCharge } from "@/lib/annual-insurance";
+import { recordAnnualInsuranceCoverage, resolveAnnualInsuranceCharge } from "@/lib/annual-insurance";
 import { computeEndDate } from "@/lib/membership-rules";
 import { createSubscriptionEntitlementSnapshots } from "@/lib/subscription-entitlements";
 
@@ -222,6 +222,13 @@ export async function createSubscriptionFromPlan(
       carryOverSessions: carryOver,
       renewsSubscriptionId: predecessor?.id ?? null,
     }),
+  });
+  await recordAnnualInsuranceCoverage(tx, {
+    tenantId,
+    memberId: input.memberId,
+    subscriptionId: subscription.id,
+    coverageStart: subscription.insuranceCoverageDate,
+    amountCents: subscription.insuranceFeeCents,
   });
   await createSubscriptionEntitlementSnapshots(tx, {
     tenantId,

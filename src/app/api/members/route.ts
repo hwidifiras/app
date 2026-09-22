@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { resolveAnnualInsuranceCharge } from "@/lib/annual-insurance";
+import { recordAnnualInsuranceCoverage, resolveAnnualInsuranceCharge } from "@/lib/annual-insurance";
 import { createSubscriptionEntitlementSnapshots } from "@/lib/subscription-entitlements";
 import { createMemberSchema, updateMemberSchema } from "@/lib/schemas/member";
 import { jsonAuthFailureResponse, requirePermission } from "@/lib/permissions";
@@ -303,9 +303,17 @@ export async function POST(request: Request) {
           listPriceCents: plan.price,
           insuranceFeeCents: insurance.feeCents,
           insuranceYear: insurance.insuranceYear,
+          insuranceCoverageDate: insurance.feeCents > 0 ? now : null,
           remainingSessions: plan.totalSessions,
           status: "ACTIVE",
         },
+      });
+      await recordAnnualInsuranceCoverage(tx, {
+        tenantId: actor.tenantId,
+        memberId: created.id,
+        subscriptionId: subscription.id,
+        coverageStart: subscription.insuranceCoverageDate,
+        amountCents: subscription.insuranceFeeCents,
       });
 
       const groupMember = await tx.groupMember.create({

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getEffectivePaymentAmount } from "@/lib/payment-ledger";
 import { voidReceiptForPayment } from "@/lib/receipts";
+import { voidSubscriptionInsuranceCoverages } from "@/lib/annual-insurance";
 
 export class EnrollmentRevertBlockedError extends Error {
   constructor(message: string) {
@@ -194,6 +195,20 @@ export async function revertEnrollmentUndoSnapshot(
   }
 
   if (snapshot.createdSubscriptionIds.length > 0) {
+    await voidSubscriptionInsuranceCoverages(tx, {
+      tenantId: options.tenantId,
+      subscriptionIds: snapshot.createdSubscriptionIds,
+      reason,
+      voidedAt: now,
+    });
+    await tx.memberSubscription.updateMany({
+      where: {
+        ...(options.tenantId ? { tenantId: options.tenantId } : {}),
+        id: { in: snapshot.createdSubscriptionIds },
+        insuranceFeeCents: { gt: 0 },
+      },
+      data: { insuranceYear: null, insuranceCoverageDate: null },
+    });
     await tx.memberSubscription.updateMany({
       where: {
         ...(options.tenantId ? { tenantId: options.tenantId } : {}),

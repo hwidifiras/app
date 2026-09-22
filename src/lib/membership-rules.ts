@@ -1,7 +1,7 @@
 import type { Offer, OfferKind, Prisma, SubscriptionPlan } from "@prisma/client";
 
 import { getAppTimeZone } from "@/lib/dates";
-import { annualInsuranceYearFor, calculateAnnualInsuranceCharge, getAnnualInsuranceFeeCents } from "@/lib/annual-insurance";
+import { annualInsuranceValidUntil, annualInsuranceYearFor, calculateAnnualInsuranceCharge, getAnnualInsuranceFeeCents } from "@/lib/annual-insurance";
 import { getClubSettings } from "@/lib/club-settings";
 import {
   checkGroupMemberCompatibility,
@@ -598,18 +598,18 @@ export async function buildEnrollmentQuote(
 
   const memberIds = [...new Set(resolved.map((r) => r.memberId).filter(Boolean))];
   const insuranceFeeCents = await getAnnualInsuranceFeeCents(prisma, tenantId);
-  const insuredSubscriptions = memberIds.length > 0 && insuranceFeeCents > 0
-    ? await prisma.memberSubscription.findMany({
-        where: { tenantId, memberId: { in: memberIds }, insuranceCoverageDate: { not: null } },
-        orderBy: { insuranceCoverageDate: "desc" },
-        select: { memberId: true, insuranceCoverageDate: true },
+  const insuranceCoverages = memberIds.length > 0 && insuranceFeeCents > 0
+    ? await prisma.memberInsuranceCoverage.findMany({
+        where: { tenantId, memberId: { in: memberIds }, status: "ACTIVE" },
+        orderBy: { coverageStart: "desc" },
+        select: { memberId: true, coverageStart: true, coverageEnd: true },
       })
     : [];
-  const lastInsuranceStartByMember = new Map<string, Date>();
-  for (const subscription of insuredSubscriptions) {
-    if (!lastInsuranceStartByMember.has(subscription.memberId)) {
-      lastInsuranceStartByMember.set(subscription.memberId, subscription.insuranceCoverageDate!);
-    }
+  const insuranceCoveragesByMember = new Map<string, typeof insuranceCoverages>();
+  for (const coverage of insuranceCoverages) {
+    const memberCoverages = insuranceCoveragesByMember.get(coverage.memberId) ?? [];
+    memberCoverages.push(coverage);
+    insuranceCoveragesByMember.set(coverage.memberId, memberCoverages);
   }
   const householdLinks = await prisma.householdMember.findMany({
     where: { tenantId, memberId: { in: memberIds } },
@@ -725,12 +725,24 @@ export async function buildEnrollmentQuote(
         ? insuranceFeeCents
         : calculateAnnualInsuranceCharge({
             configuredFeeCents: insuranceFeeCents,
-            lastInsuranceStartDate: r.memberId ? lastInsuranceStartByMember.get(r.memberId) : null,
+            lastInsuranceStartDate: r.memberId
+              ? insuranceCoveragesByMember.get(r.memberId)?.find(
+                  (coverage) => coverage.coverageStart <= r.startDate && coverage.coverageEnd > r.startDate,
+                )?.coverageStart
+              : null,
             startDate: r.startDate,
           }).feeCents;
     const insuranceCoverageDate = paidPreviously ?? (lineInsuranceFee > 0 ? r.startDate : null);
     const lineInsuranceYear = insuranceCoverageDate ? annualInsuranceYearFor(insuranceCoverageDate) : null;
-    if (insuranceCoverageDate && r.memberId) lastInsuranceStartByMember.set(r.memberId, insuranceCoverageDate);
+    if (insuranceCoverageDate && r.memberId) {
+      const memberCoverages = insuranceCoveragesByMember.get(r.memberId) ?? [];
+      memberCoverages.unshift({
+        memberId: r.memberId,
+        coverageStart: insuranceCoverageDate,
+        coverageEnd: annualInsuranceValidUntil(insuranceCoverageDate),
+      });
+      insuranceCoveragesByMember.set(r.memberId, memberCoverages);
+    }
     const finalAmount = Math.max(0, r.listPrice - discount) + lineInsuranceFee;
 
     quoteLines.push({

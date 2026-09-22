@@ -68,6 +68,16 @@ enum SubscriptionStatus {
   CANCELLED
 }
 
+enum InsuranceCoverageSource {
+  HISTORICAL
+  SUBSCRIPTION
+}
+
+enum InsuranceCoverageStatus {
+  ACTIVE
+  VOIDED
+}
+
 enum PlanActivationPolicy {
   FIXED_DATE
   FIRST_USE
@@ -243,6 +253,7 @@ model Tenant {
   sessions                 Session[]
   subscriptionPlans        SubscriptionPlan[]
   memberSubscriptions      MemberSubscription[]
+  memberInsuranceCoverages MemberInsuranceCoverage[]
   payments                 Payment[]
   receipts                 Receipt[]
   offers                   Offer[]
@@ -378,7 +389,7 @@ model ClubSettings {
   maxStaffDiscountPercent               Int         @default(30)
   debtAlertThresholdCents               Int         @default(0)
   annualInsuranceFeeCents               Int         @default(0)
-  registrationOnly                     Boolean     @default(false)
+  registrationOnly                      Boolean     @default(false)
   dashboardDefaultMode                  String      @default("AUTO")
   dashboardShowTodaySessions            Boolean     @default(true)
   dashboardShowCashToday                Boolean     @default(true)
@@ -403,32 +414,33 @@ model ClubSettings {
 }
 
 model Member {
-  id                String                   @id @default(cuid())
-  tenantId          String?
-  tenant            Tenant?                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  firstName         String
-  lastName          String
-  phone             String?
-  email             String?
-  memberType        MemberType               @default(NOT_SPECIFIED)
-  gender            Gender                   @default(NOT_SPECIFIED)
-  birthDate         DateTime?
-  address           String?
-  parentName        String?
-  parentPhone       String?
-  parentAddress     String?
-  status            MemberStatus             @default(ACTIVE)
-  groups            GroupMember[]
-  subscriptions     MemberSubscription[]
-  attendances       Attendance[]
-  gymVisits         GymVisit[]
-  accessCredentials MemberAccessCredential[]
-  gymAccessAttempts GymAccessAttempt[]
-  householdLink     HouseholdMember?
-  joinedAt          DateTime                 @default(now())
-  archivedAt        DateTime?
-  createdAt         DateTime                 @default(now())
-  updatedAt         DateTime                 @updatedAt
+  id                 String                    @id @default(cuid())
+  tenantId           String?
+  tenant             Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  firstName          String
+  lastName           String
+  phone              String?
+  email              String?
+  memberType         MemberType                @default(NOT_SPECIFIED)
+  gender             Gender                    @default(NOT_SPECIFIED)
+  birthDate          DateTime?
+  address            String?
+  parentName         String?
+  parentPhone        String?
+  parentAddress      String?
+  status             MemberStatus              @default(ACTIVE)
+  groups             GroupMember[]
+  subscriptions      MemberSubscription[]
+  insuranceCoverages MemberInsuranceCoverage[]
+  attendances        Attendance[]
+  gymVisits          GymVisit[]
+  accessCredentials  MemberAccessCredential[]
+  gymAccessAttempts  GymAccessAttempt[]
+  householdLink      HouseholdMember?
+  joinedAt           DateTime                  @default(now())
+  archivedAt         DateTime?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
 
   @@unique([tenantId, phone])
   @@index([tenantId])
@@ -676,56 +688,79 @@ model SubscriptionPlan {
 }
 
 model MemberSubscription {
-  id                     String                    @id @default(cuid())
-  tenantId               String?
-  tenant                 Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  memberId               String
-  member                 Member                    @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  planId                 String
-  plan                   SubscriptionPlan          @relation(fields: [planId], references: [id], onDelete: Restrict)
-  sportId                String?
-  sport                  Sport?                    @relation(fields: [sportId], references: [id], onDelete: Restrict)
-  startDate              DateTime
-  endDate                DateTime?
-  amount                 Int
-  listPriceCents         Int?
-  discountCents          Int                       @default(0)
-  insuranceFeeCents      Int                       @default(0)
-  insuranceYear          Int?
-  insuranceCoverageDate  DateTime?
-  offerApplicationId     String?
-  offerApplication       OfferApplication?         @relation(fields: [offerApplicationId], references: [id], onDelete: SetNull)
-  offerName              String?
-  remainingSessions      Int
-  status                 SubscriptionStatus        @default(DRAFT)
-  activationPolicy       PlanActivationPolicy      @default(FIXED_DATE)
-  activationWindowDays   Int?
-  activationDeadline     DateTime?
-  activatedAt            DateTime?
-  freezeAllowanceCount   Int                       @default(0)
-  freezeMaxTotalDays     Int                       @default(0)
-  renewsSubscriptionId   String?                   @unique
-  renewsSubscription     MemberSubscription?       @relation("SubscriptionRenewal", fields: [renewsSubscriptionId], references: [id], onDelete: SetNull)
-  renewedBySubscription  MemberSubscription?       @relation("SubscriptionRenewal")
-  replacesSubscriptionId String?                   @unique
-  replacesSubscription   MemberSubscription?       @relation("SubscriptionReplacement", fields: [replacesSubscriptionId], references: [id], onDelete: SetNull)
-  replacedBySubscription MemberSubscription?       @relation("SubscriptionReplacement")
-  payments               Payment[]
-  attendances            Attendance[]
-  entitlements           SubscriptionEntitlement[]
-  gymVisits              GymVisit[]
-  pauseEvents            SubscriptionPause[]
-  entitlementAdjustments EntitlementAdjustment[]
-  createdAt              DateTime                  @default(now())
-  updatedAt              DateTime                  @updatedAt
+  id                      String                    @id @default(cuid())
+  tenantId                String?
+  tenant                  Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberId                String
+  member                  Member                    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  planId                  String
+  plan                    SubscriptionPlan          @relation(fields: [planId], references: [id], onDelete: Restrict)
+  sportId                 String?
+  sport                   Sport?                    @relation(fields: [sportId], references: [id], onDelete: Restrict)
+  startDate               DateTime
+  endDate                 DateTime?
+  amount                  Int
+  listPriceCents          Int?
+  discountCents           Int                       @default(0)
+  insuranceFeeCents       Int                       @default(0)
+  insuranceYear           Int?
+  insuranceCoverageDate   DateTime?
+  offerApplicationId      String?
+  offerApplication        OfferApplication?         @relation(fields: [offerApplicationId], references: [id], onDelete: SetNull)
+  offerName               String?
+  remainingSessions       Int
+  status                  SubscriptionStatus        @default(DRAFT)
+  activationPolicy        PlanActivationPolicy      @default(FIXED_DATE)
+  activationWindowDays    Int?
+  activationDeadline      DateTime?
+  activatedAt             DateTime?
+  freezeAllowanceCount    Int                       @default(0)
+  freezeMaxTotalDays      Int                       @default(0)
+  renewsSubscriptionId    String?                   @unique
+  renewsSubscription      MemberSubscription?       @relation("SubscriptionRenewal", fields: [renewsSubscriptionId], references: [id], onDelete: SetNull)
+  renewedBySubscription   MemberSubscription?       @relation("SubscriptionRenewal")
+  replacesSubscriptionId  String?                   @unique
+  replacesSubscription    MemberSubscription?       @relation("SubscriptionReplacement", fields: [replacesSubscriptionId], references: [id], onDelete: SetNull)
+  replacedBySubscription  MemberSubscription?       @relation("SubscriptionReplacement")
+  payments                Payment[]
+  attendances             Attendance[]
+  entitlements            SubscriptionEntitlement[]
+  gymVisits               GymVisit[]
+  pauseEvents             SubscriptionPause[]
+  entitlementAdjustments  EntitlementAdjustment[]
+  insuranceCoverageRecord MemberInsuranceCoverage?
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
 
+  @@unique([tenantId, memberId, insuranceYear])
   @@index([tenantId])
   @@index([memberId, sportId, status])
   @@index([tenantId, status, createdAt])
   @@index([tenantId, status, memberId, createdAt])
   @@index([tenantId, memberId, activationDeadline])
   @@index([tenantId, memberId, insuranceCoverageDate])
-  @@unique([tenantId, memberId, insuranceYear])
+}
+
+model MemberInsuranceCoverage {
+  id             String                  @id @default(cuid())
+  tenantId       String
+  tenant         Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberId       String
+  member         Member                  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  subscriptionId String?                 @unique
+  subscription   MemberSubscription?     @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  coverageStart  DateTime
+  coverageEnd    DateTime
+  amountCents    Int                     @default(0)
+  source         InsuranceCoverageSource
+  status         InsuranceCoverageStatus @default(ACTIVE)
+  voidedAt       DateTime?
+  voidReason     String?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  @@index([tenantId, memberId, status, coverageStart, coverageEnd])
+  @@index([tenantId, subscriptionId])
 }
 
 model PlanEntitlement {

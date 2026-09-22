@@ -59,11 +59,10 @@ export async function loadEnrollmentContext({
         phone: true,
         memberType: true,
         gender: true,
-        subscriptions: {
-          where: { insuranceCoverageDate: { not: null } },
-          orderBy: { insuranceCoverageDate: "desc" },
-          take: 1,
-          select: { insuranceCoverageDate: true },
+        insuranceCoverages: {
+          where: { status: "ACTIVE" },
+          orderBy: { coverageEnd: "desc" },
+          select: { coverageStart: true, coverageEnd: true },
         },
       },
     }),
@@ -133,10 +132,13 @@ export async function loadEnrollmentContext({
   return {
     type,
     profile: product.profile,
-    members: members.map(({ subscriptions, ...member }) => ({
+    members: members.map(({ insuranceCoverages, ...member }) => ({
       ...member,
       phone: member.phone ?? "",
-      lastInsuranceStartDate: subscriptions[0]?.insuranceCoverageDate?.toISOString() ?? null,
+      insuranceCoverages: insuranceCoverages.map((coverage) => ({
+        coverageStart: coverage.coverageStart.toISOString(),
+        coverageEnd: coverage.coverageEnd.toISOString(),
+      })),
     })),
     groups,
     plans,

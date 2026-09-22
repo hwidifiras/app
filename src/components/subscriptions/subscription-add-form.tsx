@@ -11,13 +11,19 @@ import { AccessMemberFields, EMPTY_ACCESS_MEMBER, type AccessNewMember } from "@
 import { useIdempotencyIntent } from "@/hooks/use-idempotency-intent";
 import type { EnrollmentUndoSnapshot } from "@/lib/enrollment-undo";
 import { formatMoney, MONEY_INPUT_SUFFIX } from "@/lib/money";
-import { annualInsuranceValidUntil, calculateAnnualInsuranceCharge } from "@/lib/annual-insurance";
+import { calculateAnnualInsuranceCharge } from "@/lib/annual-insurance";
 import {
   quoteSinglePlanOffer,
   type SinglePlanOffer,
 } from "@/modules/sales/single-plan-offer";
 
-type MemberOption = { id: string; firstName: string; lastName: string; phone: string; lastInsuranceStartDate: string | null };
+type MemberOption = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  insuranceCoverages: Array<{ coverageStart: string; coverageEnd: string }>;
+};
 type PlanOption = { id: string; name: string; planKind: "CLASS" | "GYM" | "MIXED"; price: number; totalSessions: number; validityDays: number; activationPolicy: "FIXED_DATE" | "FIRST_USE"; activationWindowDays: number; freezeAllowanceCount: number; freezeMaxTotalDays: number; entitlements: Array<{ type: "CLASS_SESSIONS" | "GYM_ACCESS"; grantedUnits: number | null; gymAccessMode: "UNLIMITED" | "VISIT_QUOTA" | null; sport: { id: string; name: string } | null }> };
 type GroupOption = { id: string; name: string; sportId: string; sportName: string };
 type OfferOption = SinglePlanOffer;
@@ -115,13 +121,20 @@ export function SubscriptionAddForm({
       }
     : catalogueQuote;
   const selectedMember = membersOptions.find((member) => member.id === memberId);
+  const selectedSubscriptionStart = startDate ? new Date(`${startDate}T00:00:00.000Z`) : new Date();
+  const selectedInsuranceCoverage = memberMode === "EXISTING"
+    ? selectedMember?.insuranceCoverages.find((coverage) => (
+        new Date(coverage.coverageStart) <= selectedSubscriptionStart &&
+        new Date(coverage.coverageEnd) > selectedSubscriptionStart
+      ))
+    : undefined;
   const selectedInsuranceYear = startDate ? new Date(`${startDate}T00:00:00.000Z`).getUTCFullYear() : new Date().getUTCFullYear();
   const automaticInsuranceFeeCents = calculateAnnualInsuranceCharge({
     configuredFeeCents: annualInsuranceFeeCents,
-    lastInsuranceStartDate: memberMode === "NEW" || !selectedMember?.lastInsuranceStartDate
-      ? null
-      : new Date(selectedMember.lastInsuranceStartDate),
-    startDate: startDate ? new Date(`${startDate}T00:00:00.000Z`) : new Date(),
+    lastInsuranceStartDate: selectedInsuranceCoverage
+      ? new Date(selectedInsuranceCoverage.coverageStart)
+      : null,
+    startDate: selectedSubscriptionStart,
   }).feeCents;
   const insuranceFeeCents = insuranceMode === "PAID_PREVIOUSLY"
     ? 0
@@ -440,8 +453,8 @@ export function SubscriptionAddForm({
                     ? "La date saisie démarre la période de couverture de douze mois."
                     : insuranceFeeCents > 0
                     ? "Facturée avec ce premier abonnement, puis à nouveau après douze mois complets."
-                    : selectedMember?.lastInsuranceStartDate
-                      ? `Valable jusqu'au ${annualInsuranceValidUntil(new Date(selectedMember.lastInsuranceStartDate)).toLocaleDateString("fr-FR")}.`
+                    : selectedInsuranceCoverage
+                      ? `Valable jusqu'au ${new Date(selectedInsuranceCoverage.coverageEnd).toLocaleDateString("fr-FR")}.`
                       : "Aucun frais d'assurance supplémentaire sur cette période."}
                 </p>
                 {insuranceFeeCents > 0 ? <p className="text-xs font-medium">Saisissez 0 TND au paiement initial pour conserver ce montant en dette.</p> : null}

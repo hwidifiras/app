@@ -33,7 +33,7 @@ export default async function NewSubscriptionPage({
   }
 
   let hasError = false;
-  let membersOptions: Array<{ id: string; firstName: string; lastName: string; phone: string; lastInsuranceStartDate: string | null }> = [];
+  let membersOptions: Array<{ id: string; firstName: string; lastName: string; phone: string; insuranceCoverages: Array<{ coverageStart: string; coverageEnd: string }> }> = [];
   let plansOptions: Array<{ id: string; name: string; planKind: "CLASS" | "GYM" | "MIXED"; price: number; totalSessions: number; validityDays: number; activationPolicy: "FIXED_DATE" | "FIRST_USE"; activationWindowDays: number; freezeAllowanceCount: number; freezeMaxTotalDays: number; entitlements: Array<{ type: "CLASS_SESSIONS" | "GYM_ACCESS"; grantedUnits: number | null; gymAccessMode: "UNLIMITED" | "VISIT_QUOTA" | null; sport: { id: string; name: string } | null }> }> = [];
   let groupsOptions: Array<{ id: string; name: string; sportId: string; sportName: string }> = [];
   let annualInsuranceFeeCents = 0;
@@ -48,11 +48,10 @@ export default async function NewSubscriptionPage({
           firstName: true,
           lastName: true,
           phone: true,
-          subscriptions: {
-            where: { insuranceCoverageDate: { not: null } },
-            orderBy: { insuranceCoverageDate: "desc" },
-            take: 1,
-            select: { insuranceCoverageDate: true },
+          insuranceCoverages: {
+            where: { status: "ACTIVE" },
+            orderBy: { coverageEnd: "desc" },
+            select: { coverageStart: true, coverageEnd: true },
           },
         },
       }),
@@ -74,7 +73,10 @@ export default async function NewSubscriptionPage({
       firstName: member.firstName,
       lastName: member.lastName,
       phone: member.phone ?? "",
-      lastInsuranceStartDate: member.subscriptions[0]?.insuranceCoverageDate?.toISOString() ?? null,
+      insuranceCoverages: member.insuranceCoverages.map((coverage) => ({
+        coverageStart: coverage.coverageStart.toISOString(),
+        coverageEnd: coverage.coverageEnd.toISOString(),
+      })),
     }));
     plansOptions = plans;
     groupsOptions = groups.map((group) => ({ id: group.id, name: group.name, sportId: group.sportId, sportName: group.sport.name }));
