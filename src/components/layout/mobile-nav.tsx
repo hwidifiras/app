@@ -3,12 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Banknote, ChevronDown, Clock, Dumbbell, Home, Menu, PlusCircle, Search, X } from "lucide-react";
+import { Banknote, CalendarDays, CalendarRange, ChevronDown, Clock, Dumbbell, Home, Menu, PlusCircle, Search, X } from "lucide-react";
 
 import {
   getConfigurationSections,
+  getPrimaryNavigationSections,
   isLinkActive,
-  navSections,
   NavLink,
   navItemIsVisible,
   settingsSection,
@@ -28,12 +28,7 @@ export function MobileNav() {
   const { account, navBadges } = useAppShellData();
   const role = account?.role ?? null;
   const configurationSections = getConfigurationSections(role, account);
-  const visibleNavSections = navSections
-    .map((section) => ({
-      ...section,
-      items: section.items.filter((item) => navItemIsVisible(item, account)),
-    }))
-    .filter((section) => section.items.length > 0);
+  const visibleNavSections = getPrimaryNavigationSections(account);
   const inClubConfig = configurationSections.some((section) =>
     section.items.some((item) => isLinkActive(pathname, item.href)),
   );
@@ -41,7 +36,10 @@ export function MobileNav() {
   const profileQuickLinks = account?.registrationOnly
     ? [
         { href: "/enrollment", label: "Inscrire", icon: PlusCircle, featured: true, permission: "enrollment.sell" as const },
-        { href: "/members", label: "Élèves", icon: Search, permission: "members.manage" as const },
+        { href: "/members", label: "Membres", icon: Search, permission: "members.manage" as const },
+        { href: "/payments", label: "Caisse", icon: Banknote, permission: "reports.finance" as const },
+        { href: "/sessions", label: "Planning", icon: CalendarRange, moduleKey: "CLASS_MANAGEMENT" as const, permission: "class.attendance" as const },
+        { href: "/groups", label: "Groupes", icon: CalendarDays, moduleKey: "CLASS_MANAGEMENT" as const, permission: "class.manage" as const },
       ]
     : account?.productProfile === "GYM_ONLY"
     ? [

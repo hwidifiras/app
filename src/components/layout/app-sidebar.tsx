@@ -113,6 +113,31 @@ export const accountSettingsSection: NavSection = {
   items: [{ href: "/settings/account", label: "Mon compte", icon: User }],
 };
 
+export const registrationOnlyNavSections: NavSection[] = [
+  {
+    title: "Opérations",
+    items: [
+      { href: "/enrollment", label: "Inscrire", icon: UserPlus, permission: "enrollment.sell" },
+      { href: "/payments", label: "Caisse", icon: Wallet, permission: "reports.finance" },
+      { href: "/members", label: "Membres", icon: Users, permission: "members.manage" },
+      { href: "/sessions", label: "Planning", icon: CalendarRange, moduleKey: "CLASS_MANAGEMENT", permission: "class.attendance" },
+    ],
+  },
+  {
+    title: "Organisation",
+    items: [
+      { href: "/groups", label: "Groupes & horaires", icon: CalendarDays, moduleKey: "CLASS_MANAGEMENT", permission: "class.manage" },
+      { href: "/coaches", label: "Coachs", icon: User, moduleKey: "CLASS_MANAGEMENT", permission: "class.manage" },
+    ],
+  },
+  {
+    title: "Équipe",
+    items: [
+      { href: "/settings/users", label: "Équipe & accès", icon: Users, adminOnly: true },
+    ],
+  },
+];
+
 export const clubConfigSection: NavSection = {
   title: "Configuration",
   items: [...clubSection.items, ...settingsSection.items],
@@ -125,6 +150,18 @@ export const membersSection = studentsSection;
 export const cashSection = salesSection;
 
 export const navSections: NavSection[] = [dailySection, salesSection, studentsSection, clubSection];
+
+export function getPrimaryNavigationSections(
+  account: { role: string; permissions: string[]; modules: string[]; operationsAllowed?: boolean; registrationOnly?: boolean } | null,
+) {
+  const sections = account?.registrationOnly ? registrationOnlyNavSections : navSections;
+  return sections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => navItemIsVisible(item, account)),
+    }))
+    .filter((section) => section.items.length > 0);
+}
 
 export function isLinkActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -240,12 +277,7 @@ export function AppSidebar({
   const { appName } = useClubBranding();
   const role = account?.role ?? null;
   const configurationSections = getConfigurationSections(role, account);
-  const visibleNavSections = navSections
-    .map((section) => ({
-      ...section,
-      items: section.items.filter((item) => navItemIsVisible(item, account)),
-    }))
-    .filter((section) => section.items.length > 0);
+  const visibleNavSections = getPrimaryNavigationSections(account);
 
   const inClubConfig = configurationSections.some((section) =>
     section.items.some((item) => isLinkActive(pathname, item.href)),

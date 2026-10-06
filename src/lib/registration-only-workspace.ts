@@ -4,6 +4,10 @@ const REGISTRATION_ONLY_PAGE_PREFIXES = [
   "/receipts",
   "/payments",
   "/subscriptions",
+  "/sessions",
+  "/groups",
+  "/coaches",
+  "/settings/users",
   "/settings/account",
   "/subscription-status",
 ] as const;
@@ -11,6 +15,11 @@ const REGISTRATION_ONLY_PAGE_PREFIXES = [
 const REGISTRATION_ONLY_NAV_PATHS = new Set([
   "/enrollment",
   "/members",
+  "/payments",
+  "/sessions",
+  "/groups",
+  "/coaches",
+  "/settings/users",
   "/settings/account",
 ]);
 
