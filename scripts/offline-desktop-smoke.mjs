@@ -44,7 +44,7 @@ try {
   for (const route of ['/enrollment', '/members', '/payments', '/sessions', '/groups', '/coaches', '/gym/check-in', '/gym/visits', '/plans', '/offers', '/settings/club']) {
     const response = await page.goto(`${origin}${route}`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
     assert.equal(response.status(), 200, `${route} must load offline`);
-    assert.equal(new URL(page.url()).pathname, route);
+    assert.equal(new URL(page.url()).pathname, route === '/plans' ? '/subscription-plans' : route);
     assert.ok(!(await page.locator('body').innerText()).includes('Application error'), `${route} must render`);
     visited.push(route);
   }
