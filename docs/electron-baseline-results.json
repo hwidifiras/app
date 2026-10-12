@@ -1,0 +1,30 @@
+{
+  "source_commit": "3bd00f0526f468ea44fdc1868a54da68c7b23047",
+  "date": "2026-10-12",
+  "database": "disposable PostgreSQL 16; all 29 migrations applied",
+  "dependency_installation": "reused sibling checkout; clean lockfile install still required",
+  "test_files": 60,
+  "total": 365,
+  "passed": 361,
+  "failed": 4,
+  "pending": 0,
+  "success": false,
+  "failures": [
+    {
+      "file": "tests/dojo-scenarios.test.ts",
+      "case": "schema guardrails allows enrolling a child without their own phone when parent phone is provided"
+    },
+    {
+      "file": "tests/gym-report.test.ts",
+      "case": "gym reporting counts only the requested tenant and excludes reversed visits"
+    },
+    {
+      "file": "tests/subscription-lifecycle.test.ts",
+      "case": "subscription effective lifecycle replaces a wrong sale without rewriting its payment or receipt"
+    },
+    {
+      "file": "tests/ui-system-contract.test.ts",
+      "case": "UI system regression contract keeps the compact Option-2 shell, solid active state, and truthful navigation"
+    }
+  ]
+}

@@ -41,6 +41,7 @@ The GitHub Actions workflow runs install, Prisma validation and generation, type
 
 ## Documentation
 
+- [Electron client and owner maintenance plan](docs/electron-app-plan.md)
 - [VPS deployment](docs/vps-deployment.md)
 - [Production handoff](docs/production-server-handoff.md)
 - [First client handoff](docs/first-client-handoff.md)
