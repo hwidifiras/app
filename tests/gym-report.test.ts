@@ -1,9 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, afterEach, vi, describe, expect, it } from "vitest";
 
 import { prisma } from "@/lib/prisma";
 import { createSubscriptionFromPlan } from "@/lib/subscription-service";
 import { withTenantContext } from "@/lib/tenant-context";
 import { getGymReportSnapshot } from "@/modules/gym/gym-report";
+
+beforeEach(() => vi.setSystemTime(new Date("2026-08-15T10:00:00.000Z")));
+afterEach(() => vi.useRealTimers());
 
 describe("gym reporting", () => {
   it("counts only the requested tenant and excludes reversed visits", async () => {
@@ -45,6 +48,7 @@ describe("gym reporting", () => {
       plan,
       startDate: new Date("2026-08-01T00:00:00.000Z"),
     }));
+    await prisma.memberSubscription.update({ where: { id: subscription.id }, data: { createdAt: now } });
     await prisma.payment.create({
       data: { tenantId: tenant.id, memberSubscriptionId: subscription.id, amount: 3500, paymentDate: now },
     });

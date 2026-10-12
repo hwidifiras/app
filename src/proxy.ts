@@ -56,7 +56,7 @@ function loginRedirect(request: NextRequest, reason: "missing" | "invalid") {
 
   const url = request.nextUrl.clone();
   if (pathname === "/") {
-    url.pathname = "/accueil";
+    url.pathname = process.env.OFFLINE_DESKTOP === "1" ? "/login" : "/accueil";
     return NextResponse.redirect(url);
   }
 
@@ -81,6 +81,20 @@ function demoReadOnlyResponse(request: NextRequest) {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  if (process.env.OFFLINE_DESKTOP === "1") {
+    if (!process.env.OFFLINE_ACCESS_TOKEN || request.headers.get("x-offline-access") !== process.env.OFFLINE_ACCESS_TOKEN) {
+      return NextResponse.json({ error: "Accès local non autorisé" }, { status: 403 });
+    }
+    const safe = request.method === "GET" || request.method === "HEAD" || request.method === "OPTIONS";
+    const origin = request.headers.get("origin");
+    const localOrigin = `http://${request.headers.get("host")}`;
+    if (!safe && origin && origin !== localOrigin) {
+      return NextResponse.json({ error: "Origine non autorisée" }, { status: 403 });
+    }
+    if (/^\/(?:signup|find-workspace|demo|accueil|homepage|auth\/activate|api\/saas-signup|api\/auth\/(?:demo|handoff|register|forgot-password))/.test(pathname)) {
+      return pathname.startsWith("/api/") ? NextResponse.json({ error: "Fonction disponible dans l’édition en ligne uniquement" }, { status: 404 }) : NextResponse.redirect(new URL("/login", request.url));
+    }
+  }
   const tenantSlug = tenantSlugFromHost(request.headers.get("host") ?? request.headers.get("x-forwarded-host"));
   const safeMethod = request.method === "GET" || request.method === "HEAD" || request.method === "OPTIONS";
 

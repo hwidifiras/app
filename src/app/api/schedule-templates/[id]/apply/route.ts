@@ -145,7 +145,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           effectiveTo,
         })),
       ),
-      skipDuplicates: true,
     });
 
     await tx.auditLog.create({

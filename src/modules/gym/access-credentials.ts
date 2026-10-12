@@ -88,7 +88,7 @@ export async function issueGymCredential(
   tx: Prisma.TransactionClient,
   input: { tenantId: string; memberId: string; actorId: string; replacementReason?: string },
 ) {
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${input.tenantId}:gym-credential:${input.memberId}`}))`;
+  // The local transaction fence serializes invariant reads and writes.
   const member = await tx.member.findFirst({
     where: { id: input.memberId, tenantId: input.tenantId },
     select: { id: true, status: true },
@@ -141,7 +141,7 @@ export async function revokeGymCredential(
   tx: Prisma.TransactionClient,
   input: { tenantId: string; credentialId: string; actorId: string; reason: string },
 ) {
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${input.tenantId}:gym-credential-id:${input.credentialId}`}))`;
+  // The local transaction fence serializes invariant reads and writes.
   const existing = await tx.memberAccessCredential.findFirst({
     where: { id: input.credentialId, tenantId: input.tenantId },
   });

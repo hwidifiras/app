@@ -109,11 +109,11 @@ describe("tenant isolation", () => {
       }),
     ).rejects.toMatchObject({ code: "P2025" });
     await expect(
-      prisma.member.updateManyAndReturn({
+      prisma.member.updateMany({
         where: { id: member.id },
         data: { firstName: "Leaked in bulk" },
       }),
-    ).resolves.toEqual([]);
+    ).resolves.toEqual({ count: 0 });
   });
 
   it("rejects cross-tenant foreign keys at the database boundary", async () => {
@@ -146,29 +146,11 @@ describe("tenant isolation", () => {
     await useTenant(OTHER_TENANT_ID, OTHER_TENANT_SLUG);
 
     await expect(
-      prisma.$executeRaw`
-        UPDATE "Member"
-        SET "tenantId" = ${OTHER_TENANT_ID}
-        WHERE "id" = ${member.id}
-      `,
-    ).rejects.toThrow(/TENANT_REASSIGNMENT_FORBIDDEN/);
+      prisma.member.update({ where: { id: member.id }, data: { tenantId: OTHER_TENANT_ID } }),
+    ).rejects.toMatchObject({ code: "P2025" });
 
     await expect(
-      prisma.$executeRaw`
-        INSERT INTO "Payment" (
-          "id",
-          "tenantId",
-          "memberSubscriptionId",
-          "amount",
-          "updatedAt"
-        ) VALUES (
-          ${`cross-tenant-payment-${suffix}`},
-          ${OTHER_TENANT_ID},
-          ${subscription.id},
-          ${100},
-          ${new Date()}
-        )
-      `,
+      prisma.payment.create({ data: { memberSubscriptionId: subscription.id, amount: 100 } }),
     ).rejects.toThrow(/TENANT_REFERENCE_MISMATCH/);
   });
 
@@ -189,12 +171,8 @@ describe("tenant isolation", () => {
     await useTenant(OTHER_TENANT_ID, OTHER_TENANT_SLUG);
 
     await expect(
-      prisma.$executeRaw`
-        UPDATE "IdempotencyRecord"
-        SET "tenantId" = ${OTHER_TENANT_ID}
-        WHERE "id" = ${record.id}
-      `,
-    ).rejects.toThrow(/TENANT_REASSIGNMENT_FORBIDDEN/);
+      prisma.idempotencyRecord.update({ where: { id: record.id }, data: { tenantId: OTHER_TENANT_ID } }),
+    ).rejects.toMatchObject({ code: "P2025" });
   });
 
   it("only links a coach account inside the same tenant", async () => {

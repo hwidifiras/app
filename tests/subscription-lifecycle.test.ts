@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, afterEach, vi, describe, expect, it } from "vitest";
 
 import { getClubSettings } from "@/lib/club-settings";
 import { evaluateGymAccess } from "@/lib/gym-access-policy";
@@ -67,6 +67,9 @@ async function createMember(tenantId: string, suffix: string) {
     },
   });
 }
+
+beforeEach(() => vi.setSystemTime(new Date("2026-08-15T10:00:00.000Z")));
+afterEach(() => vi.useRealTimers());
 
 describe("subscription effective lifecycle", () => {
   it("keeps the current right active until a fixed-date renewal takes effect", async () => {

@@ -59,6 +59,7 @@ export function enterTenantContext(context: TenantContext): void {
 }
 
 export function setFallbackTenantContext(context: TenantContext | null): void {
+  tenantStorage.disable();
   fallbackTenantContext = context;
 }
 

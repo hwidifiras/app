@@ -1,3 +1,7 @@
+import { normalizeDocumentCreate, validateDocumentReferences, enforceDocumentDelete, getDocumentClient, withDocumentClient } from "@/lib/document-relations";
+
+import { withDocumentFence } from "@/lib/document-transaction";
+
 import { PrismaClient } from "@prisma/client";
 
 import { enterTenantContext, getTenantContext, isTenantScopedModel } from "@/lib/tenant-context";
@@ -74,7 +78,7 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 export async function checkDatabaseReadiness(): Promise<void> {
-  await basePrisma.$queryRaw`SELECT 1`;
+  await basePrisma.$runCommandRaw({ ping: 1 });
 }
 
 /**
@@ -99,16 +103,17 @@ export async function findPublicReceiptByVerificationCode(input: {
   });
 }
 
-export const prisma = basePrisma.$extends({
+const scopedPrisma = basePrisma.$extends({
   query: {
     $allModels: {
       async $allOperations({ model, operation, args, query }) {
+        if (operation === "findRaw" || operation === "aggregateRaw") throw new Error("UNSCOPED_DOCUMENT_READ_FORBIDDEN");
         const tenantId = await tenantIdForModel(model);
-        if (!tenantId) return query(args);
+
 
         const scopedArgs = { ...(args as Record<string, unknown>) };
 
-        if (
+        if (tenantId && (
           operation === "findUnique" ||
           operation === "findUniqueOrThrow" ||
           operation === "findFirst" ||
@@ -119,34 +124,71 @@ export const prisma = basePrisma.$extends({
           operation === "groupBy" ||
           operation === "update" ||
           operation === "updateMany" ||
-          operation === "updateManyAndReturn" ||
           operation === "delete" ||
           operation === "deleteMany"
-        ) {
+        )) {
           scopedArgs.where = withTenantWhere(scopedArgs.where as Record<string, unknown> | undefined, tenantId);
         }
 
-        if (operation === "create") {
+        if (tenantId && operation === "create") {
           scopedArgs.data = withTenantData(scopedArgs.data, tenantId);
         }
 
-        if (operation === "createMany" || operation === "createManyAndReturn") {
+        if (tenantId && operation === "createMany") {
           const data = (scopedArgs.data ?? []) as unknown;
           scopedArgs.data = withTenantData(data, tenantId);
         }
 
-        if (operation === "update" || operation === "updateMany" || operation === "updateManyAndReturn") {
+        if (tenantId && (operation === "update" || operation === "updateMany")) {
           assertNoTenantMutation(scopedArgs.data, tenantId);
         }
 
-        if (operation === "upsert") {
+        if (tenantId && operation === "upsert") {
           scopedArgs.where = withTenantWhere(scopedArgs.where as Record<string, unknown> | undefined, tenantId);
           scopedArgs.create = withTenantData(scopedArgs.create, tenantId);
           assertNoTenantMutation(scopedArgs.update, tenantId);
         }
 
-        return query(scopedArgs);
+        if (operation === "create" || operation === "createMany") scopedArgs.data = normalizeDocumentCreate(model!, scopedArgs.data);
+        if (operation === "upsert") scopedArgs.create = normalizeDocumentCreate(model!, scopedArgs.create);
+        const mutation = ["create", "createMany", "update", "updateMany", "upsert", "delete", "deleteMany"].includes(operation);
+        if (!mutation) return query(scopedArgs);
+        if (model === "PlatformAuditLog" && operation !== "create" && operation !== "createMany") throw new Error("PLATFORM_AUDIT_APPEND_ONLY");
+        const guard = async (client: PrismaClient | import("@prisma/client").Prisma.TransactionClient) => {
+          await validateDocumentReferences(client, model!, scopedArgs.data ?? scopedArgs.create, tenantId);
+          if (operation === "upsert") await validateDocumentReferences(client, model!, scopedArgs.update, tenantId);
+          if (operation === "delete" || operation === "deleteMany") await enforceDocumentDelete(client, model!, scopedArgs.where);
+        };
+        const client = getDocumentClient();
+        if (client) { await guard(client); return query(scopedArgs); }
+        return withDocumentFence(() => basePrisma.$transaction(async (tx) => withDocumentClient(tx, async () => {
+          await guard(tx);
+          const name = model![0].toLowerCase() + model!.slice(1);
+          const modelDelegate = (tx as unknown as Record<string, Record<string, (args: unknown) => Promise<unknown>>>)[name];
+          return modelDelegate[operation](scopedArgs);
+        })));
+
       },
     },
   },
 }) as unknown as PrismaClient;
+
+const documentTransaction = scopedPrisma.$transaction.bind(scopedPrisma);
+export const prisma = new Proxy(scopedPrisma, {
+  get(target, property, receiver) {
+    if (property === "$transaction") return (operation: unknown, options?: Record<string, unknown>) => withDocumentFence(async () => {
+      const safeOptions = { ...options }; delete safeOptions.isolationLevel;
+      for (let attempt = 0; ; attempt++) {
+        try {
+          if (typeof operation === "function") return await documentTransaction((tx) => withDocumentClient(tx, () => operation(tx)), safeOptions);
+          throw new Error("DOCUMENT_TRANSACTIONS_REQUIRE_CALLBACK");
+        }
+        catch (error) {
+          if (attempt >= 4 || !(error && typeof error === "object" && "code" in error && error.code === "P2034")) throw error;
+          await new Promise((resolve) => setTimeout(resolve, 25 * (attempt + 1)));
+        }
+      }
+    });
+    return Reflect.get(target, property, receiver);
+  },
+}) as PrismaClient;

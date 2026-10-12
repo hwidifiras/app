@@ -1,15 +1,8 @@
-import { existsSync } from "node:fs";
-import { config } from "dotenv";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
-config();
-if (!process.env.DATABASE_URL && existsSync(".env.development")) {
-  config({ path: ".env.development" });
-}
-if (!process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = "postgresql://gymday:gymday@localhost:5432/gymday_dev?schema=public";
-}
+
+if (!process.env.DATABASE_URL?.startsWith("mongodb://")) throw new Error("Seed only an explicitly configured disposable MongoDB database.");
 
 const prisma = new PrismaClient();
 

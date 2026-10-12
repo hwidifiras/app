@@ -7,6 +7,7 @@ export type EmailDeliveryResult =
   | { delivered: false; reason: "EMAIL_NOT_CONFIGURED" | "EMAIL_SEND_FAILED" };
 
 function getResendClient() {
+  if (process.env.OFFLINE_DESKTOP === "1") return null;
   const apiKey = process.env.RESEND_API_KEY?.trim();
   if (!apiKey) return null;
   return new Resend(apiKey);

@@ -81,85 +81,22 @@ function directoryWhere(input: DirectoryInput): Prisma.MemberWhereInput {
   };
 }
 
-function rawDirectoryConditions(input: DirectoryInput) {
-  const conditions: Prisma.Sql[] = [Prisma.sql`m."tenantId" = ${input.tenantId}`];
-  const query = input.query?.trim();
-  const sportId = input.sportId?.trim();
-
-  if (input.status && input.status !== "ALL") {
-    conditions.push(Prisma.sql`m.status = ${input.status}::"MemberStatus"`);
-  }
-
-  if (query) {
-    const pattern = `%${query}%`;
-    conditions.push(Prisma.sql`(
-      m."firstName" ILIKE ${pattern}
-      OR m."lastName" ILIKE ${pattern}
-      OR CONCAT(m."firstName", ' ', m."lastName") ILIKE ${pattern}
-      OR m.phone ILIKE ${pattern}
-      OR COALESCE(m.email, '') ILIKE ${pattern}
-    )`);
-  }
-
-  if (sportId && sportId !== "ALL") {
-    conditions.push(Prisma.sql`EXISTS (
-      SELECT 1
-      FROM "GroupMember" gm
-      INNER JOIN "Group" g ON g.id = gm."groupId"
-      WHERE gm."tenantId" = ${input.tenantId}
-        AND g."tenantId" = ${input.tenantId}
-        AND gm."memberId" = m.id
-        AND gm.status = 'ACTIVE'::"GroupMemberStatus"
-        AND g."isActive" = TRUE
-        AND g."sportId" = ${sportId}
-    )`);
-  }
-
-  if (input.paymentStatus === "PAID") {
-    conditions.push(Prisma.sql`latest.id IS NOT NULL AND latest.paid >= latest.amount`);
-  } else if (input.paymentStatus === "PARTIAL") {
-    conditions.push(Prisma.sql`latest.id IS NOT NULL AND latest.paid > 0 AND latest.paid < latest.amount`);
-  } else if (input.paymentStatus === "UNPAID") {
-    conditions.push(Prisma.sql`(latest.id IS NULL OR latest.paid <= 0)`);
-  }
-
-  return conditions;
-}
-
-async function paymentFilteredPageIds(input: DirectoryInput, pageSize: number, offset: number) {
-  const conditions = rawDirectoryConditions(input);
-
-  return prisma.$queryRaw<PaymentFilteredId[]>(Prisma.sql`
-    WITH latest_subscription_id AS MATERIALIZED (
-      SELECT DISTINCT ON (ms."memberId")
-        ms.id,
-        ms."memberId",
-        ms.amount
-      FROM "MemberSubscription" ms
-      WHERE ms."tenantId" = ${input.tenantId}
-        AND ms.status = 'ACTIVE'::"SubscriptionStatus"
-      ORDER BY ms."memberId", ms."createdAt" DESC, ms.id DESC
-    ),
-    latest_subscription AS (
-      SELECT
-        latest.id,
-        latest."memberId",
-        latest.amount,
-        COALESCE(SUM(p.amount), 0) AS paid
-      FROM latest_subscription_id latest
-      LEFT JOIN "Payment" p
-        ON p."memberSubscriptionId" = latest.id
-       AND p."tenantId" = ${input.tenantId}
-      GROUP BY latest.id, latest."memberId", latest.amount
-    )
-    SELECT m.id, COUNT(*) OVER()::INTEGER AS total
-    FROM "Member" m
-    LEFT JOIN latest_subscription latest ON latest."memberId" = m.id
-    WHERE ${Prisma.join(conditions, " AND ")}
-    ORDER BY m."createdAt" DESC, m.id DESC
-    LIMIT ${pageSize}
-    OFFSET ${offset}
-  `);
+async function paymentFilteredPageIds(input: DirectoryInput, pageSize: number, offset: number): Promise<PaymentFilteredId[]> {
+  const members = await prisma.member.findMany({
+    where: directoryWhere(input),
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: { id: true, subscriptions: { where: { status: "ACTIVE" }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1,
+      select: { amount: true, payments: { where: { tenantId: input.tenantId }, select: { amount: true } } } } },
+  });
+  const matching = members.filter((member) => {
+    const latest = member.subscriptions[0];
+    if (!latest) return input.paymentStatus === "UNPAID";
+    const paid = latest.payments.reduce((sum, p) => sum + p.amount, 0);
+    if (input.paymentStatus === "PAID") return paid >= latest.amount;
+    if (input.paymentStatus === "PARTIAL") return paid > 0 && paid < latest.amount;
+    return paid <= 0;
+  });
+  return matching.slice(offset, offset + pageSize).map((member) => ({ id: member.id, total: matching.length }));
 }
 
 const directorySelect = {

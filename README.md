@@ -1,56 +1,61 @@
-# GymDay
+# All in Gym — offline desktop
 
-Multi-tenant SaaS for gym and dojo operations: members, subscriptions, attendance, payments, enrollment, planning, reporting, and club settings.
+Windows x64 Electron application for daily club operations. The existing Next.js screens and business services run locally, backed by a bundled MongoDB Community document database. No SQLite, PostgreSQL installation, internet connection, hosted API, SaaS subscription or synchronization is required after installation.
 
-## Quick start
+## Install and use
 
-PostgreSQL is required in every environment. Start a local PostgreSQL 16 instance, then:
+Run `All-in-Gym-1.0.0-x64.exe` from `release/`. On first launch, create the club administrator with your own password. The app provides members, class/gym/mixed enrollment, subscriptions and renewals, attendance, gym cards and check-in, payments and corrections, receipts and printing, planning, coaches, groups, offers, reporting, imports and club settings.
 
-```bash
-npm ci
-cp .env.development.example .env.development
-npm run dev:setup
-npm run dev
+Use **All in Gym → Sauvegarder…** to save a `.gymbackup` file to another drive. **Restaurer…** requires an administrator and creates a safety snapshot before replacing local data. Automatic backups retain the last 14 clean closes. Backups include personal club data and password hashes; keep them in a protected location.
+
+Local data is stored in the Windows user profile under `%APPDATA%/All in Gym`. Uninstalling or updating the app retains this directory. `GYM_DATA_DIR` can explicitly select another local data directory. Never delete or copy a running database directory; use the backup menu.
+
+Email delivery, cloud signup, hosted billing, public web receipt verification and cloud synchronization are unavailable offline. Receipts still print and can be verified in the local application with their number and code. Printer selection and PDF output use the normal print dialog. Camera QR scanning and keyboard scanners retain the existing workflows.
+
+## Build
+
+Use Node.js 22.16+ or 24 and pnpm 11 on Windows x64:
+
+```text
+pnpm install --frozen-lockfile
+pnpm exec prisma generate
+pnpm --dir desktop --ignore-workspace install --frozen-lockfile --ignore-scripts --config.node-linker=hoisted
+node desktop/node_modules/electron/install.js
+pnpm desktop:installer
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Create the first development admin with `npm run admin:create:dev`.
+`desktop:package` produces the unpacked application, and `desktop:dev` builds and launches the same local shell. Runtime acquisition occurs only at build time. The MongoDB executable is pinned to version 8.0.32 and its SHA-256; official archive entries are verified before extraction. MongoDB’s license and third-party notices are included in the installed resources. Electron and both lockfiles are pinned.
 
-For an isolated container stack instead, run `npm run docker:dev:up` and open [http://localhost:3001](http://localhost:3001).
+The installer is currently unsigned. Signing is a release-system configuration; no signing secrets are embedded in the application.
 
-## Release checks
+## Verify
 
-| Command | Purpose |
-| --- | --- |
-| `npm run typecheck` | Validate TypeScript without emitting files |
-| `npm run lint` | Run ESLint |
-| `npm test` | Reset a disposable PostgreSQL test database and run scenarios |
-| `npm run build` | Create the production Next.js build |
-| `npm run config:validate:production` | Fail on missing, default, or unsafe production configuration |
-| `npm run handoff:check` | Run the scenario suite and production build |
+```text
+pnpm exec tsc --noEmit
+pnpm lint
+pnpm test
+node --test tests/offline-runtime.node.mjs
+pnpm desktop:package
+pnpm test:server
+node scripts/offline-desktop-smoke.mjs
+```
 
-The GitHub Actions workflow runs install, Prisma validation and generation, typecheck, lint, PostgreSQL-backed tests, and the production build.
+Tests start their own authenticated, single-node replica set in a disposable directory. They do not use an existing database URL or reset a production database. The scenario suite exercises payments, corrections, receipt numbering, attendance, family enrollment, renewal, quotas, permissions and concurrent requests. Runtime tests cover rollback, backup integrity, restore, multiple missing child phones and restart persistence. Desktop smoke tests exercise first setup, login, application pages, network isolation and relaunch with a separate local profile.
 
-## Operations
+## Import an existing club
 
-- `GET /api/health` is the liveness check and does not query PostgreSQL.
-- `GET /api/ready` is the readiness check and returns `503` until PostgreSQL is reachable.
-- Docker Compose runs migrations and permission backfills in a one-shot migration service before starting the web service.
-- The migration service first runs `npm run db:preflight:tenant-guardrails` and stops before schema changes if legacy rows have missing tenant assignments or cross-tenant references.
-- Schedule `npm run db:prune:idempotency` as a low-traffic maintenance job (for example hourly); it removes expired retry records in bounded, lock-skipping batches.
-- PostgreSQL data is stored in the `dojo_postgres` volume in the production Compose stack.
+The offline app starts with a fresh local database. It does not automatically access or change live customer data.
 
-## Documentation
+1. Set `OFFLINE_EXPORT_DATABASE_URL` to an explicitly selected source PostgreSQL database and run `node scripts/export-offline-data.mjs <club-slug> <export.json>`. This uses a read-only transaction and exports one club.
+2. Close the desktop app. Set `GYM_DATA_DIR` to its data directory and run `pnpm offline:import <export.json>`.
+3. The importer keeps a safety backup, preserves record IDs, money, receipt snapshots, member relationships, attendance and entitlement history, and remaps the exported club to the local workspace. Cloud onboarding and subscription controls are omitted.
+4. Launch and sign in using the exported administrator’s account. Verify balances and receipts against the original export before beginning daily work.
+5. Reprint imported gym cards in the local app: their offline codes use a local signing key. Historical visits and credential records remain available.
 
-- [Electron client and owner maintenance plan](docs/electron-app-plan.md)
-- [VPS deployment](docs/vps-deployment.md)
-- [Production handoff](docs/production-server-handoff.md)
-- [First client handoff](docs/first-client-handoff.md)
-- [Development environments](docs/dev-mode.md)
-- [PostgreSQL migration and tenant cutover](docs/phase3-multitenant-saas-runbook.md)
-- [Performance and Lighthouse](docs/performance-lighthouse.md)
-- [Scenario audit](docs/scenario-audit.md)
-- [Database architecture](docs/DATABASE-ARCHITECTURE.md)
+The source URL belongs in an environment variable, not in a command line or repository file. Existing live data has not been exported as part of this code conversion.
 
-## Stack
+## Architecture
 
-Next.js 16 · React 19 · Prisma 6 · PostgreSQL 16 · Tailwind CSS 4
+See [offline architecture](docs/offline-architecture.md) for local process lifecycle, transaction and tenancy protections, data compatibility, backup behavior and release limitations. The existing cloud SQL migrations remain historical reference files and are never executed by this edition.
+
+See [local validation results](docs/offline-validation.md) for the checks completed and the Windows App Control launch limitation on the development machine.

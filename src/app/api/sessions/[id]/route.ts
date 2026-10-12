@@ -354,12 +354,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         scheduleUpdate.dayOfWeek = dayOfWeekEnumFromDate(nextSessionDate);
       }
 
-      const ops: Prisma.PrismaPromise<unknown>[] = [];
+      const ops: Array<(tx: Prisma.TransactionClient) => Promise<unknown>> = [];
 
       if (Object.keys(scheduleUpdate).length > 0) {
         ops.push(
-          prisma.groupSchedule.update({
-            where: { id: existing.scheduleId },
+          (tx) => tx.groupSchedule.update({
+            where: { id: existing.scheduleId! },
             data: scheduleUpdate,
           }),
         );
@@ -367,7 +367,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
       for (const planned of plannedUpdates) {
         ops.push(
-          prisma.session.update({
+          (tx) => tx.session.update({
             where: { id: planned.id },
             data: {
               sessionDate: planned.sessionDate,
@@ -405,7 +405,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       const changedFields = changedSessionFields(beforeSnapshot, requestedSnapshot);
 
       ops.push(
-        prisma.auditLog.create({
+        (tx) => tx.auditLog.create({
           data: {
             tenantId: actor.tenantId,
             action: "SESSION_UPDATED",
@@ -429,7 +429,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
       if (details) {
         ops.push(
-          prisma.auditLog.create({
+          (tx) => tx.auditLog.create({
             data: {
               tenantId: actor.tenantId,
               action: "COACH_SPORT_OVERRIDE_USED",
@@ -442,7 +442,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         );
       }
 
-      await prisma.$transaction(ops);
+      await prisma.$transaction(async (tx) => { for (const operation of ops) await operation(tx); });
 
       const updated = await prisma.session.findFirst({
         where: { id, tenantId: actor.tenantId },

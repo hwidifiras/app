@@ -90,6 +90,7 @@ export function AppShell({
   }
 
   const isAuthRoute =
+    pathname === "/offline-setup" ||
     pathname === "/login" ||
     pathname.startsWith("/login/") ||
     pathname === "/register" ||

@@ -73,7 +73,7 @@ describe("UI system regression contract", () => {
     expect(sidebar).toContain('"bg-[var(--primary)] text-white');
 
     expect(sidebar).toMatch(
-      /const visibleNavSections = navSections[\s\S]*?\.filter\(\(section\) => section\.items\.length > 0\)/,
+      /const visibleNavSections = getPrimaryNavigationSections\(account\)/,
     );
     expect(sidebar).toContain("{configurationSections.length > 0 ? (");
 

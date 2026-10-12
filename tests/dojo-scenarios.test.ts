@@ -85,35 +85,35 @@ const TEST_TENANT_SLUG = "we-discipline";
 setFallbackTenantContext({ tenantId: TEST_TENANT_ID, tenantSlug: TEST_TENANT_SLUG, host: "test.local" });
 
 async function resetData() {
-  await prisma.$transaction([
-    prisma.idempotencyRecord.deleteMany(),
-    prisma.auditLog.deleteMany(),
-    prisma.passwordResetToken.deleteMany(),
-    prisma.userPermission.deleteMany(),
-    prisma.offerApplication.deleteMany(),
-    prisma.offer.deleteMany(),
-    prisma.gymAccessAttempt.deleteMany(),
-    prisma.memberAccessCredential.deleteMany(),
-    prisma.gymVisit.deleteMany(),
-    prisma.attendance.deleteMany(),
-    prisma.receipt.deleteMany(),
-    prisma.payment.deleteMany(),
-    prisma.entitlementAdjustment.deleteMany(),
-    prisma.subscriptionPause.deleteMany(),
-    prisma.memberSubscription.deleteMany(),
-    prisma.groupMember.deleteMany(),
-    prisma.session.deleteMany(),
-    prisma.groupSchedule.deleteMany(),
-    prisma.householdMember.deleteMany(),
-    prisma.household.deleteMany(),
-    prisma.member.deleteMany(),
-    prisma.subscriptionPlan.deleteMany(),
-    prisma.group.deleteMany(),
-    prisma.coach.deleteMany(),
-    prisma.sport.deleteMany(),
-    prisma.user.deleteMany(),
-    prisma.clubSettings.deleteMany(),
-  ]);
+  await prisma.$transaction(async (tx) => {
+    await tx.idempotencyRecord.deleteMany();
+    await tx.auditLog.deleteMany();
+    await tx.passwordResetToken.deleteMany();
+    await tx.userPermission.deleteMany();
+    await tx.offerApplication.deleteMany();
+    await tx.offer.deleteMany();
+    await tx.gymAccessAttempt.deleteMany();
+    await tx.memberAccessCredential.deleteMany();
+    await tx.gymVisit.deleteMany();
+    await tx.attendance.deleteMany();
+    await tx.receipt.deleteMany();
+    await tx.payment.deleteMany();
+    await tx.entitlementAdjustment.deleteMany();
+    await tx.subscriptionPause.deleteMany();
+    await tx.memberSubscription.deleteMany();
+    await tx.groupMember.deleteMany();
+    await tx.session.deleteMany();
+    await tx.groupSchedule.deleteMany();
+    await tx.householdMember.deleteMany();
+    await tx.household.deleteMany();
+    await tx.member.deleteMany();
+    await tx.subscriptionPlan.deleteMany();
+    await tx.group.deleteMany();
+    await tx.coach.deleteMany();
+    await tx.sport.deleteMany();
+    await tx.user.deleteMany();
+    await tx.clubSettings.deleteMany();
+  });
   await prisma.tenant.upsert({
     where: { slug: TEST_TENANT_SLUG },
     create: {
@@ -773,6 +773,7 @@ describe("schema guardrails", () => {
           newMember: {
             firstName: "Child",
             lastName: "With Parent",
+            birthDate: "2016-01-01T00:00:00.000Z",
             memberType: "KID",
             gender: "MALE",
             parentName: "Parent Name",

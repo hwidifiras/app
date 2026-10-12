@@ -175,12 +175,12 @@ export async function expireStaleSubscriptions(memberId?: string) {
     select: { id: true, renewedBySubscription: { select: { id: true } } },
   });
   if (superseded.length > 0) {
-    await prisma.$transaction([
-      prisma.memberSubscription.updateMany({
+    await prisma.$transaction(async (tx) => {
+      await tx.memberSubscription.updateMany({
         where: { tenantId, id: { in: superseded.map((item) => item.id) }, status: "ACTIVE" },
         data: { status: "EXPIRED" },
-      }),
-      prisma.auditLog.createMany({
+      });
+      await tx.auditLog.createMany({
         data: superseded.map((item) => ({
           tenantId,
           action: "SUBSCRIPTION_RENEWAL_ACTIVATED",
@@ -193,8 +193,8 @@ export async function expireStaleSubscriptions(memberId?: string) {
             synchronizedAt: now.toISOString(),
           }),
         })),
-      }),
-    ]);
+      });
+    });
   }
   await prisma.memberSubscription.updateMany({
     where: {

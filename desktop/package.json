@@ -1,0 +1,27 @@
+{
+  "name": "all-in-gym-desktop",
+  "version": "1.0.0",
+  "description": "All in Gym offline desktop",
+  "author": "All in Gym",
+  "private": true,
+  "type": "module",
+  "main": "main.mjs",
+  "scripts": { "start": "electron .", "package": "electron-builder --win --x64 --dir", "installer": "electron-builder --win nsis --x64" },
+  "dependencies": { "mongodb": "6.21.0", "bcryptjs": "3.0.3" },
+  "devDependencies": { "electron": "44.7.0", "electron-builder": "26.15.3" },
+  "build": {
+    "appId": "com.allingym.offline",
+    "productName": "All in Gym",
+    "asar": true,
+    "directories": { "output": "../release" },
+    "files": ["main.mjs", "offline/**/*", "package.json"],
+    "extraResources": [
+      { "from": "web", "to": "web", "filter": ["**/*", "!node_modules/**/*"] },
+      { "from": "web/node_modules", "to": "web/node_modules", "filter": ["**/*"] },
+      { "from": "vendor/mongodb", "to": "mongodb", "filter": ["bin/mongod.exe", "bin/*.dll", "LICENSE*", "README*", "THIRD-PARTY-NOTICES*", "runtime.json"] }
+    ],
+    "win": { "target": "nsis", "signAndEditExecutable": false },
+    "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "deleteAppDataOnUninstall": false, "createDesktopShortcut": true },
+    "artifactName": "All-in-Gym-${version}-${arch}.${ext}"
+  }
+}

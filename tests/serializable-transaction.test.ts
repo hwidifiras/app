@@ -1,4 +1,3 @@
-import { Prisma } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -31,9 +30,9 @@ describe("serializable transaction retries", () => {
     expect(transactionAttempts).toBe(3);
     expect(operation).toHaveBeenCalledTimes(3);
     expect(transactionOptions).toEqual([
-      expect.objectContaining({ isolationLevel: Prisma.TransactionIsolationLevel.Serializable }),
-      expect.objectContaining({ isolationLevel: Prisma.TransactionIsolationLevel.Serializable }),
-      expect.objectContaining({ isolationLevel: Prisma.TransactionIsolationLevel.Serializable }),
+      expect.not.objectContaining({ isolationLevel: expect.anything() }),
+      expect.not.objectContaining({ isolationLevel: expect.anything() }),
+      expect.not.objectContaining({ isolationLevel: expect.anything() }),
     ]);
   });
 

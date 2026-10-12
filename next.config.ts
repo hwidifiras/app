@@ -23,10 +23,10 @@ export function buildProductionContentSecurityPolicy(rootDomainValue?: string) {
     `form-action 'self'${tenantFormTarget}`,
     "img-src 'self' data: blob:",
     "font-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://www.google.com https://www.gstatic.com",
+    "script-src 'self' 'unsafe-inline' ",
     "style-src 'self' 'unsafe-inline'",
-    "connect-src 'self' https://challenges.cloudflare.com https://www.google.com",
-    "frame-src https://challenges.cloudflare.com https://www.google.com",
+    "connect-src 'self' ",
+    "frame-src 'none'",
   ].join("; ");
 }
 
@@ -52,6 +52,9 @@ const apiNoStoreHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  output: "standalone",
+  serverExternalPackages: ["@prisma/client"],
+  outputFileTracingIncludes: { "/*": ["./node_modules/.prisma/client/**/*", "./node_modules/@prisma/client/**/*", "./node_modules/.pnpm/@prisma+client*/node_modules/.prisma/client/**/*"] },
   poweredByHeader: false,
   turbopack: {
     root: appRoot,
@@ -67,7 +70,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/:path*",
-        headers: productionSecurityHeaders,
+        headers: productionSecurityHeaders.filter((header) => header.key !== "Strict-Transport-Security"),
       },
       apiHeaders,
     ];

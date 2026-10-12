@@ -163,9 +163,8 @@ export async function PATCH(request: Request) {
         ? [parsed.data.key]
         : Array.from(new Set(parsed.data.keys));
 
-    await prisma.$transaction(
-      keys.map((notificationKey) =>
-        prisma.notificationRead.upsert({
+    await prisma.$transaction(async (tx) => {
+      for (const notificationKey of keys) await tx.notificationRead.upsert({
           where: {
             tenantId_userId_notificationKey: {
               tenantId: user.tenantId,
@@ -181,9 +180,8 @@ export async function PATCH(request: Request) {
           update: {
             readAt: new Date(),
           },
-        }),
-      ),
-    );
+      });
+    });
 
     return NextResponse.json({ data: { updated: keys.length } });
   } catch (error) {

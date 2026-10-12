@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mongodb"
   url      = env("DATABASE_URL")
 }
 
@@ -228,7 +228,7 @@ enum AccessCredentialMedium {
 }
 
 model Tenant {
-  id                       String                    @id @default(cuid())
+  id                       String                    @id @default(cuid()) @map("_id")
   slug                     String                    @unique
   name                     String
   status                   TenantStatus              @default(ACTIVE)
@@ -277,11 +277,11 @@ model Tenant {
 }
 
 model User {
-  id                      String                   @id @default(cuid())
+  id                      String                   @id @default(cuid()) @map("_id")
   tenantId                String?
-  tenant                  Tenant?                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant                  Tenant?                  @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   coachId                 String?                  @unique
-  coach                   Coach?                   @relation("CoachUserAccount", fields: [coachId], references: [id], onDelete: SetNull)
+  coach                   Coach?                   @relation("CoachUserAccount", fields: [coachId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   email                   String
   name                    String
   passwordHash            String
@@ -306,11 +306,11 @@ model User {
 }
 
 model UserPermission {
-  id        String   @id @default(cuid())
+  id        String   @id @default(cuid()) @map("_id")
   tenantId  String?
-  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   key       String
   createdAt DateTime @default(now())
 
@@ -320,11 +320,11 @@ model UserPermission {
 }
 
 model PasswordResetToken {
-  id        String    @id @default(cuid())
+  id        String    @id @default(cuid()) @map("_id")
   tenantId  String?
-  tenant    Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant    Tenant?   @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   tokenHash String
   expiresAt DateTime
   usedAt    DateTime?
@@ -337,9 +337,9 @@ model PasswordResetToken {
 }
 
 model IdempotencyRecord {
-  id             String   @id @default(cuid())
+  id             String   @id @default(cuid()) @map("_id")
   tenantId       String
-  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   scope          String
   key            String
   requestHash    String
@@ -355,11 +355,11 @@ model IdempotencyRecord {
 }
 
 model NotificationRead {
-  id              String   @id @default(cuid())
+  id              String   @id @default(cuid()) @map("_id")
   tenantId        String?
-  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   notificationKey String
   readAt          DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -370,9 +370,9 @@ model NotificationRead {
 }
 
 model ClubSettings {
-  id                                    String      @id @default(cuid())
+  id                                    String      @id @default(cuid()) @map("_id")
   tenantId                              String?     @unique
-  tenant                                Tenant?     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant                                Tenant?     @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   clubName                              String      @default("")
   clubLogoUrl                           String      @default("")
   clubAddress                           String      @default("")
@@ -414,9 +414,9 @@ model ClubSettings {
 }
 
 model Member {
-  id                 String                    @id @default(cuid())
+  id                 String                    @id @default(cuid()) @map("_id")
   tenantId           String?
-  tenant             Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant             Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   firstName          String
   lastName           String
   phone              String?
@@ -449,9 +449,9 @@ model Member {
 }
 
 model Household {
-  id        String            @id @default(cuid())
+  id        String            @id @default(cuid()) @map("_id")
   tenantId  String?
-  tenant    Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant    Tenant?           @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   label     String?
   members   HouseholdMember[]
   createdAt DateTime          @default(now())
@@ -461,13 +461,13 @@ model Household {
 }
 
 model HouseholdMember {
-  id           String                @id @default(cuid())
+  id           String                @id @default(cuid()) @map("_id")
   tenantId     String?
-  tenant       Tenant?               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant       Tenant?               @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   householdId  String
-  household    Household             @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  household    Household             @relation(fields: [householdId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   memberId     String                @unique
-  member       Member                @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  member       Member                @relation(fields: [memberId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   relationship HouseholdRelationship @default(OTHER)
   createdAt    DateTime              @default(now())
 
@@ -477,9 +477,9 @@ model HouseholdMember {
 }
 
 model Sport {
-  id                       String                    @id @default(cuid())
+  id                       String                    @id @default(cuid()) @map("_id")
   tenantId                 String?
-  tenant                   Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant                   Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   name                     String
   description              String?
   isActive                 Boolean                   @default(true)
@@ -499,9 +499,9 @@ model Sport {
 }
 
 model Coach {
-  id             String                    @id @default(cuid())
+  id             String                    @id @default(cuid()) @map("_id")
   tenantId       String?
-  tenant         Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant         Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   firstName      String
   lastName       String
   phone          String
@@ -509,7 +509,7 @@ model Coach {
   birthDate      DateTime?
   isActive       Boolean                   @default(true)
   sportId        String?
-  sport          Sport?                    @relation(fields: [sportId], references: [id], onDelete: SetNull)
+  sport          Sport?                    @relation(fields: [sportId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   qualifications CoachSportQualification[]
   groups         Group[]
   sessions       Session[]
@@ -522,13 +522,13 @@ model Coach {
 }
 
 model CoachSportQualification {
-  id        String   @id @default(cuid())
+  id        String   @id @default(cuid()) @map("_id")
   tenantId  String?
-  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   coachId   String
-  coach     Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  coach     Coach    @relation(fields: [coachId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   sportId   String
-  sport     Sport    @relation(fields: [sportId], references: [id], onDelete: Restrict)
+  sport     Sport    @relation(fields: [sportId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   isPrimary Boolean  @default(false)
   notes     String?
   createdAt DateTime @default(now())
@@ -540,16 +540,16 @@ model CoachSportQualification {
 }
 
 model Group {
-  id           String            @id @default(cuid())
+  id           String            @id @default(cuid()) @map("_id")
   tenantId     String?
-  tenant       Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant       Tenant?           @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   name         String
   groupType    GroupType         @default(ADULTS)
   genderPolicy GroupGenderPolicy @default(MIXED)
   sportId      String
-  sport        Sport             @relation(fields: [sportId], references: [id], onDelete: Restrict)
+  sport        Sport             @relation(fields: [sportId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   coachId      String
-  coach        Coach             @relation(fields: [coachId], references: [id], onDelete: Restrict)
+  coach        Coach             @relation(fields: [coachId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   capacity     Int
   room         String?
   isActive     Boolean           @default(true)
@@ -564,13 +564,13 @@ model Group {
 }
 
 model GroupMember {
-  id        String            @id @default(cuid())
+  id        String            @id @default(cuid()) @map("_id")
   tenantId  String?
-  tenant    Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant    Tenant?           @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   groupId   String
   memberId  String
-  group     Group             @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  member    Member            @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  group     Group             @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  member    Member            @relation(fields: [memberId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   startDate DateTime
   endDate   DateTime?
   status    GroupMemberStatus @default(ACTIVE)
@@ -583,11 +583,11 @@ model GroupMember {
 }
 
 model GroupSchedule {
-  id              String    @id @default(cuid())
+  id              String    @id @default(cuid()) @map("_id")
   tenantId        String?
-  tenant          Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant          Tenant?   @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   groupId         String
-  group           Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  group           Group     @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   dayOfWeek       DayOfWeek
   startTime       String
   durationMinutes Int
@@ -601,9 +601,9 @@ model GroupSchedule {
 }
 
 model ScheduleTemplate {
-  id          String                 @id @default(cuid())
+  id          String                 @id @default(cuid()) @map("_id")
   tenantId    String?
-  tenant      Tenant?                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant?                @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   name        String
   description String                 @default("")
   isActive    Boolean                @default(true)
@@ -616,11 +616,11 @@ model ScheduleTemplate {
 }
 
 model ScheduleTemplateSlot {
-  id              String           @id @default(cuid())
+  id              String           @id @default(cuid()) @map("_id")
   tenantId        String?
-  tenant          Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant          Tenant?          @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   templateId      String
-  template        ScheduleTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  template        ScheduleTemplate @relation(fields: [templateId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   dayOfWeek       DayOfWeek
   startTime       String
   durationMinutes Int
@@ -633,18 +633,18 @@ model ScheduleTemplateSlot {
 }
 
 model Session {
-  id                  String         @id @default(cuid())
+  id                  String         @id @default(cuid()) @map("_id")
   tenantId            String?
-  tenant              Tenant?        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant              Tenant?        @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   groupId             String
-  group               Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  group               Group          @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   scheduleId          String?
-  schedule            GroupSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  schedule            GroupSchedule? @relation(fields: [scheduleId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   sessionDate         DateTime
   startTime           String
   endTime             String
   coachId             String?
-  coach               Coach?         @relation(fields: [coachId], references: [id], onDelete: SetNull)
+  coach               Coach?         @relation(fields: [coachId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   room                String
   status              SessionStatus  @default(PLANNED)
   exceptionReason     String?
@@ -661,9 +661,9 @@ model Session {
 }
 
 model SubscriptionPlan {
-  id                   String               @id @default(cuid())
+  id                   String               @id @default(cuid()) @map("_id")
   tenantId             String?
-  tenant               Tenant?              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant               Tenant?              @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   name                 String
   description          String?
   price                Int
@@ -677,7 +677,7 @@ model SubscriptionPlan {
   freezeAllowanceCount Int                  @default(0)
   freezeMaxTotalDays   Int                  @default(0)
   sportId              String?
-  sport                Sport?               @relation(fields: [sportId], references: [id], onDelete: Restrict)
+  sport                Sport?               @relation(fields: [sportId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   entitlements         PlanEntitlement[]
   subscriptions        MemberSubscription[]
   createdAt            DateTime             @default(now())
@@ -688,15 +688,15 @@ model SubscriptionPlan {
 }
 
 model MemberSubscription {
-  id                      String                    @id @default(cuid())
+  id                      String                    @id @default(cuid()) @map("_id")
   tenantId                String?
-  tenant                  Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant                  Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   memberId                String
-  member                  Member                    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  member                  Member                    @relation(fields: [memberId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   planId                  String
-  plan                    SubscriptionPlan          @relation(fields: [planId], references: [id], onDelete: Restrict)
+  plan                    SubscriptionPlan          @relation(fields: [planId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   sportId                 String?
-  sport                   Sport?                    @relation(fields: [sportId], references: [id], onDelete: Restrict)
+  sport                   Sport?                    @relation(fields: [sportId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   startDate               DateTime
   endDate                 DateTime?
   amount                  Int
@@ -706,7 +706,7 @@ model MemberSubscription {
   insuranceYear           Int?
   insuranceCoverageDate   DateTime?
   offerApplicationId      String?
-  offerApplication        OfferApplication?         @relation(fields: [offerApplicationId], references: [id], onDelete: SetNull)
+  offerApplication        OfferApplication?         @relation(fields: [offerApplicationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   offerName               String?
   remainingSessions       Int
   status                  SubscriptionStatus        @default(DRAFT)
@@ -717,10 +717,10 @@ model MemberSubscription {
   freezeAllowanceCount    Int                       @default(0)
   freezeMaxTotalDays      Int                       @default(0)
   renewsSubscriptionId    String?                   @unique
-  renewsSubscription      MemberSubscription?       @relation("SubscriptionRenewal", fields: [renewsSubscriptionId], references: [id], onDelete: SetNull)
+  renewsSubscription      MemberSubscription?       @relation("SubscriptionRenewal", fields: [renewsSubscriptionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   renewedBySubscription   MemberSubscription?       @relation("SubscriptionRenewal")
   replacesSubscriptionId  String?                   @unique
-  replacesSubscription    MemberSubscription?       @relation("SubscriptionReplacement", fields: [replacesSubscriptionId], references: [id], onDelete: SetNull)
+  replacesSubscription    MemberSubscription?       @relation("SubscriptionReplacement", fields: [replacesSubscriptionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   replacedBySubscription  MemberSubscription?       @relation("SubscriptionReplacement")
   payments                Payment[]
   attendances             Attendance[]
@@ -742,13 +742,13 @@ model MemberSubscription {
 }
 
 model MemberInsuranceCoverage {
-  id             String                  @id @default(cuid())
+  id             String                  @id @default(cuid()) @map("_id")
   tenantId       String
-  tenant         Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant         Tenant                  @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   memberId       String
-  member         Member                  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  member         Member                  @relation(fields: [memberId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   subscriptionId String?                 @unique
-  subscription   MemberSubscription?     @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  subscription   MemberSubscription?     @relation(fields: [subscriptionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   coverageStart  DateTime
   coverageEnd    DateTime
   amountCents    Int                     @default(0)
@@ -764,14 +764,14 @@ model MemberInsuranceCoverage {
 }
 
 model PlanEntitlement {
-  id                       String                    @id @default(cuid())
+  id                       String                    @id @default(cuid()) @map("_id")
   tenantId                 String?
-  tenant                   Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant                   Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   planId                   String
-  plan                     SubscriptionPlan          @relation(fields: [planId], references: [id], onDelete: Cascade)
+  plan                     SubscriptionPlan          @relation(fields: [planId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   type                     EntitlementType
   sportId                  String?
-  sport                    Sport?                    @relation(fields: [sportId], references: [id], onDelete: Restrict)
+  sport                    Sport?                    @relation(fields: [sportId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   sessionsPerWeek          Int?
   grantedUnits             Int?
   gymAccessMode            GymAccessMode?
@@ -786,16 +786,16 @@ model PlanEntitlement {
 }
 
 model SubscriptionEntitlement {
-  id                   String                  @id @default(cuid())
+  id                   String                  @id @default(cuid()) @map("_id")
   tenantId             String?
-  tenant               Tenant?                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant               Tenant?                 @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   memberSubscriptionId String
-  memberSubscription   MemberSubscription      @relation(fields: [memberSubscriptionId], references: [id], onDelete: Cascade)
+  memberSubscription   MemberSubscription      @relation(fields: [memberSubscriptionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   planEntitlementId    String?
-  planEntitlement      PlanEntitlement?        @relation(fields: [planEntitlementId], references: [id], onDelete: SetNull)
+  planEntitlement      PlanEntitlement?        @relation(fields: [planEntitlementId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   type                 EntitlementType
   sportId              String?
-  sport                Sport?                  @relation(fields: [sportId], references: [id], onDelete: Restrict)
+  sport                Sport?                  @relation(fields: [sportId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   sessionsPerWeek      Int?
   grantedUnits         Int?
   remainingUnits       Int?
@@ -815,20 +815,20 @@ model SubscriptionEntitlement {
 }
 
 model SubscriptionPause {
-  id                   String                     @id @default(cuid())
+  id                   String                     @id @default(cuid()) @map("_id")
   tenantId             String
-  tenant               Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant               Tenant                     @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   memberSubscriptionId String
-  memberSubscription   MemberSubscription         @relation(fields: [memberSubscriptionId], references: [id], onDelete: Restrict)
+  memberSubscription   MemberSubscription         @relation(fields: [memberSubscriptionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   entryType            SubscriptionPauseEntryType
   pauseEventId         String?                    @unique
-  pauseEvent           SubscriptionPause?         @relation("SubscriptionPauseResume", fields: [pauseEventId], references: [id], onDelete: Restrict)
+  pauseEvent           SubscriptionPause?         @relation("SubscriptionPauseResume", fields: [pauseEventId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   resumeEvent          SubscriptionPause?         @relation("SubscriptionPauseResume")
   effectiveAt          DateTime                   @default(now())
   durationSeconds      Int?
   reason               String
   createdById          String?
-  createdBy            User?                      @relation("SubscriptionPauseActor", fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy            User?                      @relation("SubscriptionPauseActor", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
   createdAt            DateTime                   @default(now())
 
   @@index([tenantId, memberSubscriptionId, effectiveAt])
@@ -836,13 +836,13 @@ model SubscriptionPause {
 }
 
 model EntitlementAdjustment {
-  id                        String                    @id @default(cuid())
+  id                        String                    @id @default(cuid()) @map("_id")
   tenantId                  String
-  tenant                    Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant                    Tenant                    @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   memberSubscriptionId      String
-  memberSubscription        MemberSubscription        @relation(fields: [memberSubscriptionId], references: [id], onDelete: Restrict)
+  memberSubscription        MemberSubscription        @relation(fields: [memberSubscriptionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   subscriptionEntitlementId String
-  subscriptionEntitlement   SubscriptionEntitlement   @relation(fields: [subscriptionEntitlementId], references: [id], onDelete: Restrict)
+  subscriptionEntitlement   SubscriptionEntitlement   @relation(fields: [subscriptionEntitlementId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   kind                      EntitlementAdjustmentKind
   unitsDelta                Int                       @default(0)
   endDateDeltaSeconds       Int                       @default(0)
@@ -854,7 +854,7 @@ model EntitlementAdjustment {
   nextEndDate               DateTime?
   reason                    String
   createdById               String?
-  createdBy                 User?                     @relation("EntitlementAdjustmentActor", fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy                 User?                     @relation("EntitlementAdjustmentActor", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
   createdAt                 DateTime                  @default(now())
 
   @@index([tenantId, memberSubscriptionId, createdAt])
@@ -862,11 +862,11 @@ model EntitlementAdjustment {
 }
 
 model Payment {
-  id                   String             @id @default(cuid())
+  id                   String             @id @default(cuid()) @map("_id")
   tenantId             String?
-  tenant               Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant               Tenant?            @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   memberSubscriptionId String
-  memberSubscription   MemberSubscription @relation(fields: [memberSubscriptionId], references: [id], onDelete: Cascade)
+  memberSubscription   MemberSubscription @relation(fields: [memberSubscriptionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   amount               Int
   entryType            PaymentEntryType   @default(PAYMENT)
   correctsPaymentId    String?
@@ -887,11 +887,11 @@ model Payment {
 }
 
 model Receipt {
-  id               String        @id @default(cuid())
+  id               String        @id @default(cuid()) @map("_id")
   tenantId         String?
-  tenant           Tenant?       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant           Tenant?       @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   paymentId        String        @unique
-  payment          Payment       @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  payment          Payment       @relation(fields: [paymentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   receiptNumber    String
   verificationCode String
   status           ReceiptStatus @default(ISSUED)
@@ -912,9 +912,9 @@ model Receipt {
 }
 
 model Offer {
-  id                String             @id @default(cuid())
+  id                String             @id @default(cuid()) @map("_id")
   tenantId          String?
-  tenant            Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant            Tenant?            @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   name              String
   description       String?
   kind              OfferKind
@@ -929,7 +929,7 @@ model Offer {
   requiresHousehold Boolean?
   maxMembers        Int?
   sportId           String?
-  sport             Sport?             @relation(fields: [sportId], references: [id], onDelete: SetNull)
+  sport             Sport?             @relation(fields: [sportId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   createdById       String?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
@@ -939,11 +939,11 @@ model Offer {
 }
 
 model OfferApplication {
-  id              String               @id @default(cuid())
+  id              String               @id @default(cuid()) @map("_id")
   tenantId        String?
-  tenant          Tenant?              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant          Tenant?              @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   offerId         String
-  offer           Offer                @relation(fields: [offerId], references: [id], onDelete: Restrict)
+  offer           Offer                @relation(fields: [offerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   memberIds       String
   subscriptionIds String
   quoteSnapshot   String
@@ -955,17 +955,17 @@ model OfferApplication {
 }
 
 model Attendance {
-  id                        String                   @id @default(cuid())
+  id                        String                   @id @default(cuid()) @map("_id")
   tenantId                  String?
-  tenant                    Tenant?                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant                    Tenant?                  @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   sessionId                 String
-  session                   Session                  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session                   Session                  @relation(fields: [sessionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   memberId                  String
-  member                    Member                   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  member                    Member                   @relation(fields: [memberId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   memberSubscriptionId      String?
-  memberSubscription        MemberSubscription?      @relation(fields: [memberSubscriptionId], references: [id], onDelete: SetNull)
+  memberSubscription        MemberSubscription?      @relation(fields: [memberSubscriptionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   subscriptionEntitlementId String?
-  subscriptionEntitlement   SubscriptionEntitlement? @relation(fields: [subscriptionEntitlementId], references: [id], onDelete: SetNull)
+  subscriptionEntitlement   SubscriptionEntitlement? @relation(fields: [subscriptionEntitlementId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   status                    AttendanceStatus
   overrideReason            String?
   checkedBy                 String?
@@ -979,14 +979,14 @@ model Attendance {
 }
 
 model TenantModule {
-  id                 String                  @id @default(cuid())
+  id                 String                  @id @default(cuid()) @map("_id")
   tenantId           String
-  tenant             Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant             Tenant                  @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   moduleKey          TenantModuleKey
   status             TenantModuleStatus      @default(ENABLED)
   grantSource        TenantModuleGrantSource @default(MANUAL)
   saasSubscriptionId String?
-  saasSubscription   TenantSaasSubscription? @relation(fields: [saasSubscriptionId], references: [id], onDelete: Restrict)
+  saasSubscription   TenantSaasSubscription? @relation(fields: [saasSubscriptionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   enabledAt          DateTime?
   disabledAt         DateTime?
   createdAt          DateTime                @default(now())
@@ -998,7 +998,7 @@ model TenantModule {
 }
 
 model SaasPlan {
-  id                  String                   @id @default(cuid())
+  id                  String                   @id @default(cuid()) @map("_id")
   code                String                   @unique
   name                String
   description         String?
@@ -1015,9 +1015,9 @@ model SaasPlan {
 }
 
 model SaasPlanModule {
-  id         String          @id @default(cuid())
+  id         String          @id @default(cuid()) @map("_id")
   saasPlanId String
-  saasPlan   SaasPlan        @relation(fields: [saasPlanId], references: [id], onDelete: Cascade)
+  saasPlan   SaasPlan        @relation(fields: [saasPlanId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   moduleKey  TenantModuleKey
   createdAt  DateTime        @default(now())
 
@@ -1026,11 +1026,11 @@ model SaasPlanModule {
 }
 
 model TenantSaasSubscription {
-  id                 String                 @id @default(cuid())
+  id                 String                 @id @default(cuid()) @map("_id")
   tenantId           String
-  tenant             Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant             Tenant                 @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   saasPlanId         String
-  saasPlan           SaasPlan               @relation(fields: [saasPlanId], references: [id], onDelete: Restrict)
+  saasPlan           SaasPlan               @relation(fields: [saasPlanId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   status             SaasSubscriptionStatus @default(TRIAL)
   automaticLifecycle Boolean                @default(false)
   isCurrent          Boolean                @default(true)
@@ -1051,7 +1051,7 @@ model TenantSaasSubscription {
 }
 
 model PlatformAuditLog {
-  id               String   @id @default(cuid())
+  id               String   @id @default(cuid()) @map("_id")
   tenantId         String?
   action           String
   entityType       String
@@ -1068,7 +1068,7 @@ model PlatformAuditLog {
 }
 
 model WorkspaceSignupInvite {
-  id                   String            @id @default(cuid())
+  id                   String            @id @default(cuid()) @map("_id")
   tokenHash            String            @unique
   email                String?
   edition              WorkspaceEdition?
@@ -1087,7 +1087,7 @@ model WorkspaceSignupInvite {
 }
 
 model WorkspaceSignup {
-  id                     String                    @id @default(cuid())
+  id                     String                    @id @default(cuid()) @map("_id")
   email                  String
   ownerName              String
   passwordHash           String?
@@ -1110,11 +1110,11 @@ model WorkspaceSignup {
   requestFingerprint     String?
   idempotencyKey         String                    @unique
   inviteId               String?
-  invite                 WorkspaceSignupInvite?    @relation(fields: [inviteId], references: [id], onDelete: SetNull)
+  invite                 WorkspaceSignupInvite?    @relation(fields: [inviteId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   tenantId               String?                   @unique
-  tenant                 Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  tenant                 Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   adminUserId            String?
-  adminUser              User?                     @relation("WorkspaceSignupAdmin", fields: [adminUserId], references: [id], onDelete: SetNull)
+  adminUser              User?                     @relation("WorkspaceSignupAdmin", fields: [adminUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   verificationTokens     SignupVerificationToken[]
   createdAt              DateTime                  @default(now())
   updatedAt              DateTime                  @updatedAt
@@ -1126,9 +1126,9 @@ model WorkspaceSignup {
 }
 
 model SignupVerificationToken {
-  id            String          @id @default(cuid())
+  id            String          @id @default(cuid()) @map("_id")
   signupId      String
-  signup        WorkspaceSignup @relation(fields: [signupId], references: [id], onDelete: Cascade)
+  signup        WorkspaceSignup @relation(fields: [signupId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   tokenHash     String          @unique
   codeHash      String
   attemptCount  Int             @default(0)
@@ -1143,11 +1143,11 @@ model SignupVerificationToken {
 }
 
 model WorkspaceHandoffToken {
-  id        String    @id @default(cuid())
+  id        String    @id @default(cuid()) @map("_id")
   tenantId  String
-  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   tokenHash String    @unique
   expiresAt DateTime
   usedAt    DateTime?
@@ -1158,9 +1158,9 @@ model WorkspaceHandoffToken {
 }
 
 model TenantOnboarding {
-  id                      String                 @id @default(cuid())
+  id                      String                 @id @default(cuid()) @map("_id")
   tenantId                String                 @unique
-  tenant                  Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant                  Tenant                 @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   version                 Int                    @default(1)
   source                  TenantOnboardingSource @default(MANUAL)
   status                  TenantOnboardingStatus @default(IN_PROGRESS)
@@ -1179,23 +1179,23 @@ model TenantOnboarding {
 }
 
 model GymVisit {
-  id                        String                  @id @default(cuid())
+  id                        String                  @id @default(cuid()) @map("_id")
   tenantId                  String
-  tenant                    Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant                    Tenant                  @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   memberId                  String
-  member                    Member                  @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  member                    Member                  @relation(fields: [memberId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   memberSubscriptionId      String
-  memberSubscription        MemberSubscription      @relation(fields: [memberSubscriptionId], references: [id], onDelete: Restrict)
+  memberSubscription        MemberSubscription      @relation(fields: [memberSubscriptionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   subscriptionEntitlementId String
-  subscriptionEntitlement   SubscriptionEntitlement @relation(fields: [subscriptionEntitlementId], references: [id], onDelete: Restrict)
+  subscriptionEntitlement   SubscriptionEntitlement @relation(fields: [subscriptionEntitlementId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   entryType                 GymVisitEntryType       @default(CHECK_IN)
   correctsVisitId           String?
-  correctsVisit             GymVisit?               @relation("GymVisitCorrections", fields: [correctsVisitId], references: [id], onDelete: Restrict)
+  correctsVisit             GymVisit?               @relation("GymVisitCorrections", fields: [correctsVisitId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   corrections               GymVisit[]              @relation("GymVisitCorrections")
   unitsDelta                Int                     @default(0)
   checkedAt                 DateTime                @default(now())
   checkedById               String?
-  checkedBy                 User?                   @relation("GymVisitCheckedBy", fields: [checkedById], references: [id], onDelete: SetNull)
+  checkedBy                 User?                   @relation("GymVisitCheckedBy", fields: [checkedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
   overrideReason            String?
   correctionReason          String?
   createdAt                 DateTime                @default(now())
@@ -1207,11 +1207,11 @@ model GymVisit {
 }
 
 model MemberAccessCredential {
-  id                     String                 @id
+  id                     String                 @id @map("_id")
   tenantId               String
-  tenant                 Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant                 Tenant                 @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   memberId               String
-  member                 Member                 @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  member                 Member                 @relation(fields: [memberId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   medium                 AccessCredentialMedium @default(QR_CODE)
   label                  String?
   externalIdentifierHash String?
@@ -1219,10 +1219,10 @@ model MemberAccessCredential {
   codeHint               String
   issuedAt               DateTime               @default(now())
   issuedById             String?
-  issuedBy               User?                  @relation("GymCredentialIssuedBy", fields: [issuedById], references: [id], onDelete: SetNull)
+  issuedBy               User?                  @relation("GymCredentialIssuedBy", fields: [issuedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
   revokedAt              DateTime?
   revokedById            String?
-  revokedBy              User?                  @relation("GymCredentialRevokedBy", fields: [revokedById], references: [id], onDelete: SetNull)
+  revokedBy              User?                  @relation("GymCredentialRevokedBy", fields: [revokedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
   revokeReason           String?
   attempts               GymAccessAttempt[]
   createdAt              DateTime               @default(now())
@@ -1234,19 +1234,19 @@ model MemberAccessCredential {
 }
 
 model GymAccessAttempt {
-  id                    String                  @id @default(cuid())
+  id                    String                  @id @default(cuid()) @map("_id")
   tenantId              String
-  tenant                Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant                Tenant                  @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   memberId              String?
-  member                Member?                 @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  member                Member?                 @relation(fields: [memberId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   credentialId          String?
-  credential            MemberAccessCredential? @relation(fields: [credentialId], references: [id], onDelete: Restrict)
+  credential            MemberAccessCredential? @relation(fields: [credentialId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   outcome               GymAccessAttemptOutcome
   failureCode           String?
   identifierFingerprint String?
   overrideReason        String?
   checkedById           String?
-  checkedBy             User?                   @relation("GymAccessAttemptActor", fields: [checkedById], references: [id], onDelete: SetNull)
+  checkedBy             User?                   @relation("GymAccessAttemptActor", fields: [checkedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
   occurredAt            DateTime                @default(now())
 
   @@index([tenantId, occurredAt])
@@ -1256,9 +1256,9 @@ model GymAccessAttempt {
 }
 
 model AuditLog {
-  id         String   @id @default(cuid())
+  id         String   @id @default(cuid()) @map("_id")
   tenantId   String?
-  tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   action     String
   entityType String
   entityId   String

@@ -113,7 +113,7 @@ export function getTenantProductContext(tenantId = getRequiredTenantId()): Promi
     if (!tenant) throw new Error("TENANT_NOT_FOUND");
 
     const modules = tenant.modules.map((entry) => entry.moduleKey) as ProductModule[];
-    const currentSubscription = tenant.saasSubscriptions[0];
+    const currentSubscription = process.env.OFFLINE_DESKTOP === "1" ? null : tenant.saasSubscriptions[0];
     const access = resolveSaasOperationalAccess({
       tenantStatus: tenant.status,
       subscription: currentSubscription

@@ -100,7 +100,7 @@ export async function replaceSubscription(
 ) {
   const now = new Date();
   if (input.startDate > new Date(now.getTime() + 5 * 60_000)) throw new Error("REPLACEMENT_CANNOT_BE_FUTURE");
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${input.tenantId}:subscription:${input.subscriptionId}`}))`;
+  // The local transaction fence serializes invariant reads and writes.
   const original = await tx.memberSubscription.findFirst({
     where: { tenantId: input.tenantId, id: input.subscriptionId },
     include: {

@@ -1,4 +1,5 @@
 export function isPublicPath(pathname: string): boolean {
+  if (pathname === "/offline-setup" || pathname === "/api/offline/setup") return true;
   if (pathname === "/login") return true;
   if (pathname === "/register") return true;
   if (pathname === "/signup" || pathname.startsWith("/signup/")) return true;

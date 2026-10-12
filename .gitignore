@@ -73,3 +73,15 @@ qa-artifacts/
 next-env.d.ts
 
 /src/generated/prisma
+
+# Offline runtime staging and private local data
+**/node_modules/
+artifacts/
+release/
+desktop/vendor/
+desktop/web/
+desktop/offline/
+*typecheck.log
+*.gymbackup
+
+offline-*.log
