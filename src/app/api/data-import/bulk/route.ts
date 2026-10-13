@@ -56,6 +56,7 @@ export async function POST(request: Request) {
       if (!(file instanceof File)) {
         return NextResponse.json({ error: "Fichier Excel requis" }, { status: 400 });
       }
+      if (file.size > 5 * 1024 * 1024) return NextResponse.json({ error: "Fichier trop volumineux (5 Mo maximum)." }, { status: 413 });
 
       const lowerName = file.name.toLowerCase();
       if (!lowerName.endsWith(".xlsx") && !lowerName.endsWith(".csv")) {

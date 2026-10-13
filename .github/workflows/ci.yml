@@ -29,6 +29,7 @@ jobs:
       - run: pnpm test
       - run: node --test tests/offline-runtime.node.mjs
       - run: node --test tests/offline-import.node.mjs
+      - run: node --test tests/offline-recovery.node.mjs
       - run: pnpm --dir desktop --ignore-workspace install --frozen-lockfile --ignore-scripts --config.node-linker=hoisted
       - run: node desktop/node_modules/electron/install.js
       - run: pnpm desktop:package
@@ -45,10 +46,10 @@ jobs:
             artifacts/playwright/test-results
           if-no-files-found: ignore
       - run: node scripts/offline-desktop-smoke.mjs
-      - run: pnpm --dir desktop --ignore-workspace exec electron-builder --win nsis --x64
+      - run: node scripts/build-offline-installer.mjs
       - uses: actions/upload-artifact@v4
         with:
-          name: All-in-Gym-Windows-x64
+          name: We-Discipline-Windows-x64
           path: |
             release/*.exe
             release/*.blockmap

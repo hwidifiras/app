@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 const parent = path.resolve('artifacts/desktop-smoke');
 await mkdir(parent, { recursive: true });
 const dataDir = await mkdtemp(path.join(parent, 'profile-'));
-const executablePath = path.resolve(process.argv[2] ?? 'release/win-unpacked/All in Gym.exe');
+const executablePath = path.resolve(process.argv[2] ?? 'release/win-unpacked/We Discipline.exe');
 const launchArgs = process.env.GYM_TEST_SOURCE === '1' ? [path.resolve('desktop')] : [];
 const testPassword = 'Local-test-password-2026';
 const environment = { ...process.env, GYM_DATA_DIR: dataDir, GYM_TEST_HIDE_WINDOW: '1' };

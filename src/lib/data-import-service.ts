@@ -1,4 +1,4 @@
-import type { AttendanceStatus, MemberType } from "@prisma/client";
+import type { AttendanceStatus, MemberType, Prisma } from "@prisma/client";
 
 import { getClubSettings } from "@/lib/club-settings";
 import { checkGroupMemberCompatibility, type GroupGenderPolicyValue, type GroupTypeValue } from "@/lib/demographics";
@@ -184,11 +184,12 @@ export async function inspectDataImport(payload: DataImportPayload): Promise<Imp
 export async function applyDataImport(
   payload: DataImportPayload,
   actorId: string,
+  transaction?: Prisma.TransactionClient,
 ): Promise<{ auditLogId: string; memberId: string }> {
   const tenantId = getRequiredTenantId();
   const context = await inspectDataImport(payload);
 
-  return runSerializableTransaction(async (tx) => {
+  const apply = async (tx: Prisma.TransactionClient) => {
     const groupState = await tx.group.findFirstOrThrow({
       where: { id: context.group.id, tenantId },
       select: {
@@ -318,7 +319,8 @@ export async function applyDataImport(
     });
 
     return { auditLogId: audit.id, memberId: member.id };
-  });
+  };
+  return transaction ? apply(transaction) : runSerializableTransaction(apply);
 }
 
 type ImportAuditDetails = {

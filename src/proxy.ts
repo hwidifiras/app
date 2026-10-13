@@ -92,8 +92,12 @@ export async function proxy(request: NextRequest) {
     if (!safe && origin && origin !== localOrigin) {
       return NextResponse.json({ error: "Origine non autorisée" }, { status: 403 });
     }
+    if (/^\/branding\/club-logo(?:-[a-z0-9-]+)?\.(png|jpg|jpeg|webp)$/.test(pathname) && process.env.GYM_DATA_DIR) {
+      const target = request.nextUrl.clone(); target.pathname = `/api/offline${pathname}`;
+      return NextResponse.rewrite(target, { request: { headers: sanitizedRequestHeaders(request) } });
+    }
     if (isAccountCreationDisabled()) {
-      if (pathname === "/offline-setup" || pathname === "/register") return NextResponse.redirect(new URL("/login", request.url));
+      if (pathname === "/offline-setup" || pathname === "/register") return NextResponse.redirect(new URL(process.env.OFFLINE_BUNDLED_RECOVERY === "1" ? "/offline-recovery" : "/login", request.url));
       if (pathname === "/api/offline/setup" || (pathname === "/api/users" && request.method === "POST")) {
         return NextResponse.json({ error: "La création de comptes est désactivée sur cet ordinateur." }, { status: 403 });
       }

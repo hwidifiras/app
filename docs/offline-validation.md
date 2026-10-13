@@ -1,3 +1,19 @@
+# We Discipline 1.1.0 release validation
+
+The branded Windows executable and NSIS installer were built locally. The executable embeds the supplied We Discipline logo in all seven Windows icon sizes; its 256px resource exactly matches the selected PNG. Product metadata is We Discipline 1.1.0. The client-specific encrypted recovery payload and installer remain local and excluded from Git.
+
+- The full business suite passed 376 tests, including the first 11 new import checks. The expanded import suite then passed all 14 checks, covering siblings with Arabic names, independent balances for two disciplines, activated/pending first-use passes, receipts, replay protection, stale previews and complete rollback after a late payment failure.
+- All 33 Playwright checks passed against the final compiled resources in Chrome. They include real Excel uploads for class, gym unlimited/quota, first-use and mixed variations; templates; invalid-row rejection; preview invalidation; account restrictions; local request protection; existing workflows; uploaded-logo persistence; and complete service/database restart.
+- Native Electron recovery passed in a disposable profile: every collection's restored record hashes matched the private original snapshot, the logo and card key matched, the configured login worked, wrong passwords and unauthenticated restoration were rejected, and the Windows-protected cache enabled a subsequent one-click restore.
+- Runtime/recovery checks passed for persistence, corruption rejection, transactions, logo/account policy/card key restoration and rollback after a simulated late failure. Source export/import guards also passed all five focused tests.
+- The final production build, TypeScript check, ESLint and package build passed. No production data was mutated during these checks.
+
+Stress checks exposed and corrected two lifecycle issues: an existing database now waits for its authenticated replica primary instead of retrying first-time bootstrap after three seconds; delayed exits from a replaced local server no longer mark its successor as failed. Maintenance locks are released on failed recovery/service restart so the application remains closable.
+
+The installer builder uses the pinned electron-builder SDK's existing pure Node uninstaller extractor. It compiles the standard NSIS install/uninstall logic without executing a generated extraction helper. The SDK version is guarded for review on upgrade. Windows security policies were not changed. The app and installer are unsigned; these local results do not claim universal Windows approval or physical camera/scanner/printer acceptance.
+
+The sections below retain the earlier conversion and release history.
+
 # Local validation — 2026-10-12
 
 Base: `codex/electron-client-maintenance`, commit `0bc70d7749bb68ac76b1d60fd87ef4cc49a96fbb`. Implementation branch: `codex/offline-nosql`.

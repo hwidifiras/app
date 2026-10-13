@@ -91,6 +91,7 @@ export default async function SettingsHomePage() {
       </section>
 
       <section className="mt-5 grid gap-4 lg:grid-cols-2">
+        {process.env.OFFLINE_DESKTOP === "1" && authUser.role === "ADMIN" ? <SettingsTile href="/settings/offline-data" icon={Database} overline="Données locales" title="Sauvegarde et récupération" description="Sauvegardez vos données ou restaurez l'archive originale du client en un clic." meta={["Archive protégée", "Copie de sécurité automatique"]} /> : null}
         <SettingsTile
           href="/settings/club"
           icon={SlidersHorizontal}
@@ -134,7 +135,7 @@ export default async function SettingsHomePage() {
           description="Gardez les tarifs, quotas de séances, disciplines et remises lisibles pour la réception."
           meta={[`${activePlans} formule${activePlans > 1 ? "s" : ""}`, `${activeOffers} offre${activeOffers > 1 ? "s" : ""}`]}
         /> : null}
-        {hasClasses ? (
+        {hasClasses || hasGym ? (
           <SettingsTile
             href="/settings/data-import"
             icon={Database}

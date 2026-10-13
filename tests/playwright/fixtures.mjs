@@ -15,7 +15,7 @@ export const test = base.extend({
     const parent = path.resolve('artifacts/playwright/profiles');
     await mkdir(parent, { recursive: true });
     const dataDir = await mkdtemp(path.join(parent, 'test-'));
-    const serverFile = path.resolve('release/win-unpacked/resources/web/server.js');
+    const serverFile = path.resolve(process.env.GYM_SERVER_FILE ?? 'release/win-unpacked/resources/web/server.js');
     const databaseOptions = { dataDir, binary: path.resolve('desktop/vendor/mongodb/bin/mongod.exe'), metadataPath: path.resolve('offline/model-metadata.json') };
     let database, server, api;
     const accessToken = randomBytes(48).toString('base64url');

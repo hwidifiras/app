@@ -1,27 +1,28 @@
 {
   "name": "all-in-gym-desktop",
-  "version": "1.0.0",
-  "description": "All in Gym offline desktop",
+  "version": "1.1.0",
+  "description": "We Discipline — gestion locale du club",
   "author": "All in Gym",
   "private": true,
   "type": "module",
   "main": "main.mjs",
-  "scripts": { "start": "electron .", "package": "electron-builder --win --x64 --dir", "installer": "electron-builder --win nsis --x64" },
+  "scripts": { "start": "electron .", "package": "electron-builder --win --x64 --dir", "installer": "node ../scripts/build-offline-installer.mjs" },
   "dependencies": { "mongodb": "6.21.0", "bcryptjs": "3.0.3" },
   "devDependencies": { "electron": "44.7.0", "electron-builder": "26.15.3" },
   "build": {
     "appId": "com.allingym.offline",
-    "productName": "All in Gym",
+    "productName": "We Discipline",
     "asar": true,
     "directories": { "output": "../release" },
-    "files": ["main.mjs", "offline/**/*", "package.json"],
+    "files": ["main.mjs", "preload.cjs", "assets/**/*", "offline/**/*", "package.json"],
     "extraResources": [
+      { "from": "recovery", "to": "recovery", "filter": ["*.gymrecovery"] },
       { "from": "web", "to": "web", "filter": ["**/*", "!node_modules/**/*"] },
       { "from": "web/node_modules", "to": "web/node_modules", "filter": ["**/*"] },
       { "from": "vendor/mongodb", "to": "mongodb", "filter": ["bin/mongod.exe", "bin/*.dll", "LICENSE*", "README*", "THIRD-PARTY-NOTICES*", "runtime.json"] }
     ],
-    "win": { "target": "nsis", "signAndEditExecutable": false },
+    "win": { "target": "nsis", "icon": "assets/we-discipline.ico", "signExecutable": false },
     "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "deleteAppDataOnUninstall": false, "createDesktopShortcut": true },
-    "artifactName": "All-in-Gym-${version}-${arch}.${ext}"
+    "artifactName": "We-Discipline-${version}-${arch}.${ext}"
   }
 }

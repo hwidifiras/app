@@ -5,6 +5,7 @@ import { resolveMemberPhone } from "@/lib/member-phone";
 import { prisma } from "@/lib/prisma";
 import { dataImportPayloadSchema, type DataImportPayload } from "@/lib/schemas/data-import";
 import { getRequiredTenantId } from "@/lib/tenant-context";
+import { runSerializableTransaction } from "@/lib/serializable-transaction";
 
 type LookupRecord = {
   id: string;
@@ -535,14 +536,15 @@ export async function applyBulkDataImport(
   const preview = await previewPreparedRows(preparedRows);
   if (preview.errorRows > 0) return preview;
 
-  const importedRows: BulkImportRowResult[] = [];
-  for (const row of preparedRows) {
-    if (!row.payload) continue;
-    const applied = await applyDataImport(row.payload, actorId);
-    importedRows.push({ ...row.result, status: "IMPORTED", memberId: applied.memberId });
-  }
-
-  return summarizeRows(importedRows);
+  return runSerializableTransaction(async (tx) => {
+    const importedRows: BulkImportRowResult[] = [];
+    for (const row of preparedRows) {
+      if (!row.payload) continue;
+      const applied = await applyDataImport(row.payload, actorId, tx);
+      importedRows.push({ ...row.result, status: "IMPORTED", memberId: applied.memberId });
+    }
+    return summarizeRows(importedRows);
+  }, { timeoutMs: 120_000 });
 }
 
 async function previewPreparedRows(preparedRows: PreparedRow[]): Promise<BulkImportResult> {

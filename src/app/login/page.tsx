@@ -117,6 +117,7 @@ export default function LoginPage() {
             <p className="mt-4 text-center text-xs leading-5 text-[var(--muted-foreground)]">
               Acces reserve aux equipes autorisees. Les activites sensibles sont journalisees.
             </p>
+            {process.env.OFFLINE_DESKTOP === "1" ? <Link href="/offline-recovery" className="mt-4 text-center text-sm font-semibold text-[var(--primary)]">Récupérer les données originales</Link> : null}
           </div>
         </section>
       </div>

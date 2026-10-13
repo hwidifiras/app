@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
-import { mkdir, readFile, writeFile, chmod, rename } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, chmod, rename, access } from 'node:fs/promises';
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { MongoClient } from 'mongodb';
@@ -59,6 +59,7 @@ export async function startLocalDatabase({ dataDir, binary, metadataPath, seed =
   const secrets = await loadLocalSecrets(dataDir);
   const port = secrets.databasePort;
   const dbPath = path.join(dataDir, 'database');
+  const existingDatabase = await access(path.join(dbPath, 'WiredTiger')).then(() => true, (error) => { if (error.code === 'ENOENT') return false; throw error; });
   const keyPath = path.join(dataDir, 'replica.key');
   await mkdir(dbPath, { recursive: true });
   await writeFile(keyPath, secrets.replicaKey, { mode: 0o600 });
@@ -71,9 +72,11 @@ export async function startLocalDatabase({ dataDir, binary, metadataPath, seed =
   const uri = `mongodb://allInGym:${encodeURIComponent(secrets.databasePassword)}@127.0.0.1:${port}/all_in_gym?authSource=admin&replicaSet=allInGymLocal&directConnection=true`;
   let client;
   try {
-    try {
-      client = await waitForDatabase(uri, child, true, 3_000);
-    } catch {
+    if (existingDatabase) {
+      // An existing replica can take longer to elect its primary under load.
+      // Never mistake this for first setup and issue unauthenticated bootstrap commands.
+      client = await waitForDatabase(uri, child, true);
+    } else {
       if (spawnError) throw spawnError;
       // The localhost exception only permits initial replica/user creation.
       const bootstrap = await waitForDatabase(bareUri, child);
@@ -119,8 +122,11 @@ export function localEnvironment(database, accessToken) {
     OFFLINE_ACCOUNT_CREATION_DISABLED: database.secrets.accountCreationDisabled === true ? '1' : '0',
     DATABASE_URL: database.uri, AUTH_SECRET: database.secrets.authSecret,
     ACCESS_CREDENTIAL_SECRET: database.secrets.credentialSecret, AUTH_COOKIE_SECURE: 'false',
-    APP_NAME: 'All in Gym', NEXT_PUBLIC_APP_NAME: 'All in Gym', NEXT_PUBLIC_OFFLINE: '1',
+    APP_NAME: 'We Discipline', NEXT_PUBLIC_APP_NAME: 'We Discipline', NEXT_PUBLIC_OFFLINE: '1',
     DEFAULT_TENANT_SLUG: 'all-in-gym', SAAS_ROOT_DOMAIN: 'localhost', APP_TIMEZONE: 'Africa/Tunis',
+    // Store date-only validity in UTC; business-day displays use APP_TIMEZONE.
+    // This keeps Windows daylight-saving changes from shifting imported end dates.
+    TZ: 'UTC',
     RATE_LIMIT_BACKEND: 'memory', RESEND_API_KEY: '', PASSWORD_RESET_FROM: '',
     RATE_LIMIT_REDIS_REST_URL: '', RATE_LIMIT_REDIS_REST_TOKEN: '', UPSTASH_REDIS_REST_URL: '', UPSTASH_REDIS_REST_TOKEN: '',
     NEXT_TELEMETRY_DISABLED: '1',

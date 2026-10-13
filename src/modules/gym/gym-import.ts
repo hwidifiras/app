@@ -1,4 +1,4 @@
-import readXlsxFile from "read-excel-file/node";
+import { readSheet } from "read-excel-file/node";
 
 import { prisma } from "@/lib/prisma";
 
@@ -57,7 +57,7 @@ async function readRows(buffer: Buffer, fileName: string): Promise<RawRow[]> {
   if (fileName.toLowerCase().endsWith(".csv")) {
     return buffer.toString("utf8").replace(/^\uFEFF/, "").split(/\r?\n/).filter(Boolean).map(parseCsvLine);
   }
-  return await readXlsxFile(buffer) as unknown as RawRow[];
+  return await readSheet(buffer, 1) as RawRow[];
 }
 
 function headerIndex(header: RawRow) {
