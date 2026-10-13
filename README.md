@@ -10,6 +10,8 @@ Use **All in Gym → Sauvegarder…** to save a `.gymbackup` file to another dri
 
 Local data is stored in the Windows user profile under `%APPDATA%/All in Gym`. Uninstalling or updating the app retains this directory. `GYM_DATA_DIR` can explicitly select another local data directory. Never delete or copy a running database directory; use the backup menu.
 
+An administrator can provision a local account while the app is closed using `offline:provision-account`, with `GYM_DATA_DIR` set explicitly and JSON credentials supplied on standard input. Provisioning takes a safety backup, stores a password hash, and permanently disables account creation through setup and user-management APIs for that profile. The creation form is hidden and subsequent launches use the normal login screen. Existing accounts and business records are preserved. No account password is shipped in the source code or installer.
+
 Email delivery, cloud signup, hosted billing, public web receipt verification and cloud synchronization are unavailable offline. Receipts still print and can be verified in the local application with their number and code. Printer selection and PDF output use the normal print dialog. Camera QR scanning and keyboard scanners retain the existing workflows.
 
 ## Build

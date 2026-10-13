@@ -6,6 +6,7 @@ import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 import { startLocalDatabase, localEnvironment } from '../offline/runtime.mjs';
 import { saveBackup, restoreBackup } from '../offline/storage.mjs';
+import { provisionLocalAccount } from '../offline/accounts.mjs';
 
 test('production local server supports setup, login, member writes, eleven screens, backups and restart', async () => {
   const parent = path.resolve('artifacts/server-smoke');
@@ -89,7 +90,25 @@ test('production local server supports setup, login, member writes, eleven scree
     assert.ok(JSON.stringify(members).includes('Persisted Member'));
     const accountAfterRestart = await request('/api/account');
     assert.equal(accountAfterRestart.status, 200);
-    await writeFile(path.join(parent, 'result.json'), JSON.stringify({ passed: true, visited, setup: true, login: true, memberWrite: true, localApiProtected: true, crossOriginRejected: true, backupRestore: true, restartPersistence: true }, null, 2));
+    await stopServer();
+    await provisionLocalAccount(database, dataDir, { email: 'offline-acceptance@example.test', password: 'Test@12345', name: 'Local Administrator' });
+    assert.equal(await database.client.db('all_in_gym').collection('User').countDocuments(), 1);
+    await database.stop();
+    database = await startLocalDatabase(databaseOptions);
+    assert.equal(database.secrets.accountCreationDisabled, true);
+    await startServer();
+    cookie = '';
+    const fixedLogin = await request('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: 'offline-acceptance@example.test', password: 'Test@12345' }) });
+    assert.equal(fixedLogin.status, 200, await fixedLogin.text());
+    cookie = fixedLogin.headers.get('set-cookie').split(';')[0];
+    assert.equal((await request('/api/users', { method: 'POST', body: '{}' })).status, 403);
+    assert.equal((await request('/api/offline/setup', { method: 'POST', body: '{}' })).status, 403);
+    assert.equal(new URL((await request('/offline-setup')).url).pathname, '/login');
+    const settings = await request('/settings/users');
+    assert.equal(settings.status, 200);
+    assert.ok(!(await settings.text()).includes('id="user-create"'));
+    assert.equal(await database.client.db('all_in_gym').collection('User').countDocuments(), 1);
+    await writeFile(path.join(parent, 'result.json'), JSON.stringify({ passed: true, visited, setup: true, login: true, memberWrite: true, localApiProtected: true, crossOriginRejected: true, backupRestore: true, restartPersistence: true, provisionedAccountLogin: true, accountCreationDisabled: true }, null, 2));
   } finally {
     await stopServer(); await database.stop();
     if (!dataDir.startsWith(parent + path.sep)) throw new Error('Invalid disposable profile');

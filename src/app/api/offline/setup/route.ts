@@ -3,12 +3,14 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
 import { withTenantContext } from "@/lib/tenant-context";
+import { isAccountCreationDisabled } from "@/lib/offline-account-policy";
 
 export const runtime = "nodejs";
 const setupSchema = z.object({ clubName: z.string().trim().min(2).max(100), name: z.string().trim().min(2).max(80), email: z.string().trim().email(), password: z.string().min(12).max(128) });
 
 export async function POST(request: Request) {
   if (process.env.OFFLINE_DESKTOP !== "1") return NextResponse.json({ error: "Indisponible" }, { status: 404 });
+  if (isAccountCreationDisabled()) return NextResponse.json({ error: "La création de comptes est désactivée sur cet ordinateur." }, { status: 403 });
   const parsed = setupSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Vérifiez les champs et utilisez un mot de passe d’au moins 12 caractères." }, { status: 400 });
   const tenantId = process.env.OFFLINE_TENANT_ID || "offline-club";

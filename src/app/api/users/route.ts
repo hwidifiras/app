@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
 import { requireAdmin } from "@/lib/request-user";
+import { isAccountCreationDisabled } from "@/lib/offline-account-policy";
 import {
   FULL_STAFF_PERMISSIONS,
   PERMISSIONS,
@@ -57,6 +58,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (isAccountCreationDisabled()) return NextResponse.json({ error: "La création de comptes est désactivée sur cet ordinateur." }, { status: 403 });
   let admin;
   try {
     admin = await requireAdmin(request);

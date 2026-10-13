@@ -116,6 +116,7 @@ async function seedWorkspace(client, metadata) {
 export function localEnvironment(database, accessToken) {
   return {
     OFFLINE_DESKTOP: '1', OFFLINE_TENANT_ID: 'offline-club', OFFLINE_ACCESS_TOKEN: accessToken,
+    OFFLINE_ACCOUNT_CREATION_DISABLED: database.secrets.accountCreationDisabled === true ? '1' : '0',
     DATABASE_URL: database.uri, AUTH_SECRET: database.secrets.authSecret,
     ACCESS_CREDENTIAL_SECRET: database.secrets.credentialSecret, AUTH_COOKIE_SECURE: 'false',
     APP_NAME: 'All in Gym', NEXT_PUBLIC_APP_NAME: 'All in Gym', NEXT_PUBLIC_OFFLINE: '1',

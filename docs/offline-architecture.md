@@ -22,6 +22,8 @@ Renderer windows use sandboxing, context isolation, disabled Node integration an
 
 The first-run setup endpoint is local-only, permits creation only when the club has no users, and atomically creates an administrator, club identity and audit entry. Passwords use the existing password hashing service. No shared/default administrator password is shipped. An explicit local recovery utility is available while the application is closed.
 
+Profiles configured with the local account-provisioning utility persist an account-creation lock outside the installation directory. The launcher supplies that policy to the local server; proxy and route guards reject setup and new-user requests even from an authenticated administrator, and the user-management page omits its creation form. Credentials are supplied locally over standard input, hashed before storage, and never included in application source. Provisioning records an audit entry and preserves existing user and business history.
+
 Fonts and images are packaged locally. Signup, demo, remote billing, account handoffs and email delivery do not participate in offline startup or daily operations. Receipts, camera QR scanning, keyboard scanners, file imports and exports, and normal print dialogs retain the existing application behavior. Public cloud receipt verification and email cannot operate without an online service; use the local receipt verifier and printing.
 
 ## Backup, restore and imports

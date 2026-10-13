@@ -29,6 +29,7 @@
     "offline:runtime": "node scripts/download-mongodb.mjs",
     "offline:import": "node scripts/offline-import.mjs",
     "offline:reset-password": "node scripts/offline-reset-password.mjs",
+    "offline:provision-account": "node scripts/offline-provision-account.mjs",
     "test:runtime": "node --test tests/offline-runtime.node.mjs",
     "test:server": "node --test tests/offline-server.node.mjs",
     "test:desktop": "node scripts/offline-desktop-smoke.mjs",

@@ -16,3 +16,11 @@ The unsigned packaged desktop executable could not launch on this machine. Windo
 The desktop smoke test and Windows CI workflow are checked in for execution in an environment where the application is permitted. No passing native result is claimed here. The installer is unsigned, and no signing credentials are configured.
 
 The offline edition starts with a fresh local database. Export/import tools are provided, but existing cloud customer records have not been exported or migrated as part of implementation.
+
+## Provisioned-account follow-up — 2026-10-13
+
+Added local administrator provisioning and a persistent per-profile account-creation lock. Passwords are supplied over standard input, hashed locally and excluded from source and build resources. Setup and user-creation APIs return 403 when the policy is active, and the user-creation form is absent. Existing accounts and business data are preserved with a safety backup before provisioning.
+
+TypeScript, targeted ESLint and production desktop packaging passed. The production-server integration test passed the existing workflows plus provisioning an existing account, verifying no duplicate user, logging in with its supplied password, blocking both creation APIs, redirecting setup to login, hiding the creation form and retaining the lock after a complete restart. The actual local profile’s administrator hash and persisted lock were verified separately without exporting credentials.
+
+The updated packaged executable was rejected by Windows App Control on normal launch. Automated native launch also failed, so no passing native follow-up result is claimed. No Windows security policy was changed or bypassed; the local account remains stored for use once the updated application is permitted.
