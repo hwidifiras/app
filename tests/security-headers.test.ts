@@ -11,10 +11,10 @@ describe("production security headers", () => {
     expect(permissionsPolicy?.value).toBe("camera=(self), microphone=(), geolocation=()");
   });
 
-  it("allows anti-bot providers and a one-time handoff to tenant subdomains", () => {
+  it("keeps desktop requests local without third-party script providers", () => {
     const csp = buildProductionContentSecurityPolicy("we-discipline.com");
     expect(csp).toContain("form-action 'self' https://*.we-discipline.com");
-    expect(csp).toContain("https://challenges.cloudflare.com");
-    expect(csp).toContain("https://www.google.com");
+    expect(csp).not.toContain("https://challenges.cloudflare.com");
+    expect(csp).not.toContain("https://www.google.com");
   });
 });

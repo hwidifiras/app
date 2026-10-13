@@ -185,10 +185,10 @@ export const PRODUCT_ROUTE_REGISTRY: readonly ProductRouteDefinition[] = [
   {
     id: "class-import",
     paths: ["/settings/data-import", "/api/data-import"],
-    module: "CLASS_MANAGEMENT",
+    module: null,
     permission: "settings.manage",
     navigationSection: "settings",
-    mobilePlacement: { CLASS_ONLY: "drawer", HYBRID: "drawer" },
+    mobilePlacement: { CLASS_ONLY: "drawer", GYM_ONLY: "drawer", HYBRID: "drawer" },
     setupStep: null,
   },
 ] as const;

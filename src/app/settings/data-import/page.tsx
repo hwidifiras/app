@@ -1,4 +1,7 @@
 import { DataImportWizard } from "@/components/settings/data-import-wizard";
+import { StudentExcelImport } from "@/components/settings/student-excel-import";
+import { OfflineRecovery } from "@/components/settings/offline-recovery";
+import { isTenantModuleEnabled } from "@/lib/tenant-modules";
 import { SettingsMetric } from "@/components/settings/settings-hub";
 import { PageHeader } from "@/components/ui/page-header";
 import { ReceptionInfoCard } from "@/components/ui/reception-info-card";
@@ -49,6 +52,7 @@ export default async function DataImportPage() {
       },
     }),
   ]);
+  const hasClasses = await isTenantModuleEnabled(authUser.tenantId, "CLASS_MANAGEMENT");
 
   return (
     <main className="app-shell py-4 md:py-8">
@@ -57,6 +61,11 @@ export default async function DataImportPage() {
         title="Reprise des anciens membres"
         description="Démarrez proprement avec l'état réel du club: groupe actuel, formule, validité, séances restantes et solde."
       />
+
+      <div className="mb-6 space-y-5">
+        {process.env.OFFLINE_DESKTOP === "1" && authUser.role === "ADMIN" ? <OfflineRecovery /> : null}
+        {authUser.role === "ADMIN" ? <StudentExcelImport initialKind={hasClasses ? "CLASS" : "GYM"} /> : null}
+      </div>
 
       <section className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <SettingsMetric label="Groupes actifs" value={groups.length} detail="Cibles disponibles" />
@@ -80,8 +89,10 @@ export default async function DataImportPage() {
         </ReceptionInfoCard>
       </section>
 
-      <div className="mx-auto w-full max-w-6xl">
+      {hasClasses ? <details className="mx-auto w-full max-w-6xl">
+        <summary className="mb-4 cursor-pointer font-semibold">Reprendre un membre manuellement</summary>
         <DataImportWizard
+          showBulk={false}
           groups={groups.map((group) => ({
             id: group.id,
             name: group.name,
@@ -91,7 +102,7 @@ export default async function DataImportPage() {
           }))}
           plans={plans.filter((plan): plan is typeof plan & { sportId: string } => Boolean(plan.sportId))}
         />
-      </div>
+      </details> : null}
     </main>
   );
 }

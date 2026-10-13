@@ -87,9 +87,9 @@ export function LoginForm() {
           <label htmlFor="password" className="text-sm font-semibold text-[#0B1220]">
             Mot de passe
           </label>
-          <Link href="/forgot-password" className="text-xs font-semibold text-[#2563EB] hover:underline">
+          {process.env.NEXT_PUBLIC_OFFLINE !== "1" && <Link href="/forgot-password" className="text-xs font-semibold text-[#2563EB] hover:underline">
             Oublie ?
-          </Link>
+          </Link>}
         </div>
         <div className="field-control">
           <LockKeyhole className="field-control-icon" />

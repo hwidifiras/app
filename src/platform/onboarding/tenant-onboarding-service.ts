@@ -266,7 +266,6 @@ async function completeOnboarding(tenantId: string, actorId: string) {
       if (namesToCreate.length > 0) {
         const result = await tx.sport.createMany({
           data: namesToCreate.map((name) => ({ tenantId, name })),
-          skipDuplicates: true,
         });
         createdDisciplines = result.count;
       }

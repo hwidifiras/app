@@ -11,12 +11,14 @@ import { UsersListClient } from "@/components/settings/users-list-client";
 import { deriveUserRoleIntent } from "@/lib/user-role-intent";
 import { parsePermissions } from "@/lib/permission-definitions";
 import { getTenantProductContext } from "@/platform/product/product-context";
+import { isAccountCreationDisabled } from "@/lib/offline-account-policy";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function SettingsUsersPage() {
   const authUser = await getAuthUser();
+  const accountCreationDisabled = isAccountCreationDisabled();
 
   if (!authUser || authUser.role !== "ADMIN") {
     return (
@@ -85,8 +87,9 @@ export default async function SettingsUsersPage() {
       <PageHeader
         overline="Administration"
         title="Utilisateurs"
-        description="Créer les accès Admin, Réception et Coach, puis limiter chaque compte aux écrans utiles."
+        description={accountCreationDisabled ? "Utilisez les comptes configurés sur cet ordinateur. La création de nouveaux comptes est désactivée." : "Créer les accès Admin, Réception et Coach, puis limiter chaque compte aux écrans utiles."}
         actions={
+          !accountCreationDisabled &&
           <Link href="#user-create" className="btn btn-primary btn-block-mobile">
             <Plus className="size-4" /> Ajouter un utilisateur
           </Link>
@@ -103,7 +106,7 @@ export default async function SettingsUsersPage() {
 
       <UserRoleGuide />
 
-      <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(380px,0.85fr)]">
+      <div className={accountCreationDisabled ? "mt-5 grid gap-4" : "mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(380px,0.85fr)]"}>
         <section className="panel order-2 p-4 xl:order-1 md:p-6">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -126,7 +129,7 @@ export default async function SettingsUsersPage() {
           </div>
         </section>
 
-        <section id="user-create" className="panel order-1 scroll-mt-24 p-4 xl:order-2 md:p-6">
+        {!accountCreationDisabled && <section id="user-create" className="panel order-1 scroll-mt-24 p-4 xl:order-2 md:p-6">
           <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-[var(--primary)]">
             Nouvel accès
           </p>
@@ -143,7 +146,7 @@ export default async function SettingsUsersPage() {
               productProfile={product.profile}
             />
           </div>
-        </section>
+        </section>}
       </div>
     </main>
   );

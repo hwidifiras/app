@@ -45,7 +45,7 @@ export async function recordGymCheckIn(
 
     const memberId = resolvedCredential?.memberId ?? input.memberId;
     if (!memberId) throw new Error("MEMBER_NOT_FOUND");
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${input.tenantId}:${memberId}`}))`;
+  // The local transaction fence serializes invariant reads and writes.
 
     const decision = await evaluateGymAccess(tx, {
       tenantId: input.tenantId,

@@ -1,5 +1,6 @@
 import { mkdir, readdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
@@ -16,7 +17,8 @@ const MIME_TO_EXT: Record<string, string> = {
   "image/webp": "webp",
 };
 
-const BRANDING_DIR = path.join(process.cwd(), "public", "branding");
+const PROFILE_BRANDING = process.env.OFFLINE_DESKTOP === "1" && process.env.GYM_DATA_DIR;
+const BRANDING_DIR = PROFILE_BRANDING ? path.join(PROFILE_BRANDING, "branding") : path.join(process.cwd(), "public", "branding");
 
 function tenantLogoKey(tenantSlug: string, tenantId: string) {
   return (tenantSlug || tenantId).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "") || tenantId;
@@ -41,7 +43,7 @@ async function removeUploadedLogos(filePrefix: string) {
 
 async function removeLogoByUrl(logoUrl: string) {
   if (!logoUrl.startsWith("/branding/")) return;
-  const filename = path.basename(logoUrl);
+  const filename = path.basename(new URL(logoUrl, "http://localhost").pathname);
   if (!filename.startsWith("club-logo")) return;
 
   try {
@@ -87,9 +89,11 @@ export async function POST(request: Request) {
   const filePrefix = logoFilePrefix(admin.tenantSlug, admin.tenantId);
 
   await mkdir(BRANDING_DIR, { recursive: true });
-  await removeUploadedLogos(filePrefix);
+  if (!PROFILE_BRANDING) await removeUploadedLogos(filePrefix);
 
-  const filename = `${filePrefix}.${ext}`;
+  // A new local filename preserves the old logo if the database write fails,
+  // avoids stale image caches, and keeps historical receipt images available.
+  const filename = PROFILE_BRANDING ? `${filePrefix}-${randomUUID()}.${ext}` : `${filePrefix}.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
   await writeFile(path.join(BRANDING_DIR, filename), buffer);
 
@@ -97,6 +101,7 @@ export async function POST(request: Request) {
   try {
     await writeClubLogoUrl(clubLogoUrl);
   } catch (e) {
+    if (PROFILE_BRANDING) await unlink(path.join(BRANDING_DIR, filename)).catch(() => {});
     console.error(e);
     return NextResponse.json(
       { error: "Impossible d'enregistrer le logo pour le moment. Contactez le support si le problème continue." },
@@ -137,8 +142,7 @@ export async function DELETE(request: Request) {
   const before = await getClubSettings();
   const filePrefix = logoFilePrefix(admin.tenantSlug, admin.tenantId);
 
-  await removeUploadedLogos(filePrefix);
-  await removeLogoByUrl(before.clubLogoUrl);
+  if (!PROFILE_BRANDING) { await removeUploadedLogos(filePrefix); await removeLogoByUrl(before.clubLogoUrl); }
   try {
     await writeClubLogoUrl("");
   } catch (e) {

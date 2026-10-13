@@ -42,7 +42,7 @@ export default function LoginPage() {
 
           <div className="relative z-10 flex min-h-screen flex-col justify-between p-8 xl:p-10">
             <Link
-              href="/accueil"
+              href="/login"
               className="inline-flex w-fit items-center gap-3 rounded-lg bg-white/95 px-3 py-2 shadow-[var(--shadow-panel)] [--foreground:#0b1220] [--muted-foreground:#64748b] [--surface-soft:#f8fafc]"
               aria-label="Accueil du produit"
             >
@@ -52,7 +52,7 @@ export default function LoginPage() {
             <div className="max-w-xl pb-4">
               <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-blue-100">
                 <BadgeCheck className="size-3.5" />
-                Interface SaaS pour clubs et dojos
+                Gestion du club hors connexion
               </div>
               <h1 className="mt-5 text-4xl font-bold leading-tight tracking-normal xl:text-5xl">
                 Une reception claire pour piloter la journee.
@@ -84,11 +84,11 @@ export default function LoginPage() {
         <section className="flex min-h-screen items-center px-4 py-6 sm:px-6 lg:px-10">
           <div className="mx-auto flex w-full max-w-[28rem] flex-col">
             <div className="mb-8 flex items-center justify-between gap-4 lg:hidden">
-              <Link href="/accueil" aria-label="Accueil du produit" className="rounded-lg p-1 hover:bg-[var(--surface-soft)]">
+              <Link href="/login" aria-label="Accueil du produit" className="rounded-lg p-1 hover:bg-[var(--surface-soft)]">
                 <ClubBrandMark size="md" />
               </Link>
               <Link
-                href="/accueil"
+                href="/login"
                 className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-xs font-semibold text-[var(--primary)] shadow-[var(--shadow-panel)]"
               >
                 Site
@@ -117,6 +117,7 @@ export default function LoginPage() {
             <p className="mt-4 text-center text-xs leading-5 text-[var(--muted-foreground)]">
               Acces reserve aux equipes autorisees. Les activites sensibles sont journalisees.
             </p>
+            {process.env.OFFLINE_DESKTOP === "1" ? <Link href="/offline-recovery" className="mt-4 text-center text-sm font-semibold text-[var(--primary)]">Récupérer les données originales</Link> : null}
           </div>
         </section>
       </div>

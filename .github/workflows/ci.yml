@@ -1,75 +1,59 @@
-name: CI
-
+name: Offline Windows
 on:
   push:
   pull_request:
-
 permissions:
   contents: read
-
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: offline-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
   verify:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: gymday
-          POSTGRES_PASSWORD: gymday
-          POSTGRES_DB: gymday_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U gymday -d gymday_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 12
-
+    runs-on: windows-latest
+    timeout-minutes: 40
     env:
       CI: true
-      DATABASE_URL: postgresql://gymday:gymday@127.0.0.1:5432/gymday_test?schema=public
-      TEST_DATABASE_URL: postgresql://gymday:gymday@127.0.0.1:5432/gymday_test?schema=public
-      AUTH_SECRET: ci-only-secret-ci-only-secret-ci-only-secret
-      APP_URL: https://app.example.test
-      APP_TIMEZONE: UTC
-      SAAS_ROOT_DOMAIN: example.test
-      DEFAULT_TENANT_SLUG: test
-      ALLOW_PUBLIC_REGISTER: "false"
-      RESEND_API_KEY: ""
-      PASSWORD_RESET_FROM: ""
-
+      NEXT_TELEMETRY_DISABLED: '1'
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Validate Prisma schema
-        run: npx prisma validate
-
-      - name: Generate Prisma client
-        run: npm run prisma:generate
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Lint
-        run: npm run lint -- --no-cache
-
-      - name: Test against disposable PostgreSQL
-        run: npm test
-
-      - name: Build production application
-        run: npm run build
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prisma generate
+      - run: pnpm exec tsc --noEmit
+      - run: pnpm lint
+      - run: pnpm test
+      - run: node --test tests/offline-runtime.node.mjs
+      - run: node --test tests/offline-import.node.mjs
+      - run: node --test tests/offline-recovery.node.mjs
+      - run: pnpm --dir desktop --ignore-workspace install --frozen-lockfile --ignore-scripts --config.node-linker=hoisted
+      - run: node desktop/node_modules/electron/install.js
+      - run: pnpm desktop:package
+      - run: pnpm test:server
+      - run: pnpm exec playwright install chromium
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Playwright-results
+          path: |
+            artifacts/playwright/report
+            artifacts/playwright/results.json
+            artifacts/playwright/test-results
+          if-no-files-found: ignore
+      - run: node scripts/offline-desktop-smoke.mjs
+      - run: node scripts/build-offline-installer.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: We-Discipline-Windows-x64
+          path: |
+            release/*.exe
+            release/*.blockmap
+            artifacts/desktop-smoke/result.json
+            artifacts/desktop-smoke/enrollment.png
+            artifacts/server-smoke/result.json
+          if-no-files-found: error

@@ -178,7 +178,7 @@ export async function issueReceiptForPayment(
           member: { select: { id: true, firstName: true, lastName: true, phone: true } },
           plan: { select: { name: true } },
           sport: { select: { name: true } },
-          entitlements: { include: { sport: { select: { name: true } } }, orderBy: { createdAt: "asc" } },
+          entitlements: { include: { sport: { select: { name: true } }, planEntitlement: { select: { sortOrder: true } } }, orderBy: { createdAt: "asc" } },
         },
       },
     },
@@ -213,7 +213,7 @@ export async function issueReceiptForPayment(
       id: payment.memberSubscription.id,
       planName: payment.memberSubscription.plan.name,
       sportName: payment.memberSubscription.sport?.name ?? "Acces salle",
-      entitlements: payment.memberSubscription.entitlements.map((right) => ({
+      entitlements: payment.memberSubscription.entitlements.slice().sort((a, b) => (a.planEntitlement?.sortOrder ?? 0) - (b.planEntitlement?.sortOrder ?? 0)).map((right) => ({
         label: right.type === "GYM_ACCESS" ? "Accès salle" : right.sport?.name ?? "Cours",
         detail:
           right.type === "GYM_ACCESS"

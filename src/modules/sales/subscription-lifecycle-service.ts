@@ -74,7 +74,7 @@ export async function activateFirstUseSubscription(
   },
 ) {
   const at = input.at ?? new Date();
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${input.tenantId}:subscription:${input.subscriptionId}`}))`;
+  // The local transaction fence serializes invariant reads and writes.
   const subscription = await tx.memberSubscription.findFirst({
     where: { tenantId: input.tenantId, id: input.subscriptionId },
     include: {
@@ -151,7 +151,7 @@ export async function pauseSubscription(
   },
 ) {
   const at = input.at ?? new Date();
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${input.tenantId}:subscription:${input.subscriptionId}`}))`;
+  // The local transaction fence serializes invariant reads and writes.
   const subscription = await tx.memberSubscription.findFirst({
     where: { tenantId: input.tenantId, id: input.subscriptionId },
     include: { pauseEvents: { orderBy: { effectiveAt: "asc" } }, renewedBySubscription: true },
@@ -207,7 +207,7 @@ export async function resumeSubscription(
   },
 ) {
   const at = input.at ?? new Date();
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${input.tenantId}:subscription:${input.subscriptionId}`}))`;
+  // The local transaction fence serializes invariant reads and writes.
   const subscription = await tx.memberSubscription.findFirst({
     where: { tenantId: input.tenantId, id: input.subscriptionId },
     include: {
@@ -315,7 +315,7 @@ export async function adjustEntitlementUnits(
     reason: string;
   },
 ) {
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${input.tenantId}:entitlement:${input.entitlementId}`}))`;
+  // The local transaction fence serializes invariant reads and writes.
   const entitlement = await tx.subscriptionEntitlement.findFirst({
     where: {
       tenantId: input.tenantId,
@@ -381,7 +381,7 @@ export async function cancelSubscription(
   },
 ) {
   const at = input.at ?? new Date();
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${input.tenantId}:subscription:${input.subscriptionId}`}))`;
+  // The local transaction fence serializes invariant reads and writes.
   const subscription = await tx.memberSubscription.findFirst({
     where: { tenantId: input.tenantId, id: input.subscriptionId },
     include: {

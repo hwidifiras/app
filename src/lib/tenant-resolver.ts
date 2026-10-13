@@ -17,6 +17,10 @@ function hostFromRequest(request: Request): string {
 export async function resolveTenantFromHost(hostValue: string | null | undefined): Promise<ResolvedTenant> {
   const host = normalizeHost(hostValue);
   if (!host) return { ok: false, reason: "missing-host", host: "" };
+  if (process.env.OFFLINE_DESKTOP === "1") {
+    if (host !== "127.0.0.1" && host !== "localhost") return { ok: false, reason: "unknown-tenant", host };
+    return { ok: true, context: { tenantId: process.env.OFFLINE_TENANT_ID || "offline-club", tenantSlug: "all-in-gym", host } };
+  }
   if (isPlatformHost(host)) return { ok: false, reason: "platform-host", host };
 
   const slug = tenantSlugFromHost(host);

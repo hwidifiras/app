@@ -2388,3 +2388,5 @@ input.field[type="search"]::-webkit-search-results-decoration {
     @apply font-sans;
   }
 }
+
+:root { --font-geist-sans: "Geist", Arial, Helvetica, sans-serif; --font-geist-mono: "Geist Mono", Consolas, monospace; }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 import { GymImportPreview } from "@/components/gym/gym-import-preview";
+import { StudentExcelImport } from "@/components/settings/student-excel-import";
 import { PageHeader } from "@/components/ui/page-header";
 import { userHasPermission } from "@/lib/permissions";
 import { getAuthUser } from "@/lib/request-user";
@@ -21,8 +22,8 @@ export default async function GymImportPage() {
   return (
     <main className="app-shell py-4 md:py-8">
       <Link href="/gym/visits" className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--primary)] hover:underline"><ArrowLeft className="size-4" /> Retour au suivi salle</Link>
-      <PageHeader overline="Reprise" title="Vérifier un ancien fichier salle" description="Contrôlez les membres, les formules et les paiements avant toute reprise réelle." />
-      <GymImportPreview />
+      <PageHeader overline="Reprise" title="Importer les membres salle" description="Contrôlez les formules, quotas, dates et soldes avant l'import." />
+      {user.role === "ADMIN" ? <StudentExcelImport initialKind="GYM" /> : <GymImportPreview />}
     </main>
   );
 }

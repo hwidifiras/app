@@ -34,7 +34,7 @@ function wait(ms: number): Promise<void> {
 }
 
 /**
- * Runs a read-then-write invariant at PostgreSQL SERIALIZABLE isolation.
+ * Runs an invariant under the local document fence and a MongoDB transaction.
  * Prisma reports serialization/deadlock conflicts as P2034; retrying the
  * entire callback makes every invariant read observe a fresh snapshot.
  */
@@ -48,7 +48,7 @@ export async function runSerializableTransaction<T>(
   for (let attempt = 0; ; attempt += 1) {
     try {
       return await client.$transaction(operation, {
-        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+
         maxWait: options.maxWaitMs ?? 5_000,
         timeout: options.timeoutMs ?? 15_000,
       });

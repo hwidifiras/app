@@ -106,24 +106,13 @@ describe("manual SaaS subscription persistence", () => {
       update: { status: "ACTIVE" },
     });
     const foreignSubscriptionId = "saas_control_foreign_subscription";
-    await prisma.$executeRaw`
-      INSERT INTO "TenantSaasSubscription" (
-        "id", "tenantId", "saasPlanId", "status", "isCurrent", "startsAt", "createdAt", "updatedAt"
-      ) VALUES (
-        ${foreignSubscriptionId}, ${foreignTenant.id}, ${plan.id}, 'ACTIVE'::"SaasSubscriptionStatus",
-        true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-      )
-    `;
+    const { withTenantContext } = await import("@/lib/tenant-context");
+    await withTenantContext({ tenantId: foreignTenant.id, tenantSlug: foreignTenant.slug }, async () => await prisma.tenantSaasSubscription.create({
+      data: { id: foreignSubscriptionId, tenantId: foreignTenant.id, saasPlanId: plan.id, status: "ACTIVE", isCurrent: true, startsAt: new Date() },
+    }));
 
     await expect(
-      prisma.$executeRaw`
-        UPDATE "TenantModule"
-        SET
-          "grantSource" = 'SAAS_SUBSCRIPTION'::"TenantModuleGrantSource",
-          "saasSubscriptionId" = ${foreignSubscriptionId}
-        WHERE "tenantId" = ${TEST_TENANT_ID}
-          AND "moduleKey" = 'CLASS_MANAGEMENT'::"TenantModuleKey"
-      `,
+      prisma.tenantModule.updateMany({ where: { tenantId: TEST_TENANT_ID, moduleKey: "CLASS_MANAGEMENT" }, data: { grantSource: "SAAS_SUBSCRIPTION", saasSubscriptionId: foreignSubscriptionId } }),
     ).rejects.toThrow(/TENANT_REFERENCE_MISMATCH|constraint/i);
   });
 

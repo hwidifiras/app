@@ -1,5 +1,5 @@
 /** Default product name (override with env `APP_NAME`). */
-export const DEFAULT_APP_NAME = "GymDay";
+export const DEFAULT_APP_NAME = "All in Gym";
 
 export function getAppName(): string {
   return process.env.APP_NAME?.trim() || DEFAULT_APP_NAME;

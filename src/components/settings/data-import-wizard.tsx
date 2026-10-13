@@ -40,9 +40,11 @@ import {
 export function DataImportWizard({
   groups,
   plans,
+  showBulk = true,
 }: {
   groups: GroupOption[];
   plans: PlanOption[];
+  showBulk?: boolean;
 }) {
   const router = useRouter();
   const demoReadOnly = useDemoReadOnly();
@@ -344,7 +346,7 @@ export function DataImportWizard({
 
       {status.active ? (
         <>
-          <DataImportBulkSection
+          {showBulk ? <DataImportBulkSection
             templateUrl={DATA_IMPORT_TEMPLATE_URL}
             bulkBusy={bulkBusy}
             bulkFile={bulkFile}
@@ -356,7 +358,7 @@ export function DataImportWizard({
             }}
             onPreview={() => void submitBulk("preview")}
             onApply={() => void submitBulk("apply")}
-          />
+          /> : null}
 
         <form
           className="space-y-5"

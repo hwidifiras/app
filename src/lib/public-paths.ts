@@ -1,4 +1,7 @@
 export function isPublicPath(pathname: string): boolean {
+  if (pathname === "/offline-recovery") return process.env.OFFLINE_DESKTOP === "1";
+  if (pathname.startsWith("/api/offline/branding/")) return process.env.OFFLINE_DESKTOP === "1";
+  if (pathname === "/offline-setup" || pathname === "/api/offline/setup") return true;
   if (pathname === "/login") return true;
   if (pathname === "/register") return true;
   if (pathname === "/signup" || pathname.startsWith("/signup/")) return true;
