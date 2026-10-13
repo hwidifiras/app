@@ -103,4 +103,3 @@ test('members and account restrictions survive a complete local restart', async 
   await page.goto('/settings/users');
   await expect(page.locator('#user-create')).toHaveCount(0);
 });
-
