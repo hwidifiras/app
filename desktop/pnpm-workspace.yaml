@@ -1,4 +1,6 @@
 packages:
   - '.'
+nodeLinker: hoisted
 allowBuilds:
   electron: true
+  electron-winstaller: false
