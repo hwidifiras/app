@@ -28,6 +28,7 @@ jobs:
       - run: pnpm lint
       - run: pnpm test
       - run: node --test tests/offline-runtime.node.mjs
+      - run: node --test tests/offline-import.node.mjs
       - run: pnpm --dir desktop --ignore-workspace install --frozen-lockfile --ignore-scripts --config.node-linker=hoisted
       - run: node desktop/node_modules/electron/install.js
       - run: pnpm desktop:package

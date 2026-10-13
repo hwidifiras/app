@@ -66,11 +66,11 @@ The offline app starts with a fresh local database. It does not automatically ac
 
 1. Set `OFFLINE_EXPORT_DATABASE_URL` to an explicitly selected source PostgreSQL database and run `node scripts/export-offline-data.mjs <club-slug> <export.json>`. This uses a read-only transaction and exports one club.
 2. Close the desktop app. Set `GYM_DATA_DIR` to its data directory and run `pnpm offline:import <export.json>`.
-3. The importer keeps a safety backup, preserves record IDs, money, receipt snapshots, member relationships, attendance and entitlement history, and remaps the exported club to the local workspace. Cloud onboarding and subscription controls are omitted.
-4. Launch and sign in using the exported administrator’s account. Verify balances and receipts against the original export before beginning daily work.
+3. The importer keeps a safety backup, preserves record IDs, money, receipt snapshots, member relationships, attendance and entitlement history, and remaps the exported club to the local workspace. Original enabled/disabled module settings remain intact; cloud onboarding and subscription controls are omitted.
+4. If this profile already has a provisioned administrator and account-creation lock, its configured password remains valid. A matching imported administrator keeps the original user ID so historical references stay intact. Otherwise the independently provisioned administrator is retained alongside imported users. For an unprovisioned profile, sign in using the exported administrator’s account. Verify balances and receipts against the original export before beginning daily work.
 5. Reprint imported gym cards in the local app: their offline codes use a local signing key. Historical visits and credential records remain available.
 
-The source URL belongs in an environment variable, not in a command line or repository file. Existing live data has not been exported as part of this code conversion.
+The source URL belongs in an environment variable, not in a command line or repository file. Customer exports, logo copies, credentials and migration reports must remain outside Git. Imported branding belongs in the local profile's `branding` directory and the current application's `web/public/branding`; the desktop source rehydrates profile branding after an application update. Keep the private migration recovery files together with your backup.
 
 ## Architecture
 

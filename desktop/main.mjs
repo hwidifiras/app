@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startLocalDatabase, localEnvironment, persistLocalSecrets } from './offline/runtime.mjs';
 import { saveBackup, restoreBackup } from './offline/storage.mjs';
+import { syncProfileBranding } from './offline/branding.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 app.setName('All in Gym');
@@ -123,6 +124,7 @@ app.on('second-instance', () => { window?.show(); window?.focus(); });
 app.whenReady().then(async () => {
   dataDir = app.getPath('userData');
   await mkdir(dataDir, { recursive: true });
+  await syncProfileBranding(dataDir, app.isPackaged ? path.join(process.resourcesPath, 'web/public') : path.join(root, 'web/public'));
   database = await startLocalDatabase({ dataDir, binary: app.isPackaged ? path.join(process.resourcesPath, 'mongodb/bin/mongod.exe') : path.join(root, 'vendor/mongodb/bin/mongod.exe'), metadataPath: path.join(root, 'offline/model-metadata.json') });
   const port = database.secrets.applicationPort; origin = `http://127.0.0.1:${port}`;
   session.defaultSession.webRequest.onBeforeRequest((details, callback) => callback({ cancel: !localUrl(details.url) && !details.url.startsWith('devtools:') }));
