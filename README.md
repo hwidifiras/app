@@ -44,6 +44,22 @@ node scripts/offline-desktop-smoke.mjs
 
 Tests start their own authenticated, single-node replica set in a disposable directory. They do not use an existing database URL or reset a production database. The scenario suite exercises payments, corrections, receipt numbering, attendance, family enrollment, renewal, quotas, permissions and concurrent requests. Runtime tests cover rollback, backup integrity, restore, multiple missing child phones and restart persistence. Desktop smoke tests exercise first setup, login, application pages, network isolation and relaunch with a separate local profile.
 
+## Playwright browser tests
+
+Build the production resources first with `pnpm desktop:package`, then run:
+
+```text
+pnpm exec playwright install chromium
+pnpm test:e2e
+pnpm test:e2e:report
+```
+
+The 23 browser tests cover first setup, login rejection/success, logout, locked account creation, request protections, eleven offline screens, paid member enrollment with receipt/ledger checks, and persistence after restarting both local services. Each worker creates and deletes its own database under `artifacts/playwright/profiles`; your actual club profile and credentials are never used. Browser contexts block external network requests while exercising the compiled application.
+
+HTML/JSON reports, failure screenshots and retained failure traces are written under `artifacts/playwright/`. CI runs these checks after packaging and uploads diagnostic reports even when a test fails. Vitest runs the separate business/unit suite.
+
+To use an existing Chrome installation, set `GYM_E2E_CHANNEL=chrome` before running `pnpm test:e2e`; this is the browser used for local validation. These tests exercise the production UI and local server independently of the Electron executable. Native Electron launch and its network/window controls remain covered by the separate `test:desktop` check, which is blocked by Windows App Control on this machine.
+
 ## Import an existing club
 
 The offline app starts with a fresh local database. It does not automatically access or change live customer data.

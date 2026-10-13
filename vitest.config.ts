@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig, configDefaults } from "vitest/config";
 import { fileURLToPath } from "node:url";
 
 export default defineConfig({
@@ -8,6 +8,7 @@ export default defineConfig({
     },
   },
   test: {
+    exclude: [...configDefaults.exclude, "tests/playwright/**"],
     environment: "node",
     setupFiles: ["./tests/setup.ts"],
     fileParallelism: false,

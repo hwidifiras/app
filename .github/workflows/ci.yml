@@ -32,6 +32,17 @@ jobs:
       - run: node desktop/node_modules/electron/install.js
       - run: pnpm desktop:package
       - run: pnpm test:server
+      - run: pnpm exec playwright install chromium
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Playwright-results
+          path: |
+            artifacts/playwright/report
+            artifacts/playwright/results.json
+            artifacts/playwright/test-results
+          if-no-files-found: ignore
       - run: node scripts/offline-desktop-smoke.mjs
       - run: pnpm --dir desktop --ignore-workspace exec electron-builder --win nsis --x64
       - uses: actions/upload-artifact@v4

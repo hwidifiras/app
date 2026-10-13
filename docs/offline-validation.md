@@ -26,3 +26,9 @@ TypeScript, targeted ESLint and production desktop packaging passed. The product
 The updated packaged executable was rejected by Windows App Control on normal launch. Automated native launch also failed, so no passing native follow-up result is claimed. No Windows security policy was changed or bypassed; the local account remains stored for use once the updated application is permitted.
 
 The updated NSIS installer build passed with the hoisted desktop layout persisted in workspace configuration. The current `release/All-in-Gym-1.0.0-x64.exe` is 282,189,496 bytes; SHA-256: `BE49744BC3D6363187642957BC7942C31360A34CAEDC1D85763ED332FFA5DBBA`. It supersedes the earlier local artifact recorded above. Authenticode status remains `NotSigned`; installation and native launch acceptance remain pending.
+
+## Playwright browser suite — 2026-10-13
+
+Added a pinned Playwright test runner, production-server fixtures, independent browser contexts, and 23 end-to-end checks. All 23 passed in installed Chrome with dummy credentials and disposable local databases. Coverage includes first-run setup and duplicate rejection, protected navigation, invalid/valid login, logout, UI/API account-creation restrictions, origin/access-header guards, eleven offline screens, paid enrollment visible in member search and details, the corresponding 5,000-cent ledger entry and receipt, and persistence/restrictions after restarting both services.
+
+External network requests were unavailable inside the tested browser contexts. This verifies offline UI operation, not Electron's native request interception. The suite never uses the real club profile or administrator credentials. HTML/JSON reports and failure screenshots/traces are generated under ignored `artifacts/playwright/`, and Windows CI uploads them after running the suite. Native Electron acceptance remains subject to the Windows App Control limitation recorded above.
